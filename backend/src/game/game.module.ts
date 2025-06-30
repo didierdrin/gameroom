@@ -5,14 +5,14 @@ import { GameGateway } from './game.gateway';
 import { GameService } from './game.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { GameRoom, GameRoomSchema } from './schemas/game-room.schema';
-import { GameSession, GameSessionSchema } from './schemas/game-session.schema';
+import { GameSessionEntity, GameSessionSchema } from './schemas/game-session.schema';
 import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: GameRoom.name, schema: GameRoomSchema },
-      { name: GameSession.name, schema: GameSessionSchema },
+      { name: GameSessionEntity.name, schema: GameSessionSchema },
     ]),
     RedisModule,
   ],
