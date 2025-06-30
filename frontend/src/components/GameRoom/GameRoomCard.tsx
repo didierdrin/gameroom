@@ -47,7 +47,11 @@ export const GameRoomCard = ({
     return <UnlockIcon size={14} className="mr-1" />;
   };
   // Check if game is starting soon (within 10 minutes)
-  const isStartingSoon = startTime && new Date(startTime) - new Date() < 10 * 60 * 1000 && new Date(startTime) > new Date();
+  // const isStartingSoon = startTime && new Date(startTime) - new Date() < 10 * 60 * 1000 && new Date(startTime) > new Date();
+  const isStartingSoon = startTime && 
+  new Date(startTime).getTime() - new Date().getTime() < 10 * 60 * 1000 && 
+  new Date(startTime).getTime() > new Date().getTime();
+  
   return <div className="relative bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/20 hover:border-purple-500/50">
       {isStartingSoon && <div className="absolute top-2 right-2 bg-orange-500 text-xs py-1 px-2 rounded-full animate-pulse flex items-center">
           <ClockIcon size={12} className="mr-1" /> Starting Soon

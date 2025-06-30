@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
 import { CalendarIcon, ClockIcon, UsersIcon, LockIcon, EyeIcon, VideoIcon, MicIcon } from 'lucide-react';
-import { io, Socket } from 'socket.io-client';
+import { Socket } from 'socket.io-client';
+import { useNavigate } from 'react-router-dom';
+
 interface CreateGameRoomPageProps {
   onGameCreated: () => void;
 }
@@ -32,6 +34,7 @@ export const CreateGameRoomPage = ({
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate(); 
 
   const gameTypes = [{
     id: 'kahoot',
@@ -81,7 +84,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   try {
     // Initialize socket connection if not already done
-    const socket = io('http://localhost:3000'); // Replace with your backend URL
+    const socket = io('https://alu-globe-gameroom.onrender.com'); // Replace with your backend URL
     
     // Emit createGame event
     socket.emit('createGame', gameRoomData);

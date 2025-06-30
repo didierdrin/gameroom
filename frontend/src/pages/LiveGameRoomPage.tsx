@@ -1,24 +1,38 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { io, Socket } from 'socket.io-client';
+import io from 'socket.io-client';
 import { LudoGame } from '../components/Ludo/LudoGame';
 import { GameRoomInfo } from '../components/GameRoom/GameRoomInfo';
 import { PlayerList } from '../components/GameRoom/PlayerList';
 import { Chat } from '../components/GameRoom/Chat';
 import { Dice } from '../components/Ludo/Dice';
 
+// Define the socket type based on the return type of io()
+type SocketType = ReturnType<typeof io>;
+
 export const LiveGameRoomPage = () => {
-  const { id: roomId } = useParams();
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const { id: roomId } = useParams<{ id: string }>();
+  const [socket, setSocket] = useState<SocketType | null>(null);
   const [gameState, setGameState] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<string>(''); // This should come from auth
 
+  // Early return if roomId is undefined
+  if (!roomId) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+        <div className="text-center">
+          <h1 className="text-2xl mb-4">Room Not Found</h1>
+          <p>Invalid room ID</p>
+        </div>
+      </div>
+    );
+  }
+
   useEffect(() => {
     // Initialize socket connection
-    const newSocket = io('http://localhost:3000'); // Replace with your backend URL
+    const newSocket = io('https://alu-globe-gameroom.onrender.com'); // Replace with your backend URL
     setSocket(newSocket);
 
     // Get current player ID (from auth or local storage)
@@ -30,31 +44,31 @@ export const LiveGameRoomPage = () => {
     newSocket.emit('joinGame', { roomId, playerId });
 
     // Set up event listeners
-    newSocket.on('gameState', (state) => {
+    newSocket.on('gameState', (state:any) => {
       setGameState(state);
     });
 
-    newSocket.on('playerJoined', ({ player }) => {
+    newSocket.on('playerJoined', ({ player }:any) => {
       setPlayers(prev => [...prev, player]);
     });
 
-    newSocket.on('diceRolled', ({ diceValue }) => {
-      setGameState(prev => ({ ...prev, diceValue }));
+    newSocket.on('diceRolled', ({ diceValue }:any) => {
+      setGameState((prev:any) => ({ ...prev, diceValue }));
     });
 
-    newSocket.on('coinMoved', ({ coins, currentTurn }) => {
-      setGameState(prev => ({ ...prev, coins, currentTurn }));
+    newSocket.on('coinMoved', ({ coins, currentTurn }:any) => {
+      setGameState((prev:any) => ({ ...prev, coins, currentTurn }));
     });
 
     newSocket.on('gameStarted', () => {
-      setGameState(prev => ({ ...prev, gameStarted: true }));
+      setGameState((prev:any) => ({ ...prev, gameStarted: true }));
     });
 
-    newSocket.on('gameOver', ({ winner }) => {
-      setGameState(prev => ({ ...prev, gameOver: true, winner }));
+    newSocket.on('gameOver', ({ winner }:any) => {
+      setGameState((prev:any) => ({ ...prev, gameOver: true, winner }));
     });
 
-    newSocket.on('chatMessage', (message) => {
+    newSocket.on('chatMessage', (message:any) => {
       setMessages(prev => [...prev, message]);
     });
 
@@ -145,7 +159,159 @@ export const LiveGameRoomPage = () => {
       </div>
     </div>
   );
-};
+
+          }
+          
+// import React, { useEffect, useState } from 'react';
+// import { useParams } from 'react-router-dom';
+// import { Socket } from 'socket.io-client';
+// import { LudoGame } from '../components/Ludo/LudoGame';
+// import { GameRoomInfo } from '../components/GameRoom/GameRoomInfo';
+// import { PlayerList } from '../components/GameRoom/PlayerList';
+// import { Chat } from '../components/GameRoom/Chat';
+// import { Dice } from '../components/Ludo/Dice';
+// import  io  from 'socket.io-client';
+
+// type SocketType = ReturnType<typeof io>;
+
+// export const LiveGameRoomPage = () => {
+//   const { id: roomId } = useParams();
+//   const [socket, setSocket] = useState<SocketType | null>(null);
+//   const [gameState, setGameState] = useState<any>(null);
+//   const [players, setPlayers] = useState<any[]>([]);
+//   const [messages, setMessages] = useState<any[]>([]);
+//   const [currentPlayerId, setCurrentPlayerId] = useState<string>(''); // This should come from auth
+
+//   useEffect(() => {
+//     // Initialize socket connection
+//     const newSocket = io('https://alu-globe-gameroom.onrender.com'); // Replace with your backend URL
+//     setSocket(newSocket);
+
+//     // Get current player ID (from auth or local storage)
+//     const playerId = localStorage.getItem('playerId') || `player-${Math.random().toString(36).substr(2, 9)}`;
+//     localStorage.setItem('playerId', playerId);
+//     setCurrentPlayerId(playerId);
+
+//     // Join game room
+//     newSocket.emit('joinGame', { roomId, playerId });
+
+//     // Set up event listeners
+//     newSocket.on('gameState', (state:any) => {
+//       setGameState(state);
+//     });
+
+//     newSocket.on('playerJoined', ({ player }:any) => {
+//       setPlayers(prev => [...prev, player]);
+//     });
+
+//     newSocket.on('diceRolled', ({ diceValue }:any) => {
+//       setGameState((prev:any) => ({ ...prev, diceValue }));
+//     });
+
+//     newSocket.on('coinMoved', ({ coins, currentTurn }:any) => {
+//       setGameState((prev:any) => ({ ...prev, coins, currentTurn }));
+//     });
+
+//     newSocket.on('gameStarted', () => {
+//       setGameState((prev:any) => ({ ...prev, gameStarted: true }));
+//     });
+
+//     newSocket.on('gameOver', ({ winner }:any) => {
+//       setGameState((prev:any) => ({ ...prev, gameOver: true, winner }));
+//     });
+
+//     newSocket.on('chatMessage', (message:any) => {
+//       setMessages(prev => [...prev, message]);
+//     });
+
+//     return () => {
+//       newSocket.disconnect();
+//     };
+//   }, [roomId]);
+
+//   const handleRollDice = () => {
+//     if (socket && gameState?.currentTurn === currentPlayerId && gameState.diceValue === 0) {
+//       socket.emit('rollDice', { roomId, playerId: currentPlayerId });
+//     }
+//   };
+
+//   const handleMoveCoin = (coinId: string) => {
+//     if (socket && gameState?.currentTurn === currentPlayerId && gameState.diceValue > 0) {
+//       socket.emit('moveCoin', { roomId, playerId: currentPlayerId, coinId });
+//     }
+//   };
+
+//   const handleStartGame = () => {
+//     if (socket) {
+//       socket.emit('startGame', { roomId });
+//     }
+//   };
+
+//   const sendMessage = (message: string) => {
+//     if (socket) {
+//       socket.emit('chatMessage', { roomId, playerId: currentPlayerId, message });
+//     }
+//   };
+
+//   return (
+//     <div className="flex flex-col lg:flex-row h-screen bg-gray-900 text-white p-4 gap-4">
+//       <div className="lg:w-3/4 flex flex-col">
+//         <div className="bg-gray-800 rounded-lg p-4 mb-4">
+//           <GameRoomInfo roomId={roomId} gameState={gameState} />
+//         </div>
+        
+//         <div className="flex-1 bg-gray-800 rounded-lg p-4 relative">
+//           {gameState?.gameStarted ? (
+//             <>
+//               <LudoGame 
+//                 gameState={gameState} 
+//                 currentPlayerId={currentPlayerId}
+//                 onMoveCoin={handleMoveCoin}
+//               />
+//               {gameState.currentTurn === currentPlayerId && (
+//                 <div className="absolute bottom-4 right-4">
+//                   <Dice 
+//                     value={gameState.diceValue} 
+//                     onRoll={handleRollDice}
+//                     disabled={gameState.diceValue !== 0}
+//                   />
+//                 </div>
+//               )}
+//             </>
+//           ) : (
+//             <div className="flex flex-col items-center justify-center h-full">
+//               <h2 className="text-2xl mb-4">Waiting for players...</h2>
+//               <button 
+//                 onClick={handleStartGame}
+//                 className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-700"
+//               >
+//                 Start Game
+//               </button>
+//             </div>
+//           )}
+//         </div>
+//       </div>
+      
+//       <div className="lg:w-1/4 flex flex-col gap-4">
+//         <div className="bg-gray-800 rounded-lg p-4 flex-1">
+//           <PlayerList 
+//             players={players} 
+//             currentPlayerId={currentPlayerId}
+//             currentTurn={gameState?.currentTurn}
+//           />
+//         </div>
+        
+//         <div className="bg-gray-800 rounded-lg p-4 flex-1">
+//           <Chat 
+//             messages={messages}
+//             onSendMessage={sendMessage}
+//             currentPlayerId={currentPlayerId}
+//           />
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
 
 // import React, { useState } from 'react';
 // import { useParams, useNavigate } from 'react-router-dom';
