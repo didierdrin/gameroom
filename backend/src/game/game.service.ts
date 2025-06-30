@@ -5,7 +5,7 @@ import { RedisService } from '../redis/redis.service';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { GameRoom, GameRoomDocument } from './schemas/game-room.schema';
-import { GameSession, GameSessionDocument } from './schemas/game-session.schema';
+import { GameSessionEntity, GameSessionDocument } from './schemas/game-session.schema';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { Socket } from 'socket.io';
@@ -15,7 +15,7 @@ export class GameService {
   constructor(
     private readonly redisService: RedisService,
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoomDocument>,
-    @InjectModel(GameSession.name) private gameSessionModel: Model<GameSessionDocument>,
+    @InjectModel(GameSessionEntity.name) private gameSessionModel: Model<GameSessionDocument>,
   ) {}
 
   async createGame(createGameDto: CreateGameDto) {
@@ -284,6 +284,19 @@ export class GameService {
     
     await gameSession.save();
   }
+
+  async getGameRoomById(roomId: string) {
+    const room = await this.gameRoomModel.findOne({ roomId });
+    if (!room) throw new Error('Game room not found');
+    return room;
+  }
+  
+  async getScores(roomId: string) {
+    const room = await this.gameRoomModel.findOne({ roomId });
+    if (!room) throw new Error('Game room not found');
+    return room.scores ?? {};
+  }
+  
 }
 
 // import { Injectable } from '@nestjs/common';

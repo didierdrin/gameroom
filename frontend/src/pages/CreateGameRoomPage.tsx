@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
 import { CalendarIcon, ClockIcon, UsersIcon, LockIcon, EyeIcon, VideoIcon, MicIcon } from 'lucide-react';
-
+import { io, Socket } from 'socket.io-client';
 interface CreateGameRoomPageProps {
   onGameCreated: () => void;
 }
@@ -37,7 +37,13 @@ export const CreateGameRoomPage = ({
     id: 'kahoot',
     name: 'Kahoot',
     icon: '🎯'
-  }, {
+  },
+  {
+    id: 'ludo',
+    name: 'Ludo',
+    icon: '🎲'
+  },
+   {
     id: 'chess',
     name: 'Chess',
     icon: '♟️'
@@ -58,49 +64,43 @@ export const CreateGameRoomPage = ({
     name: 'Sudoku',
     icon: '🔢'
   }];
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+ 
+  
+// Update handleSubmit to use socket.io for game creation
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
 
-    const gameRoomData: GameRoomData = {
-      name: roomName,
-      gameType: gameType,
-      maxPlayers: playerLimit,
-      isPrivate: privacy === 'private' || privacy === 'inviteOnly',
-      // Add other relevant fields as needed
-    };
-
-    if (privacy === 'private') {
-      gameRoomData.password = password;
-    }
-
-    if (gameMode === 'schedule') {
-      gameRoomData.scheduledDate = scheduledDate;
-      gameRoomData.scheduledTime = scheduledTime;
-    }
-
-    try {
-      const response = await fetch('/api/game-rooms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(gameRoomData),
-      });
-
-      if (response.ok) {
-        const newGameRoom = await response.json();
-        console.log('Game room created:', newGameRoom);
-        onGameCreated(); // Call the success callback
-      } else {
-        const errorData = await response.json();
-        console.error('Error creating game room:', errorData.error);
-        // TODO: Display an error message to the user
-      }
-    } catch (error) {
-      console.error('Failed to create game room:', error);
-      // TODO: Display an error message to the user
-    }
+  const gameRoomData = {
+    name: roomName,
+    gameType: gameType,
+    maxPlayers: playerLimit,
+    isPrivate: privacy === 'private' || privacy === 'inviteOnly',
+    password: privacy === 'private' ? password : undefined,
+    hostId: 'current-user-id', // Replace with actual user ID
   };
+
+  try {
+    // Initialize socket connection if not already done
+    const socket = io('http://localhost:3000'); // Replace with your backend URL
+    
+    // Emit createGame event
+    socket.emit('createGame', gameRoomData);
+    
+    // Listen for gameCreated event
+    socket.on('gameCreated', (game:any) => {
+      // Navigate to the game room
+      navigate(`/game-room/${game.roomId}`);
+    });
+    
+    socket.on('error', (error:any) => {
+      console.error('Error creating game room:', error);
+      // TODO: Display error to user
+    });
+  } catch (error) {
+    console.error('Failed to create game room:', error);
+    // TODO: Display error to user
+  }
+};
   return <div className="p-6 overflow-y-auto h-screen pb-20">
       <SectionTitle title="Create Game Room" subtitle="Set up a new game room for you and your friends to play in" />
       <form onSubmit={handleSubmit} className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
@@ -285,3 +285,49 @@ export const CreateGameRoomPage = ({
       </form>
     </div>;
 };
+
+
+
+ // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  //   e.preventDefault();
+
+  //   const gameRoomData: GameRoomData = {
+  //     name: roomName,
+  //     gameType: gameType,
+  //     maxPlayers: playerLimit,
+  //     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
+  //     // Add other relevant fields as needed
+  //   };
+
+  //   if (privacy === 'private') {
+  //     gameRoomData.password = password;
+  //   }
+
+  //   if (gameMode === 'schedule') {
+  //     gameRoomData.scheduledDate = scheduledDate;
+  //     gameRoomData.scheduledTime = scheduledTime;
+  //   }
+
+  //   try {
+  //     const response = await fetch('/api/game-rooms', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify(gameRoomData),
+  //     });
+
+  //     if (response.ok) {
+  //       const newGameRoom = await response.json();
+  //       console.log('Game room created:', newGameRoom);
+  //       onGameCreated(); // Call the success callback
+  //     } else {
+  //       const errorData = await response.json();
+  //       console.error('Error creating game room:', errorData.error);
+  //       // TODO: Display an error message to the user
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to create game room:', error);
+  //     // TODO: Display an error message to the user
+  //   }
+  // };

@@ -89,9 +89,46 @@ export const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
-  const handleJoinRoom = (gameRoom:any) => {
-    navigate(`/game-room/${gameRoom.id}`);
-  };
+
+  // Update the join button click handler
+const handleJoinRoom = () => {
+  if (isPrivate || isInviteOnly) {
+    // Show password prompt or invite flow
+    const password = prompt('Enter room password:');
+    if (password === null) return;
+    
+    // Initialize socket connection
+    const socket = io('http://localhost:3000'); // Replace with your backend URL
+    
+    // Emit joinGame event
+    socket.emit('joinGame', {
+      roomId: id,
+      playerId: 'current-user-id', // Replace with actual user ID
+      password,
+    });
+    
+    // Listen for successful join
+    socket.on('playerJoined', () => {
+      onJoinRoom(gameRoom);
+    });
+    
+    socket.on('error', (error) => {
+      console.error('Error joining game:', error);
+      // TODO: Display error to user
+    });
+  } else {
+    // Public room - join directly
+    const socket = io('http://localhost:3000'); // Replace with your backend URL
+    socket.emit('joinGame', {
+      roomId: id,
+      playerId: 'current-user-id', // Replace with actual user ID
+    });
+    
+    socket.on('playerJoined', () => {
+      onJoinRoom(gameRoom);
+    });
+  }
+};
 
   return <div className="p-6 overflow-y-auto h-screen pb-20">
       {/* Hero Banner */}
@@ -193,3 +230,8 @@ export const HomePage = () => {
       </section>
     </div>;
 };
+
+
+  // const handleJoinRoom = (gameRoom:any) => {
+  //   navigate(`/game-room/${gameRoom.id}`);
+  // };

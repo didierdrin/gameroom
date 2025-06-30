@@ -77,3 +77,30 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 92, 246, 0.7);
 }
+
+
+/* Ludo Board Styles */
+.bg-ludo-board {
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MDAgNTAwIj48cmVjdCB3aWR0aD0iNTAwIiBoZWlnaHQ9IjUwMCIgZmlsbD0iIzFhMWExYSIvPjxwYXRoIGQ9Ik0xMDAgMTAwdjMwMGgzMDB2LTMwMHoiIGZpbGw9IiNkNDJhMjEiLz48cGF0aCBkPSJNNDAwIDEwMHYzMDBoLTMwMHYtMzAweiIgZmlsbD0iIzJiNTk4ZSIvPjxwYXRoIGQ9Ik0xMDAgNDAwdjEwMGgzMDB2LTEwMHoiIGZpbGw9IiNmM2Q0MWUiLz48cGF0aCBkPSJNMTAwIDB2MTAwaDMwMHYtMTAweiIgZmlsbD0iIzRjYWY1MCIvPjxjaXJjbGUgY3g9IjI1MCIgY3k9IjI1MCIgcj0iMTUwIiBmaWxsPSIjMWExYTFhIi8+PGNpcmNsZSBjeD0iMjUwIiBjeT0iMjUwIiByPSIxMjAiIGZpbGw9IiMyYzJjMmMiLz48L3N2Zz4=');
+}
+
+/* Coin animation */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.coin-pulse {
+  animation: pulse 1.5s infinite;
+}
+
+/* Dice animation */
+@keyframes roll {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.dice-rolling {
+  animation: roll 0.5s linear infinite;
+}

@@ -3,7 +3,7 @@ import { UsersIcon, LockIcon, UnlockIcon, ClockIcon } from 'lucide-react';
 export const GameRoomCard = ({
   gameRoom,
   onJoinRoom
-}) => {
+}:any) => {
   const {
     id,
     name,
