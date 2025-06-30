@@ -20,7 +20,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/create-game-room',
-        element: <CreateGameRoomPage onGameCreated={} />,
+        element: <CreateGameRoomPage onGameCreated={() => {}} />,
       },
       {
         path: '/my-game-rooms',
