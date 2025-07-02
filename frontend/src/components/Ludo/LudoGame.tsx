@@ -7,7 +7,9 @@ interface LudoGameProps {
 }
 
 export const LudoGame: React.FC<LudoGameProps> = ({ gameState, currentPlayerId, onMoveCoin }) => {
-  if (!gameState) return null;
+  // if (!gameState) return null;
+  if (!gameState || !gameState.coins) return <div>Waiting for game state...</div>;
+
 
   const renderCoin = (playerId: string, coinId: string, coin: any) => {
     const isCurrentPlayer = playerId === currentPlayerId;
@@ -41,7 +43,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({ gameState, currentPlayerId, 
       
       {/* Render coins */}
       <div className="relative z-10 w-full h-full">
-        {Object.entries(gameState.coins).map(([playerId, coins]) => (
+        {/* {Object.entries(gameState.coins).map(([playerId, coins]) => (
           Object.entries(coins as any).map(([coinId, coin]) => (
             <div 
               key={`${playerId}-${coinId}`}
@@ -51,7 +53,19 @@ export const LudoGame: React.FC<LudoGameProps> = ({ gameState, currentPlayerId, 
               {renderCoin(playerId, coinId, coin)}
             </div>
           ))
-        ))}
+        ))} */}
+        {gameState.coins && Object.entries(gameState.coins).map(([playerId, coins]) => (
+  Object.entries(coins as any).map(([coinId, coin]) => (
+    <div 
+      key={`${playerId}-${coinId}`}
+      className="absolute"
+      style={getCoinPosition(coin)}
+    >
+      {renderCoin(playerId, coinId, coin)}
+    </div>
+  ))
+))}
+
       </div>
     </div>
   );
