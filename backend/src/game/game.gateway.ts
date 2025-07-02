@@ -64,11 +64,18 @@ async handleStartGame(@MessageBody() data: { roomId: string }) {
   this.server.to(data.roomId).emit('gameState', gameState);
 }
 
+// @SubscribeMessage('getGameRooms')
+// handleGetGameRooms(@ConnectedSocket() client: Socket) {
+//   const gameRooms = this.gameService.getAllGameRooms(); // Get live rooms from memory/Redis
+//   client.emit('gameRoomsList', gameRooms);
+// }
+
 @SubscribeMessage('getGameRooms')
-handleGetGameRooms(@ConnectedSocket() client: Socket) {
-  const gameRooms = this.gameService.getAllGameRooms(); // Get live rooms from memory/Redis
-  client.emit('gameRoomsList', gameRooms);
+async handleGetGameRooms(@ConnectedSocket() client: Socket) {
+  const gameRooms = await this.gameService.getAllGameRooms(); 
+  client.emit('gameRoomsList', { rooms: gameRooms }); 
 }
+
 
 
 

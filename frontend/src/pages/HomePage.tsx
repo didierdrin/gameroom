@@ -120,28 +120,7 @@ export const HomePage = () => {
   const [liveRooms, setLiveRooms] = useState<GameRoom[]>([]);
 const [upcomingRooms, setUpcomingRooms] = useState<GameRoom[]>([]);
 
-// useEffect(() => {
-//   const socket = io('https://alu-globe-gameroom.onrender.com', {
-//     transports: ['websocket'],
-//   });
 
-//   socket.emit('getGameRooms');
-
-//   socket.on('gameRoomsList', (rooms: GameRoom[]) => {
-//     // Split live vs upcoming
-//     const now = new Date().toISOString();
-//     const live = rooms.filter(r => !r.startTime || r.startTime < now);
-//     const upcoming = rooms.filter(r => r.startTime && r.startTime > now);
-//     setLiveRooms(live);
-//     setUpcomingRooms(upcoming);
-//   });
-
-//   socket.on('error', (err:any) => {
-//     console.error('Failed to fetch game rooms:', err);
-//   });
-
-//   return () => socket.disconnect();
-// }, []);
 
 useEffect(() => {
   const socket = io('https://alu-globe-gameroom.onrender.com', {
@@ -150,15 +129,17 @@ useEffect(() => {
 
   socket.emit('getGameRooms');
 
-  socket.on('gameRoomsList', (rooms: GameRoom[]) => {
+ 
+
+  socket.on('gameRoomsList', (payload: { rooms: GameRoom[] }) => {
+    const rooms = payload.rooms;
     const now = new Date().toISOString();
-
-    const live = rooms.filter(room => !room.startTime || room.startTime < now);
-    const upcoming = rooms.filter(room => room.startTime && room.startTime > now);
-
+    const live = rooms.filter(r => !r.startTime || r.startTime < now);
+    const upcoming = rooms.filter(r => r.startTime && r.startTime > now);
     setLiveRooms(live);
     setUpcomingRooms(upcoming);
   });
+  
 
   socket.on('error', (err: any) => {
     console.error('Failed to fetch game rooms:', err);
