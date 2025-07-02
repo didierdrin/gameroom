@@ -264,7 +264,7 @@ export class GameService {
     // Could implement reconnection logic or AI takeover
   }
 
-  private async getGameState(roomId: string) {
+  public async getGameState(roomId: string) {
     const gameState = await this.redisService.get(`game:${roomId}`);
     return JSON.parse(gameState);
   }
@@ -296,41 +296,12 @@ export class GameService {
     if (!room) throw new Error('Game room not found');
     return room.scores ?? {};
   }
+
+  async getAllGameRooms(): Promise<any[]> {
+    const keys = await this.redisService.getKeys('gameRoom:*');
+    const rooms = await Promise.all(keys.map(key => this.redisService.getJSON(key)));
+    return rooms.filter(Boolean);
+  }
+  
   
 }
-
-// import { Injectable } from '@nestjs/common';
-// import { RedisService } from 'nestjs-redis';
-// import { InjectModel } from '@nestjs/mongoose';
-// import { Model } from 'mongoose';
-// import { GameRoom, GameRoomDocument } from './schemas/game-room.schema';
-
-// @Injectable()
-// export class GameService {
-//   constructor(
-//     @InjectModel(GameRoom.name) private roomModel: Model<GameRoomDocument>,
-//     private readonly redisService: RedisService,
-//   ) {}
-
-//   async addPlayerToRoom(roomId: string, socketId: string, playerId: string) {
-//     const redis = this.redisService.getClient();
-//     await redis.hset(`room:${roomId}:players`, socketId, playerId);
-//   }
-
-//   async removePlayer(socketId: string) {
-//     const redis = this.redisService.getClient();
-//     // Loop over rooms to remove player (or track player-room mapping)
-//   }
-
-//   async moveCoin(roomId: string, coinID: string, cellID: string) {
-//     const redis = this.redisService.getClient();
-//     await redis.hset(`room:${roomId}:coin:${coinID}`, 'cellID', cellID);
-//   }
-
-//   async updateScore(roomId: string, playerId: string, score: number) {
-//     await this.roomModel.updateOne({ roomId }, {
-//       $set: { [`scores.${playerId}`]: score },
-//     }, { upsert: true });
-//   }
-// }
-

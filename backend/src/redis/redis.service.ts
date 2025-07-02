@@ -36,6 +36,24 @@ export class RedisService implements OnModuleInit {
   async del(key: string) {
     await this.client.del(key);
   }
+
+  
+/**
+ * Get all keys that match a pattern
+ * e.g. 'gameRoom:*' to list all game rooms
+ */
+async getKeys(pattern: string): Promise<string[]> {
+  return await this.client.keys(pattern);
+}
+
+/**
+ * Get a key and parse it as JSON (optional helper)
+ */
+async getJSON<T = any>(key: string): Promise<T | null> {
+  const raw = await this.client.get(key);
+  return raw ? JSON.parse(raw) : null;
+}
+
 }
 
 
