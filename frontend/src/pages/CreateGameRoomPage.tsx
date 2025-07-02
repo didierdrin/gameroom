@@ -3,6 +3,7 @@ import { SectionTitle } from '../components/UI/SectionTitle';
 import { CalendarIcon, ClockIcon, UsersIcon, LockIcon, EyeIcon, VideoIcon, MicIcon } from 'lucide-react';
 import { Socket } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
+import io from 'socket.io-client';
 
 interface CreateGameRoomPageProps {
   onGameCreated: () => void;
