@@ -2,6 +2,7 @@
 import { Module } from '@nestjs/common';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
+import { GameGateway } from './game.gateway';
 import { MongooseModule } from '@nestjs/mongoose';
 import { GameRoom, GameRoomSchema } from './schemas/game-room.schema';
 import { GameSessionEntity, GameSessionSchema } from './schemas/game-session.schema';
@@ -16,7 +17,7 @@ import { RedisModule } from '../redis/redis.module';
     ]),
   ],
   controllers: [GameController],
-  providers: [GameService],
+  providers: [GameService, GameGateway],
   exports: [GameService],
 })
 export class GameModule {}

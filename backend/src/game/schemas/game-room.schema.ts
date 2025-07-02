@@ -1,8 +1,5 @@
 
 
-
-// // src/game/schemas/game-room.schema.ts
-
 // src/game/schemas/game-room.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';

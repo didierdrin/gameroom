@@ -85,8 +85,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   try {
     // Initialize socket connection if not already done
-    const socket = io('https://alu-globe-gameroom.onrender.com'); // Replace with your backend URL
-    
+    //const socket = io('https://alu-globe-gameroom.onrender.com'); // Replace with your backend URL
+    const socket = io('https://alu-globe-gameroom.onrender.com', {
+  transports: ['websocket'],
+});
+
     // Emit createGame event
     socket.emit('createGame', gameRoomData);
     
