@@ -1,82 +1,62 @@
+// LiveGameRoomPage.tsx
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import { LudoGame } from '../components/Ludo/LudoGame';
 import { GameRoomInfo } from '../components/GameRoom/GameRoomInfo';
 import { PlayerList } from '../components/GameRoom/PlayerList';
 import { Chat } from '../components/GameRoom/Chat';
 import { Dice } from '../components/Ludo/Dice';
+import {
+  XIcon, UsersIcon, MessageCircleIcon, SendIcon, VideoIcon,
+  SmileIcon, SettingsIcon, MaximizeIcon, MinimizeIcon
+} from 'lucide-react';
+import { MediaControls } from '../components/GameRoom/MediaControls';
+import { VideoGrid } from '../components/GameRoom/VideoGrid';
 
-// Define the socket type based on the return type of io()
+// Type for socket
 type SocketType = ReturnType<typeof io>;
 
 export const LiveGameRoomPage = () => {
   const { id: roomId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [socket, setSocket] = useState<SocketType | null>(null);
   const [gameState, setGameState] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
-  const [currentPlayerId, setCurrentPlayerId] = useState<string>(''); // This should come from auth
+  const [currentPlayerId, setCurrentPlayerId] = useState<string>('');
+  const [message, setMessage] = useState('');
+  const [showChat, setShowChat] = useState(true);
+  const [showPlayers, setShowPlayers] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [showVideoGrid, setShowVideoGrid] = useState(false);
 
-  // Early return if roomId is undefined
-  if (!roomId) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-        <div className="text-center">
-          <h1 className="text-2xl mb-4">Room Not Found</h1>
-          <p>Invalid room ID</p>
-        </div>
-      </div>
-    );
-  }
+  const gameType = gameState?.gameType || 'Ludo';
 
   useEffect(() => {
-    // Initialize socket connection
-    const newSocket = io('https://alu-globe-gameroom.onrender.com'); // Replace with your backend URL
+    const newSocket = io('https://alu-globe-gameroom.onrender.com');
     setSocket(newSocket);
 
-    // Get current player ID (from auth or local storage)
     const playerId = localStorage.getItem('playerId') || `player-${Math.random().toString(36).substr(2, 9)}`;
     localStorage.setItem('playerId', playerId);
     setCurrentPlayerId(playerId);
 
-    // Join game room
     newSocket.emit('joinGame', { roomId, playerId });
 
-    // Set up event listeners
-    newSocket.on('gameState', (state:any) => {
-      setGameState(state);
-    });
-
-    newSocket.on('playerJoined', ({ player }:any) => {
-      if (player) {
-        setPlayers(prev => [...prev, player]);
-      }
-    });
-
-    newSocket.on('diceRolled', ({ diceValue }:any) => {
-      setGameState((prev:any) => ({ ...prev, diceValue }));
-    });
-
-    newSocket.on('coinMoved', ({ coins, currentTurn }:any) => {
-      setGameState((prev:any) => ({ ...prev, coins, currentTurn }));
-    });
-
-    newSocket.on('gameStarted', () => {
-      setGameState((prev:any) => ({ ...prev, gameStarted: true }));
-    });
-
-    newSocket.on('gameOver', ({ winner }:any) => {
-      setGameState((prev:any) => ({ ...prev, gameOver: true, winner }));
-    });
-
-    newSocket.on('chatMessage', (message:any) => {
-      setMessages(prev => [...prev, message]);
-    });
+    newSocket.on('gameState', (state: any) => setGameState(state));
+    newSocket.on('playerJoined', ({ player }: any) => setPlayers(prev => [...prev, player]));
+    newSocket.on('diceRolled', ({ diceValue }: any) => setGameState((prev: any) => ({ ...prev, diceValue })));
+    newSocket.on('coinMoved', ({ coins, currentTurn }: any) => setGameState((prev: any) => ({ ...prev, coins, currentTurn })));
+    newSocket.on('gameStarted', () => setGameState((prev: any) => ({ ...prev, gameStarted: true })));
+    newSocket.on('gameOver', ({ winner }: any) => setGameState((prev: any) => ({ ...prev, gameOver: true, winner })));
+    newSocket.on('chatMessage', (message: any) => setMessages(prev => [...prev, message]));
 
     return () => {
       newSocket.disconnect();
-    };
+    }
   }, [roomId]);
 
   const handleRollDice = () => {
@@ -97,98 +77,198 @@ export const LiveGameRoomPage = () => {
     }
   };
 
-  const sendMessage = (message: string) => {
+  const sendMessage = (text: string) => {
     if (socket) {
-      socket.emit('chatMessage', { roomId, playerId: currentPlayerId, message });
+      socket.emit('chatMessage', { roomId, playerId: currentPlayerId, message: text });
     }
   };
 
-  return (
-    <div className="flex flex-col lg:flex-row h-screen bg-gray-900 text-white p-4 gap-4">
-      <div className="lg:w-3/4 flex flex-col">
-        <div className="bg-gray-800 rounded-lg p-4 mb-4">
-          <GameRoomInfo roomId={roomId} gameState={gameState} />
-        </div>
-        
-        <div className="flex-1 bg-gray-800 rounded-lg p-4 relative">
-          {gameState?.gameStarted ? (
-            <>
-              <LudoGame 
-                gameState={gameState} 
-                currentPlayerId={currentPlayerId}
-                onMoveCoin={handleMoveCoin}
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (message.trim()) {
+      sendMessage(message);
+      setMessage('');
+    }
+  };
+
+  const renderGameContent = () => {
+    if (gameType.toLowerCase() === 'ludo') {
+      return gameState?.gameStarted ? (
+        <div className="relative w-full h-full">
+          <LudoGame gameState={gameState} currentPlayerId={currentPlayerId} onMoveCoin={handleMoveCoin} />
+          {gameState.currentTurn === currentPlayerId && (
+            <div className="absolute bottom-4 right-4">
+              <Dice
+                value={gameState.diceValue}
+                onRoll={handleRollDice}
+                disabled={gameState.diceValue !== 0}
               />
-              {gameState.currentTurn === currentPlayerId && (
-                <div className="absolute bottom-4 right-4">
-                  <Dice 
-                    value={gameState.diceValue} 
-                    onRoll={handleRollDice}
-                    disabled={gameState.diceValue !== 0}
-                  />
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full">
-              <h2 className="text-2xl mb-4">Waiting for players...</h2>
-              <button 
-                onClick={handleStartGame}
-                className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-700"
-              >
-                Start Game
-              </button>
             </div>
           )}
         </div>
-      </div>
-      
-      <div className="lg:w-1/4 flex flex-col gap-4">
-        <div className="bg-gray-800 rounded-lg p-4 flex-1">
-          <PlayerList 
-            players={players} 
-            currentPlayerId={currentPlayerId}
-            currentTurn={gameState?.currentTurn}
-          />
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full">
+          <h2 className="text-2xl mb-4">Waiting for players...</h2>
+          <button onClick={handleStartGame} className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-700">
+            Start Game
+          </button>
         </div>
-        
-        <div className="bg-gray-800 rounded-lg p-4 flex-1">
-          <Chat 
-            messages={messages}
-            onSendMessage={sendMessage}
-            currentPlayerId={currentPlayerId}
-          />
+      );
+    }
+
+    return <div className="text-center text-gray-400">Game "{gameType}" not implemented yet</div>;
+  };
+
+  const toggleSidebar = (sidebar: string) => {
+    if (sidebar === 'players') {
+      if (window.innerWidth < 1024 && showChat) setShowChat(false);
+      setShowPlayers(!showPlayers);
+    } else if (sidebar === 'chat') {
+      if (window.innerWidth < 1024 && showPlayers) setShowPlayers(false);
+      setShowChat(!showChat);
+    }
+  };
+
+  const handleExit = () => {
+    navigate('/');
+  };
+
+  return (
+    <div className={`flex flex-col h-screen bg-gray-900 ${fullscreen ? 'fixed inset-0 z-50' : ''}`}>
+      {/* Topbar */}
+      <div className="bg-gray-800 border-b border-gray-700 p-2 sm:p-3 flex items-center justify-between">
+        <div className="flex items-center">
+          <button onClick={handleExit} className="mr-4 p-2 rounded-lg hover:bg-gray-700 transition-colors">
+            <XIcon size={20} />
+          </button>
+          <h1 className="font-bold text-base sm:text-xl truncate">{gameState?.roomName || 'Game Room'}</h1>
+          <div className="ml-3 px-2 py-1 bg-purple-900/50 border border-purple-500/30 rounded text-xs text-purple-400">
+            {gameType}
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button onClick={() => setShowVideoGrid(!showVideoGrid)} className={`p-2 rounded-lg ${showVideoGrid ? 'bg-purple-600' : 'hover:bg-gray-700'}`}>
+            <VideoIcon size={20} />
+          </button>
+          <button onClick={() => toggleSidebar('players')} className={`p-2 rounded-lg ${showPlayers ? 'bg-gray-700 text-purple-400' : 'hover:bg-gray-700'}`}>
+            <UsersIcon size={20} />
+          </button>
+          <button onClick={() => toggleSidebar('chat')} className={`p-2 rounded-lg ${showChat ? 'bg-gray-700 text-purple-400' : 'hover:bg-gray-700'}`}>
+            <MessageCircleIcon size={20} />
+          </button>
+          <button onClick={() => setFullscreen(!fullscreen)} className="hidden sm:block p-2 rounded-lg hover:bg-gray-700">
+            {fullscreen ? <MinimizeIcon size={20} /> : <MaximizeIcon size={20} />}
+          </button>
         </div>
       </div>
+
+      {/* Main Content Layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {showPlayers && (
+          <div className="w-full sm:w-64 border-r border-gray-700 bg-gray-800 overflow-y-auto fixed sm:relative inset-y-0 left-0 z-30">
+            <div className="p-3 border-b border-gray-700 flex justify-between items-center">
+              <h3 className="font-medium">Players ({players.length})</h3>
+              <button onClick={() => setShowPlayers(false)} className="sm:hidden p-2 hover:bg-gray-700 rounded-lg">
+                <XIcon size={16} />
+              </button>
+            </div>
+            <PlayerList players={players} currentPlayerId={currentPlayerId} currentTurn={gameState?.currentTurn} />
+          </div>
+        )}
+
+        <div className="flex-1 bg-gray-850">
+          <div className="h-full p-2 sm:p-4">{renderGameContent()}</div>
+        </div>
+
+        {showChat && (
+          <div className="w-full sm:w-64 border-l border-gray-700 bg-gray-800 flex flex-col fixed sm:relative inset-y-0 right-0 z-30">
+            <div className="p-3 border-b border-gray-700 flex justify-between items-center">
+              <h3 className="font-medium">Chat</h3>
+              <button onClick={() => setShowChat(false)} className="sm:hidden p-2 hover:bg-gray-700 rounded-lg">
+                <XIcon size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-4">
+              {messages.map((msg, index) => (
+                <div key={index} className="flex">
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.playerId}`} alt="" className="w-8 h-8 rounded-full border border-gray-600 mr-2" />
+                  <div>
+                    <div className="text-sm font-medium">{msg.playerId}</div>
+                    <div className="text-sm text-gray-300">{msg.message}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-3 border-t border-gray-700">
+              <form onSubmit={handleSendMessage} className="flex items-center">
+                <input
+                  type="text"
+                  className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Type a message..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
+                <button type="submit" className="p-2 ml-2 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors">
+                  <SendIcon size={20} />
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <MediaControls
+        videoEnabled={videoEnabled}
+        audioEnabled={audioEnabled}
+        isScreenSharing={isScreenSharing}
+        onToggleVideo={() => setVideoEnabled(!videoEnabled)}
+        onToggleAudio={() => setAudioEnabled(!audioEnabled)}
+        onToggleScreenShare={() => setIsScreenSharing(!isScreenSharing)}
+        onLeaveCall={handleExit}
+      />
+
+      {(showPlayers || showChat) && (
+        <div className="fixed inset-0 bg-black/50 z-20 sm:hidden" onClick={() => {
+          setShowPlayers(false);
+          setShowChat(false);
+        }} />
+      )}
     </div>
   );
-
-          }
-
+};
 
 
-
-   
-          
-          
 // import React, { useEffect, useState } from 'react';
 // import { useParams } from 'react-router-dom';
-// import { Socket } from 'socket.io-client';
+// import io from 'socket.io-client';
 // import { LudoGame } from '../components/Ludo/LudoGame';
 // import { GameRoomInfo } from '../components/GameRoom/GameRoomInfo';
 // import { PlayerList } from '../components/GameRoom/PlayerList';
 // import { Chat } from '../components/GameRoom/Chat';
 // import { Dice } from '../components/Ludo/Dice';
-// import  io  from 'socket.io-client';
 
+// // Define the socket type based on the return type of io()
 // type SocketType = ReturnType<typeof io>;
 
 // export const LiveGameRoomPage = () => {
-//   const { id: roomId } = useParams();
+//   const { id: roomId } = useParams<{ id: string }>();
 //   const [socket, setSocket] = useState<SocketType | null>(null);
 //   const [gameState, setGameState] = useState<any>(null);
 //   const [players, setPlayers] = useState<any[]>([]);
 //   const [messages, setMessages] = useState<any[]>([]);
 //   const [currentPlayerId, setCurrentPlayerId] = useState<string>(''); // This should come from auth
+
+//   // Early return if roomId is undefined
+//   if (!roomId) {
+//     return (
+//       <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+//         <div className="text-center">
+//           <h1 className="text-2xl mb-4">Room Not Found</h1>
+//           <p>Invalid room ID</p>
+//         </div>
+//       </div>
+//     );
+//   }
 
 //   useEffect(() => {
 //     // Initialize socket connection
@@ -209,7 +289,9 @@ export const LiveGameRoomPage = () => {
 //     });
 
 //     newSocket.on('playerJoined', ({ player }:any) => {
-//       setPlayers(prev => [...prev, player]);
+//       if (player) {
+//         setPlayers(prev => [...prev, player]);
+//       }
 //     });
 
 //     newSocket.on('diceRolled', ({ diceValue }:any) => {
@@ -319,7 +401,15 @@ export const LiveGameRoomPage = () => {
 //       </div>
 //     </div>
 //   );
-// };
+
+//           }
+
+
+
+
+   
+          
+   
 
 // import React, { useState } from 'react';
 // import { useParams, useNavigate } from 'react-router-dom';
