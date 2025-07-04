@@ -3,12 +3,14 @@ export class CreateGameDto {
     readonly hostId: string;
     readonly isPrivate: boolean;
     readonly password?: string;
+    readonly scheduledTime?: string;
   }
   
   export class JoinGameDto {
     readonly roomId: string;
     readonly playerId: string;
     readonly password?: string;
+    readonly scheduledTime?: string;
   }
   
   export class RollDiceDto {

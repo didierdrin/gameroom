@@ -74,6 +74,10 @@ export const CreateGameRoomPage = ({
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
 
+  const scheduledTimeCombined = (scheduledDate && scheduledTime)
+  ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+  : undefined;
+
   const gameRoomData = {
     name: roomName,
     gameType: gameType,
@@ -81,6 +85,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
     password: privacy === 'private' ? password : undefined,
     hostId: 'current-user-id', // Replace with actual user ID
+    scheduledTimeCombined,
   };
 
   try {

@@ -29,12 +29,46 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(game.roomId).emit('gameCreated', game);
   }
 
+  // @SubscribeMessage('joinGame')
+  // async handleJoinGame(client: Socket, payload: JoinGameDto) {
+  //   const { game, player } = await this.gameService.joinGame(payload);
+  //   client.join(game.roomId);
+  //   this.server.to(game.roomId).emit('playerJoined', { game, player });
+  // }
+
   @SubscribeMessage('joinGame')
-  async handleJoinGame(client: Socket, payload: JoinGameDto) {
-    const { game, player } = await this.gameService.joinGame(payload);
-    client.join(game.roomId);
-    this.server.to(game.roomId).emit('playerJoined', { game, player });
+async handleJoinGame(
+  @MessageBody() data: { roomId: string; playerId: string; password?: string },
+  @ConnectedSocket() client: Socket,
+) {
+  const { roomId, playerId, password } = data;
+
+  const room = await this.gameService.getGameRoomById(roomId);
+  if (!room) {
+    client.emit('error', 'Room not found');
+    return;
   }
+
+  if (room.isPrivate && room.password !== password) {
+    client.emit('error', 'Incorrect password');
+    return;
+  }
+
+  // Add playerId to currentPlayers array if not already present
+  if (!room.playerIds) {
+    room.playerIds = [];
+  }
+
+  if (!room.playerIds.includes(playerId)) {
+    room.playerIds.push(playerId);
+    room.currentPlayers = room.playerIds.length;
+    await room.save();
+  }
+
+  client.join(roomId);
+  client.emit('playerJoined', { roomId });
+}
+
 
   @SubscribeMessage('rollDice')
   async handleRollDice(client: Socket, payload: RollDiceDto) {
@@ -71,6 +105,17 @@ async handleGetGameRooms(@ConnectedSocket() client: Socket) {
     console.error('Error fetching game rooms:', error);
     client.emit('error', { message: 'Failed to fetch game rooms' });
   }
+}
+
+@SubscribeMessage('getMyGameRooms')
+async handleGetMyGameRooms(@MessageBody() data: { playerId: string }, @ConnectedSocket() client: Socket) {
+  const { playerId } = data;
+
+  const allRooms = await this.gameService.getAllGameRooms(); // or filter by status
+  const hosted = allRooms.filter(r => r.hostId === playerId);
+  const joined = allRooms.filter(r => r.currentPlayers?.some(p => p.playerId === playerId));
+
+  client.emit('myGameRoomsList', { hosted, joined });
 }
 
 

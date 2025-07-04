@@ -38,6 +38,14 @@ export class GameRoom {
 
   @Prop()
   winner?: string;
+
+  @Prop()
+  scheduledTime?: Date;
+
+  @Prop({ type: [String], default: [] })
+  playerIds: string[];
+
+
 }
 
 export const GameRoomSchema = SchemaFactory.createForClass(GameRoom);

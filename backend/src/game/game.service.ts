@@ -39,6 +39,9 @@ export class GameService {
 
   async createGame(createGameDto: CreateGameDto) {
     const roomId = uuidv4();
+    const scheduledTime = createGameDto.scheduledTime
+    ? new Date(createGameDto.scheduledTime)
+    : undefined;
     const gameRoom = new this.gameRoomModel({
       roomId,
       name: createGameDto.name,
@@ -49,6 +52,7 @@ export class GameService {
       isPrivate: createGameDto.isPrivate,
       password: createGameDto.password,
       status: 'waiting',
+      scheduledTime,
     });
 
     await gameRoom.save();
