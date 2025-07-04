@@ -150,9 +150,13 @@ useEffect(() => {
   socket.on('gameRoomsList', (payload: { rooms: GameRoom[] }) => {
     setLoading(false);
     const rooms = payload.rooms;
-    const now = new Date().toISOString();
-    const live = rooms.filter(r => !r.startTime || r.startTime < now);
-    const upcoming = rooms.filter(r => r.startTime && r.startTime > now);
+    // const now = new Date().toISOString();
+    // const live = rooms.filter(r => !r.startTime || r.startTime < now);
+    // const upcoming = rooms.filter(r => r.startTime && r.startTime > now);
+    const now = new Date();
+
+    const live = rooms.filter(r => !r.startTime || new Date(r.startTime) <= now);
+    const upcoming = rooms.filter(r => r.startTime && new Date(r.startTime) > now);
     setLiveRooms(live);
     setUpcomingRooms(upcoming);
   });

@@ -309,7 +309,8 @@ export class GameService {
   }
 
   async getGameRoomById(roomId: string) {
-    const room = await this.gameRoomModel.findOne({ roomId });
+    // const room = await this.gameRoomModel.findOne({ roomId });
+    const room = await this.gameRoomModel.findOne({ roomId }).exec();
     if (!room) throw new Error('Game room not found');
     return room;
   }
