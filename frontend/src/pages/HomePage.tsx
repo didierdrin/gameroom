@@ -182,65 +182,133 @@ useEffect(() => {
     );
   };
 
+
   // Updated join room handler that receives the game room as parameter
-  // Updated join room handler that receives the game room as parameter
-const handleJoinRoom = (gameRoom: GameRoom) => {
-  const { id, isPrivate, isInviteOnly } = gameRoom;
-  const playerId = getCurrentUserId();
+  const handleJoinRoom = async (gameRoom: GameRoom) => {
+    const { id, isPrivate, isInviteOnly } = gameRoom;
+    const playerId = getCurrentUserId();
+    
+    console.log(`Attempting to join room ${id} as player ${playerId}`);
   
-  const payload: any = {
-    roomId: id.toString(),
-    playerId,
+    let password: string | undefined;
+    if (isPrivate || isInviteOnly) {
+      const enteredPassword = prompt("Enter room password:");
+      if (!enteredPassword) return;
+      password = enteredPassword;
+    }
+  
+    try {
+      const socket = io("https://alu-globe-gameroom.onrender.com", {
+        transports: ['websocket'],
+        reconnection: true,
+        autoConnect: false,
+      });
+  
+      // Set up timeout
+      const timeout = setTimeout(() => {
+        console.error("Join timeout - No response from server");
+        alert("Connection timeout. Please try again.");
+        socket.disconnect();
+      }, 10000);
+  
+      // Set up event listeners
+      socket.on("connect", () => {
+        console.log("Socket connected, emitting joinGame...");
+        socket.emit("joinGame", { 
+          roomId: id.toString(), 
+          playerId,
+          password 
+        });
+      });
+  
+      socket.on("playerJoined", (data: { roomId: string }) => {
+        console.log("playerJoined event received:", data);
+        clearTimeout(timeout);
+        navigate(`/game-room/${id}`);
+        socket.disconnect();
+      });
+  
+      socket.on("error", (error: string) => {
+        console.error("Socket error:", error);
+        clearTimeout(timeout);
+        alert(`Failed to join room: ${error}`);
+        socket.disconnect();
+      });
+  
+      socket.on("connect_error", (error: any) => {
+        console.error("Connection error:", error);
+        clearTimeout(timeout);
+        alert("Failed to connect to game server. Please try again.");
+        socket.disconnect();
+      });
+  
+      // Connect to socket
+      console.log("Connecting to socket server...");
+      socket.connect();
+  
+    } catch (error) {
+      console.error("Error joining room:", error);
+      alert("An unexpected error occurred. Please try again.");
+    }
   };
 
-  if (isPrivate || isInviteOnly) {
-    const password = prompt("Enter room password:");
-    if (!password) return;
-    payload.password = password;
-  }
+  // const handleJoinRoom = (gameRoom: GameRoom) => {
+//   const { id, isPrivate, isInviteOnly } = gameRoom;
+//   const playerId = getCurrentUserId();
+  
+//   const payload: any = {
+//     roomId: id.toString(),
+//     playerId,
+//   };
 
-  const socket = io("https://alu-globe-gameroom.onrender.com", {
-    transports: ['websocket'],
-    reconnection: true,
-  });
+//   if (isPrivate || isInviteOnly) {
+//     const password = prompt("Enter room password:");
+//     if (!password) return;
+//     payload.password = password;
+//   }
 
-  // Wait for socket to connect before emitting joinGame
-  socket.on("connect", () => {
-    console.log("Socket connected, joining game...");
-    socket.emit("joinGame", payload);
-  });
+//   const socket = io("https://alu-globe-gameroom.onrender.com", {
+//     transports: ['websocket'],
+//     reconnection: true,
+//   });
 
-  socket.on("playerJoined", (data:any) => {
-    console.log("Player joined successfully:", data);
-    navigate(`/game-room/${id}`);
-    socket.disconnect();
-  });
+//   // Wait for socket to connect before emitting joinGame
+//   socket.on("connect", () => {
+//     console.log("Socket connected, joining game...");
+//     socket.emit("joinGame", payload);
+//   });
 
-  socket.on("error", (error: any) => {
-    console.error("Join error:", error);
-    alert("Failed to join game room. Please try again.");
-    socket.disconnect();
-  });
+//   socket.on("playerJoined", (data:any) => {
+//     console.log("Player joined successfully:", data);
+//     navigate(`/game-room/${id}`);
+//     socket.disconnect();
+//   });
 
-  // Handle connection errors
-  socket.on("connect_error", (error: any) => {
-    console.error("Connection error:", error);
-    alert("Failed to connect to game server. Please try again.");
-    socket.disconnect();
-  });
+//   socket.on("error", (error: any) => {
+//     console.error("Join error:", error);
+//     alert("Failed to join game room. Please try again.");
+//     socket.disconnect();
+//   });
 
-  // Add timeout to prevent hanging
-  const timeout = setTimeout(() => {
-    console.error("Join timeout");
-    alert("Connection timeout. Please try again.");
-    socket.disconnect();
-  }, 10000); // 10 second timeout
+//   // Handle connection errors
+//   socket.on("connect_error", (error: any) => {
+//     console.error("Connection error:", error);
+//     alert("Failed to connect to game server. Please try again.");
+//     socket.disconnect();
+//   });
 
-  // Clear timeout when successful
-  socket.on("playerJoined", () => {
-    clearTimeout(timeout);
-  });
-};
+//   // Add timeout to prevent hanging
+//   const timeout = setTimeout(() => {
+//     console.error("Join timeout");
+//     alert("Connection timeout. Please try again.");
+//     socket.disconnect();
+//   }, 10000); // 10 second timeout
+
+//   // Clear timeout when successful
+//   socket.on("playerJoined", () => {
+//     clearTimeout(timeout);
+//   });
+// };
   
   // const handleJoinRoom = (gameRoom: GameRoom) => {
   //   const { id, isPrivate, isInviteOnly } = gameRoom;
