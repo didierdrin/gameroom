@@ -316,12 +316,6 @@ export class GameService {
     return room.scores ?? {};
   }
 
-  // async getAllGameRooms(): Promise<any[]> {
-  //   const keys = await this.redisService.getKeys('gameRoom:*');
-  //   const rooms = await Promise.all(keys.map(key => this.redisService.getJSON(key)));
-  //   return rooms.filter(Boolean);
-  // }
-
   async getAllGameRooms(): Promise<any[]> {
     try {
       const keys = await this.redisService.getKeys('gameRoom:*');
@@ -343,42 +337,37 @@ export class GameService {
   }
 
 
-  // async getActiveGameRooms(): Promise<GameRoom[]> {
-  //   const rooms = await this.gameRoomModel.find({
-  //     status: { $in: ['waiting', 'in-progress'] }
-  //   }).lean().exec();
-    
-  //   return rooms.map(room => ({
-  //     id: room.roomId, // or room._id.toString() if you want to use MongoDB's _id
-  //     name: room.name,
-  //     gameType: room.gameType,
-  //     hostName: room.host, // You might need to populate this properly
-  //     hostAvatar: '', // You'll need to get this from somewhere
-  //     currentPlayers: room.currentPlayers,
-  //     maxPlayers: room.maxPlayers,
-  //     isPrivate: room.isPrivate,
-  //     isInviteOnly: false, // Add this to your schema if needed
-  //     status: room.status,
-  //     // Add any other required fields
-  //   }));
-  // }
+// async getActiveGameRooms(): Promise<PublicGameRoom[]> {
+//   const rooms = await this.gameRoomModel.find({
+//     status: { $in: ['waiting', 'in-progress'] }
+//   }).lean().exec();
 
-  // async getActiveGameRooms(): Promise<GameRoom[]> {
-  //   const rooms = await this.gameRoomModel.find({
-  //     status: { $in: ['waiting', 'in-progress'] }
-  //   }).lean().exec();
-  
-  //   return rooms.map(room => ({
-  //     ...room,
-  //     scores: new Map(Object.entries(room.scores || {})), // convert object to Map
-  //   })) as GameRoom[];
-  // }
+//   return rooms.map(room => ({
+//     id: room._id.toString(),
+//     roomId: room.roomId,
+//     name: room.name,
+//     gameType: room.gameType,
+//     hostName: room.host,
+//     hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
+//     currentPlayers: room.currentPlayers,
+//     maxPlayers: room.maxPlayers,
+//     isPrivate: room.isPrivate,
+//     isInviteOnly: room.isPrivate,
+//     status: room.status,
+//     host: room.host,
+//     scores: Object.fromEntries((room.scores as any)?.entries?.() || []), // safely convert Map
+//   }));
+// }
 
-  
+
 async getActiveGameRooms(): Promise<PublicGameRoom[]> {
-  const rooms = await this.gameRoomModel.find({
-    status: { $in: ['waiting', 'in-progress'] }
-  }).lean().exec();
+  const rooms = await this.gameRoomModel
+    .find({
+      status: { $in: ['waiting', 'in-progress'] },
+    })
+    .sort({ createdAt: -1 }) // 🔥 Sort by newest first
+    .lean()
+    .exec();
 
   return rooms.map(room => ({
     id: room._id.toString(),
@@ -393,9 +382,10 @@ async getActiveGameRooms(): Promise<PublicGameRoom[]> {
     isInviteOnly: room.isPrivate,
     status: room.status,
     host: room.host,
-    scores: Object.fromEntries((room.scores as any)?.entries?.() || []), // safely convert Map
+    scores: Object.fromEntries((room.scores as any)?.entries?.() || []),
   }));
 }
+
   
 
   private convertScoresToMap(scores: any): Map<string, number> {

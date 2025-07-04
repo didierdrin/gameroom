@@ -52,11 +52,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  // @SubscribeMessage('startGame')
-  // async handleStartGame(client: Socket, payload: { roomId: string }) {
-  //   const game = await this.gameService.startGame(payload.roomId);
-  //   this.server.to(payload.roomId).emit('gameStarted', game);
-  // }
+  
   @SubscribeMessage('startGame')
 async handleStartGame(@MessageBody() data: { roomId: string }) {
   const room = await this.gameService.startGame(data.roomId);
@@ -64,17 +60,7 @@ async handleStartGame(@MessageBody() data: { roomId: string }) {
   this.server.to(data.roomId).emit('gameState', gameState);
 }
 
-// @SubscribeMessage('getGameRooms')
-// handleGetGameRooms(@ConnectedSocket() client: Socket) {
-//   const gameRooms = this.gameService.getAllGameRooms(); // Get live rooms from memory/Redis
-//   client.emit('gameRoomsList', gameRooms);
-// }
 
-// @SubscribeMessage('getGameRooms')
-// async handleGetGameRooms(@ConnectedSocket() client: Socket) {
-//   const gameRooms = await this.gameService.getAllGameRooms(); 
-//   client.emit('gameRoomsList', { rooms: gameRooms }); 
-// }
 
 @SubscribeMessage('getGameRooms')
 async handleGetGameRooms(@ConnectedSocket() client: Socket) {
