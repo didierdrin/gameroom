@@ -1,5 +1,5 @@
 import React from 'react';
-import boardImage from '../../../assets/Ludo.jpg';
+//import boardImage from '../../../assets/Ludo.jpg';
 
 interface LudoGameProps {
   gameState: any;
@@ -45,7 +45,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     <div className="relative w-[600px] h-[600px] border">
       {/* Ludo board background */}
       <img
-        src={boardImage}
+        src="../../../assets/Ludo.jpg"
         alt="Ludo Board"
         className="absolute inset-0 w-full h-full object-cover z-0"
       />

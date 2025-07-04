@@ -70,10 +70,21 @@ async handleStartGame(@MessageBody() data: { roomId: string }) {
 //   client.emit('gameRoomsList', gameRooms);
 // }
 
+// @SubscribeMessage('getGameRooms')
+// async handleGetGameRooms(@ConnectedSocket() client: Socket) {
+//   const gameRooms = await this.gameService.getAllGameRooms(); 
+//   client.emit('gameRoomsList', { rooms: gameRooms }); 
+// }
+
 @SubscribeMessage('getGameRooms')
 async handleGetGameRooms(@ConnectedSocket() client: Socket) {
-  const gameRooms = await this.gameService.getAllGameRooms(); 
-  client.emit('gameRoomsList', { rooms: gameRooms }); 
+  try {
+    const rooms = await this.gameService.getActiveGameRooms();
+    client.emit('gameRoomsList', { rooms });
+  } catch (error) {
+    console.error('Error fetching game rooms:', error);
+    client.emit('error', { message: 'Failed to fetch game rooms' });
+  }
 }
 
 

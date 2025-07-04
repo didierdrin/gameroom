@@ -3,12 +3,31 @@
 import { Injectable } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { Model } from 'mongoose';
+import { Types, Document } from 'mongoose'; 
 import { InjectModel } from '@nestjs/mongoose';
 import { GameRoom, GameRoomDocument } from './schemas/game-room.schema';
 import { GameSessionEntity, GameSessionDocument } from './schemas/game-session.schema';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { Socket } from 'socket.io';
+
+
+interface PublicGameRoom {
+  id: string;
+  roomId: string;
+  name: string;
+  gameType: string;
+  hostName: string;
+  hostAvatar: string;
+  currentPlayers: number;
+  maxPlayers: number;
+  isPrivate: boolean;
+  isInviteOnly: boolean;
+  status: 'waiting' | 'in-progress' | 'completed';
+  host: string;
+  scores: Record<string, number>;
+}
+
 
 @Injectable()
 export class GameService {
@@ -297,10 +316,97 @@ export class GameService {
     return room.scores ?? {};
   }
 
+  // async getAllGameRooms(): Promise<any[]> {
+  //   const keys = await this.redisService.getKeys('gameRoom:*');
+  //   const rooms = await Promise.all(keys.map(key => this.redisService.getJSON(key)));
+  //   return rooms.filter(Boolean);
+  // }
+
   async getAllGameRooms(): Promise<any[]> {
-    const keys = await this.redisService.getKeys('gameRoom:*');
-    const rooms = await Promise.all(keys.map(key => this.redisService.getJSON(key)));
-    return rooms.filter(Boolean);
+    try {
+      const keys = await this.redisService.getKeys('gameRoom:*');
+      const rooms = await Promise.all(
+        keys.map(async (key) => {
+          try {
+            return await this.redisService.getJSON(key);
+          } catch (error) {
+            console.error(`Error parsing room data for key ${key}:`, error);
+            return null;
+          }
+        })
+      );
+      return rooms.filter(Boolean);
+    } catch (error) {
+      console.error('Error fetching game rooms from Redis:', error);
+      return [];
+    }
+  }
+
+
+  // async getActiveGameRooms(): Promise<GameRoom[]> {
+  //   const rooms = await this.gameRoomModel.find({
+  //     status: { $in: ['waiting', 'in-progress'] }
+  //   }).lean().exec();
+    
+  //   return rooms.map(room => ({
+  //     id: room.roomId, // or room._id.toString() if you want to use MongoDB's _id
+  //     name: room.name,
+  //     gameType: room.gameType,
+  //     hostName: room.host, // You might need to populate this properly
+  //     hostAvatar: '', // You'll need to get this from somewhere
+  //     currentPlayers: room.currentPlayers,
+  //     maxPlayers: room.maxPlayers,
+  //     isPrivate: room.isPrivate,
+  //     isInviteOnly: false, // Add this to your schema if needed
+  //     status: room.status,
+  //     // Add any other required fields
+  //   }));
+  // }
+
+  // async getActiveGameRooms(): Promise<GameRoom[]> {
+  //   const rooms = await this.gameRoomModel.find({
+  //     status: { $in: ['waiting', 'in-progress'] }
+  //   }).lean().exec();
+  
+  //   return rooms.map(room => ({
+  //     ...room,
+  //     scores: new Map(Object.entries(room.scores || {})), // convert object to Map
+  //   })) as GameRoom[];
+  // }
+
+  
+async getActiveGameRooms(): Promise<PublicGameRoom[]> {
+  const rooms = await this.gameRoomModel.find({
+    status: { $in: ['waiting', 'in-progress'] }
+  }).lean().exec();
+
+  return rooms.map(room => ({
+    id: room._id.toString(),
+    roomId: room.roomId,
+    name: room.name,
+    gameType: room.gameType,
+    hostName: room.host,
+    hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
+    currentPlayers: room.currentPlayers,
+    maxPlayers: room.maxPlayers,
+    isPrivate: room.isPrivate,
+    isInviteOnly: room.isPrivate,
+    status: room.status,
+    host: room.host,
+    scores: Object.fromEntries((room.scores as any)?.entries?.() || []), // safely convert Map
+  }));
+}
+  
+
+  private convertScoresToMap(scores: any): Map<string, number> {
+    if (scores instanceof Map) return scores;
+    const map = new Map<string, number>();
+    if (scores) {
+      Object.entries(scores).forEach(([key, value]) => {
+        map.set(key, value as number);
+      });
+    }
+    return map;
   }
   
   

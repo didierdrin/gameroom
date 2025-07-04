@@ -6,7 +6,7 @@ import { XIcon, UsersIcon, MessageCircleIcon, TrophyIcon, LayoutGridIcon, Chevro
 export const LiveTournamentPage = ({
   tournament,
   onExit
-}) => {
+}:any) => {
   const [showBracket, setShowBracket] = useState(false);
   const [showChat, setShowChat] = useState(true);
   const [showParticipants, setShowParticipants] = useState(false);
@@ -28,7 +28,7 @@ export const LiveTournamentPage = ({
     round: 'Quarter Finals',
     game: 'Chess'
   });
-  const toggleSidebar = sidebar => {
+  const toggleSidebar = (sidebar:any) => {
     if (sidebar === 'participants') {
       setShowParticipants(!showParticipants);
       if (window.innerWidth < 1024) setShowChat(false);
