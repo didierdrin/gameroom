@@ -49,7 +49,9 @@ export const LiveGameRoomPage = () => {
     });
 
     newSocket.on('playerJoined', ({ player }:any) => {
-      setPlayers(prev => [...prev, player]);
+      if (player) {
+        setPlayers(prev => [...prev, player]);
+      }
     });
 
     newSocket.on('diceRolled', ({ diceValue }:any) => {

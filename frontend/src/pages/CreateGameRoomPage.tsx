@@ -174,7 +174,9 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     socket.on('gameCreated', (game: any) => {
       console.log('Game created successfully:', game);
       // Navigate to the game room
-      navigate(`/game-room/${game.roomId || game.id}`);
+      if (game?.roomId) {
+        navigate(`/game-room/${game.roomId}`);
+      }
       socket.disconnect();
     });
     
