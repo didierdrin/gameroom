@@ -71,48 +71,144 @@ export const CreateGameRoomPage = ({
  
   
 // Update handleSubmit to use socket.io for game creation
+// const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+//   e.preventDefault();
+
+//   const scheduledTimeCombined = (scheduledDate && scheduledTime)
+//   ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+//   : undefined;
+
+//   const gameRoomData = {
+//     name: roomName,
+//     gameType: gameType,
+//     maxPlayers: playerLimit,
+//     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
+//     password: privacy === 'private' ? password : undefined,
+//     hostId: 'current-user-id', // Replace with actual user ID
+//     scheduledTimeCombined,
+//   };
+
+//   try {
+//     // Initialize socket connection if not already done
+//     //const socket = io('https://alu-globe-gameroom.onrender.com'); // Replace with your backend URL
+//     const socket = io('https://alu-globe-gameroom.onrender.com', {
+//   transports: ['websocket'],
+// });
+
+//     // Emit createGame event
+//     socket.emit('createGame', gameRoomData);
+    
+//     // Listen for gameCreated event
+//     socket.on('gameCreated', (game:any) => {
+//       // Navigate to the game room
+//       navigate(`/game-room/${game.roomId}`);
+//     });
+    
+//     socket.on('error', (error:any) => {
+//       console.error('Error creating game room:', error);
+//       // TODO: Display error to user
+//     });
+//   } catch (error) {
+//     console.error('Failed to create game room:', error);
+//     // TODO: Display error to user
+//   }
+// };
+
+// Update handleSubmit to use socket.io for game creation
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
 
+  // Validate required fields
+  if (!gameType) {
+    alert('Please select a game type');
+    return;
+  }
+
+  if (!roomName.trim()) {
+    alert('Please enter a room name');
+    return;
+  }
+
+  if (privacy === 'private' && !password.trim()) {
+    alert('Please enter a password for private room');
+    return;
+  }
+
+  if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
+    alert('Please select both date and time for scheduled games');
+    return;
+  }
+
   const scheduledTimeCombined = (scheduledDate && scheduledTime)
-  ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
-  : undefined;
+    ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+    : undefined;
 
   const gameRoomData = {
     name: roomName,
     gameType: gameType,
     maxPlayers: playerLimit,
     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
+    isInviteOnly: privacy === 'inviteOnly',
     password: privacy === 'private' ? password : undefined,
-    hostId: 'current-user-id', // Replace with actual user ID
+    hostId: localStorage.getItem('playerId') || `player-${Math.random().toString(36).substr(2, 9)}`, // Get actual user ID
     scheduledTimeCombined,
+    description: description.trim() || undefined,
+    enableVideoChat,
+    enableVoiceChat,
+    allowSpectators,
   };
 
   try {
-    // Initialize socket connection if not already done
-    //const socket = io('https://alu-globe-gameroom.onrender.com'); // Replace with your backend URL
     const socket = io('https://alu-globe-gameroom.onrender.com', {
-  transports: ['websocket'],
-});
+      transports: ['websocket'],
+      reconnection: true,
+    });
 
-    // Emit createGame event
-    socket.emit('createGame', gameRoomData);
-    
+    // Wait for socket to connect before emitting createGame
+    socket.on('connect', () => {
+      console.log('Socket connected, creating game...');
+      socket.emit('createGame', gameRoomData);
+    });
+
     // Listen for gameCreated event
-    socket.on('gameCreated', (game:any) => {
+    socket.on('gameCreated', (game: any) => {
+      console.log('Game created successfully:', game);
       // Navigate to the game room
-      navigate(`/game-room/${game.roomId}`);
+      navigate(`/game-room/${game.roomId || game.id}`);
+      socket.disconnect();
     });
     
-    socket.on('error', (error:any) => {
+    socket.on('error', (error: any) => {
       console.error('Error creating game room:', error);
-      // TODO: Display error to user
+      alert('Failed to create game room. Please try again.');
+      socket.disconnect();
     });
+
+    // Handle connection errors
+    socket.on('connect_error', (error: any) => {
+      console.error('Connection error:', error);
+      alert('Failed to connect to game server. Please try again.');
+      socket.disconnect();
+    });
+
+    // Add timeout to prevent hanging
+    const timeout = setTimeout(() => {
+      console.error('Create game timeout');
+      alert('Connection timeout. Please try again.');
+      socket.disconnect();
+    }, 10000); // 10 second timeout
+
+    // Clear timeout when successful
+    socket.on('gameCreated', () => {
+      clearTimeout(timeout);
+    });
+
   } catch (error) {
     console.error('Failed to create game room:', error);
-    // TODO: Display error to user
+    alert('Failed to create game room. Please try again.');
   }
 };
+
   return <div className="p-6 overflow-y-auto h-screen pb-20">
       <SectionTitle title="Create Game Room" subtitle="Set up a new game room for you and your friends to play in" />
       <form onSubmit={handleSubmit} className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">

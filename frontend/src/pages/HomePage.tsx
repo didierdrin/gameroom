@@ -183,88 +183,95 @@ useEffect(() => {
   };
 
   // Updated join room handler that receives the game room as parameter
-  const handleJoinRoom = (gameRoom: GameRoom) => {
-    const { id, isPrivate, isInviteOnly } = gameRoom;
-    const playerId = getCurrentUserId();
-    const socket = io("https://alu-globe-gameroom.onrender.com");
+  // Updated join room handler that receives the game room as parameter
+const handleJoinRoom = (gameRoom: GameRoom) => {
+  const { id, isPrivate, isInviteOnly } = gameRoom;
+  const playerId = getCurrentUserId();
   
-    const payload: any = {
-      roomId: id.toString(),
-      playerId,
-    };
-  
-    if (isPrivate || isInviteOnly) {
-      const password = prompt("Enter room password:");
-      if (!password) return;
-      payload.password = password;
-    }
-  
-    socket.emit("joinGame", payload);
-  
-    socket.on("playerJoined", () => {
-      navigate(`/game-room/${id}`);
-      socket.disconnect();
-    });
-  
-    socket.on("error", (error: any) => {
-      alert("Failed to join game room. Please try again.");
-      console.error("Join error:", error);
-      socket.disconnect();
-    });
+  const payload: any = {
+    roomId: id.toString(),
+    playerId,
   };
+
+  if (isPrivate || isInviteOnly) {
+    const password = prompt("Enter room password:");
+    if (!password) return;
+    payload.password = password;
+  }
+
+  const socket = io("https://alu-globe-gameroom.onrender.com", {
+    transports: ['websocket'],
+    reconnection: true,
+  });
+
+  // Wait for socket to connect before emitting joinGame
+  socket.on("connect", () => {
+    console.log("Socket connected, joining game...");
+    socket.emit("joinGame", payload);
+  });
+
+  socket.on("playerJoined", (data:any) => {
+    console.log("Player joined successfully:", data);
+    navigate(`/game-room/${id}`);
+    socket.disconnect();
+  });
+
+  socket.on("error", (error: any) => {
+    console.error("Join error:", error);
+    alert("Failed to join game room. Please try again.");
+    socket.disconnect();
+  });
+
+  // Handle connection errors
+  socket.on("connect_error", (error: any) => {
+    console.error("Connection error:", error);
+    alert("Failed to connect to game server. Please try again.");
+    socket.disconnect();
+  });
+
+  // Add timeout to prevent hanging
+  const timeout = setTimeout(() => {
+    console.error("Join timeout");
+    alert("Connection timeout. Please try again.");
+    socket.disconnect();
+  }, 10000); // 10 second timeout
+
+  // Clear timeout when successful
+  socket.on("playerJoined", () => {
+    clearTimeout(timeout);
+  });
+};
   
   // const handleJoinRoom = (gameRoom: GameRoom) => {
   //   const { id, isPrivate, isInviteOnly } = gameRoom;
-
+  //   const playerId = getCurrentUserId();
+  //   const socket = io("https://alu-globe-gameroom.onrender.com");
+  
+  //   const payload: any = {
+  //     roomId: id.toString(),
+  //     playerId,
+  //   };
+  
   //   if (isPrivate || isInviteOnly) {
-  //     // Show password prompt or invite flow
   //     const password = prompt("Enter room password:");
-  //     if (password === null) return;
-
-  //     // Initialize socket connection
-  //     const socket = io("https://alu-globe-gameroom.onrender.com");
-
-  //     // Emit joinGame event
-  //     socket.emit("joinGame", {
-  //       roomId: id.toString(),
-  //       playerId: getCurrentUserId(),
-  //       password,
-  //     });
-
-  //     // Listen for successful join
-  //     socket.on("playerJoined", () => {
-  //       navigate(`/game-room/${id}`);
-  //       socket.disconnect();
-  //     });
-
-  //     socket.on("error", (error: any) => {
-  //       console.error("Error joining game:", error);
-  //       alert(
-  //         "Failed to join game room. Please check your password and try again."
-  //       );
-  //       socket.disconnect();
-  //     });
-  //   } else {
-  //     // Public room - join directly
-  //     const socket = io("https://alu-globe-gameroom.onrender.com");
-
-  //     socket.emit("joinGame", {
-  //       roomId: id.toString(),
-  //       playerId: getCurrentUserId(),
-  //     });
-
-  //     socket.on("playerJoined", () => {
-  //       navigate(`/game-room/${id}`);
-  //       socket.disconnect();
-  //     });
-
-  //     socket.on("error", (error: any) => {
-  //       console.error("Error joining game:", error);
-  //       alert("Failed to join game room. Please try again.");
-  //       socket.disconnect();
-  //     });
+  //     if (!password) return;
+  //     payload.password = password;
   //   }
+  
+  //   socket.emit("joinGame", payload);
+  
+  //   socket.on("playerJoined", () => {
+  //     navigate(`/game-room/${id}`);
+  //     socket.disconnect();
+  //   });
+  
+  //   socket.on("error", (error: any) => {
+  //     alert("Failed to join game room. Please try again.");
+  //     console.error("Join error:", error);
+  //     socket.disconnect();
+  //   });
   // };
+  
 
   return (
     <div className="p-6 overflow-y-auto h-screen pb-20">
@@ -407,3 +414,60 @@ useEffect(() => {
     </div>
   );
 };
+
+
+
+
+
+  // const handleJoinRoom = (gameRoom: GameRoom) => {
+  //   const { id, isPrivate, isInviteOnly } = gameRoom;
+
+  //   if (isPrivate || isInviteOnly) {
+  //     // Show password prompt or invite flow
+  //     const password = prompt("Enter room password:");
+  //     if (password === null) return;
+
+  //     // Initialize socket connection
+  //     const socket = io("https://alu-globe-gameroom.onrender.com");
+
+  //     // Emit joinGame event
+  //     socket.emit("joinGame", {
+  //       roomId: id.toString(),
+  //       playerId: getCurrentUserId(),
+  //       password,
+  //     });
+
+  //     // Listen for successful join
+  //     socket.on("playerJoined", () => {
+  //       navigate(`/game-room/${id}`);
+  //       socket.disconnect();
+  //     });
+
+  //     socket.on("error", (error: any) => {
+  //       console.error("Error joining game:", error);
+  //       alert(
+  //         "Failed to join game room. Please check your password and try again."
+  //       );
+  //       socket.disconnect();
+  //     });
+  //   } else {
+  //     // Public room - join directly
+  //     const socket = io("https://alu-globe-gameroom.onrender.com");
+
+  //     socket.emit("joinGame", {
+  //       roomId: id.toString(),
+  //       playerId: getCurrentUserId(),
+  //     });
+
+  //     socket.on("playerJoined", () => {
+  //       navigate(`/game-room/${id}`);
+  //       socket.disconnect();
+  //     });
+
+  //     socket.on("error", (error: any) => {
+  //       console.error("Error joining game:", error);
+  //       alert("Failed to join game room. Please try again.");
+  //       socket.disconnect();
+  //     });
+  //   }
+  // };
