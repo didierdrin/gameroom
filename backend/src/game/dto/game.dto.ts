@@ -3,7 +3,7 @@ export class CreateGameDto {
     readonly hostId: string;
     readonly isPrivate: boolean;
     readonly password?: string;
-    readonly scheduledTime?: string;
+    scheduledTimeCombined?: string | Date;
   }
   
   export class JoinGameDto {

@@ -22,12 +22,50 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this.gameService.handleDisconnect(client);
   }
   
-  @SubscribeMessage('createGame')
-  async handleCreateGame(client: Socket, payload: CreateGameDto) {
+  // @SubscribeMessage('createGame')
+  // async handleCreateGame(client: Socket, payload: CreateGameDto) {
+  //   const game = await this.gameService.createGame(payload);
+  //   client.join(game.roomId);
+  //   const response = {
+  //     ...game.toObject(),
+  //     roomId: game.roomId,
+  //     startTime: game.scheduledTimeCombined // or whatever field stores the scheduled time
+  //   };
+  //   this.server.to(game.roomId).emit('gameCreated', game);
+  // }
+
+  // Updated createGame handler in game.gateway.ts
+
+@SubscribeMessage('createGame')
+async handleCreateGame(client: Socket, payload: CreateGameDto) {
+  try {
     const game = await this.gameService.createGame(payload);
     client.join(game.roomId);
-    this.server.to(game.roomId).emit('gameCreated', game);
+    
+    // Format the response to include scheduledTimeCombined
+    const response = {
+      ...game.toObject(),
+      roomId: game.roomId,
+      scheduledTimeCombined: game.scheduledTimeCombined 
+        ? game.scheduledTimeCombined.toISOString() 
+        : null,
+    };
+    
+    // Emit to the room
+    this.server.to(game.roomId).emit('gameCreated', response);
+    
+    // Also emit to the client who created the game
+    client.emit('gameCreated', response);
+    
+    // Refresh the game rooms list for all clients
+    const rooms = await this.gameService.getActiveGameRooms();
+    this.server.emit('gameRoomsList', { rooms });
+    
+  } catch (error) {
+    console.error('Error creating game:', error);
+    client.emit('error', { message: error.message || 'Failed to create game' });
   }
+}
 
   // @SubscribeMessage('joinGame')
   // async handleJoinGame(client: Socket, payload: JoinGameDto) {
@@ -100,7 +138,13 @@ async handleStartGame(@MessageBody() data: { roomId: string }) {
 async handleGetGameRooms(@ConnectedSocket() client: Socket) {
   try {
     const rooms = await this.gameService.getActiveGameRooms();
-    client.emit('gameRoomsList', { rooms });
+    // client.emit('gameRoomsList', { rooms });
+    const formattedRooms = rooms.map(room => ({
+      ...room,
+      startTime: room.scheduledTimeCombined // or whatever field stores the scheduled time
+    }));
+    
+    client.emit('gameRoomsList', { rooms: formattedRooms });
   } catch (error) {
     console.error('Error fetching game rooms:', error);
     client.emit('error', { message: 'Failed to fetch game rooms' });

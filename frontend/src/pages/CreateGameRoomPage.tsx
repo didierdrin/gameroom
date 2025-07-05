@@ -174,9 +174,17 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     socket.on('gameCreated', (game: any) => {
       console.log('Game created successfully:', game);
       // Navigate to the game room
-      if (game?.roomId) {
+      // if (game?.roomId) {
+      //   navigate(`/game-room/${game.roomId}`);
+      // }
+
+      // Navigate to game room only for playNow, homepage for scheduled games
+      if (gameMode === 'playNow' && game?.roomId) {
         navigate(`/game-room/${game.roomId}`);
+      } else {
+        navigate('/'); // Navigate to homepage for scheduled games
       }
+      
       socket.disconnect();
     });
     

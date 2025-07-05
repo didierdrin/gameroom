@@ -10,6 +10,7 @@ import { GameSessionEntity, GameSessionDocument } from './schemas/game-session.s
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { Socket } from 'socket.io';
+import { scheduled } from 'rxjs';
 
 
 interface PublicGameRoom {
@@ -26,6 +27,7 @@ interface PublicGameRoom {
   status: 'waiting' | 'in-progress' | 'completed';
   host: string;
   scores: Record<string, number>;
+  scheduledTimeCombined: string;
 }
 
 
@@ -39,9 +41,24 @@ export class GameService {
 
   async createGame(createGameDto: CreateGameDto) {
     const roomId = uuidv4();
-    const scheduledTime = createGameDto.scheduledTime
-    ? new Date(createGameDto.scheduledTime)
-    : undefined;
+    // const scheduledTime = createGameDto.scheduledTimeCombined
+    // ? new Date(createGameDto.scheduledTimeCombined)
+    // : undefined;
+    let scheduledTimeCombined: Date | undefined;
+  if (createGameDto.scheduledTimeCombined) {
+    scheduledTimeCombined = new Date(createGameDto.scheduledTimeCombined);
+    
+    // Validate the date
+    if (isNaN(scheduledTimeCombined.getTime())) {
+      throw new Error('Invalid scheduled time format');
+    }
+    
+    // Optional: Validate that the scheduled time is in the future
+    const now = new Date();
+    if (scheduledTimeCombined <= now) {
+      throw new Error('Scheduled time must be in the future');
+    }
+  }
     const gameRoom = new this.gameRoomModel({
       roomId,
       name: createGameDto.name,
@@ -52,7 +69,8 @@ export class GameService {
       isPrivate: createGameDto.isPrivate,
       password: createGameDto.password,
       status: 'waiting',
-      scheduledTime,
+      scheduledTimeCombined,
+      playerIds: [createGameDto.hostId],
     });
 
     await gameRoom.save();
@@ -388,6 +406,10 @@ async getActiveGameRooms(): Promise<PublicGameRoom[]> {
     status: room.status,
     host: room.host,
     scores: Object.fromEntries((room.scores as any)?.entries?.() || []),
+    scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : '',
+    //   scheduledTimeCombined: room.scheduledTime 
+  // ? new Date(room.scheduledTime).toLocaleString() 
+  // : '',
   }));
 }
 

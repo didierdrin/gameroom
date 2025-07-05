@@ -39,6 +39,9 @@ export class GameRoom {
   @Prop()
   winner?: string;
 
+  @Prop({ type: Date, default: null })
+  scheduledTimeCombined?: Date;
+
   @Prop()
   scheduledTime?: Date;
 
