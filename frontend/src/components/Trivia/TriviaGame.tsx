@@ -24,29 +24,85 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({ socket, roomId, currentP
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+//   useEffect(() => {
+//     async function fetchQuestions() {
+//       try {
+//         setLoading(true);
+//         setError('');
+//         const resp = await axios.post('https://alu-globe-gameroom.onrender.com/trivia/generate', {
+//           topic: 'science'
+//         });
+        
+//         if (!resp.data?.questions) {
+//           throw new Error('Invalid response format');
+//         }
+        
+//         // Add IDs to questions
+//         const questionsWithIds = resp.data.questions.map((q: any, index: number) => ({
+//           ...q,
+//           id: `q-${index}`,
+//         }));
+        
+//         setQuestions(questionsWithIds);
+//       } catch (err) {
+//         console.error('Failed to fetch questions:', err);
+//         setError('Failed to load trivia questions. Please try again.');
+//       } finally {
+//         setLoading(false);
+//       }
+//     }
+    
+//     fetchQuestions();
+//   }, []);
+
+// Add this helper function at the top of your file
+const validateQuestions = (data: any): Question[] => {
+    if (!data?.questions || !Array.isArray(data.questions)) {
+      throw new Error('Invalid response format: missing questions array');
+    }
+  
+    return data.questions.map((q: any, index: number) => {
+      if (!q.question || !q.options || !Array.isArray(q.options) || q.options.length < 2) {
+        throw new Error(`Invalid question format at index ${index}`);
+      }
+      return {
+        id: q.id || `q-${index}`,
+        question: q.question,
+        options: q.options,
+        correct: q.correct || q.options[0] // Default to first option if correct not specified
+      };
+    });
+  };
+  
+  // Then modify your useEffect hook:
   useEffect(() => {
     async function fetchQuestions() {
       try {
         setLoading(true);
         setError('');
+        
         const resp = await axios.post('https://alu-globe-gameroom.onrender.com/trivia/generate', {
           topic: 'science'
         });
+  
+        // Validate and transform the response
+        const validatedQuestions = validateQuestions(resp.data);
+        setQuestions(validatedQuestions);
         
-        if (!resp.data?.questions) {
-          throw new Error('Invalid response format');
-        }
-        
-        // Add IDs to questions
-        const questionsWithIds = resp.data.questions.map((q: any, index: number) => ({
-          ...q,
-          id: `q-${index}`,
-        }));
-        
-        setQuestions(questionsWithIds);
       } catch (err) {
         console.error('Failed to fetch questions:', err);
-        setError('Failed to load trivia questions. Please try again.');
+        // setError(`Failed to load questions: ${err.message || 'Unknown error'}`);
+        
+        // Fallback questions if API fails
+        setQuestions([
+          {
+            id: 'fallback-1',
+            question: 'What is the chemical symbol for gold?',
+            options: ['Go', 'Gd', 'Au', 'Ag'],
+            correct: 'Au'
+          },
+          // Add more fallback questions...
+        ]);
       } finally {
         setLoading(false);
       }
