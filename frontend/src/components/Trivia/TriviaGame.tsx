@@ -56,26 +56,62 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({ socket, roomId, currentP
 //   }, []);
 
 // Add this helper function at the top of your file
-const validateQuestions = (data: any): Question[] => {
-    if (!data?.questions || !Array.isArray(data.questions)) {
-      throw new Error('Invalid response format: missing questions array');
-    }
+// const validateQuestions = (data: any): Question[] => {
+//     if (!data?.questions || !Array.isArray(data.questions)) {
+//       throw new Error('Invalid response format: missing questions array');
+//     }
   
-    return data.questions.map((q: any, index: number) => {
-      if (!q.question || !q.options || !Array.isArray(q.options) || q.options.length < 2) {
-        throw new Error(`Invalid question format at index ${index}`);
-      }
-      return {
-        id: q.id || `q-${index}`,
-        question: q.question,
-        options: q.options,
-        correct: q.correct || q.options[0] // Default to first option if correct not specified
-      };
-    });
-  };
+//     return data.questions.map((q: any, index: number) => {
+//       if (!q.question || !q.options || !Array.isArray(q.options) || q.options.length < 2) {
+//         throw new Error(`Invalid question format at index ${index}`);
+//       }
+//       return {
+//         id: q.id || `q-${index}`,
+//         question: q.question,
+//         options: q.options,
+//         correct: q.correct || q.options[0] // Default to first option if correct not specified
+//       };
+//     });
+//   };
   
-  // Then modify your useEffect hook:
-  useEffect(() => {
+//   // Then modify your useEffect hook:
+//   useEffect(() => {
+//     async function fetchQuestions() {
+//       try {
+//         setLoading(true);
+//         setError('');
+        
+//         const resp = await axios.post('https://alu-globe-gameroom.onrender.com/trivia/generate', {
+//           topic: 'science'
+//         });
+  
+//         // Validate and transform the response
+//         const validatedQuestions = validateQuestions(resp.data);
+//         setQuestions(validatedQuestions);
+        
+//       } catch (err) {
+//         console.error('Failed to fetch questions:', err);
+//         // setError(`Failed to load questions: ${err.message || 'Unknown error'}`);
+        
+//         // Fallback questions if API fails
+//         setQuestions([
+//           {
+//             id: 'fallback-1',
+//             question: 'What is the chemical symbol for gold?',
+//             options: ['Go', 'Gd', 'Au', 'Ag'],
+//             correct: 'Au'
+//           },
+//           // Add more fallback questions...
+//         ]);
+//       } finally {
+//         setLoading(false);
+//       }
+//     }
+    
+//     fetchQuestions();
+//   }, []);
+
+useEffect(() => {
     async function fetchQuestions() {
       try {
         setLoading(true);
@@ -83,17 +119,30 @@ const validateQuestions = (data: any): Question[] => {
         
         const resp = await axios.post('https://alu-globe-gameroom.onrender.com/trivia/generate', {
           topic: 'science'
+        }, {
+          timeout: 15000 // 15 second timeout
         });
   
-        // Validate and transform the response
-        const validatedQuestions = validateQuestions(resp.data);
-        setQuestions(validatedQuestions);
+        console.log('Full API response:', resp); // Debug log
+  
+        if (!resp.data?.questions) {
+          throw new Error('API returned invalid format - missing questions array');
+        }
+  
+        setQuestions(resp.data.questions);
         
       } catch (err) {
-        console.error('Failed to fetch questions:', err);
-        // setError(`Failed to load questions: ${err.message || 'Unknown error'}`);
+        console.error('Full error details:', {
+          error: err,
+        });
+  
+        // Provide user-friendly error message
+        let errorMsg = 'Failed to load questions. ';
         
-        // Fallback questions if API fails
+       
+        setError(errorMsg);
+        
+        // Fallback questions
         setQuestions([
           {
             id: 'fallback-1',
@@ -101,7 +150,12 @@ const validateQuestions = (data: any): Question[] => {
             options: ['Go', 'Gd', 'Au', 'Ag'],
             correct: 'Au'
           },
-          // Add more fallback questions...
+          {
+            id: 'fallback-2',
+            question: 'Which planet is known as the Red Planet?',
+            options: ['Venus', 'Mars', 'Jupiter', 'Saturn'],
+            correct: 'Mars'
+          }
         ]);
       } finally {
         setLoading(false);
