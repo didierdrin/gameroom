@@ -62,7 +62,7 @@ export class GameService {
     const gameRoom = new this.gameRoomModel({
       roomId,
       name: createGameDto.name,
-      gameType: 'ludo',
+      gameType: createGameDto.gameType.toLowerCase(),
       host: createGameDto.hostId,
       maxPlayers: 4,
       currentPlayers: 1,

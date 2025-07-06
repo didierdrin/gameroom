@@ -70,49 +70,7 @@ export const CreateGameRoomPage = ({
   }];
  
   
-// Update handleSubmit to use socket.io for game creation
-// const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-//   e.preventDefault();
 
-//   const scheduledTimeCombined = (scheduledDate && scheduledTime)
-//   ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
-//   : undefined;
-
-//   const gameRoomData = {
-//     name: roomName,
-//     gameType: gameType,
-//     maxPlayers: playerLimit,
-//     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
-//     password: privacy === 'private' ? password : undefined,
-//     hostId: 'current-user-id', // Replace with actual user ID
-//     scheduledTimeCombined,
-//   };
-
-//   try {
-//     // Initialize socket connection if not already done
-//     //const socket = io('https://alu-globe-gameroom.onrender.com'); // Replace with your backend URL
-//     const socket = io('https://alu-globe-gameroom.onrender.com', {
-//   transports: ['websocket'],
-// });
-
-//     // Emit createGame event
-//     socket.emit('createGame', gameRoomData);
-    
-//     // Listen for gameCreated event
-//     socket.on('gameCreated', (game:any) => {
-//       // Navigate to the game room
-//       navigate(`/game-room/${game.roomId}`);
-//     });
-    
-//     socket.on('error', (error:any) => {
-//       console.error('Error creating game room:', error);
-//       // TODO: Display error to user
-//     });
-//   } catch (error) {
-//     console.error('Failed to create game room:', error);
-//     // TODO: Display error to user
-//   }
-// };
 
 // Update handleSubmit to use socket.io for game creation
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -145,7 +103,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   const gameRoomData = {
     name: roomName,
-    gameType: gameType,
+    gameType: gameType.trim().toLowerCase(),
     maxPlayers: playerLimit,
     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
     isInviteOnly: privacy === 'inviteOnly',
@@ -223,6 +181,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     alert('Failed to create game room. Please try again.');
   }
 };
+
+
 
   return <div className="p-6 overflow-y-auto h-screen pb-20">
       <SectionTitle title="Create Game Room" subtitle="Set up a new game room for you and your friends to play in" />

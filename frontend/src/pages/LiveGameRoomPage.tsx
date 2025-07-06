@@ -1,8 +1,15 @@
+
 // LiveGameRoomPage.tsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import { LudoGame } from '../components/Ludo/LudoGame';
+import { TriviaGame } from '../components/Trivia/TriviaGame';
+import { renderChessGame } from '../components/Chess/ChessGame';
+import { renderUnoGame } from '../components/Uno/UnoGame';
+import { renderKahootGame } from '../components/Kahoot/KahootGame';
+import { renderPictionaryGame } from '../components/Pictionary/PictionaryGame';
+
 import { GameRoomInfo } from '../components/GameRoom/GameRoomInfo';
 import { PlayerList } from '../components/GameRoom/PlayerList';
 import { Chat } from '../components/GameRoom/Chat';
@@ -21,7 +28,25 @@ export const LiveGameRoomPage = () => {
   const { id: roomId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [socket, setSocket] = useState<SocketType | null>(null);
-  const [gameState, setGameState] = useState<any>(null);
+  
+  // Initialize gameState with proper default structure
+  const [gameState, setGameState] = useState<any>({
+    players: [
+      { id: 0, color: 'red', name: 'Red', coins: [0, 0, 0, 0] },
+      { id: 1, color: 'blue', name: 'Blue', coins: [0, 0, 0, 0] },
+      { id: 2, color: 'green', name: 'Green', coins: [0, 0, 0, 0] },
+      { id: 3, color: 'yellow', name: 'Yellow', coins: [0, 0, 0, 0] }
+    ],
+    currentPlayer: 0,
+    diceValue: 0,
+    diceRolled: false,
+    winner: null,
+    gameStarted: false,
+    gameOver: false,
+    roomName: '',
+    gameType: 'Ludo'
+  });
+  
   const [players, setPlayers] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<string>('');
@@ -34,7 +59,7 @@ export const LiveGameRoomPage = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showVideoGrid, setShowVideoGrid] = useState(false);
 
-  const gameType = gameState?.gameType || 'Ludo';
+  const gameType = gameState?.gameType;
 
   useEffect(() => {
     const newSocket = io('https://alu-globe-gameroom.onrender.com');
@@ -46,7 +71,32 @@ export const LiveGameRoomPage = () => {
 
     newSocket.emit('joinGame', { roomId, playerId: localStorage.getItem('userId') });
 
-    newSocket.on('gameState', (state: any) => setGameState(state));
+    // Enhanced gameState handler with proper merging
+    newSocket.on('gameState', (state: any) => {
+      setGameState((prev: any) => {
+        // Ensure we preserve essential structure
+        const newState = {
+          ...prev,
+          ...state,
+          players: state.players && Array.isArray(state.players) && state.players.length > 0 
+            ? state.players 
+            : prev.players // Keep existing players if new state doesn't have valid players
+        };
+        
+        // Additional validation for players structure
+        if (newState.players && Array.isArray(newState.players)) {
+          newState.players = newState.players.map((player: any, index: number) => ({
+            id: player.id !== undefined ? player.id : index,
+            color: player.color || ['red', 'blue', 'green', 'yellow'][index],
+            name: player.name || ['Red', 'Blue', 'Green', 'Yellow'][index],
+            coins: Array.isArray(player.coins) ? player.coins : [0, 0, 0, 0]
+          }));
+        }
+        
+        return newState;
+      });
+    });
+
     newSocket.on('playerJoined', ({ player }: any) => setPlayers(prev => [...prev, player]));
     newSocket.on('diceRolled', ({ diceValue }: any) => setGameState((prev: any) => ({ ...prev, diceValue })));
     newSocket.on('coinMoved', ({ coins, currentTurn }: any) => setGameState((prev: any) => ({ ...prev, coins, currentTurn })));
@@ -91,33 +141,98 @@ export const LiveGameRoomPage = () => {
     }
   };
 
+  // const renderGameContent = () => {
+  //   if (gameType.toLowerCase() === 'ludo') {
+  //     return gameState?.gameStarted ? (
+  //       <div className="relative w-full h-full">
+  //         <LudoGame gameState={gameState} currentPlayerId={currentPlayerId} onMoveCoin={handleMoveCoin} />
+  //         {gameState.currentTurn === currentPlayerId && (
+  //           <div className="absolute bottom-4 right-4">
+  //             <Dice
+  //               value={gameState.diceValue}
+  //               onRoll={handleRollDice}
+  //               disabled={gameState.diceValue !== 0}
+  //             />
+  //           </div>
+  //         )}
+  //       </div>
+  //     ) : (
+  //       <div className="flex flex-col items-center justify-center h-full">
+  //         <h2 className="text-2xl mb-4">Waiting for players...</h2>
+  //         <button onClick={handleStartGame} className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-700">
+  //           Start Game
+  //         </button>
+  //       </div>
+  //     );
+  //   }
+
+  //   return <div className="text-center text-gray-400">Game "{gameType}" not implemented yet</div>;
+  // };
+
   const renderGameContent = () => {
-    if (gameType.toLowerCase() === 'ludo') {
-      return gameState?.gameStarted ? (
-        <div className="relative w-full h-full">
-          <LudoGame gameState={gameState} currentPlayerId={currentPlayerId} onMoveCoin={handleMoveCoin} />
-          {gameState.currentTurn === currentPlayerId && (
-            <div className="absolute bottom-4 right-4">
-              <Dice
-                value={gameState.diceValue}
-                onRoll={handleRollDice}
-                disabled={gameState.diceValue !== 0}
-              />
-            </div>
-          )}
-        </div>
-      ) : (
+    const lowerCaseGameType = gameType.toLowerCase();
+    
+  
+    if (!gameState?.gameStarted) {
+      return (
         <div className="flex flex-col items-center justify-center h-full">
           <h2 className="text-2xl mb-4">Waiting for players...</h2>
-          <button onClick={handleStartGame} className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-700">
+          <button
+            onClick={handleStartGame}
+            className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-700"
+          >
             Start Game
           </button>
         </div>
       );
     }
-
-    return <div className="text-center text-gray-400">Game "{gameType}" not implemented yet</div>;
+  
+    switch (lowerCaseGameType) {
+      case 'ludo':
+        return (
+          <div className="relative w-full h-full">
+            <LudoGame
+              gameState={gameState}
+              currentPlayerId={currentPlayerId}
+              onMoveCoin={handleMoveCoin}
+            />
+            {gameState.currentTurn === currentPlayerId && (
+              <div className="absolute bottom-4 right-4">
+                <Dice
+                  value={gameState.diceValue}
+                  onRoll={handleRollDice}
+                  disabled={gameState.diceValue !== 0}
+                />
+              </div>
+            )}
+          </div>
+        );
+  
+      case 'trivia':
+        return <TriviaGame socket={socket} roomId={roomId!} currentPlayer={currentPlayerId} gameState={gameState}
+      />
+  
+      // case 'chess':
+      //   return <renderChessGame {...commonProps} />;
+  
+      // case 'uno':
+      //   return <renderChessGame {...commonProps} />;
+  
+      // case 'kahoot':
+      //   return <renderKahootGame {...commonProps} />;
+  
+      // case 'pictionary':
+      //   return <renderPictionaryGame {...commonProps} />;
+  
+      default:
+        return (
+          <div className="text-center text-gray-400">
+            Game "{gameType}" not implemented yet
+          </div>
+        );
+    }
   };
+  
 
   const toggleSidebar = (sidebar: string) => {
     if (sidebar === 'players') {

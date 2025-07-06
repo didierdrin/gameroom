@@ -4,6 +4,7 @@ export class CreateGameDto {
     readonly isPrivate: boolean;
     readonly password?: string;
     scheduledTimeCombined?: string | Date;
+    readonly gameType: string;
   }
   
   export class JoinGameDto {
