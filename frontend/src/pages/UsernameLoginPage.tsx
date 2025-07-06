@@ -48,7 +48,7 @@ export const UsernameLoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white mx-auto">
       <div className="bg-gray-800 p-6 rounded-xl shadow-xl w-96">
         <h2 className="text-2xl font-bold mb-4">Enter Your Username</h2>
         <p className="text-gray-400 mb-4 text-sm">
@@ -56,7 +56,7 @@ export const UsernameLoginPage: React.FC = () => {
         </p>
         <input
           className="w-full p-2 rounded-md text-black mb-4"
-          placeholder="e.g. JohnDoe123"
+          placeholder="e.g. J.owen0"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           onKeyPress={handleKeyPress}
