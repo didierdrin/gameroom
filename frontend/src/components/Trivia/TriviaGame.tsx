@@ -151,7 +151,7 @@ const validateQuestions = (data: any): Question[] => {
         {q.options.map((opt) => (
           <button
             key={opt}
-            className={`p-4 border rounded-lg ${selected === opt ? 'bg-purple-500 text-white' : 'bg-white'}`}
+            className={`p-4 border rounded-lg ${selected === opt ? 'bg-purple-500 text-white' : 'bg-white text-black'}`}
             disabled={!!selected}
             onClick={() => setSelected(opt)}
           >
