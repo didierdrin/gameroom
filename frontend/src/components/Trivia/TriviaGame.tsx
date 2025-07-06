@@ -1,30 +1,57 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
-// Define Trivia structures
-interface Question { id: string; question: string; options: string[]; correct?: string; }
-
-interface TriviaGameProps {
-  socket: any;
-  roomId: string;
-  currentPlayer: string;
-  gameState: any;
-}
+interface Question { 
+    id: string; 
+    question: string; 
+    options: string[]; 
+    correct?: string; 
+  }
+  
+  interface TriviaGameProps {
+    socket: any;
+    roomId: string;
+    currentPlayer: string;
+    gameState: any;
+  }
+  
 
 export const TriviaGame: React.FC<TriviaGameProps> = ({ socket, roomId, currentPlayer, gameState }) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQ, setCurrentQ] = useState<number>(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [timer, setTimer] = useState(30);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function fetchQuestions() {
-   
-    const resp = await axios.post('https://alu-globe-gameroom.onrender.com/trivia/generate', {
-  topic: 'science'
-});
-      setQuestions(resp.data.questions);
+      try {
+        setLoading(true);
+        setError('');
+        const resp = await axios.post('https://alu-globe-gameroom.onrender.com/trivia/generate', {
+          topic: 'science'
+        });
+        
+        if (!resp.data?.questions) {
+          throw new Error('Invalid response format');
+        }
+        
+        // Add IDs to questions
+        const questionsWithIds = resp.data.questions.map((q: any, index: number) => ({
+          ...q,
+          id: `q-${index}`,
+        }));
+        
+        setQuestions(questionsWithIds);
+      } catch (err) {
+        console.error('Failed to fetch questions:', err);
+        setError('Failed to load trivia questions. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     }
+    
     fetchQuestions();
   }, []);
 
@@ -53,7 +80,11 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({ socket, roomId, currentP
     }
   };
 
-  if (!questions[currentQ]) return <div>Loading Trivia...</div>;
+  if (loading) return <div className="text-center py-8">Loading Trivia Questions...</div>;
+  if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
+  if (!questions.length) return <div className="text-center py-8">No questions available</div>;
+  if (!questions[currentQ]) return <div>Loading Question...</div>;
+
   const q = questions[currentQ];
 
   return (
