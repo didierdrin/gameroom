@@ -1,5 +1,12 @@
 
-export const renderUnoGame = () => {
+interface GameRenderProps {
+    socket: any;
+    roomId: string;
+    currentPlayer: string;
+    gameState: any;
+  }
+
+export const renderUnoGame: React.FC<GameRenderProps> = ({ socket: _socket, roomId: _roomId, currentPlayer: _currentPlayer, gameState: _gameState }) => {
     return <div className="flex flex-col items-center justify-between h-full p-4">
         <div className="flex justify-center mb-4">
           <div className="flex space-x-2">

@@ -211,6 +211,37 @@ export const LiveGameRoomPage = () => {
       case 'trivia':
         return <TriviaGame socket={socket} roomId={roomId!} currentPlayer={currentPlayerId} gameState={gameState} />
   
+        case 'chess':
+    return renderChessGame({
+      socket,
+      roomId: roomId!,
+      currentPlayer: currentPlayerId,
+      gameState,
+    });
+
+  case 'uno':
+    return renderUnoGame({
+      socket,
+      roomId: roomId!,
+      currentPlayer: currentPlayerId,
+      gameState,
+    });
+
+  case 'kahoot':
+    return renderKahootGame({
+      socket,
+      roomId: roomId!,
+      currentPlayer: currentPlayerId,
+      gameState,
+    });
+
+  case 'pictionary':
+    return renderPictionaryGame({
+      socket,
+      roomId: roomId!,
+      currentPlayer: currentPlayerId,
+      gameState,
+    });
       // case 'chess':
       //   return <renderChessGame socket={socket} roomId={roomId!} currentPlayer={currentPlayerId} gameState={gameState} />;
   

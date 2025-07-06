@@ -1,6 +1,13 @@
 
-export  const renderKahootGame = () => {
-    return <div className="flex flex-col h-full">
+interface GameRenderProps {
+    socket: any;
+    roomId: string;
+    currentPlayer: string;
+    gameState: any;
+  }
+
+export  const renderKahootGame: React.FC<GameRenderProps> = ({ socket: _socket, roomId: _roomId, currentPlayer: _currentPlayer, gameState: _gameState }) => {
+    return ( <div className="flex flex-col h-full">
         <div className="bg-purple-900 p-6 text-center">
           <h2 className="text-2xl font-bold">
             Who invented the World Wide Web?
@@ -37,5 +44,6 @@ export  const renderKahootGame = () => {
             20
           </div>
         </div>
-      </div>;
+      </div>
+      );
   };

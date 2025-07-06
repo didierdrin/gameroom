@@ -1,5 +1,12 @@
 
-export  const renderPictionaryGame = () => {
+interface GameRenderProps {
+    socket: any;
+    roomId: string;
+    currentPlayer: string;
+    gameState: any;
+  }
+
+export  const renderPictionaryGame: React.FC<GameRenderProps> = ({ socket: _socket, roomId: _roomId, currentPlayer: _currentPlayer, gameState: _gameState }) => {
     return <div className="flex flex-col h-full">
         <div className="bg-purple-900/50 p-3 text-center">
           <p className="text-lg">

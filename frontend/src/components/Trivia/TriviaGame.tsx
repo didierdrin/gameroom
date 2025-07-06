@@ -19,11 +19,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({ socket, roomId, currentP
 
   useEffect(() => {
     async function fetchQuestions() {
-    //   const resp = await axios.post(
-    //     'https://gemini.googleapis.com/v1/generateTrivia',
-    //     { count: 10 },
-    //     { headers: { Authorization: `Bearer AIzaSyA8usl5r7fzAA3RQ92oWF9lJMBDEDcnzCc` } }
-    //   );
+   
     const resp = await axios.post('https://alu-globe-gameroom.onrender.com/trivia/generate', {
   topic: 'science'
 });
