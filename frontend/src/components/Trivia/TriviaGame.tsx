@@ -194,7 +194,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
             className={`p-3 text-left rounded-lg border transition-all
               ${selected === option 
                 ? 'bg-purple-600 text-white border-purple-600' 
-                : 'bg-white hover:bg-gray-50 border-gray-200'}
+                : 'bg-white text-black hover:bg-gray-50 border-gray-200'}
               ${selected && option === currentQuestion.correct 
                 ? '!bg-green-500 !text-white !border-green-500' 
                 : ''}
