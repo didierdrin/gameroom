@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { GameModule } from './game/game.module';
 import { UserModule } from './user/user.module';
+import { TriviaController } from './trivia/trivia.controller';
 
 @Module({
   imports: [
@@ -10,5 +11,6 @@ import { UserModule } from './user/user.module';
     GameModule,
     UserModule,
   ],
+  controllers: [TriviaController],
 })
 export class AppModule {}
