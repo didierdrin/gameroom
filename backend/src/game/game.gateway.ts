@@ -3,6 +3,7 @@ import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
 import { RedisService } from '../redis/redis.service';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
+import { GameRoom } from './schemas/game-room.schema';
 
 @WebSocketGateway({ cors: true })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -129,7 +130,12 @@ async handleJoinGame(
 async handleStartGame(@MessageBody() data: { roomId: string }) {
   const room = await this.gameService.startGame(data.roomId);
   const gameState = await this.gameService['getGameState'](data.roomId); // Call internal game state fetch
-  this.server.to(data.roomId).emit('gameState', gameState);
+  // this.server.to(data.roomId).emit('gameState', gameState);
+  this.server.to(data.roomId).emit('gameState', {
+    ...gameState,
+    gameType: room!.gameType, // ✅ this must be included
+  });
+  
 }
 
 

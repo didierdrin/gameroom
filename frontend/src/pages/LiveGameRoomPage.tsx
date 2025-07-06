@@ -44,7 +44,7 @@ export const LiveGameRoomPage = () => {
     gameStarted: false,
     gameOver: false,
     roomName: '',
-    gameType: 'Ludo'
+    gameType: ''
   });
   
   const [players, setPlayers] = useState<any[]>([]);
@@ -209,20 +209,19 @@ export const LiveGameRoomPage = () => {
         );
   
       case 'trivia':
-        return <TriviaGame socket={socket} roomId={roomId!} currentPlayer={currentPlayerId} gameState={gameState}
-      />
+        return <TriviaGame socket={socket} roomId={roomId!} currentPlayer={currentPlayerId} gameState={gameState} />
   
       // case 'chess':
-      //   return <renderChessGame {...commonProps} />;
+      //   return <renderChessGame socket={socket} roomId={roomId!} currentPlayer={currentPlayerId} gameState={gameState} />;
   
       // case 'uno':
-      //   return <renderChessGame {...commonProps} />;
+      //   return <renderUnoGame socket={socket} roomId={roomId!} currentPlayer={currentPlayerId} gameState={gameState} />;
   
       // case 'kahoot':
-      //   return <renderKahootGame {...commonProps} />;
+      //   return <renderKahootGame socket={socket} roomId={roomId!} currentPlayer={currentPlayerId} gameState={gameState} />;
   
       // case 'pictionary':
-      //   return <renderPictionaryGame {...commonProps} />;
+      //   return <renderPictionaryGame socket={socket} roomId={roomId!} currentPlayer={currentPlayerId} gameState={gameState} />;
   
       default:
         return (
