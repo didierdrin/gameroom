@@ -438,7 +438,10 @@ useEffect(() => {
 <section className="mb-12">
   <SectionTitle title="Live Game Rooms" subtitle="Join an active game room and start playing right away!" />
   {loading ? (
-    <div className="text-center py-8">Loading game rooms...</div>
+  <div className="flex justify-center py-8">
+  <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+</div>
+
   ) : error ? (
     <div className="text-center text-red-500 py-8">{error}</div>
   ) : liveRooms.length > 0 ? (
@@ -449,14 +452,33 @@ useEffect(() => {
 </section>
 
       {/* Upcoming Game Rooms */}
-      <section className="mb-12">
+<section className="mb-12">
+  <SectionTitle
+    title="Upcoming Game Rooms"
+    subtitle="Game rooms scheduled to start soon. Register now to get notified!"
+  />
+  {loading ? (
+    <div className="flex justify-center py-8">
+      <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  ) : error ? (
+    <div className="text-center text-red-500 py-8">{error}</div>
+  ) : upcomingRooms.length > 0 ? (
+    <GameRoomList gameRooms={upcomingRooms} onJoinRoom={handleJoinRoom} />
+  ) : (
+    <div className="text-center py-8 text-gray-400">No upcoming game rooms scheduled</div>
+  )}
+</section>
+
+
+      {/* <section className="mb-12">
         <SectionTitle
           title="Upcoming Game Rooms"
           subtitle="Game rooms scheduled to start soon. Register now to get notified!"
-        />
+        /> */}
         {/* <GameRoomList gameRooms={MOCK_UPCOMING_GAME_ROOMS} onJoinRoom={handleJoinRoom} /> */}
-        <GameRoomList gameRooms={upcomingRooms} onJoinRoom={handleJoinRoom} />
-      </section>
+        {/* <GameRoomList gameRooms={upcomingRooms} onJoinRoom={handleJoinRoom} /> */}
+      {/* </section> */}
 
       {/* Tournaments */}
       <section className="mb-12">
