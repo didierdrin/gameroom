@@ -104,7 +104,7 @@ async handleJoinGame(
   }
 
   client.join(roomId);
-  client.emit('playerJoined', { roomId });
+  client.emit('playerJoined', { roomId, playerId });
 }
 
 

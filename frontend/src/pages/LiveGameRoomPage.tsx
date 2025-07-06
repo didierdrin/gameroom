@@ -44,7 +44,7 @@ export const LiveGameRoomPage = () => {
     localStorage.setItem('playerId', playerId);
     setCurrentPlayerId(playerId);
 
-    newSocket.emit('joinGame', { roomId, playerId });
+    newSocket.emit('joinGame', { roomId, playerId: localStorage.getItem('userId') });
 
     newSocket.on('gameState', (state: any) => setGameState(state));
     newSocket.on('playerJoined', ({ player }: any) => setPlayers(prev => [...prev, player]));

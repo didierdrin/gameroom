@@ -150,7 +150,12 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
     isInviteOnly: privacy === 'inviteOnly',
     password: privacy === 'private' ? password : undefined,
-    hostId: localStorage.getItem('playerId') || `player-${Math.random().toString(36).substr(2, 9)}`, // Get actual user ID
+    // hostId: localStorage.getItem('playerId') || `player-${Math.random().toString(36).substr(2, 9)}`, // Get actual user ID
+    hostId: localStorage.getItem('userId') || (() => {
+      const fallback = `player-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('userId', fallback);
+      return fallback;
+    })(),     
     scheduledTimeCombined,
     description: description.trim() || undefined,
     enableVideoChat,

@@ -1,10 +1,5 @@
-import React from 'react';
 
-// interface PlayerListProps {
-//   players: any[];
-//   currentPlayerId: string;
-//   currentTurn?: string;
-// }
+import React from 'react';
 
 interface PlayerListProps {
   players: { id: string }[];
@@ -12,12 +7,47 @@ interface PlayerListProps {
   currentTurn?: string;
 }
 
+// Helper function to get username from localStorage cache
+const getUsernameFromLocal = (playerId: string): string | null => {
+  try {
+    // You can implement this based on how you store usernames in localStorage
+    // Common patterns:
+    // 1. If storing as individual keys: localStorage.getItem(`username_${playerId}`)
+    // 2. If storing as a JSON object: JSON.parse(localStorage.getItem('usernames') || '{}')[playerId]
+    // 3. If storing in a players cache: JSON.parse(localStorage.getItem('playersCache') || '{}')[playerId]?.username
+    
+    // For now, using pattern 1 - adjust based on your actual storage pattern
+    return localStorage.getItem(`username_${playerId}`);
+  } catch (error) {
+    console.error('Error getting username from localStorage:', error);
+    return null;
+  }
+};
 
 export const PlayerList: React.FC<PlayerListProps> = ({ 
   players = [], 
   currentPlayerId, 
   currentTurn 
 }) => {
+  // Get current user's username
+  const currentUsername = localStorage.getItem('username');
+
+  const getDisplayName = (player: { id: string }) => {
+    // If it's the current player, show "You" or their username
+    if (player.id === currentPlayerId) {
+      return currentUsername || 'You';
+    }
+    
+    // For AI players
+    if (player.id.startsWith('ai-')) {
+      return `AI Player ${player.id.split('-')[1]}`;
+    }
+    
+    // For other players, try to get username from cache
+    const username = getUsernameFromLocal(player.id);
+    return username || player.id;
+  };
+
   return (
     <div>
       <h3 className="text-lg font-bold mb-4">Players</h3>
@@ -32,7 +62,7 @@ export const PlayerList: React.FC<PlayerListProps> = ({
             <div className="w-8 h-8 rounded-full bg-gray-600 mr-3"></div>
             <div className="flex-1">
               <p className="font-medium">
-                {player.id === currentPlayerId ? 'You' : player.id.startsWith('ai-') ? `AI Player ${player.id.split('-')[1]}` : player.id}
+                {getDisplayName(player)}
               </p>
               {player.id.startsWith('ai-') && <p className="text-xs text-gray-400">AI</p>}
             </div>
@@ -44,66 +74,43 @@ export const PlayerList: React.FC<PlayerListProps> = ({
 };
 
 
-// export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerId, currentTurn }) => {
-//   return (
-//     <div>
-//       <h3 className="text-lg font-bold mb-4">Players</h3>
-//       <ul className="space-y-2">
-//         {players.map((player) => (
-//           <li 
-//           key={player.id} 
-//           className={`flex items-center p-2 rounded-lg ${
-//             player.id === currentPlayerId ? 'bg-purple-900/50' : 'bg-gray-700/50'
-//           } ${player.id === currentTurn ? 'border-l-4 border-yellow-500' : ''}`}
-//         >
-//           <div className="w-8 h-8 rounded-full bg-gray-600 mr-3"></div>
-//           <div className="flex-1">
-//             <p className="font-medium">
-//               {player.id === currentPlayerId ? 'You' : player.id.startsWith('ai-') ? `AI Player ${player.id.split('-')[1]}` : player.id}
-//             </p>
-//             {player.id.startsWith('ai-') && <p className="text-xs text-gray-400">AI</p>}
-//           </div>
-//         </li>
-        
-//         ))}
-//       </ul>
-//     </div>
-//   );
-// };
-
-
-
-
-
-
-
-
 // import React from 'react';
 
+// // interface PlayerListProps {
+// //   players: any[];
+// //   currentPlayerId: string;
+// //   currentTurn?: string;
+// // }
+
 // interface PlayerListProps {
-//   players: any[];
+//   players: { id: string }[];
 //   currentPlayerId: string;
 //   currentTurn?: string;
 // }
 
-// export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerId, currentTurn }) => {
+
+// export const PlayerList: React.FC<PlayerListProps> = ({ 
+//   players = [], 
+//   currentPlayerId, 
+//   currentTurn 
+// }) => {
 //   return (
 //     <div>
 //       <h3 className="text-lg font-bold mb-4">Players</h3>
 //       <ul className="space-y-2">
-//         {players.map((player) => (
+//         {players.filter(Boolean).map((player) => (
 //           <li 
-//             key={player} 
+//             key={player.id} 
 //             className={`flex items-center p-2 rounded-lg ${
-//               player === currentPlayerId ? 'bg-purple-900/50' : 'bg-gray-700/50'
-//             } ${player === currentTurn ? 'border-l-4 border-yellow-500' : ''}`}
+//               player.id === currentPlayerId ? 'bg-purple-900/50' : 'bg-gray-700/50'
+//             } ${player.id === currentTurn ? 'border-l-4 border-yellow-500' : ''}`}
 //           >
 //             <div className="w-8 h-8 rounded-full bg-gray-600 mr-3"></div>
 //             <div className="flex-1">
 //               <p className="font-medium">
-//                 {player === currentPlayerId ? 'You' : player.startsWith('ai-') ? `AI Player ${player.split('-')[1]}` : player}
+//                 {player.id === currentPlayerId ? 'You' : player.id.startsWith('ai-') ? `AI Player ${player.id.split('-')[1]}` : player.id}
 //               </p>
-//               {player.startsWith('ai-') && <p className="text-xs text-gray-400">AI</p>}
+//               {player.id.startsWith('ai-') && <p className="text-xs text-gray-400">AI</p>}
 //             </div>
 //           </li>
 //         ))}
@@ -111,3 +118,4 @@ export const PlayerList: React.FC<PlayerListProps> = ({
 //     </div>
 //   );
 // };
+

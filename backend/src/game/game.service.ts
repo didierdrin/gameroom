@@ -125,6 +125,28 @@ export class GameService {
     if (gameRoom.isPrivate && gameRoom.password !== joinGameDto.password) {
       throw new Error('Invalid password');
     }
+
+    // if (!gameRoom.playerIds.includes(playerId)) {
+    //   gameRoom.playerIds.push(playerId);
+    //   gameRoom.currentPlayers = gameRoom.playerIds.length;
+    //   await gameRoom.save();
+    // }
+
+    if (!gameRoom.playerIds.includes(joinGameDto.playerId)) {
+      gameRoom.playerIds.push(joinGameDto.playerId);
+      gameRoom.currentPlayers = gameRoom.playerIds.length;
+      await gameRoom.save();
+      
+      // Update game state in Redis
+      const gameState = await this.getGameState(joinGameDto.roomId);
+      gameState.players.push(joinGameDto.playerId);
+      gameState.coins = {
+        ...gameState.coins,
+        ...this.initializeCoins([joinGameDto.playerId]),
+      };
+      await this.updateGameState(joinGameDto.roomId, gameState);
+    }
+    
     
     // Update game room
     gameRoom.currentPlayers += 1;
