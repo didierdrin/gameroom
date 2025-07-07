@@ -30,7 +30,7 @@ const activeHosted = hostedRooms.filter(room => !room.startTime || new Date(room
 
 
   useEffect(() => {
-    const playerId = localStorage.getItem('playerId');
+    const playerId = localStorage.getItem('userId');
     if (!playerId) return;
 
     const socket = io('https://alu-globe-gameroom.onrender.com', {

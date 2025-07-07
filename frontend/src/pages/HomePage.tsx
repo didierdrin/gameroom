@@ -142,65 +142,65 @@ const socket = useSocket();
 
 // Updated socket logic in HomePage.tsx
 
-// useEffect(() => {
-//   const socket = io('https://alu-globe-gameroom.onrender.com', {
-//     transports: ['websocket'],
-//     reconnection: true,
-//   });
+useEffect(() => {
+  const socket = io('https://alu-globe-gameroom.onrender.com', {
+    transports: ['websocket'],
+    reconnection: true,
+  });
 
-//   socket.on('connect', () => {
-//     console.log('Connected to socket server');
-//     socket.emit('getGameRooms');
-//   });
+  socket.on('connect', () => {
+    console.log('Connected to socket server');
+    socket.emit('getGameRooms');
+  });
 
-//   socket.on('gameRoomsList', (payload: { rooms: GameRoom[] }) => {
-//     setLoading(false);
-//     const rooms = payload.rooms;
-//     const now = new Date();
+  socket.on('gameRoomsList', (payload: { rooms: GameRoom[] }) => {
+    setLoading(false);
+    const rooms = payload.rooms;
+    const now = new Date();
     
-//     console.log('Received rooms:', rooms); // Debug log
+    console.log('Received rooms:', rooms); // Debug log
     
-//     // Filter rooms based on scheduledTimeCombined
-//     const live = rooms.filter(r => {
-//       // If no scheduledTimeCombined, it's a live room
-//       if (!r.scheduledTimeCombined) {
-//         console.log(`Room ${r.name} has no scheduled time - adding to live`);
-//         return true;
-//       }
+    // Filter rooms based on scheduledTimeCombined
+    const live = rooms.filter(r => {
+      // If no scheduledTimeCombined, it's a live room
+      if (!r.scheduledTimeCombined) {
+        console.log(`Room ${r.name} has no scheduled time - adding to live`);
+        return true;
+      }
       
-//       const scheduled = new Date(r.scheduledTimeCombined);
-//       const isLive = scheduled <= now;
-//       console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isLive: ${isLive}`);
-//       return isLive;
-//     });
+      const scheduled = new Date(r.scheduledTimeCombined);
+      const isLive = scheduled <= now;
+      console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isLive: ${isLive}`);
+      return isLive;
+    });
     
-//     const upcoming = rooms.filter(r => {
-//       // If no scheduledTimeCombined, it's not upcoming
-//       if (!r.scheduledTimeCombined) {
-//         return false;
-//       }
+    const upcoming = rooms.filter(r => {
+      // If no scheduledTimeCombined, it's not upcoming
+      if (!r.scheduledTimeCombined) {
+        return false;
+      }
       
-//       const scheduled = new Date(r.scheduledTimeCombined);
-//       const isUpcoming = scheduled > now;
-//       console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isUpcoming: ${isUpcoming}`);
-//       return isUpcoming;
-//     });
+      const scheduled = new Date(r.scheduledTimeCombined);
+      const isUpcoming = scheduled > now;
+      console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isUpcoming: ${isUpcoming}`);
+      return isUpcoming;
+    });
     
-//     console.log(`Live rooms: ${live.length}, Upcoming rooms: ${upcoming.length}`);
-//     setLiveRooms(live);
-//     setUpcomingRooms(upcoming);
-//   });
+    console.log(`Live rooms: ${live.length}, Upcoming rooms: ${upcoming.length}`);
+    setLiveRooms(live);
+    setUpcomingRooms(upcoming);
+  });
 
-//   socket.on('error', (err: any) => {
-//     setLoading(false);
-//     setError('Failed to fetch game rooms');
-//     console.error('Socket error:', err);
-//   });
+  socket.on('error', (err: any) => {
+    setLoading(false);
+    setError('Failed to fetch game rooms');
+    console.error('Socket error:', err);
+  });
 
-//   return () => {
-//     socket.disconnect();
-//   };
-// }, []);
+  return () => {
+    socket.disconnect();
+  };
+}, []);
 
 
   // Get current user ID (this should come from your auth context/store)
