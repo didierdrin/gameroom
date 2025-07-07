@@ -81,16 +81,44 @@ export class GameService {
     return gameRoom;
   }
 
+  // private async initializeGameState(roomId: string, hostId: string) {
+  //   const initialGameState = {
+  //     players: [hostId],
+  //     currentTurn: hostId,
+  //     diceValue: 0,
+  //     coins: this.initializeCoins([hostId]),
+  //     gameStarted: false,
+  //     winner: null,
+  //   };
+
+  //   await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
+  // }
+
   private async initializeGameState(roomId: string, hostId: string) {
+    const colors = ['red', 'blue', 'green', 'yellow'];
+    
     const initialGameState = {
+      roomId,
       players: [hostId],
       currentTurn: hostId,
+      currentPlayer: 0,
       diceValue: 0,
-      coins: this.initializeCoins([hostId]),
+      diceRolled: false,
+      coins: {
+        [hostId]: {
+          'red-1': { position: 'base', steps: 0 },
+          'red-2': { position: 'base', steps: 0 },
+          'red-3': { position: 'base', steps: 0 },
+          'red-4': { position: 'base', steps: 0 }
+        }
+      },
       gameStarted: false,
+      gameOver: false,
       winner: null,
+      roomName: '',
+      gameType: ''
     };
-
+  
     await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
   }
 
@@ -361,9 +389,74 @@ export class GameService {
     // Could implement reconnection logic or AI takeover
   }
 
-  public async getGameState(roomId: string) {
-    const gameState = await this.redisService.get(`game:${roomId}`);
-    return JSON.parse(gameState);
+  // public async getGameState(roomId: string) {
+  //   const gameState = await this.redisService.get(`game:${roomId}`);
+  //   return JSON.parse(gameState);
+  // }
+
+  async getGameState(roomId: string) {
+    try {
+      // Try to get game state from Redis first
+      const redisState = await this.redisService.get(`game:${roomId}`);
+      
+      if (redisState) {
+        const parsedState = JSON.parse(redisState);
+        
+        // Convert Redis state to frontend-compatible format
+        return {
+          ...parsedState,
+          players: parsedState.players.map((playerId: string, index: number) => {
+            const colors = ['red', 'blue', 'green', 'yellow'];
+            return {
+              id: index,
+              color: colors[index],
+              name: playerId.startsWith('ai-') ? `AI ${index + 1}` : playerId,
+              coins: parsedState.coins[playerId] 
+                ? Object.values(parsedState.coins[playerId]).map((coin: any) => coin.steps || 0)
+                : [0, 0, 0, 0]
+            };
+          }),
+          currentPlayer: parsedState.players.indexOf(parsedState.currentTurn),
+          diceRolled: parsedState.diceValue !== 0,
+          roomName: parsedState.roomName || '',
+          gameType: parsedState.gameType || ''
+        };
+      }
+      
+      // If no game state in Redis, create a default one
+      const room = await this.getGameRoomById(roomId);
+      if (!room) {
+        throw new Error('Room not found');
+      }
+      
+      const colors = ['red', 'blue', 'green', 'yellow'];
+      const defaultGameState = {
+        roomId,
+        gameType: room.gameType,
+        roomName: room.name,
+        gameStarted: false,
+        gameOver: false,
+        currentPlayer: 0,
+        currentTurn: room.playerIds?.[0] || null,
+        players: room.playerIds?.map((playerId, index) => ({
+          id: index,
+          color: colors[index],
+          name: playerId.startsWith('ai-') ? `AI ${index + 1}` : playerId,
+          coins: [0, 0, 0, 0]
+        })) || [],
+        diceValue: 0,
+        diceRolled: false,
+        winner: null
+      };
+      
+      // Save default state to Redis
+      await this.updateGameState(roomId, defaultGameState);
+      
+      return defaultGameState;
+    } catch (error) {
+      console.error('Error getting game state:', error);
+      throw error;
+    }
   }
 
   private async updateGameState(roomId: string, gameState: any) {
