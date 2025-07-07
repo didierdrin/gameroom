@@ -163,11 +163,11 @@ export const HomePage = () => {
       
       // Navigate to game room
       const targetRoomId = data?.roomId || id;
-      navigate(`/game-room/${targetRoomId}`);
+      // navigate(`/game-room/${targetRoomId}`);
 
-      // setTimeout(() => {
-      //   navigate(`/game-room/${targetRoomId}`);
-      // }, 0);
+      setTimeout(() => {
+        navigate(`/game-room/${targetRoomId}`);
+      }, 4000);
       
     };
 
