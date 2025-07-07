@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { MediaControls } from '../components/GameRoom/MediaControls';
 import { VideoGrid } from '../components/GameRoom/VideoGrid';
+import { useSocket } from '../SocketContext';
 
 // Type for socket
 type SocketType = ReturnType<typeof io>;
@@ -61,53 +62,75 @@ export const LiveGameRoomPage = () => {
 
   const gameType = gameState?.gameType;
 
+  // const socket = useSocket();
+  // const { roomId } = useParams();
+  
   useEffect(() => {
-    const newSocket = io('https://alu-globe-gameroom.onrender.com');
-    setSocket(newSocket);
-
-    const playerId = localStorage.getItem('playerId') || `player-${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem('playerId', playerId);
-    setCurrentPlayerId(playerId);
-
-    newSocket.emit('joinGame', { roomId, playerId: localStorage.getItem('userId') });
-
-    // Enhanced gameState handler with proper merging
-    newSocket.on('gameState', (state: any) => {
-      setGameState((prev: any) => {
-        // Ensure we preserve essential structure
-        const newState = {
-          ...prev,
-          ...state,
-          players: state.players && Array.isArray(state.players) && state.players.length > 0 
-            ? state.players 
-            : prev.players // Keep existing players if new state doesn't have valid players
-        };
-        
-        // Additional validation for players structure
-        if (newState.players && Array.isArray(newState.players)) {
-          newState.players = newState.players.map((player: any, index: number) => ({
-            id: player.id !== undefined ? player.id : index,
-            color: player.color || ['red', 'blue', 'green', 'yellow'][index],
-            name: player.name || ['Red', 'Blue', 'Green', 'Yellow'][index],
-            coins: Array.isArray(player.coins) ? player.coins : [0, 0, 0, 0]
-          }));
-        }
-        
-        return newState;
-      });
+    if (!socket) return;
+    
+    // Setup all your game room socket listeners here
+    socket.on('gameState', (gameState:any) => {
+      // Handle game state updates
     });
-
-    newSocket.on('playerJoined', ({ player }: any) => setPlayers(prev => [...prev, player]));
-    newSocket.on('diceRolled', ({ diceValue }: any) => setGameState((prev: any) => ({ ...prev, diceValue })));
-    newSocket.on('coinMoved', ({ coins, currentTurn }: any) => setGameState((prev: any) => ({ ...prev, coins, currentTurn })));
-    newSocket.on('gameStarted', () => setGameState((prev: any) => ({ ...prev, gameStarted: true })));
-    newSocket.on('gameOver', ({ winner }: any) => setGameState((prev: any) => ({ ...prev, gameOver: true, winner })));
-    newSocket.on('chatMessage', (message: any) => setMessages(prev => [...prev, message]));
-
+    
+    socket.on('playerJoined', (player:any) => {
+      // Handle new player
+    });
+    
     return () => {
-      newSocket.disconnect();
-    }
-  }, [roomId]);
+      // Clean up listeners but don't disconnect socket
+      socket.off('gameState');
+      socket.off('playerJoined');
+    };
+  }, [socket, roomId]);
+
+  // useEffect(() => {
+  //   const newSocket = io('https://alu-globe-gameroom.onrender.com');
+  //   setSocket(newSocket);
+
+  //   const playerId = localStorage.getItem('playerId') || `player-${Math.random().toString(36).substr(2, 9)}`;
+  //   localStorage.setItem('playerId', playerId);
+  //   setCurrentPlayerId(playerId);
+
+  //   newSocket.emit('joinGame', { roomId, playerId: localStorage.getItem('userId') });
+
+  //   // Enhanced gameState handler with proper merging
+  //   newSocket.on('gameState', (state: any) => {
+  //     setGameState((prev: any) => {
+  //       // Ensure we preserve essential structure
+  //       const newState = {
+  //         ...prev,
+  //         ...state,
+  //         players: state.players && Array.isArray(state.players) && state.players.length > 0 
+  //           ? state.players 
+  //           : prev.players // Keep existing players if new state doesn't have valid players
+  //       };
+        
+  //       // Additional validation for players structure
+  //       if (newState.players && Array.isArray(newState.players)) {
+  //         newState.players = newState.players.map((player: any, index: number) => ({
+  //           id: player.id !== undefined ? player.id : index,
+  //           color: player.color || ['red', 'blue', 'green', 'yellow'][index],
+  //           name: player.name || ['Red', 'Blue', 'Green', 'Yellow'][index],
+  //           coins: Array.isArray(player.coins) ? player.coins : [0, 0, 0, 0]
+  //         }));
+  //       }
+        
+  //       return newState;
+  //     });
+  //   });
+
+  //   newSocket.on('playerJoined', ({ player }: any) => setPlayers(prev => [...prev, player]));
+  //   newSocket.on('diceRolled', ({ diceValue }: any) => setGameState((prev: any) => ({ ...prev, diceValue })));
+  //   newSocket.on('coinMoved', ({ coins, currentTurn }: any) => setGameState((prev: any) => ({ ...prev, coins, currentTurn })));
+  //   newSocket.on('gameStarted', () => setGameState((prev: any) => ({ ...prev, gameStarted: true })));
+  //   newSocket.on('gameOver', ({ winner }: any) => setGameState((prev: any) => ({ ...prev, gameOver: true, winner })));
+  //   newSocket.on('chatMessage', (message: any) => setMessages(prev => [...prev, message]));
+
+  //   return () => {
+  //     newSocket.disconnect();
+  //   }
+  // }, [roomId]);
 
   const handleRollDice = () => {
     if (socket && gameState?.currentTurn === currentPlayerId && gameState.diceValue === 0) {

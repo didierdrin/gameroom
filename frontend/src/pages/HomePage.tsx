@@ -4,6 +4,7 @@ import { SearchIcon, FilterIcon } from "lucide-react";
 import io from "socket.io-client";
 import { GameRoomList } from "../components/GameRoom/GameRoomList";
 import { SectionTitle } from "../components/UI/SectionTitle";
+import { useSocket } from "../SocketContext";
 
 // Define types for better TypeScript support
 interface GameRoom {
@@ -136,68 +137,10 @@ export const HomePage = () => {
 
   const [loading, setLoading] = useState(true);
 const [error, setError] = useState('');
+const socket = useSocket();
+  
 
 // Updated socket logic in HomePage.tsx
-
-useEffect(() => {
-  const socket = io('https://alu-globe-gameroom.onrender.com', {
-    transports: ['websocket'],
-    reconnection: true,
-  });
-
-  socket.on('connect', () => {
-    console.log('Connected to socket server');
-    socket.emit('getGameRooms');
-  });
-
-  socket.on('gameRoomsList', (payload: { rooms: GameRoom[] }) => {
-    setLoading(false);
-    const rooms = payload.rooms;
-    const now = new Date();
-    
-    console.log('Received rooms:', rooms); // Debug log
-    
-    // Filter rooms based on scheduledTimeCombined
-    const live = rooms.filter(r => {
-      // If no scheduledTimeCombined, it's a live room
-      if (!r.scheduledTimeCombined) {
-        console.log(`Room ${r.name} has no scheduled time - adding to live`);
-        return true;
-      }
-      
-      const scheduled = new Date(r.scheduledTimeCombined);
-      const isLive = scheduled <= now;
-      console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isLive: ${isLive}`);
-      return isLive;
-    });
-    
-    const upcoming = rooms.filter(r => {
-      // If no scheduledTimeCombined, it's not upcoming
-      if (!r.scheduledTimeCombined) {
-        return false;
-      }
-      
-      const scheduled = new Date(r.scheduledTimeCombined);
-      const isUpcoming = scheduled > now;
-      console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isUpcoming: ${isUpcoming}`);
-      return isUpcoming;
-    });
-    
-    console.log(`Live rooms: ${live.length}, Upcoming rooms: ${upcoming.length}`);
-    setLiveRooms(live);
-    setUpcomingRooms(upcoming);
-  });
-
-  socket.on('error', (err: any) => {
-    setLoading(false);
-    setError('Failed to fetch game rooms');
-    console.error('Socket error:', err);
-  });
-
-  return () => {
-    socket.disconnect();
-  };
-}, []);
 
 // useEffect(() => {
 //   const socket = io('https://alu-globe-gameroom.onrender.com', {
@@ -210,42 +153,43 @@ useEffect(() => {
 //     socket.emit('getGameRooms');
 //   });
 
-//   // socket.on('gameRoomsList', (payload: { rooms: GameRoom[] }) => {
-//   //   setLoading(false);
-//   //   const rooms = payload.rooms;
-//   //   // const now = new Date().toISOString();
-//   //   // const live = rooms.filter(r => !r.startTime || r.startTime < now);
-//   //   // const upcoming = rooms.filter(r => r.startTime && r.startTime > now);
-//   //   const now = new Date();
-
-//   //   const live = rooms.filter(r => !r.startTime || new Date(r.startTime) <= now);
-//   //   const upcoming = rooms.filter(r => r.startTime && new Date(r.startTime) > now);
-    
-//   //   setLiveRooms(live);
-//   //   setUpcomingRooms(upcoming);
-//   // });
-
 //   socket.on('gameRoomsList', (payload: { rooms: GameRoom[] }) => {
 //     setLoading(false);
 //     const rooms = payload.rooms;
 //     const now = new Date();
-  
+    
+//     console.log('Received rooms:', rooms); // Debug log
+    
+//     // Filter rooms based on scheduledTimeCombined
 //     const live = rooms.filter(r => {
-//       if (!r.scheduledTimeCombined) return true;
+//       // If no scheduledTimeCombined, it's a live room
+//       if (!r.scheduledTimeCombined) {
+//         console.log(`Room ${r.name} has no scheduled time - adding to live`);
+//         return true;
+//       }
+      
 //       const scheduled = new Date(r.scheduledTimeCombined);
-//       return scheduled <= now;
+//       const isLive = scheduled <= now;
+//       console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isLive: ${isLive}`);
+//       return isLive;
 //     });
-  
+    
 //     const upcoming = rooms.filter(r => {
-//       if (!r.scheduledTimeCombined) return false;
+//       // If no scheduledTimeCombined, it's not upcoming
+//       if (!r.scheduledTimeCombined) {
+//         return false;
+//       }
+      
 //       const scheduled = new Date(r.scheduledTimeCombined);
-//       return scheduled > now;
+//       const isUpcoming = scheduled > now;
+//       console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isUpcoming: ${isUpcoming}`);
+//       return isUpcoming;
 //     });
-  
+    
+//     console.log(`Live rooms: ${live.length}, Upcoming rooms: ${upcoming.length}`);
 //     setLiveRooms(live);
 //     setUpcomingRooms(upcoming);
 //   });
-  
 
 //   socket.on('error', (err: any) => {
 //     setLoading(false);
@@ -259,24 +203,20 @@ useEffect(() => {
 // }, []);
 
 
-
   // Get current user ID (this should come from your auth context/store)
   const getCurrentUserId = () => {
     return (
-      localStorage.getItem("playerId") ||
-      `player-${Math.random().toString(36).substr(2, 9)}`
+      localStorage.getItem("playerId")
     );
   };
 
 
-  // Updated join room handler that receives the game room as parameter
+
+ 
   const handleJoinRoom = (gameRoom: GameRoom) => {
     const { id, isPrivate, isInviteOnly } = gameRoom;
     const playerId = getCurrentUserId();
     
-    console.log(`Attempting to join room ${id} as player ${playerId}`);
-  
-    // Set up payload according to backend expectations
     const payload = {
       roomId: id,
       playerId,
@@ -289,85 +229,129 @@ useEffect(() => {
       payload.password = password;
     }
   
-    const socket = io("https://alu-globe-gameroom.onrender.com", {
-      transports: ['websocket'],
-      reconnection: true,
-      autoConnect: false
-    });
+    if (!socket) {
+      alert("Connection error. Please refresh and try again.");
+      return;
+    }
   
-    // Set up timeout with more detailed logging
     const timeout = setTimeout(() => {
-      console.error("Join timeout - Possible issues:", {
-        roomId: id,
-        connected: socket.connected,
-        serverResponded: false
-      });
-      
-      // Force navigation even if we don't get a response
-      console.log("Forcing navigation to game room after timeout");
       navigate(`/game-room/${id}`);
-      
-      socket.disconnect();
-    }, 5000); // Reduced timeout to 5 seconds
+    }, 5000);
   
-    // Event listeners
-    socket.on("connect", () => {
-      console.log("Socket connected, emitting joinGame with payload:", payload);
-      socket.emit("joinGame", payload);
-      
-      // Add fallback navigation in case we don't get playerJoined event
-      setTimeout(() => {
-        if (!socket.hasListeners('playerJoined')) {
-          console.log("Fallback navigation after emit");
-          navigate(`/game-room/${id}`);
-        }
-      }, 5000); // Wait 5 seconds after emitting, 2 seconds disconnected earlier
-    });
-  
-    socket.on("playerJoined", (data: any) => {
-      console.log("playerJoined event received. Data:", data);
+    socket.emit("joinGame", payload);
+    
+    socket.once("playerJoined", (data: any) => {
       clearTimeout(timeout);
-      
-      // Navigate using either the response roomId or our original id
       const targetRoomId = data?.roomId || id;
-      console.log(`Navigating to /game-room/${targetRoomId}`);
       navigate(`/game-room/${targetRoomId}`);
-      
-      setTimeout(() => {
-        socket.disconnect();
-        console.log("Socket disconnected after navigation");
-      }, 100);
     });
   
-    socket.on("error", (error: any) => {
-      console.error("Join error:", error);
+    socket.once("error", (error: any) => {
       clearTimeout(timeout);
       alert(typeof error === 'string' ? error : "Failed to join game room");
-      
-      // Still navigate even on error (you might want to remove this if it's problematic)
-      navigate(`/game-room/${id}`);
-      
-      socket.disconnect();
     });
-  
-    socket.on("connect_error", (error: any) => {
-      console.error("Connection error:", error);
-      clearTimeout(timeout);
-      alert("Failed to connect to game server");
-      
-      // Still attempt navigation
-      navigate(`/game-room/${id}`);
-    });
-  
-    // Additional debug events
-    socket.on("disconnect", (reason: any) => {
-      console.log("Socket disconnected. Reason:", reason);
-    });
-  
-    // Connect to socket
-    console.log("Initiating socket connection...");
-    socket.connect();
   };
+
+
+  // Updated join room handler that receives the game room as parameter
+  // const handleJoinRoom = (gameRoom: GameRoom) => {
+  //   const { id, isPrivate, isInviteOnly } = gameRoom;
+  //   const playerId = getCurrentUserId();
+    
+  //   console.log(`Attempting to join room ${id} as player ${playerId}`);
+  
+  //   // Set up payload according to backend expectations
+  //   const payload = {
+  //     roomId: id,
+  //     playerId,
+  //     password: undefined as string | undefined
+  //   };
+  
+  //   if (isPrivate || isInviteOnly) {
+  //     const password = prompt("Enter room password:");
+  //     if (!password) return;
+  //     payload.password = password;
+  //   }
+  
+  //   const socket = io("https://alu-globe-gameroom.onrender.com", {
+  //     transports: ['websocket'],
+  //     reconnection: true,
+  //     autoConnect: false
+  //   });
+  
+  //   // Set up timeout with more detailed logging
+  //   const timeout = setTimeout(() => {
+  //     console.error("Join timeout - Possible issues:", {
+  //       roomId: id,
+  //       connected: socket.connected,
+  //       serverResponded: false
+  //     });
+      
+  //     // Force navigation even if we don't get a response
+  //     console.log("Forcing navigation to game room after timeout");
+  //     navigate(`/game-room/${id}`);
+      
+  //     socket.disconnect();
+  //   }, 5000); // Reduced timeout to 5 seconds
+  
+  //   // Event listeners
+  //   socket.on("connect", () => {
+  //     console.log("Socket connected, emitting joinGame with payload:", payload);
+  //     socket.emit("joinGame", payload);
+      
+  //     // Add fallback navigation in case we don't get playerJoined event
+  //     setTimeout(() => {
+  //       if (!socket.hasListeners('playerJoined')) {
+  //         console.log("Fallback navigation after emit");
+  //         navigate(`/game-room/${id}`);
+  //       }
+  //     }, 5000); // Wait 5 seconds after emitting, 2 seconds disconnected earlier
+  //   });
+  
+  //   socket.on("playerJoined", (data: any) => {
+  //     console.log("playerJoined event received. Data:", data);
+  //     clearTimeout(timeout);
+      
+  //     // Navigate using either the response roomId or our original id
+  //     const targetRoomId = data?.roomId || id;
+  //     console.log(`Navigating to /game-room/${targetRoomId}`);
+  //     navigate(`/game-room/${targetRoomId}`);
+      
+  //     setTimeout(() => {
+  //       socket.disconnect();
+  //       console.log("Socket disconnected after navigation");
+  //     }, 100);
+  //   });
+  
+  //   socket.on("error", (error: any) => {
+  //     console.error("Join error:", error);
+  //     clearTimeout(timeout);
+  //     alert(typeof error === 'string' ? error : "Failed to join game room");
+      
+  //     // Still navigate even on error (you might want to remove this if it's problematic)
+  //     navigate(`/game-room/${id}`);
+      
+  //     socket.disconnect();
+  //   });
+  
+  //   socket.on("connect_error", (error: any) => {
+  //     console.error("Connection error:", error);
+  //     clearTimeout(timeout);
+  //     alert("Failed to connect to game server");
+      
+  //     // Still attempt navigation
+  //     navigate(`/game-room/${id}`);
+  //   });
+  
+  //   // Additional debug events
+  //   socket.on("disconnect", (reason: any) => {
+  //     console.log("Socket disconnected. Reason:", reason);
+  //   });
+  
+  //   // Connect to socket
+  //   console.log("Initiating socket connection...");
+  //   socket.connect();
+  // };
   
   
 

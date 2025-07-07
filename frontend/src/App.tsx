@@ -6,6 +6,7 @@ import { ToastContainer } from 'react-toastify';
 import { router } from './routes';
 import { ErrorBoundary } from './components/UI/ErrorBoundary';
 import 'react-toastify/dist/ReactToastify.css';
+import { SocketProvider } from './SocketContext';
 
 export function App() {
   useEffect(() => {
@@ -23,6 +24,7 @@ export function App() {
   }, []);
 
   return (
+    <SocketProvider>
     <ErrorBoundary>
       <div className="flex w-full min-h-screen bg-gray-900 text-white">
         <RouterProvider router={router} />
@@ -40,6 +42,7 @@ export function App() {
         />
       </div>
     </ErrorBoundary>
+    </SocketProvider>
   );
 }
 
