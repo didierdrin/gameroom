@@ -5,6 +5,7 @@ import io from "socket.io-client";
 import { GameRoomList } from "../components/GameRoom/GameRoomList";
 import { SectionTitle } from "../components/UI/SectionTitle";
 import { useSocket } from "../SocketContext";
+import { useAuth } from "../hooks/useAuth";
 
 interface GameRoom {
   id: string;
@@ -63,6 +64,7 @@ export const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const socket = useSocket();
+  const { user } = useAuth();
 
   // Fetch game rooms when socket is available
   useEffect(() => {
@@ -125,24 +127,32 @@ export const HomePage = () => {
   // FIXED: handleJoinRoom function
   const handleJoinRoom = (gameRoom: GameRoom) => {
     const { id, isPrivate, isInviteOnly } = gameRoom;
-    const playerId = getCurrentUserId();
     
-    if (!playerId) {
+    if (!user) {
       alert("Please login to join a game room");
+      navigate('/login'); // Explicit navigation
       return;
     }
+
+    // const playerId = getCurrentUserId();
+    
+    // if (!playerId) {
+    //   alert("Please login to join a game room");
+    //   return;
+    // }
 
     if (!socket) {
       alert("Connection error. Please refresh and try again.");
       return;
     }
 
-    console.log(`Attempting to join room ${id} as player ${playerId}`);
+    console.log(`Attempting to join room ${id} as player ${user.id}`);
     
     // Prepare payload
     const payload = {
       roomId: id, // Use the id which now maps to roomId from backend
-      playerId,
+      playerId: user.id,
+      playerName: user.username,
       password: undefined as string | undefined
     };
 
@@ -163,11 +173,11 @@ export const HomePage = () => {
       
       // Navigate to game room
       const targetRoomId = data?.roomId || id;
-      // navigate(`/game-room/${targetRoomId}`);
+      navigate(`/game-room/${targetRoomId}`);
 
-      setTimeout(() => {
-        navigate(`/game-room/${targetRoomId}`);
-      }, 4000);
+      // setTimeout(() => {
+      //   navigate(`/game-room/${targetRoomId}`);
+      // }, 4000);
       
     };
 
