@@ -382,12 +382,12 @@ export class GameService {
     await gameSession.save();
   }
 
-  async getGameRoomById(roomId: string) {
-    // const room = await this.gameRoomModel.findOne({ roomId });
-    const room = await this.gameRoomModel.findOne({ roomId }).exec();
-    if (!room) throw new Error('Game room not found');
-    return room;
-  }
+  // async getGameRoomById(roomId: string) {
+  //   // const room = await this.gameRoomModel.findOne({ roomId });
+  //   const room = await this.gameRoomModel.findOne({ roomId }).exec();
+  //   if (!room) throw new Error('Game room not found');
+  //   return room;
+  // }
   
   async getScores(roomId: string) {
     const room = await this.gameRoomModel.findOne({ roomId });
@@ -439,17 +439,44 @@ export class GameService {
 // }
 
 
+// Update the getGameRoomById method to handle both roomId and _id
+async getGameRoomById(identifier: string) {
+  try {
+    console.log(`Looking for game room with identifier: ${identifier}`);
+    
+    // First try to find by roomId
+    let room = await this.gameRoomModel.findOne({ roomId: identifier }).exec();
+    
+    // If not found by roomId, try by _id (MongoDB ObjectId)
+    if (!room && Types.ObjectId.isValid(identifier)) {
+      room = await this.gameRoomModel.findById(identifier).exec();
+    }
+    
+    if (!room) {
+      console.error(`Game room not found for identifier: ${identifier}`);
+      return null;
+    }
+    
+    console.log(`Found room: ${room.name} (${room.roomId})`);
+    return room;
+  } catch (error) {
+    console.error('Error finding game room:', error);
+    return null;
+  }
+}
+
+// Update the getActiveGameRooms method to return roomId as id
 async getActiveGameRooms(): Promise<PublicGameRoom[]> {
   const rooms = await this.gameRoomModel
     .find({
       status: { $in: ['waiting', 'in-progress'] },
     })
-    .sort({ createdAt: -1 }) // 🔥 Sort by newest first
+    .sort({ createdAt: -1 })
     .lean()
     .exec();
 
   return rooms.map(room => ({
-    id: room._id.toString(),
+    id: room.roomId, // ✅ Use roomId as id for frontend
     roomId: room.roomId,
     name: room.name,
     gameType: room.gameType,
@@ -463,11 +490,38 @@ async getActiveGameRooms(): Promise<PublicGameRoom[]> {
     host: room.host,
     scores: Object.fromEntries((room.scores as any)?.entries?.() || []),
     scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : '',
-    //   scheduledTimeCombined: room.scheduledTime 
-  // ? new Date(room.scheduledTime).toLocaleString() 
-  // : '',
   }));
 }
+
+// async getActiveGameRooms(): Promise<PublicGameRoom[]> {
+//   const rooms = await this.gameRoomModel
+//     .find({
+//       status: { $in: ['waiting', 'in-progress'] },
+//     })
+//     .sort({ createdAt: -1 }) // 🔥 Sort by newest first
+//     .lean()
+//     .exec();
+
+//   return rooms.map(room => ({
+//     id: room._id.toString(),
+//     roomId: room.roomId,
+//     name: room.name,
+//     gameType: room.gameType,
+//     hostName: room.host,
+//     hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
+//     currentPlayers: room.currentPlayers,
+//     maxPlayers: room.maxPlayers,
+//     isPrivate: room.isPrivate,
+//     isInviteOnly: room.isPrivate,
+//     status: room.status,
+//     host: room.host,
+//     scores: Object.fromEntries((room.scores as any)?.entries?.() || []),
+//     scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : '',
+//     //   scheduledTimeCombined: room.scheduledTime 
+//   // ? new Date(room.scheduledTime).toLocaleString() 
+//   // : '',
+//   }));
+// }
 
   
 

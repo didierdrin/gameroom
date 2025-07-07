@@ -6,9 +6,9 @@ import { GameRoomList } from "../components/GameRoom/GameRoomList";
 import { SectionTitle } from "../components/UI/SectionTitle";
 import { useSocket } from "../SocketContext";
 
-// Define types for better TypeScript support
 interface GameRoom {
   id: string;
+  roomId: string; 
   name: string;
   gameType: string;
   hostName: string;
@@ -31,80 +31,6 @@ interface Tournament {
   banner: string;
 }
 
-// Mock data for demonstration
-const MOCK_LIVE_GAME_ROOMS: GameRoom[] = [
-  {
-    id: "",
-    name: "Trivia Night!",
-    gameType: "Trivia",
-    hostName: "Sarah",
-    hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-    currentPlayers: 8,
-    maxPlayers: 15,
-    isPrivate: false,
-    isInviteOnly: false,
-  },
-  {
-    id: "",
-    name: "Chess Tournament",
-    gameType: "Chess",
-    hostName: "Michael",
-    hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
-    currentPlayers: 6,
-    maxPlayers: 10,
-    isPrivate: false,
-    isInviteOnly: true,
-  },
-  {
-    id: "",
-    name: "UNO Championship",
-    gameType: "UNO",
-    hostName: "Jessica",
-    hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica",
-    currentPlayers: 3,
-    maxPlayers: 4,
-    isPrivate: true,
-    isInviteOnly: false,
-  },
-  {
-    id: "",
-    name: "Kahoot: ALU History",
-    gameType: "Kahoot",
-    hostName: "Professor David",
-    hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
-    currentPlayers: 12,
-    maxPlayers: 30,
-    isPrivate: false,
-    isInviteOnly: false,
-  },
-];
-
-const MOCK_UPCOMING_GAME_ROOMS: GameRoom[] = [
-  {
-    id: "",
-    name: "Pictionary Challenge",
-    gameType: "Pictionary",
-    hostName: "Emma",
-    hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma",
-    currentPlayers: 0,
-    maxPlayers: 12,
-    isPrivate: false,
-    isInviteOnly: false,
-    startTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes from now
-  },
-  {
-    id: "",
-    name: "Debate Club Trivia",
-    gameType: "Trivia",
-    hostName: "Daniel",
-    hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Daniel",
-    currentPlayers: 0,
-    maxPlayers: 20,
-    isPrivate: false,
-    isInviteOnly: true,
-    startTime: new Date(Date.now() + 25 * 60 * 1000).toISOString(), // 25 minutes from now
-  },
-];
 
 const MOCK_TOURNAMENTS: Tournament[] = [
   {
@@ -134,174 +60,321 @@ export const HomePage = () => {
   const navigate = useNavigate();
   const [liveRooms, setLiveRooms] = useState<GameRoom[]>([]);
   const [upcomingRooms, setUpcomingRooms] = useState<GameRoom[]>([]);
-
   const [loading, setLoading] = useState(true);
-const [error, setError] = useState('');
-const socket = useSocket();
+  const [error, setError] = useState('');
+  const socket = useSocket();
+
+  // Fetch game rooms when socket is available
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleGameRoomsList = (payload: { rooms: GameRoom[] }) => {
+      setLoading(false);
+      const rooms = payload.rooms;
+      const now = new Date();
+      
+      console.log('Received rooms:', rooms);
+      
+      // Filter rooms based on scheduledTimeCombined
+      const live = rooms.filter(r => {
+        if (!r.scheduledTimeCombined) return true;
+        const scheduled = new Date(r.scheduledTimeCombined);
+        return scheduled <= now;
+      });
+      
+      const upcoming = rooms.filter(r => {
+        if (!r.scheduledTimeCombined) return false;
+        const scheduled = new Date(r.scheduledTimeCombined);
+        return scheduled > now;
+      });
+      
+      setLiveRooms(live);
+      setUpcomingRooms(upcoming);
+    };
+
+    const handleError = (err: any) => {
+      setLoading(false);
+      setError('Failed to fetch game rooms');
+      console.error('Socket error:', err);
+    };
+
+    socket.on('connect', () => {
+      console.log('Connected to socket server');
+      socket.emit('getGameRooms');
+    });
+
+    socket.on('gameRoomsList', handleGameRoomsList);
+    socket.on('error', handleError);
+
+    // Initial fetch
+    if (socket.connected) {
+      socket.emit('getGameRooms');
+    }
+
+    return () => {
+      socket.off('gameRoomsList', handleGameRoomsList);
+      socket.off('error', handleError);
+    };
+  }, [socket]);
+
+  // Get current user ID
+  const getCurrentUserId = () => {
+    return localStorage.getItem("playerId");
+  };
+
+  // FIXED: handleJoinRoom function
+  const handleJoinRoom = (gameRoom: GameRoom) => {
+    const { id, isPrivate, isInviteOnly } = gameRoom;
+    const playerId = getCurrentUserId();
+    
+    if (!playerId) {
+      alert("Please login to join a game room");
+      return;
+    }
+
+    if (!socket) {
+      alert("Connection error. Please refresh and try again.");
+      return;
+    }
+
+    console.log(`Attempting to join room ${id} as player ${playerId}`);
+    
+    // Prepare payload
+    const payload = {
+      roomId: id, // Use the id which now maps to roomId from backend
+      playerId,
+      password: undefined as string | undefined
+    };
+
+    // Handle private rooms
+    if (isPrivate || isInviteOnly) {
+      const password = prompt("Enter room password:");
+      if (!password) return;
+      payload.password = password;
+    }
+
+    // Set up event listeners before emitting
+    const handlePlayerJoined = (data: any) => {
+      console.log("Successfully joined room:", data);
+      
+      // Clean up listeners
+      socket.off("playerJoined", handlePlayerJoined);
+      socket.off("error", handleJoinError);
+      
+      // Navigate to game room
+      const targetRoomId = data?.roomId || id;
+      navigate(`/game-room/${targetRoomId}`);
+    };
+
+    const handleJoinError = (error: any) => {
+      console.error("Join error:", error);
+      
+      // Clean up listeners
+      socket.off("playerJoined", handlePlayerJoined);
+      socket.off("error", handleJoinError);
+      
+      // Show error message
+      const errorMessage = error?.message || error || "Failed to join game room";
+      alert(errorMessage);
+    };
+
+    // Set up listeners
+    socket.once("playerJoined", handlePlayerJoined);
+    socket.once("error", handleJoinError);
+
+    // Emit join request
+    console.log("Emitting joinGame with payload:", payload);
+    socket.emit("joinGame", payload);
+
+    // Optional: Set up a timeout as backup
+    const timeout = setTimeout(() => {
+      console.warn("Join request timed out");
+      socket.off("playerJoined", handlePlayerJoined);
+      socket.off("error", handleJoinError);
+      
+      // You can choose to navigate anyway or show an error
+      // navigate(`/game-room/${id}`); // Uncomment if you want to navigate anyway
+      alert("Join request timed out. Please try again.");
+    }, 10000); // 10 second timeout
+
+    // Clear timeout if we get a response
+    socket.once("playerJoined", () => clearTimeout(timeout));
+    socket.once("error", () => clearTimeout(timeout));
+  };
+
+  
+//   const [searchQuery, setSearchQuery] = useState("");
+//   const navigate = useNavigate();
+//   const [liveRooms, setLiveRooms] = useState<GameRoom[]>([]);
+//   const [upcomingRooms, setUpcomingRooms] = useState<GameRoom[]>([]);
+
+//   const [loading, setLoading] = useState(true);
+// const [error, setError] = useState('');
+// const socket = useSocket();
   
 
-// Fetch game rooms when socket is available
-useEffect(() => {
-  if (!socket) return;
-
-  const handleGameRoomsList = (payload: { rooms: GameRoom[] }) => {
-    setLoading(false);
-    const rooms = payload.rooms;
-    const now = new Date();
-    
-    // Filter rooms based on scheduledTimeCombined
-    const live = rooms.filter(r => {
-      if (!r.scheduledTimeCombined) return true;
-      const scheduled = new Date(r.scheduledTimeCombined);
-      return scheduled <= now;
-    });
-    
-    const upcoming = rooms.filter(r => {
-      if (!r.scheduledTimeCombined) return false;
-      const scheduled = new Date(r.scheduledTimeCombined);
-      return scheduled > now;
-    });
-    
-    setLiveRooms(live);
-    setUpcomingRooms(upcoming);
-  };
-
-  const handleError = (err: any) => {
-    setLoading(false);
-    setError('Failed to fetch game rooms');
-    console.error('Socket error:', err);
-  };
-
-  socket.on('connect', () => {
-    console.log('Connected to socket server');
-    socket.emit('getGameRooms');
-  });
-
-  socket.on('gameRoomsList', handleGameRoomsList);
-  socket.on('error', handleError);
-
-  // Initial fetch
-  if (socket.connected) {
-    socket.emit('getGameRooms');
-  }
-
-  return () => {
-    socket.off('gameRoomsList', handleGameRoomsList);
-    socket.off('error', handleError);
-  };
-}, [socket]);
-
-// Updated socket logic in HomePage.tsx
-
+// // Fetch game rooms when socket is available
 // useEffect(() => {
-//   const socket = io('https://alu-globe-gameroom.onrender.com', {
-//     transports: ['websocket'],
-//     reconnection: true,
-//   });
+//   if (!socket) return;
+
+//   const handleGameRoomsList = (payload: { rooms: GameRoom[] }) => {
+//     setLoading(false);
+//     const rooms = payload.rooms;
+//     const now = new Date();
+    
+//     // Filter rooms based on scheduledTimeCombined
+//     const live = rooms.filter(r => {
+//       if (!r.scheduledTimeCombined) return true;
+//       const scheduled = new Date(r.scheduledTimeCombined);
+//       return scheduled <= now;
+//     });
+    
+//     const upcoming = rooms.filter(r => {
+//       if (!r.scheduledTimeCombined) return false;
+//       const scheduled = new Date(r.scheduledTimeCombined);
+//       return scheduled > now;
+//     });
+    
+//     setLiveRooms(live);
+//     setUpcomingRooms(upcoming);
+//   };
+
+//   const handleError = (err: any) => {
+//     setLoading(false);
+//     setError('Failed to fetch game rooms');
+//     console.error('Socket error:', err);
+//   };
 
 //   socket.on('connect', () => {
 //     console.log('Connected to socket server');
 //     socket.emit('getGameRooms');
 //   });
 
-//   socket.on('gameRoomsList', (payload: { rooms: GameRoom[] }) => {
-//     setLoading(false);
-//     const rooms = payload.rooms;
-//     const now = new Date();
-    
-//     console.log('Received rooms:', rooms); // Debug log
-    
-//     // Filter rooms based on scheduledTimeCombined
-//     const live = rooms.filter(r => {
-//       // If no scheduledTimeCombined, it's a live room
-//       if (!r.scheduledTimeCombined) {
-//         console.log(`Room ${r.name} has no scheduled time - adding to live`);
-//         return true;
-//       }
-      
-//       const scheduled = new Date(r.scheduledTimeCombined);
-//       const isLive = scheduled <= now;
-//       console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isLive: ${isLive}`);
-//       return isLive;
-//     });
-    
-//     const upcoming = rooms.filter(r => {
-//       // If no scheduledTimeCombined, it's not upcoming
-//       if (!r.scheduledTimeCombined) {
-//         return false;
-//       }
-      
-//       const scheduled = new Date(r.scheduledTimeCombined);
-//       const isUpcoming = scheduled > now;
-//       console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isUpcoming: ${isUpcoming}`);
-//       return isUpcoming;
-//     });
-    
-//     console.log(`Live rooms: ${live.length}, Upcoming rooms: ${upcoming.length}`);
-//     setLiveRooms(live);
-//     setUpcomingRooms(upcoming);
-//   });
+//   socket.on('gameRoomsList', handleGameRoomsList);
+//   socket.on('error', handleError);
 
-//   socket.on('error', (err: any) => {
-//     setLoading(false);
-//     setError('Failed to fetch game rooms');
-//     console.error('Socket error:', err);
-//   });
+//   // Initial fetch
+//   if (socket.connected) {
+//     socket.emit('getGameRooms');
+//   }
 
 //   return () => {
-//     socket.disconnect();
+//     socket.off('gameRoomsList', handleGameRoomsList);
+//     socket.off('error', handleError);
 //   };
-// }, []);
+// }, [socket]);
 
+// // Updated socket logic in HomePage.tsx
 
-  // Get current user ID (this should come from your auth context/store)
-  const getCurrentUserId = () => {
-    return (
-      localStorage.getItem("playerId")
-    );
-  };
+// // useEffect(() => {
+// //   const socket = io('https://alu-globe-gameroom.onrender.com', {
+// //     transports: ['websocket'],
+// //     reconnection: true,
+// //   });
 
+// //   socket.on('connect', () => {
+// //     console.log('Connected to socket server');
+// //     socket.emit('getGameRooms');
+// //   });
 
-
-  const handleJoinRoom = (gameRoom: GameRoom) => {
-    const { id: roomId, isPrivate, isInviteOnly } = gameRoom; // Note the alias here
-    const playerId = getCurrentUserId();
+// //   socket.on('gameRoomsList', (payload: { rooms: GameRoom[] }) => {
+// //     setLoading(false);
+// //     const rooms = payload.rooms;
+// //     const now = new Date();
     
-    const payload = {
-      roomId,  // Now correctly using the string ID
-      playerId,
-      password: undefined as string | undefined
-    };
-  
-    if (isPrivate || isInviteOnly) {
-      const password = prompt("Enter room password:");
-      if (!password) return;
-      payload.password = password;
-    }
-  
-    if (!socket) {
-      alert("Connection error. Please refresh and try again.");
-      return;
-    }
-  
-    const timeout = setTimeout(() => {
-      navigate(`/game-room/${roomId}`);
-    }, 5000);
-  
-    socket.emit("joinGame", payload);
+// //     console.log('Received rooms:', rooms); // Debug log
     
-    socket.once("playerJoined", (data: any) => {
-      clearTimeout(timeout);
-      const targetRoomId = data?.roomId || roomId;
-      navigate(`/game-room/${targetRoomId}`);
-    });
+// //     // Filter rooms based on scheduledTimeCombined
+// //     const live = rooms.filter(r => {
+// //       // If no scheduledTimeCombined, it's a live room
+// //       if (!r.scheduledTimeCombined) {
+// //         console.log(`Room ${r.name} has no scheduled time - adding to live`);
+// //         return true;
+// //       }
+      
+// //       const scheduled = new Date(r.scheduledTimeCombined);
+// //       const isLive = scheduled <= now;
+// //       console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isLive: ${isLive}`);
+// //       return isLive;
+// //     });
+    
+// //     const upcoming = rooms.filter(r => {
+// //       // If no scheduledTimeCombined, it's not upcoming
+// //       if (!r.scheduledTimeCombined) {
+// //         return false;
+// //       }
+      
+// //       const scheduled = new Date(r.scheduledTimeCombined);
+// //       const isUpcoming = scheduled > now;
+// //       console.log(`Room ${r.name} scheduled for ${scheduled.toLocaleString()}, current time: ${now.toLocaleString()}, isUpcoming: ${isUpcoming}`);
+// //       return isUpcoming;
+// //     });
+    
+// //     console.log(`Live rooms: ${live.length}, Upcoming rooms: ${upcoming.length}`);
+// //     setLiveRooms(live);
+// //     setUpcomingRooms(upcoming);
+// //   });
+
+// //   socket.on('error', (err: any) => {
+// //     setLoading(false);
+// //     setError('Failed to fetch game rooms');
+// //     console.error('Socket error:', err);
+// //   });
+
+// //   return () => {
+// //     socket.disconnect();
+// //   };
+// // }, []);
+
+
+//   // Get current user ID (this should come from your auth context/store)
+//   const getCurrentUserId = () => {
+//     return (
+//       localStorage.getItem("playerId")
+//     );
+//   };
+
+
+
+//   const handleJoinRoom = (gameRoom: GameRoom) => {
+//     const { id: roomId, isPrivate, isInviteOnly } = gameRoom; // Note the alias here
+//     const playerId = getCurrentUserId();
+    
+//     const payload = {
+//       roomId,  // Now correctly using the string ID
+//       playerId,
+//       password: undefined as string | undefined
+//     };
   
-    socket.once("error", (error: any) => {
-      clearTimeout(timeout);
-      alert(typeof error === 'string' ? error : "Failed to join game room");
-      console.error('Join error:', error);
-    });
-  };
+//     if (isPrivate || isInviteOnly) {
+//       const password = prompt("Enter room password:");
+//       if (!password) return;
+//       payload.password = password;
+//     }
+  
+//     if (!socket) {
+//       alert("Connection error. Please refresh and try again.");
+//       return;
+//     }
+  
+//     const timeout = setTimeout(() => {
+//       navigate(`/game-room/${roomId}`);
+//     }, 5000);
+  
+//     socket.emit("joinGame", payload);
+    
+//     socket.once("playerJoined", (data: any) => {
+//       clearTimeout(timeout);
+//       const targetRoomId = data?.roomId || roomId;
+//       navigate(`/game-room/${targetRoomId}`);
+//     });
+  
+//     socket.once("error", (error: any) => {
+//       clearTimeout(timeout);
+//       alert(typeof error === 'string' ? error : "Failed to join game room");
+//       console.error('Join error:', error);
+//     });
+//   };
   
   // const handleJoinRoom = (gameRoom: GameRoom) => {
   //   const { id, isPrivate, isInviteOnly } = gameRoom;
@@ -343,106 +416,6 @@ useEffect(() => {
   // };
 
 
-  // Updated join room handler that receives the game room as parameter
-  // const handleJoinRoom = (gameRoom: GameRoom) => {
-  //   const { id, isPrivate, isInviteOnly } = gameRoom;
-  //   const playerId = getCurrentUserId();
-    
-  //   console.log(`Attempting to join room ${id} as player ${playerId}`);
-  
-  //   // Set up payload according to backend expectations
-  //   const payload = {
-  //     roomId: id,
-  //     playerId,
-  //     password: undefined as string | undefined
-  //   };
-  
-  //   if (isPrivate || isInviteOnly) {
-  //     const password = prompt("Enter room password:");
-  //     if (!password) return;
-  //     payload.password = password;
-  //   }
-  
-  //   const socket = io("https://alu-globe-gameroom.onrender.com", {
-  //     transports: ['websocket'],
-  //     reconnection: true,
-  //     autoConnect: false
-  //   });
-  
-  //   // Set up timeout with more detailed logging
-  //   const timeout = setTimeout(() => {
-  //     console.error("Join timeout - Possible issues:", {
-  //       roomId: id,
-  //       connected: socket.connected,
-  //       serverResponded: false
-  //     });
-      
-  //     // Force navigation even if we don't get a response
-  //     console.log("Forcing navigation to game room after timeout");
-  //     navigate(`/game-room/${id}`);
-      
-  //     socket.disconnect();
-  //   }, 5000); // Reduced timeout to 5 seconds
-  
-  //   // Event listeners
-  //   socket.on("connect", () => {
-  //     console.log("Socket connected, emitting joinGame with payload:", payload);
-  //     socket.emit("joinGame", payload);
-      
-  //     // Add fallback navigation in case we don't get playerJoined event
-  //     setTimeout(() => {
-  //       if (!socket.hasListeners('playerJoined')) {
-  //         console.log("Fallback navigation after emit");
-  //         navigate(`/game-room/${id}`);
-  //       }
-  //     }, 5000); // Wait 5 seconds after emitting, 2 seconds disconnected earlier
-  //   });
-  
-  //   socket.on("playerJoined", (data: any) => {
-  //     console.log("playerJoined event received. Data:", data);
-  //     clearTimeout(timeout);
-      
-  //     // Navigate using either the response roomId or our original id
-  //     const targetRoomId = data?.roomId || id;
-  //     console.log(`Navigating to /game-room/${targetRoomId}`);
-  //     navigate(`/game-room/${targetRoomId}`);
-      
-  //     setTimeout(() => {
-  //       socket.disconnect();
-  //       console.log("Socket disconnected after navigation");
-  //     }, 100);
-  //   });
-  
-  //   socket.on("error", (error: any) => {
-  //     console.error("Join error:", error);
-  //     clearTimeout(timeout);
-  //     alert(typeof error === 'string' ? error : "Failed to join game room");
-      
-  //     // Still navigate even on error (you might want to remove this if it's problematic)
-  //     navigate(`/game-room/${id}`);
-      
-  //     socket.disconnect();
-  //   });
-  
-  //   socket.on("connect_error", (error: any) => {
-  //     console.error("Connection error:", error);
-  //     clearTimeout(timeout);
-  //     alert("Failed to connect to game server");
-      
-  //     // Still attempt navigation
-  //     navigate(`/game-room/${id}`);
-  //   });
-  
-  //   // Additional debug events
-  //   socket.on("disconnect", (reason: any) => {
-  //     console.log("Socket disconnected. Reason:", reason);
-  //   });
-  
-  //   // Connect to socket
-  //   console.log("Initiating socket connection...");
-  //   socket.connect();
-  // };
-  
   
 
   return (
@@ -605,3 +578,82 @@ useEffect(() => {
 
 
 
+
+
+
+
+
+// Mock data for demonstration
+// const MOCK_LIVE_GAME_ROOMS: GameRoom[] = [
+//   {
+//     id: "",
+//     name: "Trivia Night!",
+//     gameType: "Trivia",
+//     hostName: "Sarah",
+//     hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+//     currentPlayers: 8,
+//     maxPlayers: 15,
+//     isPrivate: false,
+//     isInviteOnly: false,
+//   },
+//   {
+//     id: "",
+//     name: "Chess Tournament",
+//     gameType: "Chess",
+//     hostName: "Michael",
+//     hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
+//     currentPlayers: 6,
+//     maxPlayers: 10,
+//     isPrivate: false,
+//     isInviteOnly: true,
+//   },
+//   {
+//     id: "",
+//     name: "UNO Championship",
+//     gameType: "UNO",
+//     hostName: "Jessica",
+//     hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica",
+//     currentPlayers: 3,
+//     maxPlayers: 4,
+//     isPrivate: true,
+//     isInviteOnly: false,
+//   },
+//   {
+//     id: "",
+//     name: "Kahoot: ALU History",
+//     gameType: "Kahoot",
+//     hostName: "Professor David",
+//     hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
+//     currentPlayers: 12,
+//     maxPlayers: 30,
+//     isPrivate: false,
+//     isInviteOnly: false,
+//   },
+// ];
+
+// const MOCK_UPCOMING_GAME_ROOMS: GameRoom[] = [
+//   {
+//     id: "",
+//     name: "Pictionary Challenge",
+//     gameType: "Pictionary",
+//     hostName: "Emma",
+//     hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma",
+//     currentPlayers: 0,
+//     maxPlayers: 12,
+//     isPrivate: false,
+//     isInviteOnly: false,
+//     startTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes from now
+//   },
+//   {
+//     id: "",
+//     name: "Debate Club Trivia",
+//     gameType: "Trivia",
+//     hostName: "Daniel",
+//     hostAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Daniel",
+//     currentPlayers: 0,
+//     maxPlayers: 20,
+//     isPrivate: false,
+//     isInviteOnly: true,
+//     startTime: new Date(Date.now() + 25 * 60 * 1000).toISOString(), // 25 minutes from now
+//   },
+// ];
