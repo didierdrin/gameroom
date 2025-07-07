@@ -33,6 +33,14 @@ interface Tournament {
 }
 
 
+interface JoinRoomResponse {
+  roomId: string;
+  // Add other properties you expect in the response
+  success: boolean;
+  message?: string;
+}
+
+
 const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: 101,
@@ -120,102 +128,183 @@ export const HomePage = () => {
   }, [socket]);
 
   // Get current user ID
-  const getCurrentUserId = () => {
-    return localStorage.getItem("userId");
-  };
+  // const getCurrentUserId = () => {
+  //   return localStorage.getItem("userId");
+  // };
 
   // FIXED: handleJoinRoom function
-  const handleJoinRoom = (gameRoom: GameRoom) => {
-    const { id, isPrivate, isInviteOnly } = gameRoom;
-    
-    if (!user) {
-      alert("Please login to join a game room");
-      navigate('/login'); // Explicit navigation
-      return;
-    }
+  
+// Then update the handleJoinRoom function
+const handleJoinRoom = async (gameRoom: GameRoom) => {
+  const { id, isPrivate, isInviteOnly } = gameRoom;
+  
+  if (!user) {
+    alert("Please login to join a game room");
+    navigate('/login', { state: { from: `/game-room/${id}` } });
+    return;
+  }
 
-    // const playerId = getCurrentUserId();
-    
-    // if (!playerId) {
-    //   alert("Please login to join a game room");
-    //   return;
-    // }
+  if (!socket) {
+    alert("Connection error. Please refresh and try again.");
+    return;
+  }
 
-    if (!socket) {
-      alert("Connection error. Please refresh and try again.");
-      return;
-    }
-
-    console.log(`Attempting to join room ${id} as player ${user.id}`);
-    
-    // Prepare payload
+  console.log(`Attempting to join room ${id} as player ${user.id}`);
+  
+  try {
     const payload = {
-      roomId: id, // Use the id which now maps to roomId from backend
+      roomId: id,
       playerId: user.id,
       playerName: user.username,
       password: undefined as string | undefined
     };
 
-    // Handle private rooms
     if (isPrivate || isInviteOnly) {
       const password = prompt("Enter room password:");
       if (!password) return;
       payload.password = password;
     }
 
-    // Set up event listeners before emitting
-    const handlePlayerJoined = (data: any) => {
-      console.log("Successfully joined room:", data);
-      
-      // Clean up listeners
-      socket.off("playerJoined", handlePlayerJoined);
-      socket.off("error", handleJoinError);
-      
-      // Navigate to game room
-      const targetRoomId = data?.roomId || id;
-      navigate(`/game-room/${targetRoomId}`);
+    // Create a promise with proper typing
+    const joinRoom = new Promise<JoinRoomResponse>((resolve, reject) => {
+      const handlePlayerJoined = (data: JoinRoomResponse) => {
+        cleanupListeners();
+        resolve(data);
+      };
 
-      // setTimeout(() => {
-      //   navigate(`/game-room/${targetRoomId}`);
-      // }, 4000);
+      const handleJoinError = (error: any) => {
+        cleanupListeners();
+        reject(error);
+      };
+
+      const cleanupListeners = () => {
+        socket.off("playerJoined", handlePlayerJoined);
+        socket.off("error", handleJoinError);
+      };
+
+      const timeout = setTimeout(() => {
+        cleanupListeners();
+        reject(new Error("Join operation timed out"));
+      }, 10000);
+
+      socket.on("playerJoined", (data: JoinRoomResponse) => {
+        clearTimeout(timeout);
+        handlePlayerJoined(data);
+      });
+
+      socket.on("error", (err:any) => {
+        clearTimeout(timeout);
+        handleJoinError(err);
+      });
+
+      socket.emit("joinGameRoom", payload);
+    });
+
+    const result = await joinRoom;
+    console.log("Successfully joined room:", result);
+    
+    // Now TypeScript knows result has roomId property
+    const targetRoomId = result.roomId || id;
+    navigate(`/game-room/${targetRoomId}`);
+
+  } catch (error) {
+    console.error("Join error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to join game room";
+    alert(errorMessage);
+  }
+};
+  
+  // const handleJoinRoom = (gameRoom: GameRoom) => {
+  //   const { id, isPrivate, isInviteOnly } = gameRoom;
+    
+  //   if (!user) {
+  //     alert("Please login to join a game room");
+  //     navigate('/login'); // Explicit navigation
+  //     return;
+  //   }
+
+  //   // const playerId = getCurrentUserId();
+    
+  //   // if (!playerId) {
+  //   //   alert("Please login to join a game room");
+  //   //   return;
+  //   // }
+
+  //   if (!socket) {
+  //     alert("Connection error. Please refresh and try again.");
+  //     return;
+  //   }
+
+  //   console.log(`Attempting to join room ${id} as player ${user.id}`);
+    
+  //   // Prepare payload
+  //   const payload = {
+  //     roomId: id, // Use the id which now maps to roomId from backend
+  //     playerId: user.id,
+  //     playerName: user.username,
+  //     password: undefined as string | undefined
+  //   };
+
+  //   // Handle private rooms
+  //   if (isPrivate || isInviteOnly) {
+  //     const password = prompt("Enter room password:");
+  //     if (!password) return;
+  //     payload.password = password;
+  //   }
+
+  //   // Set up event listeners before emitting
+  //   const handlePlayerJoined = (data: any) => {
+  //     console.log("Successfully joined room:", data);
       
-    };
-
-    const handleJoinError = (error: any) => {
-      console.error("Join error:", error);
+  //     // Clean up listeners
+  //     socket.off("playerJoined", handlePlayerJoined);
+  //     socket.off("error", handleJoinError);
       
-      // Clean up listeners
-      socket.off("playerJoined", handlePlayerJoined);
-      socket.off("error", handleJoinError);
+  //     // Navigate to game room
+  //     const targetRoomId = data?.roomId || id;
+  //     navigate(`/game-room/${targetRoomId}`);
+
+  //     // setTimeout(() => {
+  //     //   navigate(`/game-room/${targetRoomId}`);
+  //     // }, 4000);
       
-      // Show error message
-      const errorMessage = error?.message || error || "Failed to join game room";
-      alert(errorMessage);
-    };
+  //   };
 
-    // Set up listeners
-    socket.once("playerJoined", handlePlayerJoined);
-    socket.once("error", handleJoinError);
-
-    // Emit join request
-    console.log("Emitting joinGame with payload:", payload);
-    socket.emit("joinGame", payload);
-
-    // Optional: Set up a timeout as backup
-    const timeout = setTimeout(() => {
-      console.warn("Join request timed out");
-      socket.off("playerJoined", handlePlayerJoined);
-      socket.off("error", handleJoinError);
+  //   const handleJoinError = (error: any) => {
+  //     console.error("Join error:", error);
       
-      // You can choose to navigate anyway or show an error
-      // navigate(`/game-room/${id}`); // Uncomment if you want to navigate anyway
-      alert("Join request timed out. Please try again.");
-    }, 10000); // 10 second timeout
+  //     // Clean up listeners
+  //     socket.off("playerJoined", handlePlayerJoined);
+  //     socket.off("error", handleJoinError);
+      
+  //     // Show error message
+  //     const errorMessage = error?.message || error || "Failed to join game room";
+  //     alert(errorMessage);
+  //   };
 
-    // Clear timeout if we get a response
-    socket.once("playerJoined", () => clearTimeout(timeout));
-    socket.once("error", () => clearTimeout(timeout));
-  };
+  //   // Set up listeners
+  //   socket.once("playerJoined", handlePlayerJoined);
+  //   socket.once("error", handleJoinError);
+
+  //   // Emit join request
+  //   console.log("Emitting joinGame with payload:", payload);
+  //   socket.emit("joinGame", payload);
+
+  //   // Optional: Set up a timeout as backup
+  //   const timeout = setTimeout(() => {
+  //     console.warn("Join request timed out");
+  //     socket.off("playerJoined", handlePlayerJoined);
+  //     socket.off("error", handleJoinError);
+      
+  //     // You can choose to navigate anyway or show an error
+  //     // navigate(`/game-room/${id}`); // Uncomment if you want to navigate anyway
+  //     alert("Join request timed out. Please try again.");
+  //   }, 10000); // 10 second timeout
+
+  //   // Clear timeout if we get a response
+  //   socket.once("playerJoined", () => clearTimeout(timeout));
+  //   socket.once("error", () => clearTimeout(timeout));
+  // };
 
   
 //   const [searchQuery, setSearchQuery] = useState("");

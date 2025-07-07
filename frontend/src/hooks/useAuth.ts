@@ -6,18 +6,38 @@ export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    const username = localStorage.getItem('username');
-    
-    if (userId && username) {
-      setUser({ id: userId, username });
-    }
-    setIsLoading(false);
+    const checkAuth = () => {
+      const userId = localStorage.getItem('userId');
+      const username = localStorage.getItem('username');
+      
+      if (userId && username) {
+        setUser({ id: userId, username });
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    };
+
+    checkAuth();
+    // Add event listener to sync auth state across tabs
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
   }, []);
 
-  return { user, isLoading };
-};
+  const login = (userId: string, username: string) => {
+    localStorage.setItem('userId', userId);
+    localStorage.setItem('username', username);
+    setUser({ id: userId, username });
+  };
 
+  const logout = () => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('username');
+    setUser(null);
+  };
+
+  return { user, isLoading, login, logout };
+};
 
 // // src/hooks/useAuth.ts
 // import { useState, useEffect } from 'react';

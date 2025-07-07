@@ -15,25 +15,47 @@ export const UsernameLoginPage: React.FC = () => {
     return null;
   }
 
-  const handleLogin = async () => {
-    if (!username.trim()) {
-      setError('Username is required');
-      return;
-    }
+  // In UsernameLoginPage.tsx, replace the handleLogin function with:
+const handleLogin = async () => {
+  if (!username.trim()) {
+    setError('Username is required');
+    return;
+  }
 
-    try {
-      const response = await axios.post('https://alu-globe-gameroom.onrender.com/user/login-or-register', {
-        username,
-      });
+  try {
+    const response = await axios.post('https://alu-globe-gameroom.onrender.com/user/login-or-register', {
+      username,
+    });
 
-      login({ id: response.data._id, username: response.data.username });
+    // Use the login method from useAuth instead of directly setting localStorage
+    login(response.data._id);
+    navigate('/', { replace: true });
+  } catch (err) {
+    console.error(err);
+    setError('Failed to login. Try again.');
+  }
+};
 
-      navigate('/', { replace: true });
-    } catch (err) {
-      console.error(err);
-      setError('Failed to login. Try again.');
-    }
-  };
+
+  // const handleLogin = async () => {
+  //   if (!username.trim()) {
+  //     setError('Username is required');
+  //     return;
+  //   }
+
+  //   try {
+  //     const response = await axios.post('https://alu-globe-gameroom.onrender.com/user/login-or-register', {
+  //       username,
+  //     });
+
+  //     login({ id: response.data._id, username: response.data.username });
+
+  //     navigate('/', { replace: true });
+  //   } catch (err) {
+  //     console.error(err);
+  //     setError('Failed to login. Try again.');
+  //   }
+  // };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
