@@ -21,6 +21,7 @@ import {
 import { MediaControls } from '../components/GameRoom/MediaControls';
 import { VideoGrid } from '../components/GameRoom/VideoGrid';
 import { useSocket } from '../SocketContext';
+import { useAuth } from '../hooks/useAuth';
 
 // Type for socket
 type SocketType = ReturnType<typeof io>;
@@ -28,6 +29,8 @@ type SocketType = ReturnType<typeof io>;
 export const LiveGameRoomPage = () => {
   const { id: roomId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth(); // Assuming you have an auth hook
+const [currentPlayerId, setCurrentPlayerId] = useState<string>(user?.id || '');
   
   // Use the socket from context
   const socket = useSocket();
@@ -52,7 +55,7 @@ export const LiveGameRoomPage = () => {
   
   const [players, setPlayers] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
-  const [currentPlayerId, setCurrentPlayerId] = useState<string>('');
+  // const [currentPlayerId, setCurrentPlayerId] = useState<string>('');
   const [message, setMessage] = useState('');
   const [showChat, setShowChat] = useState(true);
   const [showPlayers, setShowPlayers] = useState(true);
@@ -68,6 +71,12 @@ export const LiveGameRoomPage = () => {
 
   // Initialize socket connection and join room
   useEffect(() => {
+
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
     if (!socket || !roomId) return;
 
     console.log('Socket connected, joining room:', roomId);
@@ -75,18 +84,17 @@ export const LiveGameRoomPage = () => {
     // Set connection status
     setIsConnected(true);
 
-    // Generate a player ID if not already set
-    if (!currentPlayerId) {
-      const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      setCurrentPlayerId(playerId);
+    
+      
       
       // Join the room
       socket.emit('joinGame', { 
         roomId, 
-        playerId,
+        playerId: user.id, // Use the authenticated user ID
+      playerName: user.username, // Send username too
         password: '' // Add password if needed
       });
-    }
+
 
     // Socket event listeners
     const handleGameState = (newGameState: any) => {
@@ -104,17 +112,45 @@ export const LiveGameRoomPage = () => {
       }
     };
 
+    // const handlePlayerConnected = (data: any) => {
+    //   console.log('Player connected:', data);
+    //   // Update player list or room info
+    //   setPlayers(prev => {
+    //     const existingPlayerIndex = prev.findIndex(p => p.id === data.playerId);
+    //     if (existingPlayerIndex === -1) {
+    //       return [...prev, { id: data.playerId, name: data.playerId, isOnline: true }];
+    //     }
+    //     return prev;
+    //   });
+    // };
+
     const handlePlayerConnected = (data: any) => {
-      console.log('Player connected:', data);
-      // Update player list or room info
       setPlayers(prev => {
         const existingPlayerIndex = prev.findIndex(p => p.id === data.playerId);
         if (existingPlayerIndex === -1) {
-          return [...prev, { id: data.playerId, name: data.playerId, isOnline: true }];
+          return [...prev, { 
+            id: data.playerId, 
+            name: data.playerName || data.playerId, 
+            isOnline: true 
+          }];
         }
-        return prev;
+        return prev.map(p => 
+          p.id === data.playerId ? {...p, isOnline: true} : p
+        );
       });
     };
+
+
+// Add to your useEffect socket listeners:
+const handlePlayerDisconnected = (data: any) => {
+  setPlayers(prev => 
+    prev.map(p => 
+      p.id === data.playerId ? {...p, isOnline: false} : p
+    )
+  );
+};
+socket.on('playerDisconnected', handlePlayerDisconnected);
+
 
     const handleChatMessage = (data: any) => {
       console.log('Chat message received:', data);
@@ -176,8 +212,28 @@ export const LiveGameRoomPage = () => {
       socket.off('coinMoved', handleCoinMoved);
       socket.off('gameOver', handleGameOver);
       socket.off('error', handleError);
+      socket.off('playerDisconnected', handlePlayerDisconnected);
     };
-  }, [socket, roomId, currentPlayerId, navigate]);
+  }, [socket, roomId, user, navigate]);
+
+
+
+  // Add these socket listeners
+useEffect(() => {
+  if (!socket) return;
+
+  const handleGameStarted = (newState:any) => {
+    console.log('Game started with state:', newState);
+    setGameState(newState);
+  };
+
+  socket.on('gameState', handleGameStarted);
+
+  return () => {
+    socket.off('gameState', handleGameStarted);
+  };
+}, [socket]);
+
 
   // Handle room info and initial setup
   useEffect(() => {
@@ -199,10 +255,23 @@ export const LiveGameRoomPage = () => {
     }
   };
 
+  // const handleStartGame = () => {
+  //   console.log('Starting game for room:', roomId);
+  //   if (socket && roomId) {
+  //     socket.emit('startGame', { roomId });
+  //   }
+  // };
+
   const handleStartGame = () => {
     console.log('Starting game for room:', roomId);
     if (socket && roomId) {
-      socket.emit('startGame', { roomId });
+      socket.emit('startGame', { roomId }, (response:any) => {
+        if (response?.error) {
+          console.error('Failed to start game:', response.error);
+        } else {
+          console.log('Game started successfully');
+        }
+      });
     }
   };
 

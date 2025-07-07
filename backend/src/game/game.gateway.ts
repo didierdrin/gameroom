@@ -59,89 +59,63 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  // FIXED: Join game handler with better error handling and logging
   @SubscribeMessage('joinGame')
-  async handleJoinGame(
-    @MessageBody() data: { roomId: string; playerId: string; password?: string },
-    @ConnectedSocket() client: Socket,
-  ) {
-    try {
-      console.log('Join game request received:', data);
-      
-      const { roomId, playerId, password } = data;
-      
-      // Validate input
-      if (!roomId || !playerId) {
-        throw new Error('Room ID and Player ID are required');
-      }
-
-      // Get the game room
-      const room = await this.gameService.getGameRoomById(roomId);
-      if (!room) {
-        console.error(`Room not found: ${roomId}`);
-        throw new Error('Room not found');
-      }
-
-      console.log(`Found room: ${room.name}, current players: ${room.currentPlayers}/${room.maxPlayers}`);
-
-      // Check if room is full
-      if (room.currentPlayers >= room.maxPlayers) {
-        throw new Error('Room is full');
-      }
-
-      // Check password for private rooms
-      if (room.isPrivate && room.password !== password) {
-        throw new Error('Incorrect password');
-      }
-
-      // Initialize playerIds array if it doesn't exist
-      if (!room.playerIds) {
-        room.playerIds = [];
-      }
-
-      // Add player to room if not already present
-      if (!room.playerIds.includes(playerId)) {
-        room.playerIds.push(playerId);
-        room.currentPlayers = room.playerIds.length;
-        await room.save();
-        console.log(`Player ${playerId} added to room ${roomId}. Current players: ${room.currentPlayers}`);
-      } else {
-        console.log(`Player ${playerId} already in room ${roomId}`);
-      }
-
-      // Join the socket room
-      client.join(roomId);
-      
-      // Emit success response
-      client.emit('playerJoined', { 
-        roomId, 
-        playerId,
-        success: true,
-        message: 'Successfully joined the room'
-      });
-      
-      // Notify other players in the room
-      client.to(roomId).emit('playerConnected', { 
-        playerId,
-        roomId,
-        currentPlayers: room.currentPlayers
-      });
-
-      // Refresh the game rooms list for all clients
-      const rooms = await this.gameService.getActiveGameRooms();
-      this.server.emit('gameRoomsList', { rooms });
-      
-      console.log(`Player ${playerId} successfully joined room ${roomId}`);
-      
-    } catch (error) {
-      console.error('Join game error:', error);
-      client.emit('error', { 
-        message: error.message,
-        roomId: data.roomId,
-        type: 'joinError'
-      });
+async handleJoinGame(
+  @MessageBody() data: { roomId: string; playerId: string; playerName?: string },
+  @ConnectedSocket() client: Socket,
+) {
+  try {
+    const { roomId, playerId, playerName } = data;
+    
+    // Validate input
+    if (!roomId || !playerId) {
+      throw new Error('Room ID and Player ID are required');
     }
+
+    const room = await this.gameService.getGameRoomById(roomId);
+    if (!room) {
+      throw new Error('Room not found');
+    }
+
+    // Add player to room if not already present
+    if (!room.playerIds.includes(playerId)) {
+      room.playerIds.push(playerId);
+      room.currentPlayers = room.playerIds.length;
+      await room.save();
+    }
+
+    client.join(roomId);
+    
+    client.emit('playerJoined', { 
+      roomId, 
+      playerId,
+      playerName: playerName || playerId, // Use provided name or fallback to ID
+      success: true
+    });
+    
+    // Notify other players
+    client.to(roomId).emit('playerConnected', { 
+      playerId,
+      playerName: playerName || playerId,
+      roomId,
+      currentPlayers: room.currentPlayers
+    });
+
+    // Send initial game state
+    const gameState = await this.gameService.getGameState(roomId);
+    client.emit('gameState', {
+      ...gameState,
+      gameType: room.gameType,
+      roomName: room.name,
+    });
+    
+  } catch (error) {
+    client.emit('error', { 
+      message: error.message,
+      type: 'joinError'
+    });
   }
+}
 
   @SubscribeMessage('rollDice')
   async handleRollDice(client: Socket, payload: RollDiceDto) {
@@ -159,15 +133,43 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  // @SubscribeMessage('startGame')
+  // async handleStartGame(@MessageBody() data: { roomId: string }) {
+  //   const room = await this.gameService.startGame(data.roomId);
+  //   const gameState = await this.gameService['getGameState'](data.roomId);
+  //   this.server.to(data.roomId).emit('gameState', {
+  //     ...gameState,
+  //     gameType: room!.gameType,
+  //   });
+  // }
+
   @SubscribeMessage('startGame')
-  async handleStartGame(@MessageBody() data: { roomId: string }) {
+async handleStartGame(
+  @MessageBody() data: { roomId: string },
+  @ConnectedSocket() client: Socket,
+) {
+  try {
     const room = await this.gameService.startGame(data.roomId);
-    const gameState = await this.gameService['getGameState'](data.roomId);
+    const gameState = await this.gameService.getGameState(data.roomId);
+    
+    // Emit the full game state to all players in the room
     this.server.to(data.roomId).emit('gameState', {
       ...gameState,
       gameType: room!.gameType,
+      roomName: room!.name,
+      roomId: room!.roomId,
+      gameStarted: true, // Ensure this is set
+    });
+    
+    console.log(`Game started in room ${data.roomId}`);
+  } catch (error) {
+    console.error('Error starting game:', error);
+    client.emit('error', { 
+      message: error.message,
+      type: 'startGameError'
     });
   }
+}
 
   @SubscribeMessage('getGameRooms')
   async handleGetGameRooms(@ConnectedSocket() client: Socket) {

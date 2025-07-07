@@ -357,32 +357,71 @@ export class GameService {
     if (gameState.gameStarted) {
       throw new Error('Game already started');
     }
-    
+  
+    // Get the room to check player count
+    const room = await this.getGameRoomById(roomId);
+    if (!room) {
+      throw new Error('Room not found');
+    }
+  
     // If not enough players, add AI players
-    if (gameState.players.length < 4) {
-      const aiPlayersNeeded = 4 - gameState.players.length;
+    if (room.playerIds.length < 4) {
+      const aiPlayersNeeded = 4 - room.playerIds.length;
       for (let i = 0; i < aiPlayersNeeded; i++) {
         const aiPlayerId = `ai-${i+1}`;
-        gameState.players.push(aiPlayerId);
-        gameState.coins = {
-          ...gameState.coins,
-          ...this.initializeCoins([aiPlayerId]),
-        };
+        room.playerIds.push(aiPlayerId);
       }
+      room.currentPlayers = 4;
+      await room.save();
     }
-    
+  
+    // Update game state
     gameState.gameStarted = true;
+    gameState.players = room.playerIds;
     await this.updateGameState(roomId, gameState);
-    
-    // Update MongoDB
-    const gameRoom = await this.gameRoomModel.findOneAndUpdate(
+  
+    // Update room status
+    const updatedRoom = await this.gameRoomModel.findOneAndUpdate(
       { roomId },
       { status: 'in-progress', currentPlayers: 4 },
       { new: true }
     );
     
-    return gameRoom;
+    return updatedRoom;
   }
+  
+  // async startGame(roomId: string) {
+  //   const gameState = await this.getGameState(roomId);
+    
+  //   if (gameState.gameStarted) {
+  //     throw new Error('Game already started');
+  //   }
+    
+  //   // If not enough players, add AI players
+  //   if (gameState.players.length < 4) {
+  //     const aiPlayersNeeded = 4 - gameState.players.length;
+  //     for (let i = 0; i < aiPlayersNeeded; i++) {
+  //       const aiPlayerId = `ai-${i+1}`;
+  //       gameState.players.push(aiPlayerId);
+  //       gameState.coins = {
+  //         ...gameState.coins,
+  //         ...this.initializeCoins([aiPlayerId]),
+  //       };
+  //     }
+  //   }
+    
+  //   gameState.gameStarted = true;
+  //   await this.updateGameState(roomId, gameState);
+    
+  //   // Update MongoDB
+  //   const gameRoom = await this.gameRoomModel.findOneAndUpdate(
+  //     { roomId },
+  //     { status: 'in-progress', currentPlayers: 4 },
+  //     { new: true }
+  //   );
+    
+  //   return gameRoom;
+  // }
 
   async handleDisconnect(client: Socket) {
     // Handle player disconnection
