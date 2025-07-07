@@ -125,16 +125,11 @@ export class GameService {
     if (gameRoom.isPrivate && gameRoom.password !== joinGameDto.password) {
       throw new Error('Invalid password');
     }
-
-    // if (!gameRoom.playerIds.includes(playerId)) {
-    //   gameRoom.playerIds.push(playerId);
-    //   gameRoom.currentPlayers = gameRoom.playerIds.length;
-    //   await gameRoom.save();
-    // }
-
+  
+    // Only update if player is not already in the room
     if (!gameRoom.playerIds.includes(joinGameDto.playerId)) {
       gameRoom.playerIds.push(joinGameDto.playerId);
-      gameRoom.currentPlayers = gameRoom.playerIds.length;
+      gameRoom.currentPlayers = gameRoom.playerIds.length; // Single update point
       await gameRoom.save();
       
       // Update game state in Redis
@@ -147,22 +142,61 @@ export class GameService {
       await this.updateGameState(joinGameDto.roomId, gameState);
     }
     
-    
-    // Update game room
-    gameRoom.currentPlayers += 1;
-    await gameRoom.save();
-    
-    // Update game state in Redis
-    const gameState = await this.getGameState(joinGameDto.roomId);
-    gameState.players.push(joinGameDto.playerId);
-    gameState.coins = {
-      ...gameState.coins,
-      ...this.initializeCoins([joinGameDto.playerId]),
-    };
-    await this.updateGameState(joinGameDto.roomId, gameState);
-    
     return { game: gameRoom, player: joinGameDto.playerId };
   }
+
+  // async joinGame(joinGameDto: JoinGameDto) {
+  //   const gameRoom = await this.gameRoomModel.findOne({ roomId: joinGameDto.roomId });
+    
+  //   if (!gameRoom) {
+  //     throw new Error('Game room not found');
+  //   }
+    
+  //   if (gameRoom.currentPlayers >= gameRoom.maxPlayers) {
+  //     throw new Error('Game room is full');
+  //   }
+    
+  //   if (gameRoom.isPrivate && gameRoom.password !== joinGameDto.password) {
+  //     throw new Error('Invalid password');
+  //   }
+
+  //   // if (!gameRoom.playerIds.includes(playerId)) {
+  //   //   gameRoom.playerIds.push(playerId);
+  //   //   gameRoom.currentPlayers = gameRoom.playerIds.length;
+  //   //   await gameRoom.save();
+  //   // }
+
+  //   if (!gameRoom.playerIds.includes(joinGameDto.playerId)) {
+  //     gameRoom.playerIds.push(joinGameDto.playerId);
+  //     gameRoom.currentPlayers = gameRoom.playerIds.length;
+  //     await gameRoom.save();
+      
+  //     // Update game state in Redis
+  //     const gameState = await this.getGameState(joinGameDto.roomId);
+  //     gameState.players.push(joinGameDto.playerId);
+  //     gameState.coins = {
+  //       ...gameState.coins,
+  //       ...this.initializeCoins([joinGameDto.playerId]),
+  //     };
+  //     await this.updateGameState(joinGameDto.roomId, gameState);
+  //   }
+    
+    
+  //   // Update game room
+  //   gameRoom.currentPlayers += 1;
+  //   await gameRoom.save();
+    
+  //   // Update game state in Redis
+  //   const gameState = await this.getGameState(joinGameDto.roomId);
+  //   gameState.players.push(joinGameDto.playerId);
+  //   gameState.coins = {
+  //     ...gameState.coins,
+  //     ...this.initializeCoins([joinGameDto.playerId]),
+  //   };
+  //   await this.updateGameState(joinGameDto.roomId, gameState);
+    
+  //   return { game: gameRoom, player: joinGameDto.playerId };
+  // }
 
   async rollDice(rollDiceDto: RollDiceDto) {
     const gameState = await this.getGameState(rollDiceDto.roomId);

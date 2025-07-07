@@ -76,37 +76,81 @@ async handleCreateGame(client: Socket, payload: CreateGameDto) {
   // }
 
   @SubscribeMessage('joinGame')
-async handleJoinGame(
-  @MessageBody() data: { roomId: string; playerId: string; password?: string },
-  @ConnectedSocket() client: Socket,
-) {
-  const { roomId, playerId, password } = data;
-
-  const room = await this.gameService.getGameRoomById(roomId);
-  if (!room) {
-    client.emit('error', 'Room not found');
-    return;
+  async handleJoinGame(
+    @MessageBody() data: { roomId: string; playerId: string; password?: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const { roomId, playerId, password } = data;
+  
+      const room = await this.gameService.getGameRoomById(roomId);
+      if (!room) {
+        throw new Error('Room not found');
+      }
+  
+      if (room.isPrivate && room.password !== password) {
+        throw new Error('Incorrect password');
+      }
+  
+      if (!room.playerIds) {
+        room.playerIds = [];
+      }
+  
+      if (!room.playerIds.includes(playerId)) {
+        room.playerIds.push(playerId);
+        room.currentPlayers = room.playerIds.length;
+        await room.save();
+      }
+  
+      client.join(roomId);
+      client.emit('playerJoined', { roomId, playerId });
+      
+      // Update other clients in the room
+      client.to(roomId).emit('playerConnected', { playerId });
+      
+    } catch (error) {
+      client.emit('error', { 
+        message: error.message,
+        roomId: data.roomId,
+        type: 'joinError'
+      });
+      console.error('Join error:', error);
+    }
   }
 
-  if (room.isPrivate && room.password !== password) {
-    client.emit('error', 'Incorrect password');
-    return;
-  }
 
-  // Add playerId to currentPlayers array if not already present
-  if (!room.playerIds) {
-    room.playerIds = [];
-  }
+//   @SubscribeMessage('joinGame')
+// async handleJoinGame(
+//   @MessageBody() data: { roomId: string; playerId: string; password?: string },
+//   @ConnectedSocket() client: Socket,
+// ) {
+//   const { roomId, playerId, password } = data;
 
-  if (!room.playerIds.includes(playerId)) {
-    room.playerIds.push(playerId);
-    room.currentPlayers = room.playerIds.length;
-    await room.save();
-  }
+//   const room = await this.gameService.getGameRoomById(roomId);
+//   if (!room) {
+//     client.emit('error', 'Room not found');
+//     return;
+//   }
 
-  client.join(roomId);
-  client.emit('playerJoined', { roomId, playerId });
-}
+//   if (room.isPrivate && room.password !== password) {
+//     client.emit('error', 'Incorrect password');
+//     return;
+//   }
+
+//   // Add playerId to currentPlayers array if not already present
+//   if (!room.playerIds) {
+//     room.playerIds = [];
+//   }
+
+//   if (!room.playerIds.includes(playerId)) {
+//     room.playerIds.push(playerId);
+//     room.currentPlayers = room.playerIds.length;
+//     await room.save();
+//   }
+
+//   client.join(roomId);
+//   client.emit('playerJoined', { roomId, playerId });
+// }
 
 
   @SubscribeMessage('rollDice')

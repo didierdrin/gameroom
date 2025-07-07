@@ -8,7 +8,7 @@ import { useSocket } from "../SocketContext";
 
 // Define types for better TypeScript support
 interface GameRoom {
-  id: number;
+  id: string;
   name: string;
   gameType: string;
   hostName: string;
@@ -34,7 +34,7 @@ interface Tournament {
 // Mock data for demonstration
 const MOCK_LIVE_GAME_ROOMS: GameRoom[] = [
   {
-    id: 1,
+    id: "",
     name: "Trivia Night!",
     gameType: "Trivia",
     hostName: "Sarah",
@@ -45,7 +45,7 @@ const MOCK_LIVE_GAME_ROOMS: GameRoom[] = [
     isInviteOnly: false,
   },
   {
-    id: 2,
+    id: "",
     name: "Chess Tournament",
     gameType: "Chess",
     hostName: "Michael",
@@ -56,7 +56,7 @@ const MOCK_LIVE_GAME_ROOMS: GameRoom[] = [
     isInviteOnly: true,
   },
   {
-    id: 3,
+    id: "",
     name: "UNO Championship",
     gameType: "UNO",
     hostName: "Jessica",
@@ -67,7 +67,7 @@ const MOCK_LIVE_GAME_ROOMS: GameRoom[] = [
     isInviteOnly: false,
   },
   {
-    id: 4,
+    id: "",
     name: "Kahoot: ALU History",
     gameType: "Kahoot",
     hostName: "Professor David",
@@ -81,7 +81,7 @@ const MOCK_LIVE_GAME_ROOMS: GameRoom[] = [
 
 const MOCK_UPCOMING_GAME_ROOMS: GameRoom[] = [
   {
-    id: 5,
+    id: "",
     name: "Pictionary Challenge",
     gameType: "Pictionary",
     hostName: "Emma",
@@ -93,7 +93,7 @@ const MOCK_UPCOMING_GAME_ROOMS: GameRoom[] = [
     startTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes from now
   },
   {
-    id: 6,
+    id: "",
     name: "Debate Club Trivia",
     gameType: "Trivia",
     hostName: "Daniel",
@@ -263,13 +263,12 @@ useEffect(() => {
 
 
 
- 
   const handleJoinRoom = (gameRoom: GameRoom) => {
-    const { id, isPrivate, isInviteOnly } = gameRoom;
+    const { id: roomId, isPrivate, isInviteOnly } = gameRoom; // Note the alias here
     const playerId = getCurrentUserId();
     
     const payload = {
-      roomId: id,
+      roomId,  // Now correctly using the string ID
       playerId,
       password: undefined as string | undefined
     };
@@ -286,22 +285,62 @@ useEffect(() => {
     }
   
     const timeout = setTimeout(() => {
-      navigate(`/game-room/${id}`);
+      navigate(`/game-room/${roomId}`);
     }, 5000);
   
     socket.emit("joinGame", payload);
     
     socket.once("playerJoined", (data: any) => {
       clearTimeout(timeout);
-      const targetRoomId = data?.roomId || id;
+      const targetRoomId = data?.roomId || roomId;
       navigate(`/game-room/${targetRoomId}`);
     });
   
     socket.once("error", (error: any) => {
       clearTimeout(timeout);
       alert(typeof error === 'string' ? error : "Failed to join game room");
+      console.error('Join error:', error);
     });
   };
+  
+  // const handleJoinRoom = (gameRoom: GameRoom) => {
+  //   const { id, isPrivate, isInviteOnly } = gameRoom;
+  //   const playerId = getCurrentUserId();
+    
+  //   const payload = {
+  //     roomId: id,
+  //     playerId,
+  //     password: undefined as string | undefined
+  //   };
+  
+  //   if (isPrivate || isInviteOnly) {
+  //     const password = prompt("Enter room password:");
+  //     if (!password) return;
+  //     payload.password = password;
+  //   }
+  
+  //   if (!socket) {
+  //     alert("Connection error. Please refresh and try again.");
+  //     return;
+  //   }
+  
+  //   const timeout = setTimeout(() => {
+  //     navigate(`/game-room/${id}`);
+  //   }, 5000);
+  
+  //   socket.emit("joinGame", payload);
+    
+  //   socket.once("playerJoined", (data: any) => {
+  //     clearTimeout(timeout);
+  //     const targetRoomId = data?.roomId || id;
+  //     navigate(`/game-room/${targetRoomId}`);
+  //   });
+  
+  //   socket.once("error", (error: any) => {
+  //     clearTimeout(timeout);
+  //     alert(typeof error === 'string' ? error : "Failed to join game room");
+  //   });
+  // };
 
 
   // Updated join room handler that receives the game room as parameter
