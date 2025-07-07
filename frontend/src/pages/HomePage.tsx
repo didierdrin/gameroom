@@ -119,7 +119,7 @@ export const HomePage = () => {
 
   // Get current user ID
   const getCurrentUserId = () => {
-    return localStorage.getItem("playerId");
+    return localStorage.getItem("userId");
   };
 
   // FIXED: handleJoinRoom function

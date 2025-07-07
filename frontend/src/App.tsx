@@ -6,10 +6,12 @@ import { router } from './routes';
 import { ErrorBoundary } from './components/UI/ErrorBoundary';
 import 'react-toastify/dist/ReactToastify.css';
 import { SocketProvider } from './SocketContext';
+import { AuthProvider } from './context/AuthContext'; 
 
 export function App() {
   return (
     <SocketProvider>
+      <AuthProvider>
       <Helmet>
         <title>Alu Globe Gameroom</title>
       </Helmet>
@@ -30,6 +32,7 @@ export function App() {
           />
         </div>
       </ErrorBoundary>
+      </AuthProvider>
     </SocketProvider>
   );
 }
