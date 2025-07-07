@@ -164,6 +164,11 @@ export const HomePage = () => {
       // Navigate to game room
       const targetRoomId = data?.roomId || id;
       navigate(`/game-room/${targetRoomId}`);
+
+      // setTimeout(() => {
+      //   navigate(`/game-room/${targetRoomId}`);
+      // }, 0);
+      
     };
 
     const handleJoinError = (error: any) => {
