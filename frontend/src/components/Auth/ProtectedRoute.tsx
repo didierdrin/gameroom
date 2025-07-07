@@ -1,4 +1,3 @@
-
 // src/components/Auth/ProtectedRoute.tsx
 import React from 'react';
 import { Navigate } from 'react-router-dom';
@@ -9,7 +8,11 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div>Loading...</div>; // Or a proper loading spinner
+  }
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -17,7 +20,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   return <>{children}</>;
 };
-
 
 // // src/components/Auth/ProtectedRoute.tsx
 // import React from 'react';
