@@ -5,7 +5,7 @@ import io from "socket.io-client";
 import { GameRoomList } from "../components/GameRoom/GameRoomList";
 import { SectionTitle } from "../components/UI/SectionTitle";
 import { useSocket } from "../SocketContext";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../context/AuthContext";
 
 interface GameRoom {
   id: string;
@@ -197,7 +197,7 @@ const handleJoinRoom = async (gameRoom: GameRoom) => {
         handleJoinError(err);
       });
 
-      socket.emit("joinGameRoom", payload);
+      socket.emit("joinGame", payload);
     });
 
     const result = await joinRoom;

@@ -61,11 +61,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('joinGame')
 async handleJoinGame(
-  @MessageBody() data: { roomId: string; playerId: string; playerName?: string },
+  @MessageBody() data: { roomId: string; playerId: string; playerName: string; password?: string },
   @ConnectedSocket() client: Socket,
 ) {
   try {
-    const { roomId, playerId, playerName } = data;
+    const { roomId, playerId, playerName, password } = data;
     
     // Validate input
     if (!roomId || !playerId) {
@@ -89,14 +89,14 @@ async handleJoinGame(
     client.emit('playerJoined', { 
       roomId, 
       playerId,
-      playerName: playerName || playerId, // Use provided name or fallback to ID
+      playerName, 
       success: true
     });
     
     // Notify other players
     client.to(roomId).emit('playerConnected', { 
       playerId,
-      playerName: playerName || playerId,
+      playerName,
       roomId,
       currentPlayers: room.currentPlayers
     });

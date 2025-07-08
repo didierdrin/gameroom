@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 interface AuthUser {
   id: string;
@@ -14,39 +14,56 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    const username = localStorage.getItem('username');
-
-    if (userId && username) {
-      setUser({ id: userId, username });
-    }
-
-    setIsLoading(false);
-  }, []);
-
-  const login = (user: AuthUser) => {
-    localStorage.setItem('userId', user.id);
-    localStorage.setItem('username', user.username);
-    setUser(user);
+    const [user, setUser] = useState<AuthUser | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+  
+    // Centralized auth state updater
+    const updateAuthState = useCallback(() => {
+      const userId = localStorage.getItem('userId');
+      const username = localStorage.getItem('username');
+      if (userId && username) {
+        setUser({ id: userId, username });
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    }, []);
+  
+    useEffect(() => {
+      updateAuthState();
+      
+      // Sync auth state across tabs
+      const handleStorage = (e: StorageEvent) => {
+        if (e.key === 'userId' || e.key === 'username') {
+          updateAuthState();
+        }
+      };
+  
+      window.addEventListener('storage', handleStorage);
+      return () => window.removeEventListener('storage', handleStorage);
+    }, [updateAuthState]);
+  
+    const login = useCallback((user: AuthUser) => {
+      localStorage.setItem('userId', user.id);
+      localStorage.setItem('username', user.username);
+      setUser(user);
+    }, []);
+  
+    const logout = useCallback(() => {
+      localStorage.removeItem('userId');
+      localStorage.removeItem('username');
+      setUser(null);
+    }, []);
+  
+    return (
+      <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+        {children}
+      </AuthContext.Provider>
+    );
   };
 
-  const logout = () => {
-    localStorage.removeItem('userId');
-    localStorage.removeItem('username');
-    setUser(null);
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
@@ -55,3 +72,40 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+
+
+
+// export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+//   const [user, setUser] = useState<AuthUser | null>(null);
+//   const [isLoading, setIsLoading] = useState(true);
+
+//   useEffect(() => {
+//     const userId = localStorage.getItem('userId');
+//     const username = localStorage.getItem('username');
+
+//     if (userId && username) {
+//       setUser({ id: userId, username });
+//     }
+
+//     setIsLoading(false);
+//   }, []);
+
+//   const login = (user: AuthUser) => {
+//     localStorage.setItem('userId', user.id);
+//     localStorage.setItem('username', user.username);
+//     setUser(user);
+//   };
+
+//   const logout = () => {
+//     localStorage.removeItem('userId');
+//     localStorage.removeItem('username');
+//     setUser(null);
+//   };
+
+//   return (
+//     <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+//       {children}
+//     </AuthContext.Provider>
+//   );
+// };

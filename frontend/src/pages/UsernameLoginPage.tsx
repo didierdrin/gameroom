@@ -27,8 +27,8 @@ const handleLogin = async () => {
       username,
     });
 
-    // Use the login method from useAuth instead of directly setting localStorage
-    login(response.data._id);
+    // Pass both id and username
+    login({ id: response.data._id, username: response.data.username });
     navigate('/', { replace: true });
   } catch (err) {
     console.error(err);
@@ -36,26 +36,6 @@ const handleLogin = async () => {
   }
 };
 
-
-  // const handleLogin = async () => {
-  //   if (!username.trim()) {
-  //     setError('Username is required');
-  //     return;
-  //   }
-
-  //   try {
-  //     const response = await axios.post('https://alu-globe-gameroom.onrender.com/user/login-or-register', {
-  //       username,
-  //     });
-
-  //     login({ id: response.data._id, username: response.data.username });
-
-  //     navigate('/', { replace: true });
-  //   } catch (err) {
-  //     console.error(err);
-  //     setError('Failed to login. Try again.');
-  //   }
-  // };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
