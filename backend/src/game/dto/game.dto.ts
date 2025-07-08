@@ -10,6 +10,7 @@ export class CreateGameDto {
   export class JoinGameDto {
     readonly roomId: string;
     readonly playerId: string;
+    readonly playerName: string;
     readonly password?: string;
     readonly scheduledTime?: string;
   }

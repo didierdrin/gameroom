@@ -299,11 +299,18 @@ useEffect(() => {
       case 'ludo':
         return (
           <div className="relative w-full h-full">
-            <LudoGame
+            {/* <LudoGame
               gameState={gameState}
               currentPlayerId={currentPlayerId}
               onMoveCoin={handleMoveCoin}
-            />
+            /> */}
+            <LudoGame
+        gameState={gameState}
+        currentPlayerId={user!.id}
+        onRollDice={() => socket?.emit('rollDice', { roomId: roomId, playerId: user!.id })}
+        onMoveCoin={(coinId) => socket?.emit('moveCoin', { roomId: roomId, playerId: user!.id, coinId })}
+        onStartGame={handleStartGame}
+      />
             {gameState.currentTurn === currentPlayerId && (
               <div className="absolute bottom-4 right-4">
                 <Dice
