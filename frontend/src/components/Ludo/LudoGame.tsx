@@ -1,22 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { Player, GameState } from './types/game';
 import { Dice } from './Dice';
-
-interface Player {
-  id: number;
-  color: string;
-  name: string;
-  coins: number[];
-}
-
-interface GameState {
-  currentPlayer: number;
-  diceValue: number;
-  diceRolled: boolean;
-  players: Player[];
-  winner: number | null;
-  gameStarted: boolean;
-}
 
 interface LudoGameProps {
   gameState?: GameState;
@@ -33,13 +18,14 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   onMoveCoin,
   onStartGame,
 }) => {
+  const { user } = useAuth();
   const [movableCoins, setMovableCoins] = useState<number[]>([]);
 
   if (!gameState) {
     return <div className="text-center p-4">Loading...</div>;
   }
 
-  const { players, currentPlayer, diceValue, diceRolled, winner, gameStarted } = gameState;
+  const { players, currentPlayer, diceValue, diceRolled, winner, gameStarted, coins } = gameState;
 
   const boardPath: number[][] = [
     [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [5, 6], [4, 6], [3, 6], [2, 6], [1, 6], [0, 6],
@@ -60,10 +46,11 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   const safePositions: number[] = [1, 9, 14, 22, 27, 35, 40, 48];
 
   useEffect(() => {
-    if (diceRolled && players[currentPlayer].name === currentPlayerId) {
+    if (diceRolled && players[currentPlayer]?.id === currentPlayerId) {
       const currentPlayerData = players[currentPlayer];
+      const playerCoins = coins[currentPlayerData.id] || [0, 0, 0, 0];
       const movable: number[] = [];
-      currentPlayerData.coins.forEach((position, index) => {
+      playerCoins.forEach((position, index) => {
         if (position === 0 && diceValue === 6) movable.push(index);
         else if (position > 0 && position < 57 && position + diceValue <= 57) movable.push(index);
       });
@@ -71,10 +58,10 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     } else {
       setMovableCoins([]);
     }
-  }, [diceRolled, diceValue, currentPlayer, players, currentPlayerId]);
+  }, [diceRolled, diceValue, currentPlayer, players, currentPlayerId, coins]);
 
   const handleMoveCoin = (coinIndex: number) => {
-    if (!movableCoins.includes(coinIndex) || !onMoveCoin || players[currentPlayer].name !== currentPlayerId) return;
+    if (!movableCoins.includes(coinIndex) || !onMoveCoin || players[currentPlayer]?.id !== currentPlayerId) return;
     onMoveCoin(`${players[currentPlayer].color}-${coinIndex + 1}`);
   };
 
@@ -101,10 +88,10 @@ export const LudoGame: React.FC<LudoGameProps> = ({
       if (stretch.some(([r, c]) => r === row && c === col)) return 'bg-slate-200 border border-gray-500';
     }
     const baseCells = {
-      red: [[1, 1], [1, 3], [3, 1], [3, 3]], // Fixed red base
-      blue: [[1, 11], [1, 13], [3, 11], [3, 13]], // Fixed blue base
-      green: [[11, 11], [11, 13], [13, 11], [13, 13]], // Fixed green base
-      yellow: [[11, 1], [11, 3], [13, 1], [13, 3]], // Fixed yellow base
+      red: [[1, 1], [1, 3], [3, 1], [3, 3]], // Red base
+      blue: [[1, 11], [1, 13], [3, 11], [3, 13]], // Blue base
+      green: [[11, 11], [11, 13], [13, 11], [13, 13]], // Green base
+      yellow: [[11, 1], [11, 3], [13, 1], [13, 3]], // Yellow base
     };
     for (const [color, cells] of Object.entries(baseCells)) {
       if (cells.some(([r, c]) => r === row && c === col)) return `bg-white border-2 border-${color}-100`;
@@ -127,18 +114,19 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     for (let row = 0; row < 15; row++) {
       for (let col = 0; col < 15; col++) {
         const cellColor = getCellColor(row, col);
-        const coins: any[] = [];
+        const coinsAtPosition: any[] = [];
         players.forEach((player, playerIndex) => {
-          player.coins.forEach((pos, coinIndex) => {
+          const playerCoins = coins[player.id] || [0, 0, 0, 0];
+          playerCoins.forEach((pos, coinIndex) => {
             const boardPos = getBoardPosition(playerIndex, pos);
             if (boardPos?.[0] === row && boardPos?.[1] === col) {
-              coins.push({ playerIndex, coinIndex, player });
+              coinsAtPosition.push({ playerIndex, coinIndex, player });
             }
             if (pos === 0) {
               const basePos = getBasePositions(playerIndex);
               basePos.forEach((bp, idx) => {
                 if (bp[0] === row && bp[1] === col && idx === coinIndex) {
-                  coins.push({ playerIndex, coinIndex, player });
+                  coinsAtPosition.push({ playerIndex, coinIndex, player });
                 }
               });
             }
@@ -149,7 +137,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
             key={`${row}-${col}`}
             className={`w-10 h-10 flex items-center justify-center relative ${cellColor}`}
           >
-            {coins.map((coin, idx) => (
+            {coinsAtPosition.map((coin, idx) => (
               <div
                 key={`${coin.playerIndex}-${coin.coinIndex}`}
                 className={`w-6 h-6 rounded-full border-2 border-white text-xs font-bold text-white flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${
@@ -167,8 +155,8 @@ export const LudoGame: React.FC<LudoGameProps> = ({
                 }`}
                 onClick={() => handleMoveCoin(coin.coinIndex)}
                 style={{
-                  position: coins.length > 1 ? 'absolute' : 'static',
-                  transform: coins.length > 1 ? `translate(${idx * 4}px, ${idx * 4}px)` : 'none',
+                  position: coinsAtPosition.length > 1 ? 'absolute' : 'static',
+                  transform: coinsAtPosition.length > 1 ? `translate(${idx * 4}px, ${idx * 4}px)` : 'none',
                   zIndex: idx + 1,
                 }}
               >
@@ -188,7 +176,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
       {winner !== null && (
         <div className="mb-4 p-4 bg-green-100 border border-green-400 rounded">
           <h2 className="text-2xl font-bold text-green-800">
-            🎉 {players[winner].name} Wins! 🎉
+            🎉 {players.find((p) => p.id === winner)?.name || 'Unknown'} Wins! 🎉
           </h2>
           <button
             onClick={() => window.location.reload()}
@@ -202,7 +190,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
         <button
           onClick={onStartGame}
           className="mb-4 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          disabled={players.length < 2 || players[0].name !== currentPlayerId}
+          disabled={players.length < 2 || players[0].id !== currentPlayerId}
         >
           Start Game
         </button>
@@ -229,7 +217,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
           <Dice
             value={diceValue}
             onRoll={() => onRollDice}
-            disabled={diceRolled || players[currentPlayer].name !== currentPlayerId}
+            disabled={diceRolled || players[currentPlayer]?.id !== currentPlayerId}
           />
         </div>
       </div>
@@ -244,7 +232,6 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     </div>
   );
 };
-
 
 // // LudoGame.tsx
 // import React, { useState, useEffect } from 'react';
