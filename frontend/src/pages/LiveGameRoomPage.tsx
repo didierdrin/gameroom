@@ -112,17 +112,7 @@ const [currentPlayerId, setCurrentPlayerId] = useState<string>(user?.id || '');
       }
     };
 
-    // const handlePlayerConnected = (data: any) => {
-    //   console.log('Player connected:', data);
-    //   // Update player list or room info
-    //   setPlayers(prev => {
-    //     const existingPlayerIndex = prev.findIndex(p => p.id === data.playerId);
-    //     if (existingPlayerIndex === -1) {
-    //       return [...prev, { id: data.playerId, name: data.playerId, isOnline: true }];
-    //     }
-    //     return prev;
-    //   });
-    // };
+  
 
     const handlePlayerConnected = (data: any) => {
       setPlayers(prev => {
@@ -255,12 +245,7 @@ useEffect(() => {
     }
   };
 
-  // const handleStartGame = () => {
-  //   console.log('Starting game for room:', roomId);
-  //   if (socket && roomId) {
-  //     socket.emit('startGame', { roomId });
-  //   }
-  // };
+
 
   const handleStartGame = () => {
     console.log('Starting game for room:', roomId);
@@ -437,12 +422,12 @@ useEffect(() => {
       <div className="flex flex-1 overflow-hidden">
         {showPlayers && (
           <div className="w-full sm:w-64 border-r border-gray-700 bg-gray-800 overflow-y-auto fixed sm:relative inset-y-0 left-0 z-30">
-            <div className="p-3 border-b border-gray-700 flex justify-between items-center">
+            {/* <div className="p-3 border-b border-gray-700 flex justify-between items-center">
               <h3 className="font-medium">Players ({players.length})</h3>
               <button onClick={() => setShowPlayers(false)} className="sm:hidden p-2 hover:bg-gray-700 rounded-lg">
                 <XIcon size={16} />
               </button>
-            </div>
+            </div> */}
             <PlayerList players={players} currentPlayerId={currentPlayerId} currentTurn={gameState?.currentTurn} />
           </div>
         )}
