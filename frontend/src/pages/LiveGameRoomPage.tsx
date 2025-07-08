@@ -21,7 +21,7 @@ import {
 import { MediaControls } from '../components/GameRoom/MediaControls';
 import { VideoGrid } from '../components/GameRoom/VideoGrid';
 import { useSocket } from '../SocketContext';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext'; 
 
 // Type for socket
 type SocketType = ReturnType<typeof io>;
