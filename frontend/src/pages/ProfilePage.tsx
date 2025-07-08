@@ -136,7 +136,7 @@ export const ProfilePage = () => {
       // Fetch the user data including createdAt from backend
       const fetchUserData = async () => {
         try {
-          const response = await fetch(`/api/user/${authUser.id}`);
+          const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}`);
           const user = await response.json();
           
           // Format the join date
@@ -600,7 +600,7 @@ export const ProfilePage = () => {
 //       // Fetch the user data including createdAt from backend
 //       const fetchUserData = async () => {
 //         try {
-//           const response = await fetch(`/api/user/${authUser.id}`);
+//           const response = await fetch(`/user/${authUser.id}`);
 //           const user = await response.json();
           
 //           // Format the join date
