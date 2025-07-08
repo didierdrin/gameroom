@@ -170,6 +170,8 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     return board;
   };
 
+  const currentPlayerName = players[currentPlayer]?.id === currentPlayerId ? user?.username || players[currentPlayer]?.name || 'Player' : players[currentPlayer]?.name || 'Player';
+
   return (
     <div className="flex flex-col items-center p-4 bg-gray-100 min-h-screen">
       <h1 className="text-4xl font-bold mb-4 text-gray-800">Ludo Game</h1>
@@ -209,7 +211,8 @@ export const LudoGame: React.FC<LudoGameProps> = ({
                 : 'bg-yellow-400'
             }`}
           >
-            {players[currentPlayer]?.name || 'Player'}
+            {currentPlayerName}
+            {/* {players[currentPlayer]?.name || 'Player'} */}
           </div>
         </div>
         <div className="text-center">
@@ -224,7 +227,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
       <div className="grid grid-cols-[repeat(15,_2.5rem)] grid-rows-[repeat(15,_2.5rem)] gap-0 border-4 border-gray-800 bg-white">
         {renderBoard()}
       </div>
-      <div className="mt-4 text-sm text-gray-600 max-w-md text-center">
+      <div className="mt-8 text-sm text-gray-600 max-w-md text-center">
         <p><strong>Rules:</strong> Roll a 6 to bring a coin into play. Land on opponents (outside star zones) to capture them. Reach the center with all coins to win!</p>
         <p><strong>Coin Tips:</strong> Coins with a ring are movable. Click after rolling the dice.</p>
         <p><strong>Safe Zones:</strong> Stars (white cells with border) protect coins from being captured.</p>
