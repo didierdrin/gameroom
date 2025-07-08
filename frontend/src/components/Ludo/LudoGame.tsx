@@ -201,7 +201,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-2 text-slate-400">Current Player</h3>
           <div
-            className={`w-16 h-16 rounded-full flex items-center justify-center text-white font-bold ${
+            className={`w-16 h-16 rounded-full flex items-center justify-center text-black font-bold ${
               players[currentPlayer]?.color === 'red'
                 ? 'bg-red-500'
                 : players[currentPlayer]?.color === 'blue'
