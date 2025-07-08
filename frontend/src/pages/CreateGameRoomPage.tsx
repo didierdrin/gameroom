@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
 import { CalendarIcon, ClockIcon, UsersIcon, LockIcon, EyeIcon, VideoIcon, MicIcon } from 'lucide-react';
 import { useSocket } from '../SocketContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 interface CreateGameRoomPageProps {
   onGameCreated?: () => void;
@@ -20,6 +21,7 @@ interface GameRoomData {
   enableVoiceChat: boolean;
   allowSpectators: boolean;
   hostId: string;
+  hostName: string;
 }
 
 export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) => {
@@ -38,6 +40,8 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const socket = useSocket();
+  const { user } = useAuth(); 
+  const isMountedRef = useRef(true); 
 
   const gameTypes = [
     { id: 'kahoot', name: 'Kahoot', icon: '🎯' },
@@ -48,6 +52,12 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
     { id: 'pictionary', name: 'Pictionary', icon: '🎨' },
     { id: 'sudoku', name: 'Sudoku', icon: '🔢' }
   ];
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -60,6 +70,12 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
 
     if (!roomName.trim()) {
       alert('Please enter a room name');
+      return;
+    }
+
+    if (!user) {
+      alert('Please login to create a game room');
+      navigate('/login');
       return;
     }
 
@@ -91,11 +107,8 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
       isPrivate: privacy === 'private' || privacy === 'inviteOnly',
       // isInviteOnly: privacy === 'inviteOnly',
       password: privacy === 'private' ? password : undefined,
-      hostId: localStorage.getItem('userId') || (() => {
-        const fallback = `player-${Math.random().toString(36).substr(2, 9)}`;
-        localStorage.setItem('userId', fallback);
-        return fallback;
-      })(),
+      hostId: user.id, 
+      hostName: user.username,
       scheduledTimeCombined,
       description: description.trim() || undefined,
       enableVideoChat,
@@ -104,69 +117,103 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
     };
 
     try {
+      if (!socket) {
+        throw new Error("Connection error. Please refresh and try again.");
+      }
+
+      let responded = false;
       const timeout = setTimeout(() => {
+        if (responded || !isMountedRef.current) return;
+        responded = true;
         setIsLoading(false);
         alert('Request timed out. Please try again.');
       }, 10000);
 
-      // const onGameCreated = (game: any) => {
-      //   clearTimeout(timeout);
-      //   setIsLoading(false);
-        
-      //   if (gameMode === 'playNow' && game?.roomId) {
-      //     navigate(`/game-room/${game.roomId}`);
-      //   } else {
-      //     navigate('/');
-      //     alert('Game scheduled successfully!');
-      //   }
-        
-      //   // if (onGameCreated) onGameCreated();
-      //   if (typeof onGameCreated === 'function') {
-      //     onGameCreated(game);
-      //   }
-      // };
-
       const handleGameCreated = (game: any) => {
+        if (responded || !isMountedRef.current) return;
+        responded = true;
         clearTimeout(timeout);
         setIsLoading(false);
-      
+        
         if (gameMode === 'playNow' && game?.roomId) {
           navigate(`/game-room/${game.roomId}`);
         } else {
-          navigate('/');
+          navigate('/my-game-rooms');
           alert('Game scheduled successfully!');
         }
-      
-        // Now this refers to the PROP, not itself
-        socket.once('gameCreated', handleGameCreated);  // ✅ use renamed local handler
-
+        
+        if (onGameCreated) onGameCreated();
       };
-      
 
-      const onError = (error: any) => {
+      const handleError = (error: any) => {
+        if (responded || !isMountedRef.current) return;
+        responded = true;
         clearTimeout(timeout);
         setIsLoading(false);
         alert(error.message || 'Failed to create game room');
       };
 
-      // socket.once('gameCreated', onGameCreated);
       socket.once('gameCreated', handleGameCreated);
-
-      socket.once('error', onError);
-
+      socket.once('error', handleError);
       socket.emit('createGame', gameRoomData);
 
-      return () => {
-        clearTimeout(timeout);
-        socket.off('gameCreated', onGameCreated);
-        socket.off('error', onError);
-      };
     } catch (error) {
-      setIsLoading(false);
-      console.error('Failed to create game room:', error);
-      alert('Failed to create game room. Please try again.');
+      if (isMountedRef.current) {
+        setIsLoading(false);
+        alert('Failed to create game room. Please try again.');
+        console.error('Create game error:', error);
+      }
     }
   };
+  //   try {
+  //     const timeout = setTimeout(() => {
+  //       setIsLoading(false);
+  //       alert('Request timed out. Please try again.');
+  //     }, 10000);
+
+
+
+  //     const handleGameCreated = (game: any) => {
+  //       clearTimeout(timeout);
+  //       setIsLoading(false);
+      
+  //       if (gameMode === 'playNow' && game?.roomId) {
+  //         navigate(`/game-room/${game.roomId}`);
+  //       } else {
+  //         navigate('/');
+  //         alert('Game scheduled successfully!');
+  //       }
+      
+  //       // Now this refers to the PROP, not itself
+  //       socket.once('gameCreated', handleGameCreated);  // ✅ use renamed local handler
+
+  //     };
+      
+
+  //     const onError = (error: any) => {
+  //       clearTimeout(timeout);
+  //       setIsLoading(false);
+  //       alert(error.message || 'Failed to create game room');
+  //     };
+
+  //     // socket.once('gameCreated', onGameCreated);
+  //     socket.once('gameCreated', handleGameCreated);
+
+  //     socket.once('error', onError);
+
+  //     socket.emit('createGame', gameRoomData);
+
+  //     return () => {
+  //       clearTimeout(timeout);
+  //       socket.off('gameCreated', onGameCreated);
+  //       socket.off('error', onError);
+  //     };
+  //   } catch (error) {
+  //     setIsLoading(false);
+  //     console.error('Failed to create game room:', error);
+  //     alert('Failed to create game room. Please try again.');
+  //   }
+  // };
 
   return (
     <div className="p-6 overflow-y-auto h-screen pb-20">
