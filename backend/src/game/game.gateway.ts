@@ -115,6 +115,17 @@ export class GameGateway {
       client.emit('error', { message: 'Failed to fetch game state' });
     }
   }
+
+  @SubscribeMessage('getMyGameRooms')
+  async handleGetMyGameRooms(@MessageBody() data: { playerId: string }, @ConnectedSocket() client: Socket) {
+    try {
+      const { hosted, joined } = await this.gameService.getMyGameRooms(data.playerId);
+      client.emit('myGameRoomsList', { hosted, joined });
+    } catch (error) {
+      client.emit('error', { message: error.message || 'Failed to fetch my game rooms' });
+    }
+  }
+  
 }
 
 

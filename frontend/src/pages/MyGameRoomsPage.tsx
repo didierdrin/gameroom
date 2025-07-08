@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import io from 'socket.io-client';
+import { useSocket } from '../SocketContext';
+import { useAuth } from '../context/AuthContext';
 import { GameRoomList } from '../components/GameRoom/GameRoomList';
 import { SectionTitle } from '../components/UI/SectionTitle';
 
-
 interface GameRoom {
-  id: number | string;
+  id: string;
+  roomId: string;
   name: string;
   gameType: string;
   hostName: string;
@@ -14,49 +15,45 @@ interface GameRoom {
   maxPlayers: number;
   isPrivate: boolean;
   isInviteOnly: boolean;
-  startTime?: string;
+  status: 'waiting' | 'in-progress' | 'completed';
+  scheduledTimeCombined?: string;
+  createdAt: string;
 }
 
-export const MyGameRoomsPage = ({ onJoinRoom }: any) => {
-  const [activeTab, setActiveTab] = useState('joined');
+export const MyGameRoomsPage: React.FC<{ onJoinRoom: (roomId: string) => void }> = ({ onJoinRoom }) => {
+  const { user } = useAuth();
+  const socket = useSocket();
+  const [activeTab, setActiveTab] = useState<'joined' | 'hosted' | 'past'>('joined');
   const [hostedRooms, setHostedRooms] = useState<GameRoom[]>([]);
   const [joinedRooms, setJoinedRooms] = useState<GameRoom[]>([]);
 
-  const now = new Date();
-  
-const scheduledHosted = hostedRooms.filter(room => room.startTime && new Date(room.startTime) > now);
-const activeHosted = hostedRooms.filter(room => !room.startTime || new Date(room.startTime) <= now);
-
-
-
   useEffect(() => {
-    const playerId = localStorage.getItem('userId');
-    if (!playerId) return;
+    if (!user || !socket) return;
 
-    const socket = io('https://alu-globe-gameroom.onrender.com', {
-      transports: ['websocket'],
-      reconnection: true,
-    });
-
-    socket.on('connect', () => {
-      socket.emit('getMyGameRooms', { playerId });
-    });
+    socket.emit('getMyGameRooms', { playerId: user.id });
 
     socket.on('myGameRoomsList', (data: { hosted: GameRoom[]; joined: GameRoom[] }) => {
+      // Sort joined rooms by createdAt (descending)
+      const sortedJoined = [...data.joined].sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
       setHostedRooms(data.hosted);
-      setJoinedRooms(data.joined);
+      setJoinedRooms(sortedJoined);
     });
 
-    socket.on('error', (err: any) => {
-      console.error('Socket error (myGameRoomsList):', err);
+    socket.on('error', (err: { message: string }) => {
+      console.error('Socket error (myGameRoomsList):', err.message);
     });
-
-    
 
     return () => {
-      socket.disconnect();
+      socket.off('myGameRoomsList');
+      socket.off('error');
     };
-  }, []);
+  }, [user, socket]);
+
+  const now = new Date();
+  const scheduledHosted = hostedRooms.filter(room => room.scheduledTimeCombined && new Date(room.scheduledTimeCombined) > now);
+  const activeHosted = hostedRooms.filter(room => !room.scheduledTimeCombined || new Date(room.scheduledTimeCombined) <= now);
 
   return (
     <div className="p-6 overflow-y-auto h-screen pb-20">
@@ -67,7 +64,7 @@ const activeHosted = hostedRooms.filter(room => !room.startTime || new Date(room
         {['joined', 'hosted', 'past'].map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => setActiveTab(tab as 'joined' | 'hosted' | 'past')}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === tab ? 'text-purple-400 border-b-2 border-purple-500' : 'text-gray-400 hover:text-gray-300'
             }`}
@@ -82,18 +79,34 @@ const activeHosted = hostedRooms.filter(room => !room.startTime || new Date(room
         {activeTab === 'joined' && (
           <>
             <h3 className="text-lg font-medium mb-4">Game rooms you've joined</h3>
-            <GameRoomList gameRooms={joinedRooms} onJoinRoom={onJoinRoom} />
+            {joinedRooms.length > 0 ? (
+              <GameRoomList gameRooms={joinedRooms} onJoinRoom={onJoinRoom} />
+            ) : (
+              <p className="text-gray-400">You haven't joined any rooms yet.</p>
+            )}
           </>
         )}
         {activeTab === 'hosted' && (
           <>
             <h3 className="text-lg font-medium mb-4">Game rooms you're hosting</h3>
-            {/* <GameRoomList gameRooms={hostedRooms} onJoinRoom={onJoinRoom} /> */}
-            {hostedRooms?.length > 0 ? (
-  <GameRoomList gameRooms={hostedRooms} onJoinRoom={onJoinRoom} />
-) : (
-  <p className="text-gray-400">You haven't hosted any rooms yet.</p>
-)}
+            {hostedRooms.length > 0 ? (
+              <>
+                {scheduledHosted.length > 0 && (
+                  <>
+                    <h4 className="text-md font-medium mb-2">Scheduled Rooms</h4>
+                    <GameRoomList gameRooms={scheduledHosted} onJoinRoom={onJoinRoom} />
+                  </>
+                )}
+                {activeHosted.length > 0 && (
+                  <>
+                    <h4 className="text-md font-medium mb-2 mt-4">Active Rooms</h4>
+                    <GameRoomList gameRooms={activeHosted} onJoinRoom={onJoinRoom} />
+                  </>
+                )}
+              </>
+            ) : (
+              <p className="text-gray-400">You haven't hosted any rooms yet.</p>
+            )}
           </>
         )}
         {activeTab === 'past' && (
@@ -108,6 +121,117 @@ const activeHosted = hostedRooms.filter(room => !room.startTime || new Date(room
     </div>
   );
 };
+
+// import React, { useEffect, useState } from 'react';
+// import io from 'socket.io-client';
+// import { GameRoomList } from '../components/GameRoom/GameRoomList';
+// import { SectionTitle } from '../components/UI/SectionTitle';
+
+
+// interface GameRoom {
+//   id: number | string;
+//   name: string;
+//   gameType: string;
+//   hostName: string;
+//   hostAvatar: string;
+//   currentPlayers: number;
+//   maxPlayers: number;
+//   isPrivate: boolean;
+//   isInviteOnly: boolean;
+//   startTime?: string;
+// }
+
+// export const MyGameRoomsPage = ({ onJoinRoom }: any) => {
+//   const [activeTab, setActiveTab] = useState('joined');
+//   const [hostedRooms, setHostedRooms] = useState<GameRoom[]>([]);
+//   const [joinedRooms, setJoinedRooms] = useState<GameRoom[]>([]);
+
+//   const now = new Date();
+  
+// const scheduledHosted = hostedRooms.filter(room => room.startTime && new Date(room.startTime) > now);
+// const activeHosted = hostedRooms.filter(room => !room.startTime || new Date(room.startTime) <= now);
+
+
+
+//   useEffect(() => {
+//     const playerId = localStorage.getItem('userId');
+//     if (!playerId) return;
+
+//     const socket = io('https://alu-globe-gameroom.onrender.com', {
+//       transports: ['websocket'],
+//       reconnection: true,
+//     });
+
+//     socket.on('connect', () => {
+//       socket.emit('getMyGameRooms', { playerId });
+//     });
+
+//     socket.on('myGameRoomsList', (data: { hosted: GameRoom[]; joined: GameRoom[] }) => {
+//       setHostedRooms(data.hosted);
+//       setJoinedRooms(data.joined);
+//     });
+
+//     socket.on('error', (err: any) => {
+//       console.error('Socket error (myGameRoomsList):', err);
+//     });
+
+    
+
+//     return () => {
+//       socket.disconnect();
+//     };
+//   }, []);
+
+//   return (
+//     <div className="p-6 overflow-y-auto h-screen pb-20">
+//       <SectionTitle title="My Game Rooms" subtitle="Manage your created game rooms and view the ones you've joined" />
+
+//       {/* Tabs */}
+//       <div className="flex mb-6 border-b border-gray-700">
+//         {['joined', 'hosted', 'past'].map((tab) => (
+//           <button
+//             key={tab}
+//             onClick={() => setActiveTab(tab)}
+//             className={`px-6 py-3 font-medium transition-colors ${
+//               activeTab === tab ? 'text-purple-400 border-b-2 border-purple-500' : 'text-gray-400 hover:text-gray-300'
+//             }`}
+//           >
+//             {tab.charAt(0).toUpperCase() + tab.slice(1)} Rooms
+//           </button>
+//         ))}
+//       </div>
+
+//       {/* Tab Content */}
+//       <div>
+//         {activeTab === 'joined' && (
+//           <>
+//             <h3 className="text-lg font-medium mb-4">Game rooms you've joined</h3>
+//             <GameRoomList gameRooms={joinedRooms} onJoinRoom={onJoinRoom} />
+//           </>
+//         )}
+//         {activeTab === 'hosted' && (
+//           <>
+//             <h3 className="text-lg font-medium mb-4">Game rooms you're hosting</h3>
+//             {/* <GameRoomList gameRooms={hostedRooms} onJoinRoom={onJoinRoom} /> */}
+//             {hostedRooms?.length > 0 ? (
+//   <GameRoomList gameRooms={hostedRooms} onJoinRoom={onJoinRoom} />
+// ) : (
+//   <p className="text-gray-400">You haven't hosted any rooms yet.</p>
+// )}
+//           </>
+//         )}
+//         {activeTab === 'past' && (
+//           <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-8 text-center">
+//             <p className="text-gray-400 mb-4">Your game history will appear here.</p>
+//             <button className="px-6 py-3 bg-gray-700 text-white font-medium rounded-lg hover:bg-gray-600 transition-colors">
+//               View Game Statistics
+//             </button>
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// };
 
 
 
