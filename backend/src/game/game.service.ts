@@ -173,58 +173,7 @@ export class GameService {
     return { game: gameRoom, player: joinGameDto.playerId };
   }
 
-  // async joinGame(joinGameDto: JoinGameDto) {
-  //   const gameRoom = await this.gameRoomModel.findOne({ roomId: joinGameDto.roomId });
-    
-  //   if (!gameRoom) {
-  //     throw new Error('Game room not found');
-  //   }
-    
-  //   if (gameRoom.currentPlayers >= gameRoom.maxPlayers) {
-  //     throw new Error('Game room is full');
-  //   }
-    
-  //   if (gameRoom.isPrivate && gameRoom.password !== joinGameDto.password) {
-  //     throw new Error('Invalid password');
-  //   }
-
-  //   // if (!gameRoom.playerIds.includes(playerId)) {
-  //   //   gameRoom.playerIds.push(playerId);
-  //   //   gameRoom.currentPlayers = gameRoom.playerIds.length;
-  //   //   await gameRoom.save();
-  //   // }
-
-  //   if (!gameRoom.playerIds.includes(joinGameDto.playerId)) {
-  //     gameRoom.playerIds.push(joinGameDto.playerId);
-  //     gameRoom.currentPlayers = gameRoom.playerIds.length;
-  //     await gameRoom.save();
-      
-  //     // Update game state in Redis
-  //     const gameState = await this.getGameState(joinGameDto.roomId);
-  //     gameState.players.push(joinGameDto.playerId);
-  //     gameState.coins = {
-  //       ...gameState.coins,
-  //       ...this.initializeCoins([joinGameDto.playerId]),
-  //     };
-  //     await this.updateGameState(joinGameDto.roomId, gameState);
-  //   }
-    
-    
-  //   // Update game room
-  //   gameRoom.currentPlayers += 1;
-  //   await gameRoom.save();
-    
-  //   // Update game state in Redis
-  //   const gameState = await this.getGameState(joinGameDto.roomId);
-  //   gameState.players.push(joinGameDto.playerId);
-  //   gameState.coins = {
-  //     ...gameState.coins,
-  //     ...this.initializeCoins([joinGameDto.playerId]),
-  //   };
-  //   await this.updateGameState(joinGameDto.roomId, gameState);
-    
-  //   return { game: gameRoom, player: joinGameDto.playerId };
-  // }
+  
 
   async rollDice(rollDiceDto: RollDiceDto) {
     const gameState = await this.getGameState(rollDiceDto.roomId);
@@ -390,48 +339,13 @@ export class GameService {
     return updatedRoom;
   }
   
-  // async startGame(roomId: string) {
-  //   const gameState = await this.getGameState(roomId);
-    
-  //   if (gameState.gameStarted) {
-  //     throw new Error('Game already started');
-  //   }
-    
-  //   // If not enough players, add AI players
-  //   if (gameState.players.length < 4) {
-  //     const aiPlayersNeeded = 4 - gameState.players.length;
-  //     for (let i = 0; i < aiPlayersNeeded; i++) {
-  //       const aiPlayerId = `ai-${i+1}`;
-  //       gameState.players.push(aiPlayerId);
-  //       gameState.coins = {
-  //         ...gameState.coins,
-  //         ...this.initializeCoins([aiPlayerId]),
-  //       };
-  //     }
-  //   }
-    
-  //   gameState.gameStarted = true;
-  //   await this.updateGameState(roomId, gameState);
-    
-  //   // Update MongoDB
-  //   const gameRoom = await this.gameRoomModel.findOneAndUpdate(
-  //     { roomId },
-  //     { status: 'in-progress', currentPlayers: 4 },
-  //     { new: true }
-  //   );
-    
-  //   return gameRoom;
-  // }
 
   async handleDisconnect(client: Socket) {
     // Handle player disconnection
     // Could implement reconnection logic or AI takeover
   }
 
-  // public async getGameState(roomId: string) {
-  //   const gameState = await this.redisService.get(`game:${roomId}`);
-  //   return JSON.parse(gameState);
-  // }
+
 
   async getGameState(roomId: string) {
     try {
@@ -514,12 +428,7 @@ export class GameService {
     await gameSession.save();
   }
 
-  // async getGameRoomById(roomId: string) {
-  //   // const room = await this.gameRoomModel.findOne({ roomId });
-  //   const room = await this.gameRoomModel.findOne({ roomId }).exec();
-  //   if (!room) throw new Error('Game room not found');
-  //   return room;
-  // }
+ 
   
   async getScores(roomId: string) {
     const room = await this.gameRoomModel.findOne({ roomId });
@@ -548,27 +457,6 @@ export class GameService {
   }
 
 
-// async getActiveGameRooms(): Promise<PublicGameRoom[]> {
-//   const rooms = await this.gameRoomModel.find({
-//     status: { $in: ['waiting', 'in-progress'] }
-//   }).lean().exec();
-
-//   return rooms.map(room => ({
-//     id: room._id.toString(),
-//     roomId: room.roomId,
-//     name: room.name,
-//     gameType: room.gameType,
-//     hostName: room.host,
-//     hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
-//     currentPlayers: room.currentPlayers,
-//     maxPlayers: room.maxPlayers,
-//     isPrivate: room.isPrivate,
-//     isInviteOnly: room.isPrivate,
-//     status: room.status,
-//     host: room.host,
-//     scores: Object.fromEntries((room.scores as any)?.entries?.() || []), // safely convert Map
-//   }));
-// }
 
 
 // Update the getGameRoomById method to handle both roomId and _id
@@ -625,35 +513,6 @@ async getActiveGameRooms(): Promise<PublicGameRoom[]> {
   }));
 }
 
-// async getActiveGameRooms(): Promise<PublicGameRoom[]> {
-//   const rooms = await this.gameRoomModel
-//     .find({
-//       status: { $in: ['waiting', 'in-progress'] },
-//     })
-//     .sort({ createdAt: -1 }) // 🔥 Sort by newest first
-//     .lean()
-//     .exec();
-
-//   return rooms.map(room => ({
-//     id: room._id.toString(),
-//     roomId: room.roomId,
-//     name: room.name,
-//     gameType: room.gameType,
-//     hostName: room.host,
-//     hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
-//     currentPlayers: room.currentPlayers,
-//     maxPlayers: room.maxPlayers,
-//     isPrivate: room.isPrivate,
-//     isInviteOnly: room.isPrivate,
-//     status: room.status,
-//     host: room.host,
-//     scores: Object.fromEntries((room.scores as any)?.entries?.() || []),
-//     scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : '',
-//     //   scheduledTimeCombined: room.scheduledTime 
-//   // ? new Date(room.scheduledTime).toLocaleString() 
-//   // : '',
-//   }));
-// }
 
   
 
