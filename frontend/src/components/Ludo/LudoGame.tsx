@@ -78,6 +78,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   }, [diceRolled, diceValue, currentPlayer, players, currentPlayerId, coins]);
 
   const handleMoveCoin = (coinIndex: number) => {
+    if (players[currentPlayer]?.id.startsWith('ai-')) return;
     if (!movableCoins.includes(coinIndex) || !onMoveCoin || players[currentPlayer]?.id !== currentPlayerId) {
       console.log('Invalid move attempt:', { coinIndex, movableCoins, currentPlayerId });
       return;
@@ -242,7 +243,12 @@ export const LudoGame: React.FC<LudoGameProps> = ({
           <Dice
             value={diceValue}
             onRoll={() => onRollDice}
-            disabled={diceRolled || players[currentPlayer]?.id !== currentPlayerId || players[currentPlayer]?.id.startsWith('ai-')}
+            // disabled={diceRolled || players[currentPlayer]?.id !== currentPlayerId || players[currentPlayer]?.id.startsWith('ai-')}
+            disabled={
+              diceRolled || 
+              players[currentPlayer]?.id !== currentPlayerId || 
+              players[currentPlayer]?.id.startsWith('ai-') // Add this condition
+            }
           />
         </div>
       </div>

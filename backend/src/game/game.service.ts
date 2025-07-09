@@ -211,7 +211,12 @@ export class GameService {
   async moveCoin(moveCoinDto: MoveCoinDto) {
     try {
       const gameState = await this.getGameState(moveCoinDto.roomId);
+      if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
+        // Process AI turn immediately
+        await this.handleAITurn(moveCoinDto.roomId, gameState.currentTurn);
+      }
       if (gameState.currentTurn !== moveCoinDto.playerId) throw new Error('Not your turn');
+      
       if (!gameState.diceRolled) throw new Error('You must roll the dice first');
       const [color, coinIndexStr] = moveCoinDto.coinId.split('-');
       const coinIndex = parseInt(coinIndexStr) - 1;
@@ -321,8 +326,11 @@ export class GameService {
     try {
       console.log(`Starting AI turn for ${aiPlayerId} in room ${roomId}`);
       const gameState = await this.getGameState(roomId);
+      // if (gameState.currentTurn !== aiPlayerId || gameState.gameOver) {
+      //   console.log(`AI turn skipped for ${aiPlayerId}: not their turn or game over`);
+      //   return;
+      // }
       if (gameState.currentTurn !== aiPlayerId || gameState.gameOver) {
-        console.log(`AI turn skipped for ${aiPlayerId}: not their turn or game over`);
         return;
       }
       if (gameState.diceRolled) {

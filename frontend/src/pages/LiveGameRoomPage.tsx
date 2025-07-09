@@ -218,7 +218,15 @@ export const LiveGameRoomPage = () => {
   }, [socket, roomId]);
 
   const handleRollDice = () => {
-    if (socket && gameState?.currentTurn === user?.id && gameState.diceValue === 0) {
+    // if (socket && gameState?.currentTurn === user?.id && gameState.diceValue === 0) {
+    //   socket.emit('rollDice', { roomId, playerId: user!.id });
+    // }
+    if (
+      socket && 
+      gameState?.currentTurn === user?.id && 
+      gameState.diceValue === 0 &&
+      !gameState.currentTurn.startsWith('ai-') // Add this condition
+    ) {
       socket.emit('rollDice', { roomId, playerId: user!.id });
     }
   };
