@@ -139,7 +139,8 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
           navigate(`/game-room/${game.roomId}`);
         } else {
           navigate('/my-game-rooms');
-          alert('Game scheduled successfully!');
+          //alert('Game scheduled successfully!');
+          console.log('Game scheduled successfully!');
         }
         
         if (onGameCreated) onGameCreated();
@@ -165,55 +166,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
       }
     }
   };
-  //   try {
-  //     const timeout = setTimeout(() => {
-  //       setIsLoading(false);
-  //       alert('Request timed out. Please try again.');
-  //     }, 10000);
 
-
-
-  //     const handleGameCreated = (game: any) => {
-  //       clearTimeout(timeout);
-  //       setIsLoading(false);
-      
-  //       if (gameMode === 'playNow' && game?.roomId) {
-  //         navigate(`/game-room/${game.roomId}`);
-  //       } else {
-  //         navigate('/');
-  //         alert('Game scheduled successfully!');
-  //       }
-      
-  //       // Now this refers to the PROP, not itself
-  //       socket.once('gameCreated', handleGameCreated);  // ✅ use renamed local handler
-
-  //     };
-      
-
-  //     const onError = (error: any) => {
-  //       clearTimeout(timeout);
-  //       setIsLoading(false);
-  //       alert(error.message || 'Failed to create game room');
-  //     };
-
-  //     // socket.once('gameCreated', onGameCreated);
-  //     socket.once('gameCreated', handleGameCreated);
-
-  //     socket.once('error', onError);
-
-  //     socket.emit('createGame', gameRoomData);
-
-  //     return () => {
-  //       clearTimeout(timeout);
-  //       socket.off('gameCreated', onGameCreated);
-  //       socket.off('error', onError);
-  //     };
-  //   } catch (error) {
-  //     setIsLoading(false);
-  //     console.error('Failed to create game room:', error);
-  //     alert('Failed to create game room. Please try again.');
-  //   }
-  // };
 
   return (
     <div className="p-6 overflow-y-auto h-screen pb-20">
