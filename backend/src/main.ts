@@ -14,7 +14,12 @@ async function bootstrap() {
   // });
 
   app.enableCors({
-    origin: '*',
+    // origin: '*',
+    origin: [
+      'http://localhost:5173',          // Vite dev server
+      'https://alu-globe-gameroom-frontend.vercel.app', // Production frontend
+      'https://alu-globe-gameroom.onrender.com' // Render.com backend (for Socket.IO)
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,

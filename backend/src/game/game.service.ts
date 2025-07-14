@@ -100,7 +100,7 @@ export class GameService {
       gameOver: false,
       winner: null,
       roomName,
-      gameType: '',
+      gameType: 'ludo', // double check
     };
     await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
   }

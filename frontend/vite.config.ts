@@ -6,11 +6,18 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      // WebSocket/Socket.IO
       '/socket.io': {
         target: 'https://alu-globe-gameroom.onrender.com',
+        changeOrigin: true,
         ws: true,
       },
-      '/': 'https://alu-globe-gameroom.onrender.com',
+      // API routes
+      '/': {
+        target: 'https://alu-globe-gameroom.onrender.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
     },
   },
 })
