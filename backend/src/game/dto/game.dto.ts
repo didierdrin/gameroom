@@ -5,6 +5,7 @@ export class CreateGameDto {
     readonly password?: string;
     scheduledTimeCombined?: string | Date;
     readonly gameType: string;
+    readonly triviaTopic?: string; 
   }
   
   export class JoinGameDto {
