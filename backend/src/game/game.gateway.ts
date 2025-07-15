@@ -145,6 +145,41 @@ export class GameGateway {
       client.emit('error', { message: error.message || 'Failed to fetch my game rooms' });
     }
   }
+
+  @SubscribeMessage('makeChessMove')
+  async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; move: string }, @ConnectedSocket() client: Socket) {
+    try {
+      console.log('Chess move:', data);
+      const result = await this.gameService.makeChessMove(data);
+      this.server.to(data.roomId).emit('chessMove', result);
+      const gameState = await this.gameService.getGameState(data.roomId);
+      this.server.to(data.roomId).emit('gameState', gameState);
+      if (gameState.gameOver) {
+        this.server.to(data.roomId).emit('gameOver', { winner: gameState.winner });
+      }
+    } catch (error) {
+      console.error('Chess move error:', error.message);
+      client.emit('error', { message: error.message, type: 'chessMoveError' });
+    }
+  }
+
+  @SubscribeMessage('submitKahootAnswer')
+  async handleKahootAnswer(@MessageBody() data: { roomId: string; playerId: string; answerIndex: number }, @ConnectedSocket() client: Socket) {
+    try {
+      console.log('Kahoot answer:', data);
+      const result = await this.gameService.submitKahootAnswer(data);
+      this.server.to(data.roomId).emit('kahootAnswer', result);
+      const gameState = await this.gameService.getGameState(data.roomId);
+      this.server.to(data.roomId).emit('gameState', gameState);
+      if (gameState.gameOver) {
+        this.server.to(data.roomId).emit('gameOver', { winner: gameState.winner });
+      }
+    } catch (error) {
+      console.error('Kahoot answer error:', error.message);
+      client.emit('error', { message: error.message, type: 'kahootAnswerError' });
+    }
+  }
+  
 }
 
 // import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, ConnectedSocket } from '@nestjs/websockets';

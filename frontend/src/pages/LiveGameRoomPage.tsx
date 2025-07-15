@@ -171,6 +171,36 @@ export const LiveGameRoomPage = () => {
       }));
     };
 
+    const handleChessMove = (data: any) => {
+      console.log('Chess move:', data);
+      setGameState((prev) => ({
+        ...prev,
+        chessState: {
+          ...prev.chessState,
+          board: data.gameState.chessState.board,
+          moves: data.gameState.chessState.moves,
+        },
+        currentTurn: data.gameState.currentTurn,
+        currentPlayer: data.gameState.currentPlayer,
+        gameOver: data.gameState.gameOver,
+        winner: data.gameState.winner,
+      }));
+    };
+
+    const handleKahootAnswer = (data: any) => {
+      console.log('Kahoot answer:', data);
+      setGameState((prev:any) => ({
+        ...prev,
+        kahootState: {
+          ...prev.kahootState,
+          answers: {
+            ...prev.kahootState?.answers,
+            [data.playerId]: data.answerIndex,
+          },
+        },
+      }));
+    };
+
     const handleGameOver = (data: any) => {
       console.log('Game over:', data);
       setGameState((prev) => ({
@@ -195,6 +225,8 @@ export const LiveGameRoomPage = () => {
     socket.on('chatMessage', handleChatMessage);
     socket.on('diceRolled', handleDiceRolled);
     socket.on('coinMoved', handleCoinMoved);
+    socket.on('chessMove', handleChessMove);
+    socket.on('kahootAnswer', handleKahootAnswer);
     socket.on('gameOver', handleGameOver);
     socket.on('error', handleError);
 
@@ -206,6 +238,8 @@ export const LiveGameRoomPage = () => {
       socket.off('chatMessage', handleChatMessage);
       socket.off('diceRolled', handleDiceRolled);
       socket.off('coinMoved', handleCoinMoved);
+      socket.off('chessMove', handleChessMove);
+      socket.off('kahootAnswer', handleKahootAnswer);
       socket.off('gameOver', handleGameOver);
       socket.off('error', handleError);
     };
@@ -232,8 +266,20 @@ export const LiveGameRoomPage = () => {
   };
 
   const handleMoveCoin = (coinId: string) => {
-    if (socket && gameState?.currentTurn === user?.id && gameState.diceValue > 0) {
+    if (socket && gameState?.currentTurn === user?.id && gameState.diceValue! > 0) {
       socket.emit('moveCoin', { roomId, playerId: user!.id, coinId });
+    }
+  };
+
+  const handleChessMove = (move: string) => {
+    if (socket && gameState?.currentTurn === user?.id) {
+      socket.emit('makeChessMove', { roomId, playerId: user!.id, move });
+    }
+  };
+
+  const handleKahootAnswer = (answerIndex: number) => {
+    if (socket && gameState?.kahootState?.answers[user!.id] === null) {
+      socket.emit('submitKahootAnswer', { roomId, playerId: user!.id, answerIndex });
     }
   };
 
@@ -290,12 +336,13 @@ export const LiveGameRoomPage = () => {
               onMoveCoin={handleMoveCoin}
               onStartGame={handleStartGame}
             />
-            {gameState.currentTurn === user?.id && (
+            {gameState.currentTurn === user?.id && typeof gameState.diceValue === 'number' && (
               <div className="absolute bottom-4 right-4">
                 <Dice
                   value={gameState.diceValue}
                   onRoll={handleRollDice}
-                  disabled={gameState.diceValue !== 0}
+                  disabled={gameState.diceRolled && gameState.diceValue !== 6}
+                  // disabled={gameState.diceValue !== 0}
                 />
               </div>
             )}
@@ -311,6 +358,7 @@ export const LiveGameRoomPage = () => {
           roomId: roomId!,
           currentPlayer: user!.id,
           gameState,
+          onChessMove: handleChessMove, 
         });
 
       case 'uno':
@@ -327,6 +375,7 @@ export const LiveGameRoomPage = () => {
           roomId: roomId!,
           currentPlayer: user!.id,
           gameState,
+          onKahootAnswer: handleKahootAnswer,
         });
 
       case 'pictionary':

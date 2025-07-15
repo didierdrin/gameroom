@@ -27,21 +27,65 @@ interface PublicGameRoom {
   scores?: Record<string, number>;
 }
 
+interface Player {
+  id: string;
+  name: string;
+  color?: string; // Optional for Ludo, Chess
+  coins?: number[]; // Ludo-specific
+  score?: number; // Trivia, Kahoot-specific
+  chessColor?: 'white' | 'black'; // Chess-specific
+}
+
+interface ChessState {
+  board: string; // FEN notation for chess position
+  moves: string[]; // List of moves in algebraic notation
+  capturedPieces?: string[]; // Optional: track captured pieces
+}
+
+interface KahootState {
+  currentQuestionIndex: number;
+  questions: { id: string; text: string; options: string[]; correctAnswer: number }[];
+  scores: Record<string, number>;
+  answers: Record<string, number | null>; // Player answers for current question
+  questionTimer: number; // Seconds remaining
+}
+
 interface GameState {
   roomId: string;
-  players: { id: string; name: string; color: string; coins: number[] }[];
+  players: Player[];
   currentTurn: string;
   currentPlayer: number;
-  diceValue: number;
-  diceRolled: boolean;
-  consecutiveSixes: number;
-  coins: Record<string, number[]>;
   gameStarted: boolean;
   gameOver: boolean;
   winner: string | null;
   roomName: string;
   gameType: string;
+  // Ludo-specific
+  diceValue?: number;
+  diceRolled?: boolean;
+  consecutiveSixes?: number;
+  coins?: Record<string, number[]>;
+  // Chess-specific
+  chessState?: ChessState;
+  // Kahoot-specific
+  kahootState?: KahootState;
 }
+
+// interface GameState {
+//   roomId: string;
+//   players: { id: string; name: string; color: string; coins: number[] }[];
+//   currentTurn: string;
+//   currentPlayer: number;
+//   diceValue: number;
+//   diceRolled: boolean;
+//   consecutiveSixes: number;
+//   coins: Record<string, number[]>;
+//   gameStarted: boolean;
+//   gameOver: boolean;
+//   winner: string | null;
+//   roomName: string;
+//   gameType: string;
+// }
 
 @Injectable()
 export class GameService {
@@ -50,6 +94,23 @@ export class GameService {
   private safePositions = [1, 9, 14, 22, 27, 35, 40, 48];
   private homeColumnStart = 52; // Positions 52–57 are home column
 
+  // Sample Kahoot questions
+  private kahootQuestions = [
+    {
+      id: 'q1',
+      text: 'Who invented the World Wide Web?',
+      options: ['Tim Berners-Lee', 'Bill Gates', 'Steve Jobs', 'Mark Zuckerberg'],
+      correctAnswer: 0,
+    },
+    {
+      id: 'q2',
+      text: 'What is the capital of France?',
+      options: ['Paris', 'London', 'Berlin', 'Madrid'],
+      correctAnswer: 0,
+    },
+  ];
+
+
   constructor(
     private readonly redisService: RedisService,
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoomDocument>,
@@ -57,6 +118,10 @@ export class GameService {
   ) {}
 
   async createGame(createGameDto: CreateGameDto) {
+    const validGameTypes = ['ludo', 'trivia', 'chess', 'kahoot', 'uno', 'pictionary', 'sudoku'];
+    if (!validGameTypes.includes(createGameDto.gameType.toLowerCase())) {
+      throw new Error('Invalid game type');
+    }
     const roomId = uuidv4();
     let scheduledTimeCombined: Date | undefined;
     if (createGameDto.scheduledTimeCombined) {
@@ -64,12 +129,13 @@ export class GameService {
       if (isNaN(scheduledTimeCombined.getTime())) throw new Error('Invalid scheduled time format');
       if (scheduledTimeCombined <= new Date()) throw new Error('Scheduled time must be in the future');
     }
+    const maxPlayers = createGameDto.gameType.toLowerCase() === 'chess' ? 2 : 4;
     const gameRoom = new this.gameRoomModel({
       roomId,
       name: createGameDto.name,
       gameType: createGameDto.gameType.toLowerCase(),
       host: createGameDto.hostId,
-      maxPlayers: 4,
+      maxPlayers,
       currentPlayers: 1,
       isPrivate: createGameDto.isPrivate,
       password: createGameDto.password,
@@ -83,73 +149,139 @@ export class GameService {
     return gameRoom;
   }
 
+
+
   // private async initializeGameState(roomId: string, hostId: string, roomName: string, gameType: string) {
   //   const colors = ['red', 'blue', 'green', 'yellow'];
-  //   const initialGameState: GameState = {
-  //     roomId,
-  //     players: [{ id: hostId, name: hostId, color: colors[0], coins: [0, 0, 0, 0] }],
-  //     currentTurn: hostId,
-  //     currentPlayer: 0,
-  //     diceValue: 0,
-  //     diceRolled: false,
-  //     consecutiveSixes: 0,
-  //     coins: {
-  //       [hostId]: [0, 0, 0, 0],
-  //     },
-  //     gameStarted: false,
-  //     gameOver: false,
-  //     winner: null,
-  //     roomName,
-  //     gameType: gameType.toLowerCase(), 
-  //   };
+  //   let initialGameState: GameState;
+    
+  //   if (gameType.toLowerCase() === 'trivia') {
+  //     initialGameState = {
+  //       roomId,
+  //       players: [{ id: hostId, name: hostId, color: colors[0], coins: [] }], // No coins for trivia
+  //       currentTurn: hostId,
+  //       currentPlayer: 0,
+  //       diceValue: 0, // May not be needed for trivia
+  //       diceRolled: false,
+  //       consecutiveSixes: 0,
+  //       coins: {}, // No coins for trivia
+  //       gameStarted: false,
+  //       gameOver: false,
+  //       winner: null,
+  //       roomName,
+  //       gameType: gameType.toLowerCase(),
+  //       // Add trivia-specific fields if needed
+  //       // questions: [], // Example
+  //       // scores: {}, // Example
+  //     };
+  //   } else {
+  //     initialGameState = {
+  //       roomId,
+  //       players: [{ id: hostId, name: hostId, color: colors[0], coins: [0, 0, 0, 0] }],
+  //       currentTurn: hostId,
+  //       currentPlayer: 0,
+  //       diceValue: 0,
+  //       diceRolled: false,
+  //       consecutiveSixes: 0,
+  //       coins: {
+  //         [hostId]: [0, 0, 0, 0],
+  //       },
+  //       gameStarted: false,
+  //       gameOver: false,
+  //       winner: null,
+  //       roomName,
+  //       gameType: gameType.toLowerCase(),
+  //     };
+  //   }
   //   await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
   // }
-
 
   private async initializeGameState(roomId: string, hostId: string, roomName: string, gameType: string) {
     const colors = ['red', 'blue', 'green', 'yellow'];
     let initialGameState: GameState;
-    
-    if (gameType.toLowerCase() === 'trivia') {
-      initialGameState = {
-        roomId,
-        players: [{ id: hostId, name: hostId, color: colors[0], coins: [] }], // No coins for trivia
-        currentTurn: hostId,
-        currentPlayer: 0,
-        diceValue: 0, // May not be needed for trivia
-        diceRolled: false,
-        consecutiveSixes: 0,
-        coins: {}, // No coins for trivia
-        gameStarted: false,
-        gameOver: false,
-        winner: null,
-        roomName,
-        gameType: gameType.toLowerCase(),
-        // Add trivia-specific fields if needed
-        // questions: [], // Example
-        // scores: {}, // Example
-      };
-    } else {
-      initialGameState = {
-        roomId,
-        players: [{ id: hostId, name: hostId, color: colors[0], coins: [0, 0, 0, 0] }],
-        currentTurn: hostId,
-        currentPlayer: 0,
-        diceValue: 0,
-        diceRolled: false,
-        consecutiveSixes: 0,
-        coins: {
-          [hostId]: [0, 0, 0, 0],
-        },
-        gameStarted: false,
-        gameOver: false,
-        winner: null,
-        roomName,
-        gameType: gameType.toLowerCase(),
-      };
+
+    switch (gameType.toLowerCase()) {
+      case 'trivia':
+      case 'kahoot':
+        initialGameState = {
+          roomId,
+          players: [{ id: hostId, name: hostId, score: 0 }],
+          currentTurn: hostId,
+          currentPlayer: 0,
+          gameStarted: false,
+          gameOver: false,
+          winner: null,
+          roomName,
+          gameType: gameType.toLowerCase(),
+          kahootState: {
+            currentQuestionIndex: 0,
+            questions: gameType === 'kahoot' ? this.kahootQuestions : [],
+            scores: { [hostId]: 0 },
+            answers: { [hostId]: null },
+            questionTimer: 20,
+          },
+        };
+        break;
+      case 'chess':
+        initialGameState = {
+          roomId,
+          players: [{ id: hostId, name: hostId, chessColor: 'white' }],
+          currentTurn: hostId,
+          currentPlayer: 0,
+          gameStarted: false,
+          gameOver: false,
+          winner: null,
+          roomName,
+          gameType: 'chess',
+          chessState: {
+            board: 'rnbqkbnr/pppppppp/5n1f/8/8/5N1F/PPPPPPPP/RNBQKBNR w KQkq - 0 1', // Initial FEN
+            moves: [],
+          },
+        };
+        break;
+      default: // ludo, uno, pictionary, sudoku
+        initialGameState = {
+          roomId,
+          players: [{ id: hostId, name: hostId, color: colors[0], coins: [0, 0, 0, 0] }],
+          currentTurn: hostId,
+          currentPlayer: 0,
+          diceValue: 0,
+          diceRolled: false,
+          consecutiveSixes: 0,
+          coins: { [hostId]: [0, 0, 0, 0] },
+          gameStarted: false,
+          gameOver: false,
+          winner: null,
+          roomName,
+          gameType: gameType.toLowerCase(),
+        };
     }
     await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
   }
+
+  // async joinGame(joinGameDto: JoinGameDto) {
+  //   const gameRoom = await this.gameRoomModel.findOne({ roomId: joinGameDto.roomId });
+  //   if (!gameRoom) throw new Error('Game room not found');
+  //   if (gameRoom.currentPlayers >= gameRoom.maxPlayers) throw new Error('Game room is full');
+  //   if (gameRoom.isPrivate && gameRoom.password !== joinGameDto.password) throw new Error('Invalid password');
+  //   if (!gameRoom.playerIds.includes(joinGameDto.playerId)) {
+  //     gameRoom.playerIds.push(joinGameDto.playerId);
+  //     gameRoom.currentPlayers = gameRoom.playerIds.length;
+  //     await gameRoom.save();
+  //     const gameState = await this.getGameState(joinGameDto.roomId);
+  //     const colors = ['red', 'blue', 'green', 'yellow'];
+  //     const playerIndex = gameState.players.length;
+  //     gameState.players.push({
+  //       id: joinGameDto.playerId,
+  //       name: joinGameDto.playerName || joinGameDto.playerId,
+  //       color: colors[playerIndex],
+  //       coins: [0, 0, 0, 0],
+  //     });
+  //     gameState.coins![joinGameDto.playerId] = [0, 0, 0, 0];
+  //     await this.updateGameState(joinGameDto.roomId, gameState);
+  //   }
+  //   return { game: gameRoom, player: joinGameDto.playerId };
+  // }
 
   async joinGame(joinGameDto: JoinGameDto) {
     const gameRoom = await this.gameRoomModel.findOne({ roomId: joinGameDto.roomId });
@@ -163,13 +295,32 @@ export class GameService {
       const gameState = await this.getGameState(joinGameDto.roomId);
       const colors = ['red', 'blue', 'green', 'yellow'];
       const playerIndex = gameState.players.length;
-      gameState.players.push({
-        id: joinGameDto.playerId,
-        name: joinGameDto.playerName || joinGameDto.playerId,
-        color: colors[playerIndex],
-        coins: [0, 0, 0, 0],
-      });
-      gameState.coins[joinGameDto.playerId] = [0, 0, 0, 0];
+      if (gameRoom.gameType === 'chess') {
+        gameState.players.push({
+          id: joinGameDto.playerId,
+          name: joinGameDto.playerName || joinGameDto.playerId,
+          chessColor: playerIndex === 1 ? 'black' : 'white',
+        });
+      } else if (gameRoom.gameType === 'kahoot' || gameRoom.gameType === 'trivia') {
+        gameState.players.push({
+          id: joinGameDto.playerId,
+          name: joinGameDto.playerName || joinGameDto.playerId,
+          score: 0,
+        });
+        if (gameState.kahootState) {
+          gameState.kahootState.scores[joinGameDto.playerId] = 0;
+          gameState.kahootState.answers[joinGameDto.playerId] = null;
+        }
+      } else {
+        gameState.players.push({
+          id: joinGameDto.playerId,
+          name: joinGameDto.playerName || joinGameDto.playerId,
+          color: colors[playerIndex],
+          coins: [0, 0, 0, 0],
+        });
+        gameState.coins = gameState.coins || {};
+        gameState.coins[joinGameDto.playerId] = [0, 0, 0, 0];
+      }
       await this.updateGameState(joinGameDto.roomId, gameState);
     }
     return { game: gameRoom, player: joinGameDto.playerId };
@@ -186,14 +337,14 @@ export class GameService {
         const diceValue = Math.floor(Math.random() * 6) + 1;
         gameState.diceValue = diceValue;
         gameState.diceRolled = true;
-        gameState.consecutiveSixes = diceValue === 6 ? gameState.consecutiveSixes + 1 : 0;
+        // gameState.consecutiveSixes = diceValue === 6 ? gameState.consecutiveSixes! + 1 : 0;
         console.log(`Dice rolled by ${rollDiceDto.playerId}: ${diceValue}, consecutive sixes: ${gameState.consecutiveSixes}`);
       } else {
         console.log(`Using existing dice value ${gameState.diceValue} for ${rollDiceDto.playerId}'s extra turn`);
       }
 
       // Check for three consecutive 6s
-      if (gameState.consecutiveSixes >= 3) {
+      if (gameState.consecutiveSixes! >= 3) {
         console.log(`Player ${rollDiceDto.playerId} rolled three 6s, losing turn`);
         gameState.diceValue = 0;
         gameState.diceRolled = false;
@@ -213,8 +364,8 @@ export class GameService {
       }
 
       // Check if the player has any valid moves
-      const playerCoins = gameState.coins[rollDiceDto.playerId] || [0, 0, 0, 0];
-      const hasValidMove = gameState.diceValue === 6 || playerCoins.some((pos) => pos > 0 && pos + gameState.diceValue <= 57);
+      const playerCoins = gameState.coins![rollDiceDto.playerId] || [0, 0, 0, 0];
+      const hasValidMove = gameState.diceValue === 6 || playerCoins.some((pos) => pos > 0 && pos + gameState.diceValue! <= 57);
 
       if (!hasValidMove) {
         console.log(`No valid moves for ${rollDiceDto.playerId} (dice: ${gameState.diceValue}), passing turn`);
@@ -267,7 +418,7 @@ export class GameService {
       const [color, coinIndexStr] = moveCoinDto.coinId.split('-');
       const coinIndex = parseInt(coinIndexStr) - 1;
       const playerIndex = gameState.players.findIndex((p) => p.id === moveCoinDto.playerId);
-      const coinPosition = gameState.coins[moveCoinDto.playerId][coinIndex];
+      const coinPosition = gameState.coins![moveCoinDto.playerId][coinIndex];
       let newPosition = coinPosition;
       let captured = false;
 
@@ -277,7 +428,7 @@ export class GameService {
       if (coinPosition === 0 && gameState.diceValue === 6) {
         newPosition = this.startPositions[playerIndex];
       } else if (coinPosition > 0) {
-        newPosition = coinPosition + gameState.diceValue;
+        newPosition = coinPosition + gameState.diceValue!;
         if (newPosition > 57) throw new Error('Invalid move: Beyond home');
         if (newPosition > 51 && newPosition < 57) {
           const homeStretchPosition = newPosition - 51;
@@ -289,12 +440,12 @@ export class GameService {
 
       // Check for captures (only on non-safe positions and not in home column)
       if (!this.safePositions.includes(newPosition % 52) && newPosition <= 51) {
-        for (const opponentId of Object.keys(gameState.coins)) {
+        for (const opponentId of Object.keys(gameState.coins!)) {
           if (opponentId !== moveCoinDto.playerId) {
-            gameState.coins[opponentId].forEach((pos, idx) => {
+            gameState.coins![opponentId].forEach((pos, idx) => {
               if (pos === newPosition) {
-                gameState.coins[opponentId][idx] = 0;
-                gameState.players[gameState.players.findIndex((p) => p.id === opponentId)].coins[idx] = 0;
+                gameState.coins![opponentId][idx] = 0;
+                gameState.players[gameState.players.findIndex((p) => p.id === opponentId)].coins![idx] = 0;
                 captured = true;
                 console.log(`Captured opponent coin at position ${newPosition} for player ${opponentId}`);
               }
@@ -304,12 +455,12 @@ export class GameService {
       }
 
       // Update coin position
-      gameState.coins[moveCoinDto.playerId][coinIndex] = newPosition;
-      gameState.players[playerIndex].coins[coinIndex] = newPosition;
+      gameState.coins![moveCoinDto.playerId][coinIndex] = newPosition;
+      gameState.players[playerIndex].coins![coinIndex] = newPosition;
       console.log(`Coin moved: ${moveCoinDto.coinId} to position ${newPosition}`);
 
       // Check win condition
-      const hasWon = gameState.coins[moveCoinDto.playerId].every((pos) => pos === 57);
+      const hasWon = gameState.coins![moveCoinDto.playerId].every((pos) => pos === 57);
       if (hasWon) {
         gameState.winner = moveCoinDto.playerId;
         gameState.gameOver = true;
@@ -400,7 +551,7 @@ export class GameService {
       }
 
       const playerIndex = gameState.players.findIndex((p) => p.id === aiPlayerId);
-      const playerCoins = gameState.coins[aiPlayerId] || [0, 0, 0, 0];
+      const playerCoins = gameState.coins![aiPlayerId] || [0, 0, 0, 0];
       const movableCoins: { index: number; newPosition: number; captures: boolean }[] = [];
 
       // Determine movable coins
@@ -409,12 +560,12 @@ export class GameService {
         if (position === 0 && gameState.diceValue === 6) {
           newPosition = this.startPositions[playerIndex];
         } else if (position > 0 && position < 57) {
-          newPosition = position + gameState.diceValue;
+          newPosition = position + gameState.diceValue!;
           if (newPosition <= 57) {
             let captures = false;
             if (!this.safePositions.includes(newPosition % 52) && newPosition <= 51) {
-              for (const opponentId of Object.keys(gameState.coins)) {
-                if (opponentId !== aiPlayerId && gameState.coins[opponentId].includes(newPosition)) {
+              for (const opponentId of Object.keys(gameState.coins!)) {
+                if (opponentId !== aiPlayerId && gameState.coins![opponentId].includes(newPosition)) {
                   captures = true;
                   break;
                 }
@@ -462,58 +613,196 @@ export class GameService {
     }
   }
 
+  // async startGame(roomId: string) {
+  //   try {
+  //     const gameState = await this.getGameState(roomId);
+  //     if (gameState.gameStarted) throw new Error('Game already started');
+  //     const room = await this.getGameRoomById(roomId);
+  //     if (!room) throw new Error('Room not found');
+  //     if (room.playerIds.length < 2) throw new Error('At least 2 players required');
+      
+  //     if (room.gameType === 'trivia') {
+  //       gameState.gameStarted = true;
+  //       // Add trivia-specific initialization (e.g., load questions)
+  //       await this.updateGameState(roomId, gameState);
+  //       await this.gameRoomModel.findOneAndUpdate({ roomId }, { status: 'in-progress' }, { new: true });
+  //       return gameState;
+  //     }
+
+  //     // Add AI players if needed
+  //     const colors = ['red', 'blue', 'green', 'yellow'];
+  //     while (room.playerIds.length < 4) {
+  //       const aiPlayerId = `ai-${room.playerIds.length + 1}`;
+  //       room.playerIds.push(aiPlayerId);
+  //       gameState.players.push({
+  //         id: aiPlayerId,
+  //         name: `AI ${room.playerIds.length}`,
+  //         color: colors[room.playerIds.length - 1],
+  //         coins: [0, 0, 0, 0],
+  //       });
+  //       gameState.coins![aiPlayerId] = [0, 0, 0, 0];
+  //     }
+  //     room.currentPlayers = room.playerIds.length;
+  //     await room.save();
+
+  //     gameState.gameStarted = true;
+  //     gameState.consecutiveSixes = 0;
+  //     await this.updateGameState(roomId, gameState);
+  //     await this.gameRoomModel.findOneAndUpdate({ roomId }, { status: 'in-progress' }, { new: true });
+
+  //     // If first player is AI, start their turn
+  //     if (gameState.currentTurn.startsWith('ai-')) {
+  //       console.log(`Scheduling AI turn for ${gameState.currentTurn} at game start`);
+  //       setTimeout(() => {
+  //         this.handleAITurn(roomId, gameState.currentTurn).catch((error) => {
+  //           console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
+  //         });
+  //       }, 1000);
+  //     }
+
+  //     return gameState;
+  //   } catch (error) {
+  //     console.error(`Error in startGame for room ${roomId}:`, error);
+  //     throw error;
+  //   }
+  // }
+
   async startGame(roomId: string) {
     try {
       const gameState = await this.getGameState(roomId);
       if (gameState.gameStarted) throw new Error('Game already started');
       const room = await this.getGameRoomById(roomId);
       if (!room) throw new Error('Room not found');
-      if (room.playerIds.length < 2) throw new Error('At least 2 players required');
-      
-      if (room.gameType === 'trivia') {
-        gameState.gameStarted = true;
-        // Add trivia-specific initialization (e.g., load questions)
-        await this.updateGameState(roomId, gameState);
-        await this.gameRoomModel.findOneAndUpdate({ roomId }, { status: 'in-progress' }, { new: true });
-        return gameState;
-      }
-
-      // Add AI players if needed
-      const colors = ['red', 'blue', 'green', 'yellow'];
-      while (room.playerIds.length < 4) {
-        const aiPlayerId = `ai-${room.playerIds.length + 1}`;
-        room.playerIds.push(aiPlayerId);
-        gameState.players.push({
-          id: aiPlayerId,
-          name: `AI ${room.playerIds.length}`,
-          color: colors[room.playerIds.length - 1],
-          coins: [0, 0, 0, 0],
-        });
-        gameState.coins[aiPlayerId] = [0, 0, 0, 0];
-      }
-      room.currentPlayers = room.playerIds.length;
-      await room.save();
+      if (room.playerIds.length < (room.gameType === 'chess' ? 2 : 2)) throw new Error('At least 2 players required');
 
       gameState.gameStarted = true;
-      gameState.consecutiveSixes = 0;
+      if (room.gameType === 'kahoot' && gameState.kahootState) {
+        gameState.kahootState.currentQuestionIndex = 0;
+        gameState.kahootState.questionTimer = 20;
+        // Start timer (simulated)
+        setTimeout(() => this.handleKahootQuestionTimeout(roomId), 20000);
+      } else if (room.gameType === 'chess') {
+        gameState.currentTurn = gameState.players[0].id; // White moves first
+      } else if (room.gameType !== 'trivia') {
+        const colors = ['red', 'blue', 'green', 'yellow'];
+        while (room.playerIds.length < 4) {
+          const aiPlayerId = `ai-${room.playerIds.length + 1}`;
+          room.playerIds.push(aiPlayerId);
+          gameState.players.push({
+            id: aiPlayerId,
+            name: `AI ${room.playerIds.length}`,
+            color: colors[room.playerIds.length - 1],
+            coins: [0, 0, 0, 0],
+          });
+          gameState.coins = gameState.coins || {};
+          gameState.coins[aiPlayerId] = [0, 0, 0, 0];
+        }
+        room.currentPlayers = room.playerIds.length;
+        await room.save();
+        if (gameState.currentTurn.startsWith('ai-')) {
+          setTimeout(() => this.handleAITurn(roomId, gameState.currentTurn), 1000);
+        }
+      }
       await this.updateGameState(roomId, gameState);
       await this.gameRoomModel.findOneAndUpdate({ roomId }, { status: 'in-progress' }, { new: true });
-
-      // If first player is AI, start their turn
-      if (gameState.currentTurn.startsWith('ai-')) {
-        console.log(`Scheduling AI turn for ${gameState.currentTurn} at game start`);
-        setTimeout(() => {
-          this.handleAITurn(roomId, gameState.currentTurn).catch((error) => {
-            console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
-          });
-        }, 1000);
-      }
-
       return gameState;
     } catch (error) {
       console.error(`Error in startGame for room ${roomId}:`, error);
       throw error;
     }
+  }
+
+  async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
+    const gameState = await this.getGameState(data.roomId);
+    if (gameState.gameType !== 'chess') throw new Error('Invalid game type');
+    if (gameState.currentTurn !== data.playerId) throw new Error('Not your turn');
+    if (!gameState.chessState) throw new Error('Chess state not initialized');
+
+    // Simulate move validation (use a chess library like chess.js in production)
+    const move = data.move; // e.g., "e2e4"
+    gameState.chessState.moves.push(move);
+    // Update board (simplified; use chess.js for real validation)
+    gameState.chessState.board = this.updateChessBoard(gameState.chessState.board, move);
+    
+    // Check for game over (simplified)
+    const isGameOver = this.isChessGameOver(gameState.chessState.board);
+    if (isGameOver) {
+      gameState.gameOver = true;
+      gameState.winner = data.playerId;
+      await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: data.playerId });
+      await this.saveGameSession(data.roomId, gameState);
+    } else {
+      gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+      gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+    }
+
+    await this.updateGameState(data.roomId, gameState);
+    return { roomId: data.roomId, move, gameState };
+  }
+
+  private updateChessBoard(currentFen: string, move: string): string {
+    // Placeholder: Use chess.js for real FEN updates
+    return currentFen; // Return updated FEN
+  }
+
+  private isChessGameOver(fen: string): boolean {
+    // Placeholder: Use chess.js to check checkmate/stalemate
+    return false;
+  }
+
+  async submitKahootAnswer(data: { roomId: string; playerId: string; answerIndex: number }) {
+    const gameState = await this.getGameState(data.roomId);
+    if (gameState.gameType !== 'kahoot') throw new Error('Invalid game type');
+    if (!gameState.kahootState) throw new Error('Kahoot state not initialized');
+    if (gameState.kahootState.answers[data.playerId] !== null) throw new Error('Answer already submitted');
+
+    gameState.kahootState.answers[data.playerId] = data.answerIndex;
+    const allAnswered = gameState.players.every(p => gameState.kahootState!.answers[p.id] !== null);
+    
+    if (allAnswered) {
+      await this.processKahootQuestion(data.roomId);
+    } else {
+      await this.updateGameState(data.roomId, gameState);
+    }
+    return { roomId: data.roomId, playerId: data.playerId, answerIndex: data.answerIndex };
+  }
+
+  async processKahootQuestion(roomId: string) {
+    const gameState = await this.getGameState(roomId);
+    if (!gameState.kahootState) throw new Error('Kahoot state not initialized');
+    
+    const question = gameState.kahootState.questions[gameState.kahootState.currentQuestionIndex];
+    gameState.players.forEach(p => {
+      if (gameState.kahootState!.answers[p.id] === question.correctAnswer) {
+        gameState.kahootState!.scores[p.id] = (gameState.kahootState!.scores[p.id] || 0) + 100;
+        p.score = gameState.kahootState!.scores[p.id];
+      }
+    });
+
+    gameState.kahootState.currentQuestionIndex++;
+    if (gameState.kahootState.currentQuestionIndex >= gameState.kahootState.questions.length) {
+      gameState.gameOver = true;
+      gameState.winner = gameState.players.reduce((a, b) => 
+        (gameState.kahootState!.scores[a.id] || 0) > (gameState.kahootState!.scores[b.id] || 0) ? a : b
+      ).id;
+      await this.gameRoomModel.updateOne({ roomId }, { status: 'completed', winner: gameState.winner });
+      await this.saveGameSession(roomId, gameState);
+    } else {
+      gameState.kahootState.answers = gameState.players.reduce((acc, p) => ({ ...acc, [p.id]: null }), {});
+      gameState.kahootState.questionTimer = 20;
+      setTimeout(() => this.handleKahootQuestionTimeout(roomId), 20000);
+    }
+
+    await this.updateGameState(roomId, gameState);
+    return gameState;
+  }
+
+  async handleKahootQuestionTimeout(roomId: string) {
+    const gameState = await this.getGameState(roomId);
+    if (gameState.gameType !== 'kahoot' || !gameState.kahootState || gameState.gameOver) return;
+    
+    gameState.kahootState.questionTimer = 0;
+    await this.processKahootQuestion(roomId);
   }
 
   async handleDisconnect(client: Socket) {
@@ -543,50 +832,149 @@ export class GameService {
     }
   }
 
+  // async getGameState(roomId: string): Promise<GameState> {
+  //   try {
+  //     const redisState = await this.redisService.get(`game:${roomId}`);
+  //     if (redisState) {
+  //       const parsedState: GameState = JSON.parse(redisState);
+  //       const colors = ['red', 'blue', 'green', 'yellow'];
+  //       return {
+  //         ...parsedState,
+  //         players: parsedState.players.map((player, index) => ({
+  //           id: player.id,
+  //           name: player.id.startsWith('ai-') ? `AI ${index + 1}` : player.name,
+  //           color: colors[index],
+  //           coins: parsedState.coins![player.id] || [0, 0, 0, 0],
+  //         })),
+  //         currentPlayer: parsedState.players.findIndex((p) => p.id === parsedState.currentTurn),
+  //         diceRolled: parsedState.diceValue !== 0,
+  //       };
+  //     }
+  //     const room = await this.getGameRoomById(roomId);
+  //     if (!room) throw new Error('Room not found');
+  //     const colors = ['red', 'blue', 'green', 'yellow'];
+  //     const defaultGameState: GameState = {
+  //       roomId,
+  //       gameType: room.gameType,
+  //       roomName: room.name,
+  //       gameStarted: false,
+  //       gameOver: false,
+  //       currentPlayer: 0,
+  //       currentTurn: room.playerIds?.[0] || '',
+  //       players: room.playerIds.map((playerId, index) => ({
+  //         id: playerId,
+  //         name: playerId.startsWith('ai-') ? `AI ${index + 1}` : playerId,
+  //         color: colors[index],
+  //         coins: [0, 0, 0, 0],
+  //       })),
+  //       coins: room.playerIds.reduce((acc, playerId) => ({
+  //         ...acc,
+  //         [playerId]: [0, 0, 0, 0],
+  //       }), {}),
+  //       diceValue: 0,
+  //       diceRolled: false,
+  //       consecutiveSixes: 0,
+  //       winner: null,
+  //     };
+  //     await this.updateGameState(roomId, defaultGameState);
+  //     return this.getGameState(roomId);
+  //   } catch (error) {
+  //     console.error(`Error in getGameState for room ${roomId}:`, error);
+  //     throw error;
+  //   }
+  // }
+
   async getGameState(roomId: string): Promise<GameState> {
     try {
       const redisState = await this.redisService.get(`game:${roomId}`);
       if (redisState) {
         const parsedState: GameState = JSON.parse(redisState);
-        const colors = ['red', 'blue', 'green', 'yellow'];
         return {
           ...parsedState,
           players: parsedState.players.map((player, index) => ({
-            id: player.id,
+            ...player,
             name: player.id.startsWith('ai-') ? `AI ${index + 1}` : player.name,
-            color: colors[index],
-            coins: parsedState.coins[player.id] || [0, 0, 0, 0],
           })),
           currentPlayer: parsedState.players.findIndex((p) => p.id === parsedState.currentTurn),
-          diceRolled: parsedState.diceValue !== 0,
+          diceRolled: parsedState.diceValue ? parsedState.diceValue !== 0 : false,
         };
       }
       const room = await this.getGameRoomById(roomId);
       if (!room) throw new Error('Room not found');
       const colors = ['red', 'blue', 'green', 'yellow'];
-      const defaultGameState: GameState = {
-        roomId,
-        gameType: room.gameType,
-        roomName: room.name,
-        gameStarted: false,
-        gameOver: false,
-        currentPlayer: 0,
-        currentTurn: room.playerIds?.[0] || '',
-        players: room.playerIds.map((playerId, index) => ({
-          id: playerId,
-          name: playerId.startsWith('ai-') ? `AI ${index + 1}` : playerId,
-          color: colors[index],
-          coins: [0, 0, 0, 0],
-        })),
-        coins: room.playerIds.reduce((acc, playerId) => ({
-          ...acc,
-          [playerId]: [0, 0, 0, 0],
-        }), {}),
-        diceValue: 0,
-        diceRolled: false,
-        consecutiveSixes: 0,
-        winner: null,
-      };
+      let defaultGameState: GameState;
+      switch (room.gameType) {
+        case 'chess':
+          defaultGameState = {
+            roomId,
+            gameType: 'chess',
+            roomName: room.name,
+            gameStarted: false,
+            gameOver: false,
+            currentPlayer: 0,
+            currentTurn: room.playerIds?.[0] || '',
+            players: room.playerIds.map((playerId, index) => ({
+              id: playerId,
+              name: playerId.startsWith('ai-') ? `AI ${index + 1}` : playerId,
+              chessColor: index === 0 ? 'white' : 'black',
+            })),
+            winner: null,
+            chessState: {
+              board: 'rnbqkbnr/pppppppp/5n1f/8/8/5N1F/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+              moves: [],
+            },
+          };
+          break;
+        case 'kahoot':
+        case 'trivia':
+          defaultGameState = {
+            roomId,
+            gameType: room.gameType,
+            roomName: room.name,
+            gameStarted: false,
+            gameOver: false,
+            currentPlayer: 0,
+            currentTurn: room.playerIds?.[0] || '',
+            players: room.playerIds.map((playerId, index) => ({
+              id: playerId,
+              name: playerId.startsWith('ai-') ? `AI ${index + 1}` : playerId,
+              score: 0,
+            })),
+            winner: null,
+            kahootState: {
+              currentQuestionIndex: 0,
+              questions: room.gameType === 'kahoot' ? this.kahootQuestions : [],
+              scores: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}),
+              answers: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: null }), {}),
+              questionTimer: 20,
+            },
+          };
+          break;
+        default:
+          defaultGameState = {
+            roomId,
+            gameType: room.gameType,
+            roomName: room.name,
+            gameStarted: false,
+            gameOver: false,
+            currentPlayer: 0,
+            currentTurn: room.playerIds?.[0] || '',
+            players: room.playerIds.map((playerId, index) => ({
+              id: playerId,
+              name: playerId.startsWith('ai-') ? `AI ${index + 1}` : playerId,
+              color: colors[index],
+              coins: [0, 0, 0, 0],
+            })),
+            coins: room.playerIds.reduce((acc, playerId) => ({
+              ...acc,
+              [playerId]: [0, 0, 0, 0],
+            }), {}),
+            diceValue: 0,
+            diceRolled: false,
+            consecutiveSixes: 0,
+            winner: null,
+          };
+      }
       await this.updateGameState(roomId, defaultGameState);
       return this.getGameState(roomId);
     } catch (error) {
@@ -610,7 +998,7 @@ export class GameService {
         roomId,
         players: gameState.players.map((p) => p.id),
         winner: gameState.winner,
-        moves: [],
+        moves: [], //moves: gameState.chessState?.moves || [],
         createdAt: new Date(),
       });
       await gameSession.save();
