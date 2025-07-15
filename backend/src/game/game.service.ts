@@ -79,29 +79,75 @@ export class GameService {
       createdAt: new Date(),
     });
     await gameRoom.save();
-    await this.initializeGameState(roomId, createGameDto.hostId, createGameDto.name);
+    await this.initializeGameState(roomId, createGameDto.hostId, createGameDto.name, createGameDto.gameType);
     return gameRoom;
   }
 
-  private async initializeGameState(roomId: string, hostId: string, roomName: string) {
+  // private async initializeGameState(roomId: string, hostId: string, roomName: string, gameType: string) {
+  //   const colors = ['red', 'blue', 'green', 'yellow'];
+  //   const initialGameState: GameState = {
+  //     roomId,
+  //     players: [{ id: hostId, name: hostId, color: colors[0], coins: [0, 0, 0, 0] }],
+  //     currentTurn: hostId,
+  //     currentPlayer: 0,
+  //     diceValue: 0,
+  //     diceRolled: false,
+  //     consecutiveSixes: 0,
+  //     coins: {
+  //       [hostId]: [0, 0, 0, 0],
+  //     },
+  //     gameStarted: false,
+  //     gameOver: false,
+  //     winner: null,
+  //     roomName,
+  //     gameType: gameType.toLowerCase(), 
+  //   };
+  //   await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
+  // }
+
+
+  private async initializeGameState(roomId: string, hostId: string, roomName: string, gameType: string) {
     const colors = ['red', 'blue', 'green', 'yellow'];
-    const initialGameState: GameState = {
-      roomId,
-      players: [{ id: hostId, name: hostId, color: colors[0], coins: [0, 0, 0, 0] }],
-      currentTurn: hostId,
-      currentPlayer: 0,
-      diceValue: 0,
-      diceRolled: false,
-      consecutiveSixes: 0,
-      coins: {
-        [hostId]: [0, 0, 0, 0],
-      },
-      gameStarted: false,
-      gameOver: false,
-      winner: null,
-      roomName,
-      gameType: 'ludo', // double check
-    };
+    let initialGameState: GameState;
+    
+    if (gameType.toLowerCase() === 'trivia') {
+      initialGameState = {
+        roomId,
+        players: [{ id: hostId, name: hostId, color: colors[0], coins: [] }], // No coins for trivia
+        currentTurn: hostId,
+        currentPlayer: 0,
+        diceValue: 0, // May not be needed for trivia
+        diceRolled: false,
+        consecutiveSixes: 0,
+        coins: {}, // No coins for trivia
+        gameStarted: false,
+        gameOver: false,
+        winner: null,
+        roomName,
+        gameType: gameType.toLowerCase(),
+        // Add trivia-specific fields if needed
+        // questions: [], // Example
+        // scores: {}, // Example
+      };
+    } else {
+      initialGameState = {
+        roomId,
+        players: [{ id: hostId, name: hostId, color: colors[0], coins: [0, 0, 0, 0] }],
+        currentTurn: hostId,
+        currentPlayer: 0,
+        diceValue: 0,
+        diceRolled: false,
+        consecutiveSixes: 0,
+        coins: {
+          [hostId]: [0, 0, 0, 0],
+        },
+        gameStarted: false,
+        gameOver: false,
+        winner: null,
+        roomName,
+        gameType: gameType.toLowerCase(),
+      };
+    }
     await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
   }
 
@@ -423,6 +469,14 @@ export class GameService {
       const room = await this.getGameRoomById(roomId);
       if (!room) throw new Error('Room not found');
       if (room.playerIds.length < 2) throw new Error('At least 2 players required');
+      
+      if (room.gameType === 'trivia') {
+        gameState.gameStarted = true;
+        // Add trivia-specific initialization (e.g., load questions)
+        await this.updateGameState(roomId, gameState);
+        await this.gameRoomModel.findOneAndUpdate({ roomId }, { status: 'in-progress' }, { new: true });
+        return gameState;
+      }
 
       // Add AI players if needed
       const colors = ['red', 'blue', 'green', 'yellow'];

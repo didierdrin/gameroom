@@ -28,7 +28,8 @@ export const router = createBrowserRouter([
     errorElement: <ErrorBoundary><div>Page not found</div></ErrorBoundary>,
     children: [
       {
-        path: '/',
+        // path: '/',
+        index: true,
         element: <HomePage />,
       },
       {
@@ -37,7 +38,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/my-game-rooms',
-        element: <MyGameRoomsPage onJoinRoom={[]} />,
+        element: <MyGameRoomsPage onJoinRoom={() => {}} />,
       },
       {
         path: '/leaderboard',
