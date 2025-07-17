@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { GameRoom, GameRoomDocument } from './schemas/game-room.schema';
 import { GameSessionEntity, GameSessionDocument } from './schemas/game-session.schema';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
+import { TriviaService } from '../trivia/trivia.service';
 import { v4 as uuidv4 } from 'uuid';
-import { Socket } from 'socket.io';
+import { forwardRef } from '@nestjs/common';
 import { Types } from 'mongoose';
 import axios from 'axios'; 
+import { Socket, Server } from 'socket.io';
 interface PublicGameRoom {
   id: string;
   roomId: string;
@@ -50,6 +52,14 @@ interface KahootState {
   questionTimer: number; // Seconds remaining
 }
 
+interface TriviaState {
+  currentQuestionIndex: number;
+  questions: { id: string; text: string; options: string[]; correctAnswer: number }[];
+  scores: Record<string, number>;
+  answers: Record<string, number | null>; // Player answers for current question
+  questionTimer: number; // Seconds remaining
+}
+
 interface GameState {
   roomId: string;
   players: Player[];
@@ -69,23 +79,10 @@ interface GameState {
   chessState?: ChessState;
   // Kahoot-specific
   kahootState?: KahootState;
+  triviaState?: TriviaState; 
 }
 
-// interface GameState {
-//   roomId: string;
-//   players: { id: string; name: string; color: string; coins: number[] }[];
-//   currentTurn: string;
-//   currentPlayer: number;
-//   diceValue: number;
-//   diceRolled: boolean;
-//   consecutiveSixes: number;
-//   coins: Record<string, number[]>;
-//   gameStarted: boolean;
-//   gameOver: boolean;
-//   winner: string | null;
-//   roomName: string;
-//   gameType: string;
-// }
+
 
 @Injectable()
 export class GameService {
@@ -94,60 +91,19 @@ export class GameService {
   private safePositions = [1, 9, 14, 22, 27, 35, 40, 48];
   private homeColumnStart = 52; // Positions 52–57 are home column
 
-  // Sample Kahoot questions
-  // private kahootQuestions = [
-  //   {
-  //     id: 'q1',
-  //     text: 'Who invented the World Wide Web?',
-  //     options: ['Tim Berners-Lee', 'Bill Gates', 'Steve Jobs', 'Mark Zuckerberg'],
-  //     correctAnswer: 0,
-  //   },
-  //   {
-  //     id: 'q2',
-  //     text: 'What is the capital of France?',
-  //     options: ['Paris', 'London', 'Berlin', 'Madrid'],
-  //     correctAnswer: 0,
-  //   },
-  // ];
-
-
-  // Add fetchTriviaQuestions method
-private async fetchTriviaQuestions(topic: string = 'general') {
-  try {
-    const response = await axios.post('https://alu-globe-gameroom.onrender.com/trivia/generate', { topic });
-    const questions = response.data.questions.map((q: any, index: number) => ({
-      id: `q-${index}`,
-      text: q.question,
-      options: q.options,
-      correctAnswer: q.options.indexOf(q.correct),
-    }));
-    return questions;
-  } catch (error) {
-    console.error('Error fetching trivia questions:', error);
-    return [
-      {
-        id: 'q1',
-        text: 'Who invented the World Wide Web?',
-        options: ['Tim Berners-Lee', 'Bill Gates', 'Steve Jobs', 'Mark Zuckerberg'],
-        correctAnswer: 0,
-      },
-      {
-        id: 'q2',
-        text: 'What is the capital of France?',
-        options: ['Paris', 'London', 'Berlin', 'Madrid'],
-        correctAnswer: 0,
-      },
-    ];
-  }
-}
-
 
 
   constructor(
     private readonly redisService: RedisService,
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoomDocument>,
     @InjectModel(GameSessionEntity.name) private gameSessionModel: Model<GameSessionDocument>,
+    @Inject(forwardRef(() => Server)) private readonly server: Server,
+    private readonly triviaService: TriviaService,
   ) {}
+
+  private async fetchTriviaQuestions(topic: string = 'general') {
+    return this.triviaService.fetchTriviaQuestions(topic);
+  }
 
   async createGame(createGameDto: CreateGameDto) {
     const validGameTypes = ['ludo', 'trivia', 'chess', 'kahoot', 'uno', 'pictionary', 'sudoku'];
@@ -183,59 +139,35 @@ private async fetchTriviaQuestions(topic: string = 'general') {
 
 
 
-  // private async initializeGameState(roomId: string, hostId: string, roomName: string, gameType: string) {
-  //   const colors = ['red', 'blue', 'green', 'yellow'];
-  //   let initialGameState: GameState;
-    
-  //   if (gameType.toLowerCase() === 'trivia') {
-  //     initialGameState = {
-  //       roomId,
-  //       players: [{ id: hostId, name: hostId, color: colors[0], coins: [] }], // No coins for trivia
-  //       currentTurn: hostId,
-  //       currentPlayer: 0,
-  //       diceValue: 0, // May not be needed for trivia
-  //       diceRolled: false,
-  //       consecutiveSixes: 0,
-  //       coins: {}, // No coins for trivia
-  //       gameStarted: false,
-  //       gameOver: false,
-  //       winner: null,
-  //       roomName,
-  //       gameType: gameType.toLowerCase(),
-  //       // Add trivia-specific fields if needed
-  //       // questions: [], // Example
-  //       // scores: {}, // Example
-  //     };
-  //   } else {
-  //     initialGameState = {
-  //       roomId,
-  //       players: [{ id: hostId, name: hostId, color: colors[0], coins: [0, 0, 0, 0] }],
-  //       currentTurn: hostId,
-  //       currentPlayer: 0,
-  //       diceValue: 0,
-  //       diceRolled: false,
-  //       consecutiveSixes: 0,
-  //       coins: {
-  //         [hostId]: [0, 0, 0, 0],
-  //       },
-  //       gameStarted: false,
-  //       gameOver: false,
-  //       winner: null,
-  //       roomName,
-  //       gameType: gameType.toLowerCase(),
-  //     };
-  //   }
-  //   await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
-  // }
-
   private async initializeGameState(roomId: string, hostId: string, roomName: string, gameType: string, triviaTopic: string) {
     const colors = ['red', 'blue', 'green', 'yellow'];
     let initialGameState: GameState;
 
     switch (gameType.toLowerCase()) {
       case 'trivia':
+        const triviaQuestions = await this.fetchTriviaQuestions(triviaTopic || 'general');
+        initialGameState = {
+          roomId,
+          players: [{ id: hostId, name: hostId, score: 0 }],
+          currentTurn: hostId,
+          currentPlayer: 0,
+          gameStarted: false,
+          gameOver: false,
+          winner: null,
+          roomName,
+          gameType: gameType.toLowerCase(),
+          triviaState: {
+            currentQuestionIndex: 0,
+            questions: triviaQuestions,
+            scores: { [hostId]: 0 },
+            answers: { [hostId]: null },
+            questionTimer: 30,
+          },
+        };
+        break;
       case 'kahoot':
-        const questions = gameType === 'kahoot' ? await this.fetchTriviaQuestions(triviaTopic) : [];
+        // const questions = gameType === 'kahoot' ? await this.fetchTriviaQuestions(triviaTopic) : [];
+        const questions = await this.fetchTriviaQuestions(triviaTopic || 'general');
         initialGameState = {
           roomId,
           players: [{ id: hostId, name: hostId, score: 0 }],
@@ -726,6 +658,7 @@ private async fetchTriviaQuestions(topic: string = 'general') {
       if (gameState.gameStarted) throw new Error('Game already started');
       const room = await this.getGameRoomById(roomId);
       if (!room) throw new Error('Room not found');
+      // if (room.playerIds.length < (room.gameType === 'chess' ? 2 : 2)) throw new Error('At least 2 players required');
       if (room.playerIds.length < (room.gameType === 'chess' ? 2 : 2)) throw new Error('At least 2 players required');
 
       gameState.gameStarted = true;
@@ -757,6 +690,7 @@ private async fetchTriviaQuestions(topic: string = 'general') {
         }
       }
       await this.updateGameState(roomId, gameState);
+      this.server.to(roomId).emit('gameState', gameState);
       await this.gameRoomModel.findOneAndUpdate({ roomId }, { status: 'in-progress' }, { new: true });
       return gameState;
     } catch (error) {

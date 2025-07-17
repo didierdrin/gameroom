@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Socket } from 'socket.io-client';
+import { SocketType } from '../../SocketContext';
 
 interface KahootGameProps {
-  socket: Socket;
+  socket: SocketType; // Socket
   roomId: string;
   currentPlayer: string;
   gameState: any;

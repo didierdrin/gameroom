@@ -61,12 +61,12 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   useEffect(() => {
     if (diceRolled && players[currentPlayer]?.id === currentPlayerId) {
       const currentPlayerData = players[currentPlayer];
-      const playerCoins = coins[currentPlayerData.id] || [0, 0, 0, 0];
+      const playerCoins = coins![currentPlayerData.id] || [0, 0, 0, 0];
       const movable: number[] = [];
       playerCoins.forEach((position, index) => {
         if (position === 0 && diceValue === 6) {
           movable.push(index);
-        } else if (position > 0 && position < 57 && position + diceValue <= 57) {
+        } else if (position > 0 && position < 57 && position + diceValue! <= 57) {
           movable.push(index);
         }
       });
@@ -139,7 +139,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
         const cellColor = getCellColor(row, col);
         const coinsAtPosition: any[] = [];
         players.forEach((player, playerIndex) => {
-          const playerCoins = coins[player.id] || [0, 0, 0, 0];
+          const playerCoins = coins![player.id] || [0, 0, 0, 0];
           playerCoins.forEach((pos, coinIndex) => {
             const boardPos = getBoardPosition(playerIndex, pos);
             if (boardPos?.[0] === row && boardPos?.[1] === col) {
@@ -241,7 +241,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-2 text-slate-400">Dice</h3>
           <Dice
-            value={diceValue}
+            value={diceValue!}
             onRoll={() => onRollDice}
             // disabled={diceRolled || players[currentPlayer]?.id !== currentPlayerId || players[currentPlayer]?.id.startsWith('ai-')}
             disabled={

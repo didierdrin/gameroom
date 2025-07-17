@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { SocketType } from '../../SocketContext';
 
 interface Question {
   id: string;
@@ -11,7 +12,7 @@ interface Question {
 }
 
 interface TriviaGameProps {
-  socket: any;
+  socket: SocketType;
   roomId: string;
   currentPlayer: string;
   gameState: any;
@@ -52,34 +53,44 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   ];
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        setLoading(true);
-        setError('');
+    if (gameState.triviaState?.questions) {
+      setQuestions(gameState.triviaState.questions);
+      setLoading(false);
+    } else {
+      console.log('Error in the question fetching');
+      //fetchQuestions(); // Fallback to API call
+    }
+  }, [gameState]);
+
+  // useEffect(() => {
+  //   const fetchQuestions = async () => {
+  //     try {
+  //       setLoading(true);
+  //       setError('');
         
-        const response = await axios.post(
-          'https://alu-globe-gameroom.onrender.com/trivia/generate', 
-          { topic: 'science' },
-          { timeout: 10000 }
-        );
+  //       const response = await axios.post(
+  //         'https://alu-globe-gameroom.onrender.com/trivia/generate', 
+  //         { topic: 'science' },
+  //         { timeout: 10000 }
+  //       );
 
-        if (!response.data?.questions) {
-          throw new Error('Invalid response format');
-        }
+  //       if (!response.data?.questions) {
+  //         throw new Error('Invalid response format');
+  //       }
 
-        setQuestions(response.data.questions);
+  //       setQuestions(response.data.questions);
         
-      } catch (err) {
-        console.error('Failed to fetch questions:', err);
-        setError(`Couldn't load new questions. Using fallback set.`);
-        setQuestions(fallbackQuestions);
-      } finally {
-        setLoading(false);
-      }
-    };
+  //     } catch (err) {
+  //       console.error('Failed to fetch questions:', err);
+  //       setError(`Couldn't load new questions. Using fallback set.`);
+  //       setQuestions(fallbackQuestions);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchQuestions();
-  }, []);
+  //   fetchQuestions();
+  // }, []);
 
   useEffect(() => {
     if (timer > 0 && !loading && questions.length > 0) {
@@ -220,6 +231,8 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     </div>
   );
 };
+
+
 
 // import React, { useEffect, useState } from 'react';
 // import axios from 'axios';

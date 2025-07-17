@@ -7,7 +7,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { GameRoom, GameRoomSchema } from './schemas/game-room.schema';
 import { GameSessionEntity, GameSessionSchema } from './schemas/game-session.schema';
 import { RedisModule } from '../redis/redis.module';
-
+import { TriviaService } from 'src/trivia/trivia.service';
+import { Server } from 'socket.io';
 @Module({
   imports: [
     RedisModule,
@@ -17,7 +18,11 @@ import { RedisModule } from '../redis/redis.module';
     ]),
   ],
   controllers: [GameController],
-  providers: [GameService, GameGateway],
+  providers: [GameService, GameGateway, TriviaService, {
+    provide: 'GameGatewayServer', // Custom token for Server
+    useFactory: (gameGateway: GameGateway) => gameGateway.server, // Use Server from GameGateway
+    inject: [GameGateway],
+  },],
   exports: [GameService],
 })
 export class GameModule {}

@@ -5,7 +5,7 @@ import { LudoGame } from "../components/Ludo/LudoGame";
 import { TriviaGame } from "../components/Trivia/TriviaGame";
 import { renderChessGame } from "../components/Chess/ChessGame";
 import { renderUnoGame } from "../components/Uno/UnoGame";
-import  renderKahootGame  from "../components/Kahoot/KahootGame";
+import  KahootGame  from "../components/Kahoot/KahootGame";
 import { renderPictionaryGame } from "../components/Pictionary/PictionaryGame";
 import { GameRoomInfo } from "../components/GameRoom/GameRoomInfo";
 import { PlayerList } from "../components/GameRoom/PlayerList";
@@ -26,6 +26,7 @@ import { MediaControls } from "../components/GameRoom/MediaControls";
 import { VideoGrid } from "../components/GameRoom/VideoGrid";
 import { useSocket } from "../SocketContext";
 import { useAuth } from "../context/AuthContext";
+import { SocketType } from "../SocketContext";
 
 export const LiveGameRoomPage = () => {
   const { id: roomId } = useParams<{ id: string }>();
@@ -228,7 +229,7 @@ export const LiveGameRoomPage = () => {
 
     const handleError = (error: any) => {
       console.error("Socket error:", error);
-      if (error.type === "joinError") {
+      if (error.type === "startGameError") {
         alert(`Failed to join room: ${error.message}`);
         navigate("/");
       }
@@ -379,7 +380,7 @@ export const LiveGameRoomPage = () => {
       case "trivia":
         return (
           <TriviaGame
-            socket={socket}
+            socket={socket!}
             roomId={roomId!}
             currentPlayer={user!.id}
             gameState={gameState}
@@ -404,12 +405,12 @@ export const LiveGameRoomPage = () => {
         });
 
       case "kahoot":
-        return renderKahootGame({
-          socket,
+        return KahootGame({
+          socket:socket!,
           roomId: roomId!,
           currentPlayer: user!.id,
-          gameState,
-          onKahootAnswer: handleKahootAnswer,
+          gameState: {gameState},
+          // onKahootAnswer: handleKahootAnswer,
         });
 
       case "pictionary":
