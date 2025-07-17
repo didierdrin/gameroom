@@ -97,7 +97,7 @@ export class GameService {
     private readonly redisService: RedisService,
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoomDocument>,
     @InjectModel(GameSessionEntity.name) private gameSessionModel: Model<GameSessionDocument>,
-    @Inject(forwardRef(() => Server)) private readonly server: Server,
+    @Inject(forwardRef(() => 'GameGatewayServer')) private readonly server: Server,
     private readonly triviaService: TriviaService,
   ) {}
 
