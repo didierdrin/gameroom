@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Player, GameState } from "../components/Ludo/types/game";
 import { LudoGame } from "../components/Ludo/LudoGame";
 import { TriviaGame } from "../components/Trivia/TriviaGame";
-import { renderChessGame } from "../components/Chess/ChessGame";
+import { ChessGame } from "../components/Chess/ChessGame";
 import { renderUnoGame } from "../components/Uno/UnoGame";
 import  KahootGame  from "../components/Kahoot/KahootGame";
 import { renderPictionaryGame } from "../components/Pictionary/PictionaryGame";
@@ -392,13 +392,15 @@ export const LiveGameRoomPage = () => {
         );
 
       case "chess":
-        return renderChessGame({
-          socket,
-          roomId: roomId!,
-          currentPlayer: user!.id,
-          gameState,
-          onChessMove: handleChessMove,
-        });
+        return (
+        <ChessGame
+          socket={socket!}
+          roomId={roomId!}
+          currentPlayer={user!.id}
+          gameState={gameState}
+          onChessMove={() => handleChessMove}
+        />
+        );
 
       case "uno":
         return renderUnoGame({

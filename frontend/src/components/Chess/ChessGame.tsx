@@ -11,7 +11,7 @@ interface GameRenderProps {
   onChessMove: (move: string) => void;
 }
 
-export const renderChessGame: React.FC<GameRenderProps> = ({ socket, roomId, currentPlayer, gameState, onChessMove }) => {
+export const ChessGame: React.FC<GameRenderProps> = ({ socket, roomId, currentPlayer, gameState, onChessMove }) => {
   const [chess] = useState(new Chess(gameState.chessState?.board || 'rnbqkbnr/pppppppp/5n1f/8/8/5N1F/PPPPPPPP/RNBQKBNR w KQkq - 0 1'));
   const [fen, setFen] = useState(gameState.chessState?.board || 'rnbqkbnr/pppppppp/5n1f/8/8/5N1F/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
