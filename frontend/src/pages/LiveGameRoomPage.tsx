@@ -310,6 +310,10 @@ export const LiveGameRoomPage = () => {
 
   const handleStartGame = () => {
     console.log("Starting game for room:", roomId);
+    if (!socket || !socket.connected) {
+      console.error("Socket not connected");
+      return;
+    }
     if (socket && roomId) {
       socket.emit("startGame", { roomId });
     }
@@ -405,13 +409,12 @@ export const LiveGameRoomPage = () => {
         });
 
       case "kahoot":
-        return KahootGame({
-          socket:socket!,
-          roomId: roomId!,
-          currentPlayer: user!.id,
-          gameState: {gameState},
-          // onKahootAnswer: handleKahootAnswer,
-        });
+        return <KahootGame 
+        socket={socket!}
+        roomId={roomId!}
+        currentPlayer={user!.id}
+        gameState={gameState}
+      />;
 
       case "pictionary":
         return renderPictionaryGame({
