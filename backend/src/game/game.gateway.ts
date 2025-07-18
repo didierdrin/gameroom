@@ -10,6 +10,10 @@ export class GameGateway {
 
   constructor(private readonly gameService: GameService) {}
 
+  afterInit() {
+    this.gameService.setServer(this.server);
+  }
+
   async handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
   }

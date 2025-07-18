@@ -86,20 +86,26 @@ interface GameState {
 
 @Injectable()
 export class GameService {
+  private server: Server;
+
   private boardPath = Array.from({ length: 52 }, (_, i) => i + 1);
   private startPositions = [1, 14, 27, 40]; // Red, Blue, Green, Yellow
   private safePositions = [1, 9, 14, 22, 27, 35, 40, 48];
   private homeColumnStart = 52; // Positions 52–57 are home column
 
+  
 
 
   constructor(
     private readonly redisService: RedisService,
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoomDocument>,
     @InjectModel(GameSessionEntity.name) private gameSessionModel: Model<GameSessionDocument>,
-    @Inject(forwardRef(() => 'GameGatewayServer')) private readonly server: Server,
     private readonly triviaService: TriviaService,
   ) {}
+
+  setServer(server: Server) {
+    this.server = server;
+  }
 
   private async fetchTriviaQuestions(topic: string = 'general') {
     return this.triviaService.fetchTriviaQuestions(topic);
@@ -600,15 +606,71 @@ export class GameService {
   //   }
   // }
 
+  // async startGame(roomId: string) {
+  //   try {
+  //     const gameState = await this.getGameState(roomId);
+  //     if (gameState.gameStarted) throw new Error('Game already started');
+  //     const room = await this.getGameRoomById(roomId);
+  //     if (!room) throw new Error('Room not found');
+      
+  //     // Check minimum players based on game type
+  //     const minPlayers = room.gameType === 'chess' ? 2 : 1; // Adjust as needed
+  //     if (room.playerIds.length < minPlayers) {
+  //       throw new Error(`At least ${minPlayers} players required`);
+  //     }
+  
+  //     gameState.gameStarted = true;
+      
+  //     // Initialize game-specific state
+  //     if (room.gameType === 'kahoot' && gameState.kahootState) {
+  //       gameState.kahootState.currentQuestionIndex = 0;
+  //       gameState.kahootState.questionTimer = 20;
+  //       // Reset answers for all players
+  //       gameState.players.forEach(player => {
+  //         gameState.kahootState!.answers[player.id] = null;
+  //       });
+  //       // Start timer
+  //       setTimeout(() => this.handleKahootQuestionTimeout(roomId), 20000);
+  //     } else if (room.gameType === 'trivia' && gameState.triviaState) {
+  //       gameState.triviaState.currentQuestionIndex = 0;
+  //       gameState.triviaState.questionTimer = 30;
+  //       // Reset answers for all players
+  //       gameState.players.forEach(player => {
+  //         gameState.triviaState!.answers[player.id] = null;
+  //       });
+  //     } else if (room.gameType === 'chess') {
+  //       gameState.currentTurn = gameState.players[0].id; // White moves first
+  //     }
+  
+  //     await this.updateGameState(roomId, gameState);
+  //     this.server.to(roomId).emit('gameState', gameState);
+  //     await this.gameRoomModel.findOneAndUpdate(
+  //       { roomId }, 
+  //       { status: 'in-progress' }, 
+  //       { new: true }
+  //     );
+  //     return gameState;
+  //   } catch (error) {
+  //     console.error(`Error in startGame for room ${roomId}:`, error);
+  //     throw error;
+  //   }
+  // }
+
+
   async startGame(roomId: string) {
     try {
+      if (!this.server) {
+        throw new Error('Server instance not available');
+      }
+  
       const gameState = await this.getGameState(roomId);
       if (gameState.gameStarted) throw new Error('Game already started');
+      
       const room = await this.getGameRoomById(roomId);
       if (!room) throw new Error('Room not found');
       
-      // Check minimum players based on game type
-      const minPlayers = room.gameType === 'chess' ? 2 : 1; // Adjust as needed
+      // Check minimum players
+      const minPlayers = room.gameType === 'chess' ? 2 : 1;
       if (room.playerIds.length < minPlayers) {
         throw new Error(`At least ${minPlayers} players required`);
       }
@@ -619,25 +681,19 @@ export class GameService {
       if (room.gameType === 'kahoot' && gameState.kahootState) {
         gameState.kahootState.currentQuestionIndex = 0;
         gameState.kahootState.questionTimer = 20;
-        // Reset answers for all players
         gameState.players.forEach(player => {
           gameState.kahootState!.answers[player.id] = null;
         });
-        // Start timer
         setTimeout(() => this.handleKahootQuestionTimeout(roomId), 20000);
-      } else if (room.gameType === 'trivia' && gameState.triviaState) {
-        gameState.triviaState.currentQuestionIndex = 0;
-        gameState.triviaState.questionTimer = 30;
-        // Reset answers for all players
-        gameState.players.forEach(player => {
-          gameState.triviaState!.answers[player.id] = null;
-        });
-      } else if (room.gameType === 'chess') {
-        gameState.currentTurn = gameState.players[0].id; // White moves first
       }
   
       await this.updateGameState(roomId, gameState);
-      this.server.to(roomId).emit('gameState', gameState);
+      
+      // Emit to room only if server is available
+      if (this.server) {
+        this.server.to(roomId).emit('gameState', gameState);
+      }
+      
       await this.gameRoomModel.findOneAndUpdate(
         { roomId }, 
         { status: 'in-progress' }, 
@@ -888,18 +944,52 @@ export class GameService {
 
   async saveGameSession(roomId: string, gameState: GameState) {
     try {
-      const gameSession = new this.gameSessionModel({
+      const room = await this.gameRoomModel.findOne({ roomId });
+      
+      const sessionData: Partial<GameSessionEntity> = {
         roomId,
         players: gameState.players.map((p) => p.id),
-        winner: gameState.winner,
-        moves: [], //moves: gameState.chessState?.moves || [],
-        createdAt: new Date(),
-      });
+        winner: gameState.winner!,
+        moves: [], // or gameState.moves if you have that
+        finalState: {
+          coins: gameState.coins || {},
+          players: gameState.players.map(p => p.id),
+          scores: gameState.players.reduce((acc, player) => {
+            acc[player.id] = player.score || 0;
+            return acc;
+          }, {} as Record<string, number>)
+        },
+        startedAt: new Date(),
+        endedAt: gameState.gameOver ? new Date() : undefined,
+        isTournament: false // Set appropriately if you have tournaments
+      };
+  
+      // Only include gameRoom if the room exists
+      if (room) {
+        sessionData.gameRoom = room._id as Types.ObjectId;
+      }
+  
+      const gameSession = new this.gameSessionModel(sessionData);
       await gameSession.save();
     } catch (error) {
       console.error(`Error in saveGameSession for room ${roomId}:`, error);
     }
   }
+
+  // async saveGameSession(roomId: string, gameState: GameState) {
+  //   try {
+  //     const gameSession = new this.gameSessionModel({
+  //       roomId,
+  //       players: gameState.players.map((p) => p.id),
+  //       winner: gameState.winner,
+  //       moves: [], //moves: gameState.chessState?.moves || [],
+  //       createdAt: new Date(),
+  //     });
+  //     await gameSession.save();
+  //   } catch (error) {
+  //     console.error(`Error in saveGameSession for room ${roomId}:`, error);
+  //   }
+  // }
 
   async getScores(roomId: string) {
     try {

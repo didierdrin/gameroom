@@ -22,11 +22,11 @@ import { Server } from 'socket.io';
     GameService, 
     GameGateway, 
     TriviaService, 
-    {
-    provide: 'GameGatewayServer', // Custom token for Server
-    useFactory: (gameGateway: GameGateway) => gameGateway.server, // Use Server from GameGateway
-    inject: [GameGateway],
-    },
+    // {
+    // provide: 'GameGatewayServer', // Custom token for Server
+    // useFactory: (gameGateway: GameGateway) => gameGateway.server, // Use Server from GameGateway
+    // inject: [GameGateway],
+    // },
 ],
   exports: [GameService],
 })
