@@ -183,5 +183,44 @@ export class GameGateway {
       client.emit('error', { message: error.message, type: 'kahootAnswerError' });
     }
   }
+
+  // audio functionality
+  @SubscribeMessage('joinAudio')
+handleJoinAudio(@MessageBody() data: { roomId: string, userId: string }, @ConnectedSocket() client: Socket) {
+  client.join(`audio_${data.roomId}`);
+  client.to(`audio_${data.roomId}`).emit('peerJoined', data.userId);
+}
+
+@SubscribeMessage('leaveAudio')
+handleLeaveAudio(@MessageBody() data: { roomId: string, userId: string }, @ConnectedSocket() client: Socket) {
+  client.leave(`audio_${data.roomId}`);
+  client.to(`audio_${data.roomId}`).emit('peerLeft', data.userId);
+}
+
+@SubscribeMessage('signal')
+handleSignal(@MessageBody() data: { 
+  signal: any, 
+  callerId: string, 
+  roomId: string, 
+  targetId: string 
+}, @ConnectedSocket() client: Socket) {
+  client.to(`audio_${data.roomId}`).emit('newPeer', {
+    signal: data.signal,
+    callerId: data.callerId
+  });
+}
+
+@SubscribeMessage('returnSignal')
+handleReturnSignal(@MessageBody() data: { 
+  signal: any, 
+  callerId: string, 
+  roomId: string 
+}, @ConnectedSocket() client: Socket) {
+  client.to(`audio_${data.roomId}`).emit('returnedSignal', {
+    signal: data.signal,
+    id: data.callerId
+  });
+}
+
   
 }
