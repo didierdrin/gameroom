@@ -11,6 +11,7 @@ import { forwardRef } from '@nestjs/common';
 import { Types } from 'mongoose';
 import axios from 'axios'; 
 import { Socket, Server } from 'socket.io';
+import { Chess } from 'chess.js';
 interface PublicGameRoom {
   id: string;
   roomId: string;
@@ -706,42 +707,118 @@ export class GameService {
     }
   }
 
+  // async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
+  //   const gameState = await this.getGameState(data.roomId);
+  //   if (gameState.gameType !== 'chess') throw new Error('Invalid game type');
+  //   if (gameState.currentTurn !== data.playerId) throw new Error('Not your turn');
+  //   if (!gameState.chessState) throw new Error('Chess state not initialized');
+
+  //   // Simulate move validation (use a chess library like chess.js in production)
+  //   const move = data.move; // e.g., "e2e4"
+  //   gameState.chessState.moves.push(move);
+  //   // Update board (simplified; use chess.js for real validation)
+  //   gameState.chessState.board = this.updateChessBoard(gameState.chessState.board, move);
+    
+  //   // Check for game over (simplified)
+  //   const isGameOver = this.isChessGameOver(gameState.chessState.board);
+  //   if (isGameOver) {
+  //     gameState.gameOver = true;
+  //     gameState.winner = data.playerId;
+  //     await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: data.playerId });
+  //     await this.saveGameSession(data.roomId, gameState);
+  //   } else {
+  //     gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+  //     gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+  //   }
+
+  //   await this.updateGameState(data.roomId, gameState);
+  //   return { roomId: data.roomId, move, gameState };
+  // }
+
+  // private updateChessBoard(currentFen: string, move: string): string {
+  //   // Placeholder: Use chess.js for real FEN updates
+  //   return currentFen; // Return updated FEN
+  // }
+
+  // private isChessGameOver(fen: string): boolean {
+  //   // Placeholder: Use chess.js to check checkmate/stalemate
+  //   return false;
+  // }
+
   async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     const gameState = await this.getGameState(data.roomId);
+    
     if (gameState.gameType !== 'chess') throw new Error('Invalid game type');
     if (gameState.currentTurn !== data.playerId) throw new Error('Not your turn');
     if (!gameState.chessState) throw new Error('Chess state not initialized');
-
-    // Simulate move validation (use a chess library like chess.js in production)
-    const move = data.move; // e.g., "e2e4"
-    gameState.chessState.moves.push(move);
-    // Update board (simplified; use chess.js for real validation)
-    gameState.chessState.board = this.updateChessBoard(gameState.chessState.board, move);
-    
-    // Check for game over (simplified)
-    const isGameOver = this.isChessGameOver(gameState.chessState.board);
-    if (isGameOver) {
-      gameState.gameOver = true;
-      gameState.winner = data.playerId;
-      await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: data.playerId });
-      await this.saveGameSession(data.roomId, gameState);
-    } else {
-      gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-      gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+  
+    try {
+      const chess = new Chess(gameState.chessState.board);
+      const move = chess.move({
+        from: data.move.substring(0, 2),
+        to: data.move.substring(2, 4),
+        promotion: 'q' // Always promote to queen
+      });
+  
+      if (!move) throw new Error('Invalid move');
+  
+      // Update game state
+      gameState.chessState = {
+        board: chess.fen(),
+        moves: [...gameState.chessState.moves, move.san]
+      };
+  
+      // Check for game over
+      if (chess.isGameOver()) {
+        gameState.gameOver = true;
+        gameState.winner = data.playerId;
+        await this.gameRoomModel.updateOne(
+          { roomId: data.roomId }, 
+          { status: 'completed', winner: data.playerId }
+        );
+        await this.saveGameSession(data.roomId, gameState);
+      } else {
+        // Switch turns
+        gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+        gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+      }
+  
+      await this.updateGameState(data.roomId, gameState);
+      return { 
+        roomId: data.roomId, 
+        move: move.san, 
+        gameState 
+      };
+      
+    } catch (error) {
+      console.error('Chess move error:', error);
+      throw new Error('Invalid chess move');
     }
-
-    await this.updateGameState(data.roomId, gameState);
-    return { roomId: data.roomId, move, gameState };
   }
-
+  
   private updateChessBoard(currentFen: string, move: string): string {
-    // Placeholder: Use chess.js for real FEN updates
-    return currentFen; // Return updated FEN
+    try {
+      const chess = new Chess(currentFen);
+      chess.move({
+        from: move.substring(0, 2),
+        to: move.substring(2, 4),
+        promotion: 'q'
+      });
+      return chess.fen();
+    } catch (e) {
+      console.error('Failed to update chess board:', e);
+      return currentFen;
+    }
   }
-
+  
   private isChessGameOver(fen: string): boolean {
-    // Placeholder: Use chess.js to check checkmate/stalemate
-    return false;
+    try {
+      const chess = new Chess(fen);
+      return chess.isGameOver();
+    } catch (e) {
+      console.error('Failed to check game over:', e);
+      return false;
+    }
   }
 
   async submitKahootAnswer(data: { roomId: string; playerId: string; answerIndex: number }) {
@@ -862,11 +939,29 @@ export class GameService {
             })),
             winner: null,
             chessState: {
-              board: 'rnbqkbnr/pppppppp/5n1f/8/8/5N1F/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+              // board: 'rnbqkbnr/pppppppp/5n1f/8/8/5N1F/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+              board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
               moves: [],
             },
           };
           break;
+        // case 'chess':
+        //   defaultGameState = {
+        //     roomId,
+        //     players: [{ id: hostId, name: hostId, chessColor: 'white' }],
+        //     currentTurn: hostId,
+        //     currentPlayer: 0,
+        //     gameStarted: false,
+        //     gameOver: false,
+        //     winner: null,
+        //     roomName,
+        //     gameType: 'chess',
+        //     chessState: {
+        //       board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', // Standard initial position
+        //       moves: [],
+        //     },
+        //   };
+        //   break;
         case 'kahoot':
         case 'trivia':
           const questions = room.gameType === 'kahoot' ? await this.fetchTriviaQuestions() : [];

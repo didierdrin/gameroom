@@ -398,7 +398,16 @@ export const LiveGameRoomPage = () => {
           roomId={roomId!}
           currentPlayer={user!.id}
           gameState={gameState}
-          onChessMove={() => handleChessMove}
+          // onChessMove={() => handleChessMove}
+          onChessMove={(move) => {
+            if (socket && gameState?.currentTurn === user?.id) {
+              socket.emit("makeChessMove", { 
+                roomId, 
+                playerId: user!.id, 
+                move 
+              });
+            }
+          }}
         />
         );
 
