@@ -757,7 +757,7 @@ export class GameService {
       const move = chess.move({
         from: data.move.substring(0, 2),
         to: data.move.substring(2, 4),
-        promotion: 'q' // Always promote to queen
+        promotion: 'q'
       });
   
       if (!move) throw new Error('Invalid move');
@@ -768,6 +768,10 @@ export class GameService {
         moves: [...gameState.chessState.moves, move.san]
       };
   
+      // Switch turns
+      gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+      gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+  
       // Check for game over
       if (chess.isGameOver()) {
         gameState.gameOver = true;
@@ -777,10 +781,6 @@ export class GameService {
           { status: 'completed', winner: data.playerId }
         );
         await this.saveGameSession(data.roomId, gameState);
-      } else {
-        // Switch turns
-        gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-        gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
       }
   
       await this.updateGameState(data.roomId, gameState);
@@ -789,7 +789,6 @@ export class GameService {
         move: move.san, 
         gameState 
       };
-      
     } catch (error) {
       console.error('Chess move error:', error);
       throw new Error('Invalid chess move');

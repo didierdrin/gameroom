@@ -188,20 +188,31 @@ export const LiveGameRoomPage = () => {
       }));
     };
 
-    const handleChessMove = (data: any) => {
-      console.log("Chess move:", data);
-      setGameState((prev) => ({
-        ...prev,
-        chessState: {
-          ...prev.chessState,
-          board: data.gameState.chessState.board,
-          moves: data.gameState.chessState.moves,
-        },
-        currentTurn: data.gameState.currentTurn,
-        currentPlayer: data.gameState.currentPlayer,
-        gameOver: data.gameState.gameOver,
-        winner: data.gameState.winner,
-      }));
+    // const handleChessMove = (data: any) => {
+    //   console.log("Chess move:", data);
+    //   setGameState((prev) => ({
+    //     ...prev,
+    //     chessState: {
+    //       ...prev.chessState,
+    //       board: data.gameState.chessState.board,
+    //       moves: data.gameState.chessState.moves,
+    //     },
+    //     currentTurn: data.gameState.currentTurn,
+    //     currentPlayer: data.gameState.currentPlayer,
+    //     gameOver: data.gameState.gameOver,
+    //     winner: data.gameState.winner,
+    //   }));
+    // };
+
+
+    const handleChessMove = (move: string) => {
+      if (socket && gameState?.currentTurn === user?.id) {
+        socket.emit("makeChessMove", { 
+          roomId, 
+          playerId: user!.id, 
+          move 
+        });
+      }
     };
 
     const handleKahootAnswer = (data: any) => {
@@ -398,16 +409,16 @@ export const LiveGameRoomPage = () => {
           roomId={roomId!}
           currentPlayer={user!.id}
           gameState={gameState}
-          // onChessMove={() => handleChessMove}
-          onChessMove={(move) => {
-            if (socket && gameState?.currentTurn === user?.id) {
-              socket.emit("makeChessMove", { 
-                roomId, 
-                playerId: user!.id, 
-                move 
-              });
-            }
-          }}
+          onChessMove={handleChessMove}
+          // onChessMove={(move) => {
+          //   if (socket && gameState?.currentTurn === user?.id) {
+          //     socket.emit("makeChessMove", { 
+          //       roomId, 
+          //       playerId: user!.id, 
+          //       move 
+          //     });
+          //   }
+          // }}
         />
         );
 

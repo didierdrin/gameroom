@@ -17,7 +17,8 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   gameState, 
   onChessMove 
 }) => {
-  const [game, setGame] = useState(new Chess());
+  // const [game, setGame] = useState(new Chess());
+  const [game] = useState(() => new Chess());
   const [fen, setFen] = useState('start');
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
 
