@@ -80,7 +80,10 @@ export const LiveGameRoomPage = () => {
   useEffect(() => {
     const initLocalStream = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: true,
+          video: false 
+        });
         setLocalStream(stream);
         if (localAudioRef.current) {
           localAudioRef.current.srcObject = stream;
@@ -89,87 +92,117 @@ export const LiveGameRoomPage = () => {
         console.error('Error accessing microphone:', error);
       }
     };
-
+  
     if (inAudioCall) {
       initLocalStream();
+    } else {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        setLocalStream(null);
+      }
+      // Clean up all peer connections
+      Object.values(peers).forEach(peer => peer.close());
+      setPeers({});
+      setRemoteStreams({});
     }
-
+  
     return () => {
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
       }
     };
   }, [inAudioCall]);
-
-  // Handle socket events for WebRTC signaling
+  
+  // Update the WebRTC signaling useEffect
   useEffect(() => {
-    if (!socket || !inAudioCall) return;
-
+    if (!socket || !inAudioCall || !user?.id) return;
+  
     const handleNewPeer = async ({ callerId, signal }: { callerId: string; signal: any }) => {
-      if (callerId === user?.id) return;
-
+      if (callerId === user.id) return;
+  
       const peer = createPeerConnection(callerId);
-      await peer.setRemoteDescription(new RTCSessionDescription(signal));
       
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
-
-      socket.emit('returnSignal', { signal: peer.localDescription, callerId, roomId });
+      try {
+        if (signal.type === 'offer') {
+          await peer.setRemoteDescription(new RTCSessionDescription(signal));
+          const answer = await peer.createAnswer();
+          await peer.setLocalDescription(answer);
+          
+          socket.emit('returnSignal', { 
+            signal: peer.localDescription, 
+            callerId: user.id, 
+            roomId 
+          });
+        } else if (signal.candidate) {
+          await peer.addIceCandidate(new RTCIceCandidate(signal.candidate));
+        }
+      } catch (error) {
+        console.error('Error handling new peer:', error);
+      }
     };
-
+  
     const handleReturnedSignal = async ({ signal, id }: { signal: any; id: string }) => {
       const peer = peers[id];
       if (peer) {
-        await peer.setRemoteDescription(new RTCSessionDescription(signal));
+        try {
+          if (signal.type === 'answer') {
+            await peer.setRemoteDescription(new RTCSessionDescription(signal));
+          } else if (signal.candidate) {
+            await peer.addIceCandidate(new RTCIceCandidate(signal.candidate));
+          }
+        } catch (error) {
+          console.error('Error handling returned signal:', error);
+        }
       }
     };
-
+  
     const handlePeerJoined = (peerId: string) => {
-      if (peerId === user?.id) return;
+      if (peerId === user.id) return;
       offerToPeer(peerId);
     };
-
+  
     const handlePeerLeft = (peerId: string) => {
       if (peers[peerId]) {
         peers[peerId].close();
         const newPeers = { ...peers };
         delete newPeers[peerId];
         setPeers(newPeers);
-
+  
         const newRemoteStreams = { ...remoteStreams };
         delete newRemoteStreams[peerId];
         setRemoteStreams(newRemoteStreams);
       }
     };
-
+  
     socket.on('newPeer', handleNewPeer);
     socket.on('returnedSignal', handleReturnedSignal);
     socket.on('peerJoined', handlePeerJoined);
     socket.on('peerLeft', handlePeerLeft);
-
-    // Join audio room when inAudioCall becomes true
-    if (inAudioCall && user?.id) {
-      socket.emit('joinAudio', { roomId, userId: user.id });
-    }
-
+  
+    // Join audio room
+    socket.emit('joinAudio', { roomId, userId: user.id });
+  
     return () => {
       socket.off('newPeer', handleNewPeer);
       socket.off('returnedSignal', handleReturnedSignal);
       socket.off('peerJoined', handlePeerJoined);
       socket.off('peerLeft', handlePeerLeft);
       
-      // Leave audio room when component unmounts or inAudioCall becomes false
-      if (inAudioCall && user?.id) {
-        socket.emit('leaveAudio', { roomId, userId: user.id });
-      }
+      // Leave audio room
+      socket.emit('leaveAudio', { roomId, userId: user.id });
     };
   }, [socket, roomId, user?.id, inAudioCall, peers, remoteStreams]);
-
+  
+  // Update the createPeerConnection function
   const createPeerConnection = (peerId: string): RTCPeerConnection => {
     const peer = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
+      ]
     });
-
+  
     peer.onicecandidate = (event) => {
       if (event.candidate) {
         socket?.emit('signal', {
@@ -180,37 +213,67 @@ export const LiveGameRoomPage = () => {
         });
       }
     };
-
+  
     peer.ontrack = (event) => {
       setRemoteStreams(prev => ({
         ...prev,
         [peerId]: event.streams[0]
       }));
+      
+      // Update the audio element
+      if (remoteAudioRefs.current[peerId]) {
+        remoteAudioRefs.current[peerId]!.srcObject = event.streams[0];
+      }
     };
-
+  
+    peer.oniceconnectionstatechange = () => {
+      console.log(`ICE connection state changed for ${peerId}:`, peer.iceConnectionState);
+      if (peer.iceConnectionState === 'disconnected' || peer.iceConnectionState === 'failed') {
+        peer.close();
+        const newPeers = { ...peers };
+        delete newPeers[peerId];
+        setPeers(newPeers);
+  
+        const newRemoteStreams = { ...remoteStreams };
+        delete newRemoteStreams[peerId];
+        setRemoteStreams(newRemoteStreams);
+      }
+    };
+  
+    // Add local tracks if available
     if (localStream) {
       localStream.getTracks().forEach(track => {
         peer.addTrack(track, localStream);
       });
     }
-
+  
     const newPeers = { ...peers, [peerId]: peer };
     setPeers(newPeers);
-
+  
     return peer;
   };
-
+  
+  // Update the offerToPeer function
   const offerToPeer = async (peerId: string) => {
     const peer = createPeerConnection(peerId);
-    const offer = await peer.createOffer();
-    await peer.setLocalDescription(offer);
-
-    socket?.emit('signal', {
-      signal: peer.localDescription,
-      callerId: user?.id,
-      roomId,
-      targetId: peerId
-    });
+    
+    try {
+      const offer = await peer.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: false
+      });
+      
+      await peer.setLocalDescription(offer);
+      
+      socket?.emit('signal', {
+        signal: peer.localDescription,
+        callerId: user?.id,
+        roomId,
+        targetId: peerId
+      });
+    } catch (error) {
+      console.error('Error creating offer:', error);
+    }
   };
 
   const toggleAudioCall = () => {

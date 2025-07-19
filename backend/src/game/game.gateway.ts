@@ -187,12 +187,14 @@ export class GameGateway {
   // audio functionality
   @SubscribeMessage('joinAudio')
 handleJoinAudio(@MessageBody() data: { roomId: string, userId: string }, @ConnectedSocket() client: Socket) {
+  console.log(`User ${data.userId} joining audio room ${data.roomId}`);
   client.join(`audio_${data.roomId}`);
   client.to(`audio_${data.roomId}`).emit('peerJoined', data.userId);
 }
 
 @SubscribeMessage('leaveAudio')
 handleLeaveAudio(@MessageBody() data: { roomId: string, userId: string }, @ConnectedSocket() client: Socket) {
+  console.log(`User ${data.userId} leaving audio room ${data.roomId}`);
   client.leave(`audio_${data.roomId}`);
   client.to(`audio_${data.roomId}`).emit('peerLeft', data.userId);
 }
@@ -204,6 +206,7 @@ handleSignal(@MessageBody() data: {
   roomId: string, 
   targetId: string 
 }, @ConnectedSocket() client: Socket) {
+  console.log(`Signaling from ${data.callerId} to ${data.targetId} in room ${data.roomId}`);
   client.to(`audio_${data.roomId}`).emit('newPeer', {
     signal: data.signal,
     callerId: data.callerId
@@ -216,6 +219,7 @@ handleReturnSignal(@MessageBody() data: {
   callerId: string, 
   roomId: string 
 }, @ConnectedSocket() client: Socket) {
+  console.log(`Return signal from ${data.callerId} in room ${data.roomId}`);
   client.to(`audio_${data.roomId}`).emit('returnedSignal', {
     signal: data.signal,
     id: data.callerId
