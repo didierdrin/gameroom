@@ -204,15 +204,31 @@ handleLeaveAudio(@MessageBody() data: { roomId: string, userId: string }, @Conne
 }
 
 @SubscribeMessage('signal')
-handleSignal(
-  @MessageBody() data: { signal: any; callerId: string; roomId: string; targetId: string },
+async handleSignal(
+  @MessageBody() data: { 
+    signal: any, 
+    callerId: string, 
+    roomId: string, 
+    targetId: string,
+    type: 'offer' | 'answer' | 'candidate'
+  },
   @ConnectedSocket() client: Socket
 ) {
-  console.log(`Signaling from ${data.callerId} to ${data.targetId} in room ${data.roomId}`);
-  this.server.to(`user_${data.targetId}`).emit('newPeer', {
-    signal: data.signal,
-    callerId: data.callerId
-  });
+  console.log(`Signaling ${data.type} from ${data.callerId} to ${data.targetId}`);
+  
+  // Queue candidates if connection isn't ready
+  if (data.type === 'candidate') {
+    client.to(`user_${data.targetId}`).emit('queuedCandidate', {
+      candidate: data.signal,
+      senderId: data.callerId
+    });
+  } else {
+    client.to(`user_${data.targetId}`).emit('signal', {
+      type: data.type,
+      signal: data.signal,
+      senderId: data.callerId
+    });
+  }
 }
 
 @SubscribeMessage('returnSignal')

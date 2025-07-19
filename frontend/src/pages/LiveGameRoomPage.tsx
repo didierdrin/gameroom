@@ -90,6 +90,7 @@ export const LiveGameRoomPage = () => {
   const [localVideoRef] = useState(useRef<HTMLVideoElement>(null));
   const [remoteVideoRefs] = useState(useRef<Record<string, HTMLVideoElement | null>>({}));
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [queuedCandidates, setQueuedCandidates] = useState<Record<string, RTCIceCandidate[]>>({});
 
   // Initialize local stream
   useEffect(() => {
@@ -168,7 +169,7 @@ export const LiveGameRoomPage = () => {
   
   // Clean up remote streams
   setParticipants(prev => prev.filter(p => p.isLocal));
-  
+
       setPeers({});
       setRemoteStreams({});
     }
@@ -225,7 +226,7 @@ export const LiveGameRoomPage = () => {
   
     const handlePeerJoined = (peerId: string) => {
       if (peerId === user.id) return;
-      offerToPeer(peerId);
+      setupConnection(peerId);
     };
   
     const handlePeerLeft = (peerId: string) => {
@@ -245,7 +246,7 @@ export const LiveGameRoomPage = () => {
     socket.on('returnedSignal', handleReturnedSignal);
     socket.on('peerJoined', handlePeerJoined);
     socket.on('peerLeft', handlePeerLeft);
-  
+    socket.on('peerJoined', handlePeerJoined);
     // Join audio room
     socket.emit('joinAudio', { roomId, userId: user.id });
   
@@ -254,18 +255,120 @@ export const LiveGameRoomPage = () => {
       socket.off('returnedSignal', handleReturnedSignal);
       socket.off('peerJoined', handlePeerJoined);
       socket.off('peerLeft', handlePeerLeft);
+      socket.off('peerJoined', handlePeerJoined);
       
       // Leave audio room
       socket.emit('leaveAudio', { roomId, userId: user.id });
     };
-  }, [socket, roomId, user?.id, inAudioCall, peers, remoteStreams]);
+  }, [socket, roomId, user?.id, inAudioCall, peers, remoteStreams, localStream]);
   
+
+  
+// Modified signaling handler
+useEffect(() => {
+  if (!socket || !user?.id) return;
+
+  const handleSignal = async ({ type, signal, senderId }: { 
+    type: 'offer' | 'answer' | 'candidate', 
+    signal: any, 
+    senderId: string 
+  }) => {
+    try {
+      let peer = peers[senderId];
+      
+      if (!peer && type === 'offer') {
+        peer = createPeerConnection(senderId);
+        await peer.setRemoteDescription(new RTCSessionDescription(signal));
+        
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        
+        socket.emit('signal', {
+          type: 'answer',
+          signal: answer,
+          callerId: user.id,
+          roomId,
+          targetId: senderId
+        });
+      } 
+      else if (peer && type === 'answer') {
+        await peer.setRemoteDescription(new RTCSessionDescription(signal));
+      }
+      else if (type === 'candidate') {
+        if (peer && peer.remoteDescription) {
+          await peer.addIceCandidate(new RTCIceCandidate(signal));
+        } else {
+          setQueuedCandidates(prev => ({
+            ...prev,
+            [senderId]: [...(prev[senderId] || []), new RTCIceCandidate(signal)]
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Signal handling error:', error);
+    }
+  };
+
+  const handleQueuedCandidate = ({ candidate, senderId }: { 
+    candidate: RTCIceCandidateInit, 
+    senderId: string 
+  }) => {
+    setQueuedCandidates(prev => ({
+      ...prev,
+      [senderId]: [...(prev[senderId] || []), new RTCIceCandidate(candidate)]
+    }));
+  };
+
+  socket.on('signal', handleSignal);
+  socket.on('queuedCandidate', handleQueuedCandidate);
+
+  return () => {
+    socket.off('signal', handleSignal);
+    socket.off('queuedCandidate', handleQueuedCandidate);
+  };
+}, [socket, user?.id, roomId, peers]);
+
+
+const setupConnection = async (peerId: string) => {
+  if (peers[peerId]) return;
+
+  const peer = createPeerConnection(peerId);
+  
+  // Add local stream if available
+  if (localStream) {
+    localStream.getTracks().forEach(track => {
+      peer.addTrack(track, localStream);
+    });
+  }
+
+  // Process any queued candidates
+  if (queuedCandidates[peerId]?.length) {
+    for (const candidate of queuedCandidates[peerId]) {
+      try {
+        await peer.addIceCandidate(candidate);
+      } catch (error) {
+        console.error('Error adding queued candidate:', error);
+      }
+    }
+    setQueuedCandidates(prev => {
+      const newQueues = { ...prev };
+      delete newQueues[peerId];
+      return newQueues;
+    });
+  }
+};
+
   // Update the createPeerConnection function
   const createPeerConnection = (peerId: string): RTCPeerConnection => {
     const peer = new RTCPeerConnection({
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { 
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject' 
+        }
       ]
     });
 
@@ -286,18 +389,7 @@ export const LiveGameRoomPage = () => {
       }
     };
   
-    // peer.ontrack = (event) => {
-    //   setRemoteStreams(prev => ({
-    //     ...prev,
-    //     [peerId]: event.streams[0]
-    //   }));
-      
-    //   // Update the audio element
-    //   if (remoteAudioRefs.current[peerId]) {
-    //     remoteAudioRefs.current[peerId]!.srcObject = event.streams[0];
-    //   }
-    // };
-
+ 
     peer.ontrack = (event) => {
       const stream = event.streams[0];
       setParticipants(prev => {
@@ -350,8 +442,29 @@ export const LiveGameRoomPage = () => {
       });
     }
   
-    const newPeers = { ...peers, [peerId]: peer };
-    setPeers(newPeers);
+    // const newPeers = { ...peers, [peerId]: peer };
+    // setPeers(newPeers);
+    // Store peer in state
+  setPeers(prev => ({ ...prev, [peerId]: peer }));
+
+  // Handle queued candidates when remote description is set
+  const processQueuedCandidates = async () => {
+    if (queuedCandidates[peerId]?.length) {
+      for (const candidate of queuedCandidates[peerId]) {
+        try {
+          await peer.addIceCandidate(candidate);
+          console.log(`Processed queued candidate for ${peerId}`);
+        } catch (error) {
+          console.error('Error adding queued candidate:', error);
+        }
+      }
+      setQueuedCandidates(prev => {
+        const newQueues = { ...prev };
+        delete newQueues[peerId];
+        return newQueues;
+      });
+    }
+  };
   
     return peer;
   };
