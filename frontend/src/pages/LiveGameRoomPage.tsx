@@ -28,6 +28,17 @@ import { useSocket } from "../SocketContext";
 import { useAuth } from "../context/AuthContext";
 import { SocketType } from "../SocketContext";
 
+interface Participant {
+  id: string;
+  name: string;
+  videoEnabled: boolean;
+  audioEnabled: boolean;
+  videoStream: MediaStream | null;
+  audioStream: MediaStream | null;
+  isLocal: boolean;
+  avatar: string;
+}
+
 export const LiveGameRoomPage = () => {
   const { id: roomId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -75,21 +86,68 @@ export const LiveGameRoomPage = () => {
   const [peers, setPeers] = useState<{ [key: string]: RTCPeerConnection }>({});
   const localAudioRef = useRef<HTMLAudioElement>(null);
   const remoteAudioRefs = useRef<{ [key: string]: HTMLAudioElement | null }>({});
+  // Video call states
+  const [localVideoRef] = useState(useRef<HTMLVideoElement>(null));
+  const [remoteVideoRefs] = useState(useRef<Record<string, HTMLVideoElement | null>>({}));
+  const [participants, setParticipants] = useState<Participant[]>([]);
 
   // Initialize local stream
   useEffect(() => {
+    // const initLocalStream = async () => {
+    //   try {
+    //     const constraints = {
+    //       audio: audioEnabled,
+    //       video: videoEnabled ? { facingMode: "user" } : false
+    //     };
+    //     const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    //     setLocalStream(stream);
+        
+    //     if (localVideoRef.current) {
+    //       localVideoRef.current.srcObject = stream;
+    //     }
+    //     if (localAudioRef.current) {
+    //       localAudioRef.current.srcObject = stream;
+    //     }
+    //   } catch (error) {
+    //     console.error('Error accessing media:', error);
+    //   }
+    // };
+
+
     const initLocalStream = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
           audio: true,
-          video: false 
+          video: videoEnabled 
         });
         setLocalStream(stream);
+        
+        // Update local participant
+        setParticipants(prev => {
+          const localParticipant = prev.find(p => p.isLocal) || {
+            id: user!.id,
+            name: user!.username,
+            isLocal: true,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user!.id}`
+          };
+          
+          return [
+            {
+              ...localParticipant,
+              videoEnabled,
+              audioEnabled,
+              videoStream: videoEnabled ? stream : null,
+              audioStream: stream
+            },
+            ...prev.filter(p => !p.isLocal)
+          ];
+        });
+    
         if (localAudioRef.current) {
           localAudioRef.current.srcObject = stream;
         }
       } catch (error) {
-        console.error('Error accessing microphone:', error);
+        console.error('Error accessing media:', error);
       }
     };
   
@@ -102,6 +160,15 @@ export const LiveGameRoomPage = () => {
       }
       // Clean up all peer connections
       Object.values(peers).forEach(peer => peer.close());
+
+      // Clean up media streams
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+  }
+  
+  // Clean up remote streams
+  setParticipants(prev => prev.filter(p => p.isLocal));
+  
       setPeers({});
       setRemoteStreams({});
     }
@@ -198,10 +265,15 @@ export const LiveGameRoomPage = () => {
     const peer = new RTCPeerConnection({
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' }
       ]
     });
+
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        peer.addTrack(track, localStream);
+      });
+    }
   
     peer.onicecandidate = (event) => {
       if (event.candidate) {
@@ -214,16 +286,47 @@ export const LiveGameRoomPage = () => {
       }
     };
   
-    peer.ontrack = (event) => {
-      setRemoteStreams(prev => ({
-        ...prev,
-        [peerId]: event.streams[0]
-      }));
+    // peer.ontrack = (event) => {
+    //   setRemoteStreams(prev => ({
+    //     ...prev,
+    //     [peerId]: event.streams[0]
+    //   }));
       
-      // Update the audio element
-      if (remoteAudioRefs.current[peerId]) {
-        remoteAudioRefs.current[peerId]!.srcObject = event.streams[0];
-      }
+    //   // Update the audio element
+    //   if (remoteAudioRefs.current[peerId]) {
+    //     remoteAudioRefs.current[peerId]!.srcObject = event.streams[0];
+    //   }
+    // };
+
+    peer.ontrack = (event) => {
+      const stream = event.streams[0];
+      setParticipants(prev => {
+        const existing = prev.find(p => p.id === peerId);
+        if (existing) {
+          return prev.map(p => 
+            p.id === peerId ? { 
+              ...p, 
+              videoStream: stream.getVideoTracks().length > 0 ? stream : p.videoStream,
+              audioStream: stream.getAudioTracks().length > 0 ? stream : p.audioStream,
+              videoEnabled: stream.getVideoTracks().length > 0,
+              audioEnabled: stream.getAudioTracks().length > 0
+            } : p
+          );
+        }
+        return [
+          ...prev,
+          {
+            id: peerId,
+            name: peerId.slice(0, 8),
+            videoEnabled: stream.getVideoTracks().length > 0,
+            audioEnabled: stream.getAudioTracks().length > 0,
+            videoStream: stream.getVideoTracks().length > 0 ? stream : null,
+            audioStream: stream.getAudioTracks().length > 0 ? stream : null,
+            isLocal: false,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${peerId}`
+          }
+        ];
+      });
     };
   
     peer.oniceconnectionstatechange = () => {
@@ -276,6 +379,153 @@ export const LiveGameRoomPage = () => {
     }
   };
 
+  // const handleScreenShare = async () => {
+  //   try {
+  //     const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+  //       video: true,
+  //       audio: false 
+  //     });
+      
+  //     // Replace video track in all peers
+  //     const videoTrack = screenStream.getVideoTracks()[0];
+  //     Object.values(peers).forEach(peer => {
+  //       const sender = peer.getSenders().find(s => s.track?.kind === 'video');
+  //       if (sender) sender.replaceTrack(videoTrack);
+  //     });
+      
+  //     // Update local stream
+  //     if (localStream) {
+  //       localStream.getVideoTracks().forEach(track => track.stop());
+  //       localStream.addTrack(videoTrack);
+  //     }
+      
+  //     setIsScreenSharing(true);
+      
+  //     // Handle when user stops sharing
+  //     videoTrack.onended = () => {
+  //       handleCameraSwitch();
+  //     };
+  //   } catch (error) {
+  //     console.error('Screen share error:', error);
+  //   }
+  // };
+  
+  const handleCameraSwitch = async () => {
+    const constraints = { video: { facingMode: "user" } };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const videoTrack = stream.getVideoTracks()[0];
+    
+    // Replace screen share with camera
+    Object.values(peers).forEach(peer => {
+      const sender = peer.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) sender.replaceTrack(videoTrack);
+    });
+    
+    if (localStream) {
+      localStream.getVideoTracks().forEach(track => track.stop());
+      localStream.addTrack(videoTrack);
+    }
+    
+    setIsScreenSharing(false);
+    stream.getTracks().forEach(track => {
+      if (track.kind !== 'video') track.stop();
+    });
+  };
+
+  const handleScreenShare = async () => {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+        video: true,
+        audio: false 
+      });
+      
+      // Replace video track in all peers
+      const videoTrack = screenStream.getVideoTracks()[0];
+      Object.values(peers).forEach(peer => {
+        const sender = peer.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) sender.replaceTrack(videoTrack);
+      });
+      
+      // Update local participant
+      setParticipants(prev => prev.map(p => 
+        p.isLocal ? { 
+          ...p, 
+          videoStream: screenStream,
+          videoEnabled: true
+        } : p
+      ));
+      
+      setIsScreenSharing(true);
+      
+      // Handle when user stops sharing
+      videoTrack.onended = () => {
+        toggleVideo();
+      };
+    } catch (error) {
+      console.error('Screen share error:', error);
+    }
+  };
+
+  const toggleVideo = async () => {
+    if (isScreenSharing) {
+      // Stop screen share first
+      localStream?.getVideoTracks().forEach(track => track.stop());
+      setIsScreenSharing(false);
+    }
+  
+    const newVideoEnabled = !videoEnabled;
+    setVideoEnabled(newVideoEnabled);
+  
+    if (localStream) {
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = newVideoEnabled;
+      } else if (newVideoEnabled) {
+        // Add new video track if enabling
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const newVideoTrack = stream.getVideoTracks()[0];
+        localStream.addTrack(newVideoTrack);
+        
+        // Update all peers
+        Object.values(peers).forEach(peer => {
+          const sender = peer.getSenders().find(s => s.track?.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(newVideoTrack);
+          } else {
+            peer.addTrack(newVideoTrack, localStream);
+          }
+        });
+      }
+    }
+  
+    // Update participant state
+    setParticipants(prev => prev.map(p => 
+      p.isLocal ? { 
+        ...p, 
+        videoEnabled: newVideoEnabled,
+        videoStream: newVideoEnabled ? localStream : null
+      } : p
+    ));
+  };
+  
+  const toggleAudio = () => {
+    const newAudioEnabled = !audioEnabled;
+    setAudioEnabled(newAudioEnabled);
+  
+    if (localStream) {
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = newAudioEnabled;
+      });
+    }
+  
+    // Update participant state
+    setParticipants(prev => prev.map(p => 
+      p.isLocal ? { 
+        ...p, 
+        audioEnabled: newAudioEnabled 
+      } : p
+    ));
+  };
   const toggleAudioCall = () => {
     if (!inAudioCall) {
       setInAudioCall(true);
@@ -815,6 +1065,22 @@ export const LiveGameRoomPage = () => {
           </div>
         )}
       </div>
+
+      
+{showVideoGrid && (
+  <div className="fixed inset-0 bg-gray-900 z-40 p-4 overflow-auto">
+    <div className="flex justify-between items-center mb-4">
+      <h2 className="text-xl font-bold text-white">Participants</h2>
+      <button 
+        onClick={() => setShowVideoGrid(false)}
+        className="text-white bg-red-600 p-2 rounded-full"
+      >
+        <XIcon size={20} />
+      </button>
+    </div>
+    <VideoGrid participants={participants} />
+  </div>
+)}
 
       <MediaControls
         videoEnabled={videoEnabled}

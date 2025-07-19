@@ -75,13 +75,21 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
       )}
 
       {/* Screen Share Toggle */}
-      <button
+      {/* <button
         onClick={onToggleScreenShare}
         className={`hidden sm:block p-3 rounded-lg transition-colors ${isScreenSharing ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-700 hover:bg-gray-600'}`}
         title={isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
       >
         <MonitorIcon size={20} />
-      </button>
+      </button> */}
+
+<button
+  onClick={onToggleScreenShare}
+  className={`p-2 sm:p-3 rounded-lg transition-colors ${isScreenSharing ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-700 hover:bg-gray-600'}`}
+  title={isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
+>
+  <MonitorIcon size={20} />
+</button>
 
       {/* Leave Call Button */}
       <button
