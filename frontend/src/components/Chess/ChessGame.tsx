@@ -38,40 +38,78 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     setPlayerColor(player?.chessColor || 'white');
   }, [gameState, currentPlayer]);
 
+  // const handleMove = ({ sourceSquare, targetSquare }: { 
+  //   sourceSquare: string; 
+  //   targetSquare: string 
+  // }) => {
+  //   try {
+  //     // Only allow moves when it's the player's turn
+  //     if (gameState.currentTurn !== currentPlayer) return;
+
+  //     const move = game.move({
+  //       from: sourceSquare,
+  //       to: targetSquare,
+  //       promotion: 'q', // Always promote to queen for simplicity
+  //     });
+
+  //     if (move) {
+  //       setFen(game.fen());
+  //       // Send the move in standard algebraic notation
+  //       onChessMove(`${sourceSquare}${targetSquare}`);
+        
+  //       // Update local game state immediately for smooth UI
+  //       const newGameState = {
+  //         ...gameState,
+  //         chessState: {
+  //           board: game.fen(),
+  //           moves: [...(gameState.chessState?.moves || []), move.san]
+  //         },
+  //         currentTurn: gameState.players.find(
+  //           (p: any) => p.id !== currentPlayer
+  //         )?.id
+  //       };
+  //     }
+  //   } catch (e) {
+  //     console.error('Invalid move:', e);
+  //     return false; // Prevent the move
+  //   }
+  // };
+
+
   const handleMove = ({ sourceSquare, targetSquare }: { 
     sourceSquare: string; 
     targetSquare: string 
   }) => {
     try {
       // Only allow moves when it's the player's turn
-      if (gameState.currentTurn !== currentPlayer) return;
-
+      if (gameState.currentTurn !== currentPlayer) {
+        console.log("Not your turn");
+        return null;
+      }
+  
+      // Check if the move matches the player's color
+      const player = gameState.players.find((p: any) => p.id === currentPlayer);
+      const moveColor = game.turn();
+      
+      if ((moveColor === 'w' && player?.chessColor !== 'white') || 
+          (moveColor === 'b' && player?.chessColor !== 'black')) {
+        console.log("Not your color's turn");
+        return null;
+      }
+  
       const move = game.move({
         from: sourceSquare,
         to: targetSquare,
-        promotion: 'q', // Always promote to queen for simplicity
+        promotion: 'q',
       });
-
+  
       if (move) {
         setFen(game.fen());
-        // Send the move in standard algebraic notation
         onChessMove(`${sourceSquare}${targetSquare}`);
-        
-        // Update local game state immediately for smooth UI
-        const newGameState = {
-          ...gameState,
-          chessState: {
-            board: game.fen(),
-            moves: [...(gameState.chessState?.moves || []), move.san]
-          },
-          currentTurn: gameState.players.find(
-            (p: any) => p.id !== currentPlayer
-          )?.id
-        };
       }
     } catch (e) {
       console.error('Invalid move:', e);
-      return false; // Prevent the move
+      return null;
     }
   };
 
@@ -92,20 +130,23 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         />
       </div>
       <div className="text-center">
-        <p className="text-gray-400">
-          {gameState.gameOver 
-            ? `Game Over! Winner: ${gameState.winner}`
-            : `Current Turn: ${gameState.currentTurn === currentPlayer 
-                ? 'Your turn' 
-                : 'Opponent\'s turn'}`
-          }
-        </p>
-        {gameState.chessState?.moves?.length > 0 && (
-          <p className="text-sm text-gray-500 mt-2">
-            Last move: {gameState.chessState.moves.slice(-1)[0]}
-          </p>
-        )}
-      </div>
+  <p className="text-gray-400">
+    {gameState.gameOver 
+      ? `Game Over! Winner: ${gameState.winner}`
+      : `Current Turn: ${gameState.currentTurn === currentPlayer 
+          ? 'Your turn' 
+          : 'Opponent\'s turn'}`
+    }
+  </p>
+  <p className="text-sm text-gray-500">
+    You are playing as: {playerColor}
+  </p>
+  {gameState.chessState?.moves?.length > 0 && (
+    <p className="text-sm text-gray-500 mt-2">
+      Last move: {gameState.chessState.moves.slice(-1)[0]}
+    </p>
+  )}
+</div>
     </div>
   );
 };
