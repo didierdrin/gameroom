@@ -10,8 +10,8 @@ const server = new turn({
   // Authentication
   authMech: 'long-term',
   credentials: {
-    username: process.env.TURN_USERNAME || 'default',
-    password: process.env.TURN_PASSWORD || 'default'
+    username: process.env.TURN_USERNAME,
+    password: process.env.TURN_PASSWORD
   },
   
   // Port ranges (important for NAT traversal)
@@ -42,6 +42,10 @@ process.on('SIGINT', function() {
 server.on('error', function(err) {
   console.error('TURN server error:', err);
 });
+
+
+
+
 
 // const { NodeTURN } = require('node-turn');
 
