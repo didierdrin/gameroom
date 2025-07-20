@@ -3,7 +3,7 @@ const turn = require('node-turn');
 // Create TURN server instance
 const server = new turn({
   // Network configuration
-  listeningPort: process.env.PORT || 3478, // Use Render's PORT or default
+  listeningPort: 3478, // process.env.PORT ||  Use Render's PORT or default
   listeningIps: ['0.0.0.0'], // Crucial for Render
   relayIps: ['0.0.0.0'],
   
