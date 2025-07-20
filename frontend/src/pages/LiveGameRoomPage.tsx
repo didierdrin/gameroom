@@ -362,13 +362,13 @@ const setupConnection = async (peerId: string) => {
   const createPeerConnection = (peerId: string): RTCPeerConnection => {
     const peer = new RTCPeerConnection({
       iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
         { 
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject' 
-        }
+          urls: 'turn:https://alu-globe-game-room-turn-server.onrender.com:3478',
+          username: 'aluglobe2025',
+          credential: 'aluglobe2025development' 
+        },
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
       ]
     });
 
