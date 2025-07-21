@@ -243,5 +243,46 @@ handleReturnSignal(
   });
 }
 
+
+// Chat
+@SubscribeMessage('chatMessage')
+async handleChatMessage(
+  @MessageBody() data: { roomId: string; playerId: string; message: string },
+  @ConnectedSocket() client: Socket
+) {
+  try {
+    console.log(`Chat message from ${data.playerId} in room ${data.roomId}: ${data.message}`);
+    
+    // Broadcast the message to all clients in the room
+    this.server.to(data.roomId).emit('chatMessage', {
+      playerId: data.playerId,
+      message: data.message,
+      timestamp: new Date().toISOString()
+    });
+
+    // Optionally: Store the message in Redis or database
+    // await this.gameService.storeChatMessage(data.roomId, data.playerId, data.message);
+    
+  } catch (error) {
+    console.error('Error handling chat message:', error);
+    client.emit('chatError', { message: 'Failed to send chat message' });
+  }
+}
+
+
+@SubscribeMessage('getChatHistory')
+async handleGetChatHistory(
+  @MessageBody() data: { roomId: string },
+  @ConnectedSocket() client: Socket
+) {
+  try {
+    const history = await this.gameService.getChatHistory(data.roomId);
+    client.emit('chatHistory', history);
+  } catch (error) {
+    console.error('Error getting chat history:', error);
+  }
+}
+
+
   
 }

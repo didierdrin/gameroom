@@ -780,6 +780,14 @@ const setupConnection = async (peerId: string) => {
       }
     };
 
+    // Add this inside your existing socket setup:
+  const handleChatHistory = (history: any[]) => {
+    setMessages(history);
+  };
+
+  socket.on('chatHistory', handleChatHistory);
+  socket.emit('getChatHistory', { roomId });
+
     socket.on("gameState", handleGameState);
     socket.on("playerJoined", handlePlayerJoined);
     socket.on("playerConnected", handlePlayerConnected);
@@ -804,6 +812,7 @@ const setupConnection = async (peerId: string) => {
       socket.off("kahootAnswer", handleKahootAnswer);
       socket.off("gameOver", handleGameOver);
       socket.off("error", handleError);
+      socket.off('chatHistory', handleChatHistory);
     };
   }, [socket, roomId, user, navigate]);
 
@@ -1080,7 +1089,7 @@ const setupConnection = async (peerId: string) => {
           <div className="h-full p-2 sm:p-4">{renderGameContent()}</div>
         </div>
 
-        {showChat && (
+        {/* {showChat && (
           <div className="w-full sm:w-64 border-l border-gray-700 bg-gray-800 flex flex-col fixed sm:relative inset-y-0 right-0 z-30">
             <div className="p-3 border-b border-gray-700 flex justify-between items-center">
               <h3 className="font-medium">Chat</h3>
@@ -1126,7 +1135,24 @@ const setupConnection = async (peerId: string) => {
               </form>
             </div>
           </div>
-        )}
+        )} */}
+
+{showChat && (
+  <div className="fixed sm:relative inset-y-0 right-0 z-30 w-full sm:w-64">
+    <Chat
+      messages={messages}
+      onSendMessage={sendMessage}
+      currentPlayerId={user!.id}
+      playerIdToUsername={playerIdToUsername}
+    />
+    <button
+      onClick={() => setShowChat(false)}
+      className="sm:hidden absolute top-2 right-2 p-1 bg-gray-800 rounded-full"
+    >
+      <XIcon size={16} />
+    </button>
+  </div>
+)}
       </div>
 
       
@@ -1190,3 +1216,12 @@ const setupConnection = async (peerId: string) => {
     </div>
   );
 };
+
+
+
+{/* <Chat
+  messages={messages}
+  onSendMessage={sendMessage}
+  currentPlayerId={user!.id}
+  playerIdToUsername={playerIdToUsername}
+/> */}

@@ -1022,4 +1022,39 @@ export class GameService {
       throw error;
     }
   }
+
+
+  // chat
+  // In game.service.ts
+
+async storeChatMessage(roomId: string, playerId: string, message: string) {
+  try {
+    // Store in Redis with expiration (e.g., 24 hours)
+    const chatKey = `chat:${roomId}`;
+    const chatMessage = JSON.stringify({
+      playerId,
+      message,
+      timestamp: new Date().toISOString()
+    });
+    
+    await this.redisService.lpush(chatKey, chatMessage);
+    await this.redisService.ltrim(chatKey, 0, 100); // Keep only last 100 messages
+    await this.redisService.expire(chatKey, 86400); // Expire after 24 hours
+  } catch (error) {
+    console.error('Error storing chat message:', error);
+  }
+}
+
+async getChatHistory(roomId: string) {
+  try {
+    const chatKey = `chat:${roomId}`;
+    const messages = await this.redisService.lrange(chatKey, 0, -1);
+    return messages.map(msg => JSON.parse(msg));
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    return [];
+  }
+}
+
+
 }
