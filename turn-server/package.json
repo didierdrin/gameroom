@@ -1,18 +1,21 @@
 {
   "name": "turn-server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "TURN server for WebRTC",
+  "main": "server.js",
   "scripts": { 
     "start": "node server.js",
     "build": "npm install && exit 0",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["turn", "webrtc", "server"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "node-turn": "^0.0.6"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
