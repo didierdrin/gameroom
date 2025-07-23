@@ -298,6 +298,16 @@ useEffect(() => {
     }));
   };
 
+  // Inside your useEffect for socket setup
+socket.on("chessMove", (data:any) => {
+  setGameState(prev => ({
+    ...prev,
+    chessState: data.gameState.chessState,
+    currentTurn: data.gameState.currentTurn,
+    currentPlayer: data.gameState.currentPlayer
+  }));
+});
+
   socket.on('signal', handleSignal);
   socket.on('queuedCandidate', handleQueuedCandidate);
 
@@ -1089,53 +1099,7 @@ const setupConnection = async (peerId: string) => {
           <div className="h-full p-2 sm:p-4">{renderGameContent()}</div>
         </div>
 
-        {/* {showChat && (
-          <div className="w-full sm:w-64 border-l border-gray-700 bg-gray-800 flex flex-col fixed sm:relative inset-y-0 right-0 z-30">
-            <div className="p-3 border-b border-gray-700 flex justify-between items-center">
-              <h3 className="font-medium">Chat</h3>
-              <button
-                onClick={() => setShowChat(false)}
-                className="sm:hidden p-2 hover:bg-gray-700 rounded-lg"
-              >
-                <XIcon size={16} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-4">
-              {messages.map((msg, index) => (
-                <div key={index} className="flex">
-                  <img
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.playerId}`}
-                    alt=""
-                    className="w-8 h-8 rounded-full border border-gray-600 mr-2"
-                  />
-                  <div>
-                    <div className="text-sm font-medium">
-                      {playerIdToUsername[msg.playerId] || msg.playerId}
-                    </div>
-                    <div className="text-sm text-gray-300">{msg.message}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="p-3 border-t border-gray-700">
-              <form onSubmit={handleSendMessage} className="flex items-center">
-                <input
-                  type="text"
-                  className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Type a message..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="p-2 ml-2 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors"
-                >
-                  <SendIcon size={20} />
-                </button>
-              </form>
-            </div>
-          </div>
-        )} */}
+    
 
 {showChat && (
   <div className="fixed sm:relative inset-y-0 right-0 z-30 w-full sm:w-64">
@@ -1217,11 +1181,3 @@ const setupConnection = async (peerId: string) => {
   );
 };
 
-
-
-{/* <Chat
-  messages={messages}
-  onSendMessage={sendMessage}
-  currentPlayerId={user!.id}
-  playerIdToUsername={playerIdToUsername}
-/> */}

@@ -21,6 +21,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   const [game] = useState(() => new Chess());
   const [fen, setFen] = useState('start');
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
+  const [localGameState, setLocalGameState] = useState(gameState);
 
   useEffect(() => {
     // Initialize game from gameState
@@ -38,57 +39,19 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     setPlayerColor(player?.chessColor || 'white');
   }, [gameState, currentPlayer]);
 
-  // const handleMove = ({ sourceSquare, targetSquare }: { 
-  //   sourceSquare: string; 
-  //   targetSquare: string 
-  // }) => {
-  //   try {
-  //     // Only allow moves when it's the player's turn
-  //     if (gameState.currentTurn !== currentPlayer) return;
 
-  //     const move = game.move({
-  //       from: sourceSquare,
-  //       to: targetSquare,
-  //       promotion: 'q', // Always promote to queen for simplicity
-  //     });
-
-  //     if (move) {
-  //       setFen(game.fen());
-  //       // Send the move in standard algebraic notation
-  //       onChessMove(`${sourceSquare}${targetSquare}`);
-        
-  //       // Update local game state immediately for smooth UI
-  //       const newGameState = {
-  //         ...gameState,
-  //         chessState: {
-  //           board: game.fen(),
-  //           moves: [...(gameState.chessState?.moves || []), move.san]
-  //         },
-  //         currentTurn: gameState.players.find(
-  //           (p: any) => p.id !== currentPlayer
-  //         )?.id
-  //       };
-  //     }
-  //   } catch (e) {
-  //     console.error('Invalid move:', e);
-  //     return false; // Prevent the move
-  //   }
-  // };
-
-
+  // Update your handleMove to use localGameState
   const handleMove = ({ sourceSquare, targetSquare }: { 
     sourceSquare: string; 
     targetSquare: string 
   }) => {
     try {
-      // Only allow moves when it's the player's turn
-      if (gameState.currentTurn !== currentPlayer) {
+      if (localGameState.currentTurn !== currentPlayer) {
         console.log("Not your turn");
         return null;
       }
   
-      // Check if the move matches the player's color
-      const player = gameState.players.find((p: any) => p.id === currentPlayer);
+      const player = localGameState.players.find((p: any) => p.id === currentPlayer);
       const moveColor = game.turn();
       
       if ((moveColor === 'w' && player?.chessColor !== 'white') || 
@@ -105,6 +68,14 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   
       if (move) {
         setFen(game.fen());
+        setLocalGameState((prev:any) => ({
+          ...prev,
+          chessState: {
+            ...prev.chessState,
+            board: game.fen(),
+            moves: [...(prev.chessState?.moves || []), `${sourceSquare}${targetSquare}`]
+          }
+        }));
         onChessMove(`${sourceSquare}${targetSquare}`);
       }
     } catch (e) {
@@ -112,6 +83,43 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       return null;
     }
   };
+
+  // const handleMove = ({ sourceSquare, targetSquare }: { 
+  //   sourceSquare: string; 
+  //   targetSquare: string 
+  // }) => {
+  //   try {
+  //     // Only allow moves when it's the player's turn
+  //     if (gameState.currentTurn !== currentPlayer) {
+  //       console.log("Not your turn");
+  //       return null;
+  //     }
+  
+  //     // Check if the move matches the player's color
+  //     const player = gameState.players.find((p: any) => p.id === currentPlayer);
+  //     const moveColor = game.turn();
+      
+  //     if ((moveColor === 'w' && player?.chessColor !== 'white') || 
+  //         (moveColor === 'b' && player?.chessColor !== 'black')) {
+  //       console.log("Not your color's turn");
+  //       return null;
+  //     }
+  
+  //     const move = game.move({
+  //       from: sourceSquare,
+  //       to: targetSquare,
+  //       promotion: 'q',
+  //     });
+  
+  //     if (move) {
+  //       setFen(game.fen());
+  //       onChessMove(`${sourceSquare}${targetSquare}`);
+  //     }
+  //   } catch (e) {
+  //     console.error('Invalid move:', e);
+  //     return null;
+  //   }
+  // };
 
   return (
     <div className="flex flex-col items-center justify-center h-full">
@@ -151,62 +159,3 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   );
 };
 
-
-// import React, { useEffect, useState } from 'react';
-// import Chessboard from 'chessboardjsx';
-// import { Chess } from 'chess.js';
-
-// interface GameRenderProps {
-//   socket: any;q
-//   roomId: string;
-//   currentPlayer: string;
-//   gameState: any;
-//   onChessMove: (move: string) => void;
-// }
-
-// export const ChessGame: React.FC<GameRenderProps> = ({ socket, roomId, currentPlayer, gameState, onChessMove }) => {
-//   const [chess] = useState(new Chess(gameState.chessState?.board || 'rnbqkbnr/pppppppp/5n1f/8/8/5N1F/PPPPPPPP/RNBQKBNR w KQkq - 0 1'));
-//   const [fen, setFen] = useState(gameState.chessState?.board || 'rnbqkbnr/pppppppp/5n1f/8/8/5N1F/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
-//   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
-
-//   useEffect(() => {
-//     const player = gameState.players.find((p: any) => p.id === currentPlayer);
-//     setPlayerColor(player?.chessColor || 'white');
-//     setFen(gameState.chessState?.board || fen);
-//     chess.load(gameState.chessState?.board || fen);
-//   }, [gameState, currentPlayer, chess, fen]);
-
-//   const handleMove = ({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string }) => {
-//     const move = chess.move({
-//       from: sourceSquare,
-//       to: targetSquare,
-//       promotion: 'q', // Auto-promote to queen
-//     });
-//     if (move && gameState.currentTurn === currentPlayer) {
-//       onChessMove(move.san); // e.g., "e2e4"
-//       setFen(chess.fen());
-//     }
-//   };
-
-//   return (
-//     <div className="flex flex-col items-center justify-center h-full">
-//       <div className="w-full max-w-lg">
-//         <Chessboard
-//           position={fen}
-//           onDrop={handleMove}
-//           orientation={playerColor}
-//           draggable={gameState.currentTurn === currentPlayer}
-//           boardStyle={{
-//             borderRadius: '8px',
-//             boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)',
-//           }}
-//         />
-//       </div>
-//       <div className="mt-4 text-center">
-//         <p className="text-gray-400">
-//           {gameState.gameOver ? `Game Over! Winner: ${gameState.winner}` : `Current Turn: ${gameState.currentTurn === currentPlayer ? 'Your turn' : 'Opponent\'s turn'}`}
-//         </p>
-//       </div>
-//     </div>
-//   );
-// };
