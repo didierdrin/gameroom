@@ -207,7 +207,7 @@ export class GameService {
           roomName,
           gameType: 'chess',
           chessState: {
-            board: 'rnbqkbnr/pppppppp/5n1f/8/8/5N1F/PPPPPPPP/RNBQKBNR w KQkq - 0 1', // Initial FEN
+            board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', // Initial FEN
             moves: [],
           },
         };
@@ -842,7 +842,6 @@ export class GameService {
             })),
             winner: null,
             chessState: {
-              // board: 'rnbqkbnr/pppppppp/5n1f/8/8/5N1F/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
               board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
               moves: [],
             },
