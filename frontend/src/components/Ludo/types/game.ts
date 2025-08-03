@@ -1,9 +1,3 @@
-// export interface Player {
-//     id: string;
-//     name: string;
-//     color: string;
-//     coins: number[];
-//   }
 
 export interface Player {
   id: string;

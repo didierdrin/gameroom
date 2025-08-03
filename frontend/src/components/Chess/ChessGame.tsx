@@ -84,43 +84,6 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     }
   };
 
-  // const handleMove = ({ sourceSquare, targetSquare }: { 
-  //   sourceSquare: string; 
-  //   targetSquare: string 
-  // }) => {
-  //   try {
-  //     // Only allow moves when it's the player's turn
-  //     if (gameState.currentTurn !== currentPlayer) {
-  //       console.log("Not your turn");
-  //       return null;
-  //     }
-  
-  //     // Check if the move matches the player's color
-  //     const player = gameState.players.find((p: any) => p.id === currentPlayer);
-  //     const moveColor = game.turn();
-      
-  //     if ((moveColor === 'w' && player?.chessColor !== 'white') || 
-  //         (moveColor === 'b' && player?.chessColor !== 'black')) {
-  //       console.log("Not your color's turn");
-  //       return null;
-  //     }
-  
-  //     const move = game.move({
-  //       from: sourceSquare,
-  //       to: targetSquare,
-  //       promotion: 'q',
-  //     });
-  
-  //     if (move) {
-  //       setFen(game.fen());
-  //       onChessMove(`${sourceSquare}${targetSquare}`);
-  //     }
-  //   } catch (e) {
-  //     console.error('Invalid move:', e);
-  //     return null;
-  //   }
-  // };
-
   return (
     <div className="flex flex-col items-center justify-center h-full">
       <div className="w-full max-w-lg mb-4">

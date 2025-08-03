@@ -612,48 +612,6 @@ export class GameService {
   }
 
 
-  // async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
-  //   const gameState = await this.getGameState(data.roomId);
-    
-  //   // Validate it's the player's turn
-  //   if (gameState.currentTurn !== data.playerId) {
-  //     throw new Error('Not your turn');
-  //   }
-  
-  //   try {
-  //     const chess = new Chess(gameState.chessState!.board);
-  //     const move = chess.move({
-  //       from: data.move.substring(0, 2),
-  //       to: data.move.substring(2, 4),
-  //       promotion: 'q'
-  //     });
-  
-  //     if (!move) throw new Error('Invalid move');
-  
-  //     // Update game state
-  //     gameState.chessState = {
-  //       board: chess.fen(),
-  //       moves: [...gameState.chessState!.moves, move.san]
-  //     };
-  
-  //     // Switch turns only if game isn't over
-  //     if (!chess.isGameOver()) {
-  //       gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-  //       gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
-  //     } else {
-  //       gameState.gameOver = true;
-  //       gameState.winner = data.playerId;
-  //       // Handle game over logic...
-  //     }
-  
-  //     await this.updateGameState(data.roomId, gameState);
-  //     return { roomId: data.roomId, move: move.san, gameState };
-  //   } catch (error) {
-  //     console.error('Chess move error:', error);
-  //     throw error;
-  //   }
-  // }
-
   async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     const gameState = await this.getGameState(data.roomId);
     
