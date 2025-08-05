@@ -107,6 +107,34 @@ export const LiveGameRoomPage = () => {
 
   const gameType = gameState?.gameType || roomInfo?.gameType || "ludo";
 
+
+
+  const unwrapAndValidateCandidate = (candidateData: any): RTCIceCandidateInit | null => {
+    let candidate = candidateData;
+    
+    // Handle nested candidate structure: {candidate: {actual_candidate_data}}
+    if (candidateData && candidateData.candidate && typeof candidateData.candidate === 'object') {
+      candidate = candidateData.candidate;
+    }
+    
+    // Validate the candidate
+    if (!candidate || 
+        !candidate.candidate || 
+        typeof candidate.candidate !== 'string' ||
+        candidate.candidate.trim() === '' ||
+        (candidate.sdpMid === null && candidate.sdpMLineIndex === null)) {
+      return null;
+    }
+    
+    return candidate;
+  };
+
+  const isValidIceCandidate = (candidate: any): boolean => {
+    return unwrapAndValidateCandidate(candidate) !== null;
+  };
+
+
+
   // Check media device availability
   const checkMediaDevices = async (): Promise<MediaAvailability> => {
     try {
@@ -270,7 +298,7 @@ useEffect(() => {
     const peer = new RTCPeerConnection({
       iceServers: [
         {
-          urls: "turn:alu-globe-game-room-turn-server.onrender.com:3478", // Fixed port
+          urls: "turn:alu-globe-game-room-turn-server.onrender.com", // 3478 Fixed port
           username: "aluglobe2025",
           credential: "aluglobe2025development",
         },
@@ -371,15 +399,6 @@ useEffect(() => {
     return peer;
   };
 
-  const isValidIceCandidate = (candidate: any): boolean => {
-    return (
-      candidate &&
-      candidate.candidate &&
-      typeof candidate.candidate === 'string' &&
-      candidate.candidate.trim() !== '' &&
-      (candidate.sdpMid !== null || candidate.sdpMLineIndex !== null)
-    );
-  };
 
   
 
@@ -398,6 +417,22 @@ useEffect(() => {
       signal: any;
       senderId: string;
     }) => {
+      // Add detailed logging for candidate signals
+      if (type === "candidate") {
+        console.log("=== ICE CANDIDATE DEBUG ===");
+        console.log("Raw signal:", JSON.stringify(signal, null, 2));
+        console.log("Signal type:", typeof signal);
+        console.log("Signal keys:", Object.keys(signal || {}));
+        
+        if (signal && signal.candidate) {
+          console.log("Nested candidate:", JSON.stringify(signal.candidate, null, 2));
+          console.log("Nested candidate type:", typeof signal.candidate);
+          console.log("Nested candidate keys:", Object.keys(signal.candidate || {}));
+        }
+        console.log("=== END DEBUG ===");
+      }
+      
+      // Your existing handleSignal logic here...
       try {
         let peer = peers[senderId];
         
@@ -416,23 +451,28 @@ useEffect(() => {
         } else if (peer && type === "answer") {
           await peer.setRemoteDescription(new RTCSessionDescription(signal));
         } else if (type === "candidate") {
-          // Validate the candidate before processing
-          if (!isValidIceCandidate(signal)) {
+          // Unwrap and validate the candidate
+          const validCandidate = unwrapAndValidateCandidate(signal);
+          if (!validCandidate) {
             console.warn("Invalid ICE candidate received, skipping:", signal);
             return;
           }
-    
+  
+          console.log("Valid candidate after unwrapping:", JSON.stringify(validCandidate, null, 2));
+  
           if (peer && peer.remoteDescription) {
             try {
-              await peer.addIceCandidate(new RTCIceCandidate(signal));
+              await peer.addIceCandidate(new RTCIceCandidate(validCandidate));
+              console.log("Successfully added ICE candidate");
             } catch (error) {
-              console.error("Failed to add ICE candidate:", error, signal);
+              console.error("Failed to add ICE candidate:", error, validCandidate);
             }
           } else {
-            // Store raw candidate data, not RTCIceCandidate object
+            console.log("Queueing candidate for later processing");
+            // Store the unwrapped candidate data
             setQueuedCandidates((prev) => ({
               ...prev,
-              [senderId]: [...(prev[senderId] || []), signal], // Store raw signal data
+              [senderId]: [...(prev[senderId] || []), validCandidate],
             }));
           }
         }
@@ -440,7 +480,7 @@ useEffect(() => {
         console.error("Signal handling error:", error);
       }
     };
-    
+  
     const handleQueuedCandidate = ({
       candidate,
       senderId,
@@ -448,15 +488,20 @@ useEffect(() => {
       candidate: RTCIceCandidateInit;
       senderId: string;
     }) => {
-      // Validate the candidate before queuing
-      if (!isValidIceCandidate(candidate)) {
+      console.log("=== QUEUED CANDIDATE DEBUG ===");
+      console.log("Raw queued candidate:", JSON.stringify(candidate, null, 2));
+      console.log("=== END QUEUED DEBUG ===");
+      
+      // Unwrap and validate the candidate
+      const validCandidate = unwrapAndValidateCandidate(candidate);
+      if (!validCandidate) {
         console.warn("Invalid queued ICE candidate received, skipping:", candidate);
         return;
       }
-    
+  
       setQueuedCandidates((prev) => ({
         ...prev,
-        [senderId]: [...(prev[senderId] || []), candidate], // Store raw candidate data
+        [senderId]: [...(prev[senderId] || []), validCandidate],
       }));
     };
 
@@ -513,7 +558,32 @@ useEffect(() => {
     } catch (error) {
       console.error("Error creating offer:", error);
       return;
-    }};
+    }
+    
+    // Process queued candidates after peer connection is established
+    if (queuedCandidates[peerId]?.length) {
+      for (const candidateData of queuedCandidates[peerId]) {
+        try {
+          // Candidates should already be unwrapped, but validate again for safety
+          const validCandidate = unwrapAndValidateCandidate(candidateData);
+          if (validCandidate) {
+            await peer.addIceCandidate(new RTCIceCandidate(validCandidate));
+          } else {
+            console.warn("Skipping invalid queued candidate:", candidateData);
+          }
+        } catch (error) {
+          console.error("Error adding queued candidate:", error, candidateData);
+        }
+      }
+      
+      // Clear processed candidates
+      setQueuedCandidates((prev) => {
+        const newQueues = { ...prev };
+        delete newQueues[peerId];
+        return newQueues;
+      });
+    }
+  };
 
   // Media control functions
   const toggleVideo = async () => {
