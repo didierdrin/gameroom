@@ -390,6 +390,7 @@ export const LiveGameRoomPage = () => {
       }
     };
 
+    // ... existing code ...
     const handleQueuedCandidate = ({
       candidate,
       senderId,
@@ -397,14 +398,15 @@ export const LiveGameRoomPage = () => {
       candidate: RTCIceCandidateInit;
       senderId: string;
     }) => {
-      // Add validation for queued candidates
+      // Store the candidate data, not the RTCIceCandidate object
       if (candidate && candidate.candidate && candidate.sdpMid !== null && candidate.sdpMLineIndex !== null) {
-        setQueuedCandidates((prev) => ({
+        setQueuedCandidates((prev:any) => ({
           ...prev,
-          [senderId]: [...(prev[senderId] || []), new RTCIceCandidate(candidate)],
+          [senderId]: [...(prev[senderId] || []), candidate],
         }));
       }
     };
+// ... existing code ...
 
 
     const handlePeerJoined = (peerId: string) => {
