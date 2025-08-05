@@ -250,7 +250,7 @@ export const LiveGameRoomPage = () => {
     const peer = new RTCPeerConnection({
       iceServers: [
         {
-          urls: "turn:alu-globe-game-room-turn-server.onrender.com:3478",
+          urls: "turn:alu-globe-game-room-turn-server.onrender.com:443",//3478
           username: "aluglobe2025",
           credential: "aluglobe2025development",
         },
