@@ -250,7 +250,7 @@ export const LiveGameRoomPage = () => {
     const peer = new RTCPeerConnection({
       iceServers: [
         {
-          urls: "turn:alu-globe-game-room-turn-server.onrender.com:443",//3478
+          urls: "turn:alu-globe-game-room-turn-server.onrender.com",//3478 443
           username: "aluglobe2025",
           credential: "aluglobe2025development",
         },
@@ -370,8 +370,9 @@ export const LiveGameRoomPage = () => {
         } else if (peer && type === "answer") {
           await peer.setRemoteDescription(new RTCSessionDescription(signal));
         } else if (type === "candidate") {
-          // Add validation for ICE candidate
-          if (signal && signal.candidate && signal.sdpMid !== null && signal.sdpMLineIndex !== null) {
+          // Fixed validation: Check if candidate exists and has valid sdpMid OR sdpMLineIndex
+          if (signal && signal.candidate && 
+              (signal.sdpMid !== null || signal.sdpMLineIndex !== null)) {
             if (peer && peer.remoteDescription) {
               await peer.addIceCandidate(new RTCIceCandidate(signal));
             } else {
@@ -383,14 +384,15 @@ export const LiveGameRoomPage = () => {
                 ],
               }));
             }
+          } else {
+            console.warn("Invalid ICE candidate received:", signal);
           }
         }
       } catch (error) {
         console.error("Signal handling error:", error);
       }
     };
-
-    // ... existing code ...
+    
     const handleQueuedCandidate = ({
       candidate,
       senderId,
@@ -398,15 +400,18 @@ export const LiveGameRoomPage = () => {
       candidate: RTCIceCandidateInit;
       senderId: string;
     }) => {
-      // Store the candidate data, not the RTCIceCandidate object
-      if (candidate && candidate.candidate && candidate.sdpMid !== null && candidate.sdpMLineIndex !== null) {
-        setQueuedCandidates((prev:any) => ({
+      // Fixed validation: Check if candidate exists and has valid sdpMid OR sdpMLineIndex
+      if (candidate && candidate.candidate && 
+          (candidate.sdpMid !== null || candidate.sdpMLineIndex !== null)) {
+        setQueuedCandidates((prev) => ({
           ...prev,
-          [senderId]: [...(prev[senderId] || []), candidate],
+          [senderId]: [...(prev[senderId] || []), new RTCIceCandidate(candidate)],
         }));
+      } else {
+        console.warn("Invalid queued ICE candidate received:", candidate);
       }
     };
-// ... existing code ...
+
 
 
     const handlePeerJoined = (peerId: string) => {
@@ -439,7 +444,6 @@ export const LiveGameRoomPage = () => {
     };
   }, [socket, user?.id, roomId, peers, inAudioCall]);
 
-  // ... existing code ...
   const setupConnection = async (peerId: string) => {
     if (peers[peerId] || peerId === user?.id) return;
     const peer = createPeerConnection(peerId);
@@ -459,12 +463,17 @@ export const LiveGameRoomPage = () => {
     } catch (error) {
       console.error("Error creating offer:", error);
     }
+    
+    // Process queued candidates with validation
     if (queuedCandidates[peerId]?.length) {
       for (const candidate of queuedCandidates[peerId]) {
         try {
-          // Add validation before adding the candidate
-          if (candidate && candidate.candidate && candidate.sdpMid !== null && candidate.sdpMLineIndex !== null) {
+          // Fixed validation: Check if candidate exists and has valid sdpMid OR sdpMLineIndex
+          if (candidate && candidate.candidate && 
+              (candidate.sdpMid !== null || candidate.sdpMLineIndex !== null)) {
             await peer.addIceCandidate(candidate);
+          } else {
+            console.warn("Skipping invalid queued candidate:", candidate);
           }
         } catch (error) {
           console.error("Error adding queued candidate:", error);
@@ -477,7 +486,6 @@ export const LiveGameRoomPage = () => {
       });
     }
   };
-// ... existing code ...
 
   // Media control functions
   const toggleVideo = async () => {
