@@ -119,6 +119,8 @@ export const LiveGameRoomPage = () => {
       SHOW_JITSI_WATERMARK: false,
       SHOW_WATERMARK_FOR_GUESTS: false,
       SHOW_POWERED_BY: false,
+      // Explicitly disable speaker-selection feature
+      DISABLE_SPEAKER_SELECTION: true,
     },
     configOverwrite: {
       disableSimulcast: true,
@@ -129,12 +131,46 @@ export const LiveGameRoomPage = () => {
       prejoinPageEnabled: false,
       disableDeepLinking: true,
       disableInviteFunctions: true,
-      toolbarButtons: [
-        'microphone', 'camera', 'desktop',
-        'hangup', 'chat', 'settings'
-      ],
+      // Remove toolbarButtons from configOverwrite as it's already in interfaceConfigOverwrite
+      // toolbarButtons: [
+      //   'microphone', 'camera', 'desktop',
+      //   'hangup', 'chat', 'settings'
+      // ],
+      // Explicitly disable speaker-selection
+      disableSpeakerSelection: true,
     },
   };
+
+  
+  // const jitsiConfig = {
+  //   roomName: `vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c/game-room-${roomId}-${user?.id}`,
+  //   jwt: "eyJraWQiOiJ2cGFhcy1tYWdpYy1jb29raWUtNzNlMGIwMjM4YjlhNDQ3YWIyZDViZjliOWI0MWZmN2MvZDUzMDk0LVNBTVBMRV9BUFAiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJqaXRzaSIsImlzcyI6ImNoYXQiLCJpYXQiOjE3NTQzNzMzNjQsImV4cCI6MTc1NDM4MDU2NCwibmJmIjoxNzU0MzczMzU5LCJzdWIiOiJ2cGFhcy1tYWdpYy1jb29raWUtNzNlMGIwMjM4YjlhNDQ3YWIyZDViZjliOWI0MWZmN2MiLCJjb250ZXh0Ijp7ImZlYXR1cmVzIjp7ImxpdmVzdHJlYW1pbmciOnRydWUsImZpbGUtdXBsb2FkIjp0cnVlLCJvdXRib3VuZC1jYWxsIjp0cnVlLCJzaXAtb3V0Ym91bmQtY2FsbCI6ZmFsc2UsInRyYW5zY3JpcHRpb24iOnRydWUsImxpc3QtdmlzaXRvcnMiOmZhbHNlLCJyZWNvcmRpbmciOnRydWUsImZsaXAiOmZhbHNlfSwidXNlciI6eyJoaWRkZW4tZnJvbS1yZWNvcmRlciI6ZmFsc2UsIm1vZGVyYXRvciI6dHJ1ZSwibmFtZSI6Im5zZWRpZGllciIsImlkIjoiZ29vZ2xlLW9hdXRoMnwxMTgzOTQzMjA5NDE4OTYwMzEzNDgiLCJhdmF0YXIiOiIiLCJlbWFpbCI6Im5zZWRpZGllckBnbWFpbC5jb20ifX0sInJvb20iOiIqIn0.dVUKisZng1ZUiumuLXArpHEBkM3AbxP67p6EYFF4Q6tp8ikr4i4Jg83vIMXtAZiNuAtS7RZBzjl7dlTi79gl-XUP0g1nyLGNqYXeKg5v-G_3FaSZGAWAychFWFxE8uV7wqo-51jDY5b8iOFYTt9qImCtnp8pim5ScAokqGqdr64QrA3YyoYw7gaq3nFASZ6RDzU8QEo_YM2CcdDdYkX8-NKEaliglXkrEy_lb5QLX3krmOIOxUzL1u4IifmaQ-bHQTv_pNmI_i4H3p36L0ylFf8qxyUvkB-mQ8DcmaGzGGGHbKlK_trIV3Q6wQSFJzwy_6FYi4b9FrZWU_kVm0HlKg",
+  //   interfaceConfigOverwrite: {
+  //     DISABLE_VIDEO_BACKGROUND: true,
+  //     DEFAULT_BACKGROUND: '#1a1a2e',
+  //     TOOLBAR_BUTTONS: [
+  //       'microphone', 'camera', 'desktop',
+  //       'hangup', 'chat', 'settings'
+  //     ],
+  //     SHOW_JITSI_WATERMARK: false,
+  //     SHOW_WATERMARK_FOR_GUESTS: false,
+  //     SHOW_POWERED_BY: false,
+  //   },
+  //   configOverwrite: {
+  //     disableSimulcast: true,
+  //     startWithAudioMuted: false,
+  //     startWithVideoMuted: true,
+  //     enableNoAudioDetection: true,
+  //     enableNoisyMicDetection: true,
+  //     prejoinPageEnabled: false,
+  //     disableDeepLinking: true,
+  //     disableInviteFunctions: true,
+  //     toolbarButtons: [
+  //       'microphone', 'camera', 'desktop',
+  //       'hangup', 'chat', 'settings'
+  //     ],
+  //   },
+  // };
 
   // Load Jitsi External API
   useEffect(() => {
