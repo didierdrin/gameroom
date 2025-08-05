@@ -360,7 +360,7 @@ useEffect(() => {
       });
       
       localStream.getTracks().forEach((track, index) => {
-        console.log(`  Track ${index}: ${track.kind} - ${track.label} - enabled: ${track.enabled}`);
+        console.log(`  Adding track ${index}: ${track.kind} - ${track.label} - enabled: ${track.enabled}`);
         peer.addTrack(track, localStream);
       });
     } else {
@@ -371,7 +371,7 @@ useEffect(() => {
     peer.onicecandidate = (event) => {
       if (event.candidate) {
         console.log(`🧊 Generated ICE candidate for ${peerId}:`, {
-          candidate: event.candidate.candidate,
+          candidate: event.candidate.candidate.substring(0, 50) + "...",
           sdpMid: event.candidate.sdpMid,
           sdpMLineIndex: event.candidate.sdpMLineIndex
         });
@@ -388,7 +388,7 @@ useEffect(() => {
       }
     };
   
-    // Enhanced track handling
+    // Enhanced track handling with immediate audio setup
     peer.ontrack = (event) => {
       console.log(`🎵 Received track from ${peerId}:`, {
         streamId: event.streams[0]?.id,
@@ -400,51 +400,57 @@ useEffect(() => {
       
       const stream = event.streams[0];
       
-      // Log stream details
       if (stream) {
-        console.log(`Stream details:`, {
+        console.log(`Stream details for ${peerId}:`, {
           audioTracks: stream.getAudioTracks().length,
           videoTracks: stream.getVideoTracks().length,
           active: stream.active
         });
         
-        stream.getAudioTracks().forEach((track, i) => {
-          console.log(`  Audio track ${i}:`, {
-            enabled: track.enabled,
-            muted: track.muted,
-            readyState: track.readyState
-          });
-        });
+        // Immediately set up audio element if it's an audio track
+        if (event.track.kind === 'audio') {
+          setTimeout(() => {
+            const audioEl = remoteAudioRefs.current[peerId];
+            if (audioEl) {
+              console.log(`🔊 Setting up audio element for ${peerId}`);
+              audioEl.srcObject = stream;
+              audioEl.muted = isDeafened;
+              
+              audioEl.play().then(() => {
+                console.log(`✅ Audio playing for ${peerId}`);
+              }).catch(error => {
+                console.error(`❌ Failed to play audio for ${peerId}:`, error);
+                // Try to enable audio playback and retry
+                enableAudioPlayback().then(() => {
+                  audioEl.play().catch(retryError => {
+                    console.error(`❌ Retry failed for ${peerId}:`, retryError);
+                  });
+                });
+              });
+            } else {
+              console.warn(`⚠️ No audio element found for ${peerId}`);
+            }
+          }, 100);
+        }
       }
       
       setParticipants((prev) => {
         const existing = prev.find((p) => p.id === peerId);
+        const newParticipant = {
+          id: peerId,
+          name: existing?.name || peerId.slice(0, 8),
+          videoEnabled: stream.getVideoTracks().length > 0,
+          audioEnabled: stream.getAudioTracks().length > 0,
+          videoStream: stream.getVideoTracks().length > 0 ? stream : null,
+          audioStream: stream.getAudioTracks().length > 0 ? stream : null,
+          isLocal: false,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${peerId}`,
+        };
+        
         if (existing) {
-          return prev.map((p) =>
-            p.id === peerId
-              ? {
-                  ...p,
-                  videoStream: stream.getVideoTracks().length > 0 ? stream : p.videoStream,
-                  audioStream: stream.getAudioTracks().length > 0 ? stream : p.audioStream,
-                  videoEnabled: stream.getVideoTracks().length > 0,
-                  audioEnabled: stream.getAudioTracks().length > 0,
-                }
-              : p
-          );
+          return prev.map((p) => p.id === peerId ? { ...p, ...newParticipant } : p);
         }
-        return [
-          ...prev,
-          {
-            id: peerId,
-            name: peerId.slice(0, 8),
-            videoEnabled: stream.getVideoTracks().length > 0,
-            audioEnabled: stream.getAudioTracks().length > 0,
-            videoStream: stream.getVideoTracks().length > 0 ? stream : null,
-            audioStream: stream.getAudioTracks().length > 0 ? stream : null,
-            isLocal: false,
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${peerId}`,
-          },
-        ];
+        return [...prev, newParticipant];
       });
     };
   
@@ -455,9 +461,9 @@ useEffect(() => {
       if (peer.iceConnectionState === "connected" || peer.iceConnectionState === "completed") {
         console.log(`✅ Successfully connected to ${peerId}`);
       } else if (peer.iceConnectionState === "disconnected") {
-        console.log(`⚠️ Disconnected from ${peerId}`);
+        console.log(`⚠️ Disconnected from ${peerId}, will attempt to reconnect`);
       } else if (peer.iceConnectionState === "failed") {
-        console.log(`❌ Connection failed for ${peerId}`);
+        console.log(`❌ Connection failed for ${peerId}, cleaning up`);
         peer.close();
         setPeers((prev) => {
           const newPeers = { ...prev };
@@ -473,17 +479,15 @@ useEffect(() => {
       }
     };
   
-    // Add gathering state monitoring
+    // Add other state monitoring
     peer.onicegatheringstatechange = () => {
       console.log(`🧊 ICE gathering state for ${peerId}: ${peer.iceGatheringState}`);
     };
   
-    // Add signaling state monitoring
     peer.onsignalingstatechange = () => {
       console.log(`📡 Signaling state for ${peerId}: ${peer.signalingState}`);
     };
   
-    // Add connection state monitoring (newer API)
     peer.onconnectionstatechange = () => {
       console.log(`🔌 Connection state for ${peerId}: ${peer.connectionState}`);
     };
@@ -493,6 +497,42 @@ useEffect(() => {
   };
 
 
+
+  const enableAudioPlayback = async () => {
+    console.log("🔊 Enabling audio playback...");
+    
+    try {
+      // Create and resume audio context
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContext) {
+        const audioContext = new AudioContext();
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+          console.log("✅ Audio context resumed");
+        }
+        audioContext.close();
+      }
+    } catch (error) {
+      console.error("Failed to create audio context:", error);
+    }
+    
+    // Force play all remote audio elements
+    const playPromises = Object.entries(remoteAudioRefs.current).map(([peerId, audioEl]) => {
+      if (audioEl && audioEl.srcObject) {
+        console.log(`🔊 Attempting to play audio for ${peerId}`);
+        return audioEl.play().then(() => {
+          console.log(`✅ Audio started for ${peerId}`);
+        }).catch(error => {
+          console.log(`⚠️ Auto-play blocked for ${peerId}:`, error.name);
+          return Promise.resolve(); // Don't fail the whole operation
+        });
+      }
+      return Promise.resolve();
+    });
+    
+    await Promise.all(playPromises);
+  };
+  
   
 
   // WebRTC signaling handlers
@@ -536,9 +576,57 @@ useEffect(() => {
             roomId,
             targetId: senderId,
           });
+          
+          // Process any queued candidates after setting up the connection
+          if (queuedCandidates[senderId]?.length) {
+            console.log(`🧊 Processing ${queuedCandidates[senderId].length} queued candidates for ${senderId} after offer`);
+            
+            for (const candidateData of queuedCandidates[senderId]) {
+              try {
+                const validCandidate = unwrapAndValidateCandidate(candidateData);
+                if (validCandidate) {
+                  console.log(`✅ Adding queued candidate after answer for ${senderId}:`, validCandidate.candidate?.substring(0, 50) + "...");
+                  await peer.addIceCandidate(new RTCIceCandidate(validCandidate));
+                }
+              } catch (error) {
+                console.error(`❌ Error adding queued candidate after offer for ${senderId}:`, error);
+              }
+            }
+            
+            setQueuedCandidates((prev) => {
+              const newQueues = { ...prev };
+              delete newQueues[senderId];
+              return newQueues;
+            });
+          }
+          
         } else if (peer && type === "answer") {
           console.log(`📞 Received answer from ${senderId}, setting remote description`);
           await peer.setRemoteDescription(new RTCSessionDescription(signal));
+          
+          // Process any queued candidates after setting remote description
+          if (queuedCandidates[senderId]?.length) {
+            console.log(`🧊 Processing ${queuedCandidates[senderId].length} queued candidates for ${senderId} after answer`);
+            
+            for (const candidateData of queuedCandidates[senderId]) {
+              try {
+                const validCandidate = unwrapAndValidateCandidate(candidateData);
+                if (validCandidate) {
+                  console.log(`✅ Adding queued candidate after answer for ${senderId}:`, validCandidate.candidate?.substring(0, 50) + "...");
+                  await peer.addIceCandidate(new RTCIceCandidate(validCandidate));
+                }
+              } catch (error) {
+                console.error(`❌ Error adding queued candidate after answer for ${senderId}:`, error);
+              }
+            }
+            
+            setQueuedCandidates((prev) => {
+              const newQueues = { ...prev };
+              delete newQueues[senderId];
+              return newQueues;
+            });
+          }
+          
         } else if (type === "candidate") {
           const validCandidate = unwrapAndValidateCandidate(signal);
           if (!validCandidate) {
@@ -547,7 +635,7 @@ useEffect(() => {
           }
     
           console.log(`🧊 Processing ICE candidate from ${senderId}:`, {
-            candidate: validCandidate.candidate,
+            candidate: validCandidate.candidate?.substring(0, 50) + "...",
             sdpMid: validCandidate.sdpMid,
             sdpMLineIndex: validCandidate.sdpMLineIndex
           });
@@ -751,14 +839,20 @@ useEffect(() => {
   };
 
   const toggleAudioCall = async () => {
-    if (!inAudioCall) {
-      setInAudioCall(true);
-    } else {
-      cleanupMedia();
-      setInAudioCall(false);
-      setIsDeafened(false);
-    }
-  };
+  if (!inAudioCall) {
+    console.log("🎵 Joining audio call...");
+    
+    // Enable audio playback with user gesture
+    await enableAudioPlayback();
+    
+    setInAudioCall(true);
+  } else {
+    console.log("🎵 Leaving audio call...");
+    cleanupMedia();
+    setInAudioCall(false);
+    setIsDeafened(false);
+  }
+};
 
   const toggleDeafen = () => {
     setIsDeafened(!isDeafened);
@@ -1303,7 +1397,12 @@ useEffect(() => {
         onToggleDeafen={toggleDeafen}
         isDeafened={isDeafened}
         inAudioCall={inAudioCall}
-        onToggleAudioCall={toggleAudioCall}
+        onToggleAudioCall={
+          async () => {
+            await enableAudioPlayback();
+            toggleAudioCall();
+          }
+        }
         remoteParticipants={Object.keys(remoteStreams)}
         mediaAvailable={mediaAvailable}
         isInitializingMedia={isInitializingMedia}
