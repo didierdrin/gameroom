@@ -245,6 +245,49 @@ export const LiveGameRoomPage = () => {
 };
 
 useEffect(() => {
+  console.log(`🎵 Audio call state changed: inAudioCall=${inAudioCall}`);
+  console.log(`🎵 Current participants:`, participants.map(p => ({
+    id: p.id,
+    name: p.name,
+    audioEnabled: p.audioEnabled,
+    hasAudioStream: !!p.audioStream,
+    isLocal: p.isLocal
+  })));
+  
+  // Check if audio elements are properly set up
+  Object.entries(remoteAudioRefs.current).forEach(([peerId, audioEl]) => {
+    if (audioEl && audioEl.srcObject) {
+      console.log(`🔊 Audio element for ${peerId}:`, {
+        paused: audioEl.paused,
+        muted: audioEl.muted,
+        volume: audioEl.volume,
+        readyState: audioEl.readyState
+      });
+    }
+  });
+}, [inAudioCall, participants]);
+
+useEffect(() => {
+  if (localStream) {
+    console.log(`🎤 Local stream updated:`, {
+      id: localStream.id,
+      active: localStream.active,
+      audioTracks: localStream.getAudioTracks().length,
+      videoTracks: localStream.getVideoTracks().length
+    });
+    
+    localStream.getAudioTracks().forEach((track, i) => {
+      console.log(`  Local audio track ${i}:`, {
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState,
+        label: track.label
+      });
+    });
+  }
+}, [localStream]);
+
+useEffect(() => {
   const cleanupInterval = setInterval(cleanupInvalidCandidates, 30000); // Every 30 seconds
   return () => clearInterval(cleanupInterval);
 }, []);
@@ -295,10 +338,12 @@ useEffect(() => {
 
   // WebRTC Peer Connection setup
   const createPeerConnection = (peerId: string): RTCPeerConnection => {
+    console.log(`🔄 Creating peer connection for ${peerId}`);
+    
     const peer = new RTCPeerConnection({
       iceServers: [
         {
-          urls: "turn:alu-globe-game-room-turn-server.onrender.com", // 3478 Fixed port
+          urls: "turn:alu-globe-game-room-turn-server.onrender.com:3478",
           username: "aluglobe2025",
           credential: "aluglobe2025development",
         },
@@ -307,31 +352,71 @@ useEffect(() => {
       ],
     });
   
+    // Add local stream tracks if available
     if (localStream) {
-      localStream.getTracks().forEach((track) => {
+      console.log(`📡 Adding local stream tracks to peer ${peerId}:`, {
+        audioTracks: localStream.getAudioTracks().length,
+        videoTracks: localStream.getVideoTracks().length
+      });
+      
+      localStream.getTracks().forEach((track, index) => {
+        console.log(`  Track ${index}: ${track.kind} - ${track.label} - enabled: ${track.enabled}`);
         peer.addTrack(track, localStream);
       });
+    } else {
+      console.warn(`⚠️ No local stream available when creating peer connection for ${peerId}`);
     }
   
+    // Enhanced ICE candidate handling
     peer.onicecandidate = (event) => {
       if (event.candidate) {
-        // Validate candidate before sending
-        if (isValidIceCandidate(event.candidate)) {
-          socket?.emit("signal", {
-            signal: { candidate: event.candidate },
-            callerId: user?.id,
-            roomId,
-            targetId: peerId,
-            type: "candidate",
-          });
-        } else {
-          console.warn("Generated invalid ICE candidate, not sending:", event.candidate);
-        }
+        console.log(`🧊 Generated ICE candidate for ${peerId}:`, {
+          candidate: event.candidate.candidate,
+          sdpMid: event.candidate.sdpMid,
+          sdpMLineIndex: event.candidate.sdpMLineIndex
+        });
+        
+        socket?.emit("signal", {
+          signal: { candidate: event.candidate },
+          callerId: user?.id,
+          roomId,
+          targetId: peerId,
+          type: "candidate",
+        });
+      } else {
+        console.log(`✅ ICE candidate gathering complete for ${peerId}`);
       }
     };
   
+    // Enhanced track handling
     peer.ontrack = (event) => {
+      console.log(`🎵 Received track from ${peerId}:`, {
+        streamId: event.streams[0]?.id,
+        trackKind: event.track.kind,
+        trackId: event.track.id,
+        trackEnabled: event.track.enabled,
+        streamsCount: event.streams.length
+      });
+      
       const stream = event.streams[0];
+      
+      // Log stream details
+      if (stream) {
+        console.log(`Stream details:`, {
+          audioTracks: stream.getAudioTracks().length,
+          videoTracks: stream.getVideoTracks().length,
+          active: stream.active
+        });
+        
+        stream.getAudioTracks().forEach((track, i) => {
+          console.log(`  Audio track ${i}:`, {
+            enabled: track.enabled,
+            muted: track.muted,
+            readyState: track.readyState
+          });
+        });
+      }
+      
       setParticipants((prev) => {
         const existing = prev.find((p) => p.id === peerId);
         if (existing) {
@@ -339,14 +424,8 @@ useEffect(() => {
             p.id === peerId
               ? {
                   ...p,
-                  videoStream:
-                    stream.getVideoTracks().length > 0
-                      ? stream
-                      : p.videoStream,
-                  audioStream:
-                    stream.getAudioTracks().length > 0
-                      ? stream
-                      : p.audioStream,
+                  videoStream: stream.getVideoTracks().length > 0 ? stream : p.videoStream,
+                  audioStream: stream.getAudioTracks().length > 0 ? stream : p.audioStream,
                   videoEnabled: stream.getVideoTracks().length > 0,
                   audioEnabled: stream.getAudioTracks().length > 0,
                 }
@@ -369,15 +448,16 @@ useEffect(() => {
       });
     };
   
+    // Enhanced connection state monitoring
     peer.oniceconnectionstatechange = () => {
-      console.log(
-        `ICE connection state changed for ${peerId}:`,
-        peer.iceConnectionState
-      );
-      if (
-        peer.iceConnectionState === "disconnected" ||
-        peer.iceConnectionState === "failed"
-      ) {
+      console.log(`🔗 ICE connection state for ${peerId}: ${peer.iceConnectionState}`);
+      
+      if (peer.iceConnectionState === "connected" || peer.iceConnectionState === "completed") {
+        console.log(`✅ Successfully connected to ${peerId}`);
+      } else if (peer.iceConnectionState === "disconnected") {
+        console.log(`⚠️ Disconnected from ${peerId}`);
+      } else if (peer.iceConnectionState === "failed") {
+        console.log(`❌ Connection failed for ${peerId}`);
         peer.close();
         setPeers((prev) => {
           const newPeers = { ...prev };
@@ -385,14 +465,27 @@ useEffect(() => {
           return newPeers;
         });
         setParticipants((prev) => prev.filter((p) => p.id !== peerId));
-        
-        // Clear any queued candidates for this peer
         setQueuedCandidates((prev) => {
           const newQueues = { ...prev };
           delete newQueues[peerId];
           return newQueues;
         });
       }
+    };
+  
+    // Add gathering state monitoring
+    peer.onicegatheringstatechange = () => {
+      console.log(`🧊 ICE gathering state for ${peerId}: ${peer.iceGatheringState}`);
+    };
+  
+    // Add signaling state monitoring
+    peer.onsignalingstatechange = () => {
+      console.log(`📡 Signaling state for ${peerId}: ${peer.signalingState}`);
+    };
+  
+    // Add connection state monitoring (newer API)
+    peer.onconnectionstatechange = () => {
+      console.log(`🔌 Connection state for ${peerId}: ${peer.connectionState}`);
     };
   
     setPeers((prev) => ({ ...prev, [peerId]: peer }));
@@ -417,30 +510,25 @@ useEffect(() => {
       signal: any;
       senderId: string;
     }) => {
-      // Add detailed logging for candidate signals
-      if (type === "candidate") {
-        console.log("=== ICE CANDIDATE DEBUG ===");
-        console.log("Raw signal:", JSON.stringify(signal, null, 2));
-        console.log("Signal type:", typeof signal);
-        console.log("Signal keys:", Object.keys(signal || {}));
-        
-        if (signal && signal.candidate) {
-          console.log("Nested candidate:", JSON.stringify(signal.candidate, null, 2));
-          console.log("Nested candidate type:", typeof signal.candidate);
-          console.log("Nested candidate keys:", Object.keys(signal.candidate || {}));
-        }
-        console.log("=== END DEBUG ===");
-      }
+      console.log(`📨 Received ${type} signal from ${senderId}`);
       
-      // Your existing handleSignal logic here...
       try {
         let peer = peers[senderId];
         
         if (!peer && type === "offer") {
+          console.log(`📞 Received offer from ${senderId}, creating peer connection`);
           peer = createPeerConnection(senderId);
+          
+          console.log(`📋 Setting remote description for ${senderId}`);
           await peer.setRemoteDescription(new RTCSessionDescription(signal));
+          
+          console.log(`📞 Creating answer for ${senderId}`);
           const answer = await peer.createAnswer();
+          
+          console.log(`📋 Setting local description for ${senderId}`);
           await peer.setLocalDescription(answer);
+          
+          console.log(`📤 Sending answer to ${senderId}`);
           socket.emit("signal", {
             type: "answer",
             signal: answer,
@@ -449,27 +537,30 @@ useEffect(() => {
             targetId: senderId,
           });
         } else if (peer && type === "answer") {
+          console.log(`📞 Received answer from ${senderId}, setting remote description`);
           await peer.setRemoteDescription(new RTCSessionDescription(signal));
         } else if (type === "candidate") {
-          // Unwrap and validate the candidate
           const validCandidate = unwrapAndValidateCandidate(signal);
           if (!validCandidate) {
-            console.warn("Invalid ICE candidate received, skipping:", signal);
+            console.warn(`❌ Invalid ICE candidate from ${senderId}:`, signal);
             return;
           }
-  
-          console.log("Valid candidate after unwrapping:", JSON.stringify(validCandidate, null, 2));
-  
+    
+          console.log(`🧊 Processing ICE candidate from ${senderId}:`, {
+            candidate: validCandidate.candidate,
+            sdpMid: validCandidate.sdpMid,
+            sdpMLineIndex: validCandidate.sdpMLineIndex
+          });
+    
           if (peer && peer.remoteDescription) {
             try {
               await peer.addIceCandidate(new RTCIceCandidate(validCandidate));
-              console.log("Successfully added ICE candidate");
+              console.log(`✅ Successfully added ICE candidate from ${senderId}`);
             } catch (error) {
-              console.error("Failed to add ICE candidate:", error, validCandidate);
+              console.error(`❌ Failed to add ICE candidate from ${senderId}:`, error);
             }
           } else {
-            console.log("Queueing candidate for later processing");
-            // Store the unwrapped candidate data
+            console.log(`🧊 Queueing candidate from ${senderId} (no remote description yet)`);
             setQueuedCandidates((prev) => ({
               ...prev,
               [senderId]: [...(prev[senderId] || []), validCandidate],
@@ -477,7 +568,7 @@ useEffect(() => {
           }
         }
       } catch (error) {
-        console.error("Signal handling error:", error);
+        console.error(`❌ Signal handling error from ${senderId}:`, error);
       }
     };
   
@@ -538,16 +629,26 @@ useEffect(() => {
   }, [socket, user?.id, roomId, peers, inAudioCall]);
 
   const setupConnection = async (peerId: string) => {
-    if (peers[peerId] || peerId === user?.id) return;
+    if (peers[peerId] || peerId === user?.id) {
+      console.log(`⏭️ Skipping connection setup for ${peerId} (already exists or is self)`);
+      return;
+    }
+    
+    console.log(`🚀 Setting up connection to ${peerId}`);
     
     const peer = createPeerConnection(peerId);
     
     try {
+      console.log(`📞 Creating offer for ${peerId}`);
       const offer = await peer.createOffer({
         offerToReceiveAudio: true,
         offerToReceiveVideo: false,
       });
+      
+      console.log(`📋 Setting local description for ${peerId}`);
       await peer.setLocalDescription(offer);
+      
+      console.log(`📤 Sending offer to ${peerId}`);
       socket?.emit("signal", {
         type: "offer",
         signal: offer,
@@ -556,27 +657,28 @@ useEffect(() => {
         targetId: peerId,
       });
     } catch (error) {
-      console.error("Error creating offer:", error);
+      console.error(`❌ Error creating offer for ${peerId}:`, error);
       return;
     }
     
-    // Process queued candidates after peer connection is established
+    // Process queued candidates
     if (queuedCandidates[peerId]?.length) {
+      console.log(`🧊 Processing ${queuedCandidates[peerId].length} queued candidates for ${peerId}`);
+      
       for (const candidateData of queuedCandidates[peerId]) {
         try {
-          // Candidates should already be unwrapped, but validate again for safety
           const validCandidate = unwrapAndValidateCandidate(candidateData);
           if (validCandidate) {
+            console.log(`✅ Adding queued candidate for ${peerId}:`, validCandidate.candidate);
             await peer.addIceCandidate(new RTCIceCandidate(validCandidate));
           } else {
-            console.warn("Skipping invalid queued candidate:", candidateData);
+            console.warn(`❌ Skipping invalid queued candidate for ${peerId}:`, candidateData);
           }
         } catch (error) {
-          console.error("Error adding queued candidate:", error, candidateData);
+          console.error(`❌ Error adding queued candidate for ${peerId}:`, error, candidateData);
         }
       }
       
-      // Clear processed candidates
       setQueuedCandidates((prev) => {
         const newQueues = { ...prev };
         delete newQueues[peerId];
