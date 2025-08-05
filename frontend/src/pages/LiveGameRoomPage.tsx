@@ -50,6 +50,7 @@ interface PeerConnection {
   remoteDescriptionSet: boolean;
 }
 
+
 export const LiveGameRoomPage = () => {
   const { id: roomId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -100,7 +101,8 @@ export const LiveGameRoomPage = () => {
   const [remoteStreams, setRemoteStreams] = useState<{
     [key: string]: MediaStream;
   }>({});
-  const [peers, setPeers] = useState<{ [key: string]: RTCPeerConnection }>({});
+  
+  const [peers, setPeers] = useState<Record<string, PeerConnection>>({});
   const [queuedCandidates, setQueuedCandidates] = useState<
   Record<string, RTCIceCandidateInit[]> // Changed from RTCIceCandidate[] to RTCIceCandidateInit[]
 >({});
@@ -110,19 +112,20 @@ export const LiveGameRoomPage = () => {
   const remoteAudioRefs = useRef<{ [key: string]: HTMLAudioElement | null }>({});
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
+  // Add this with your other refs
+const audioContextRef = useRef<AudioContext | null>(null);
 
   const gameType = gameState?.gameType || roomInfo?.gameType || "ludo";
 
 
 
-  //------------------------------------------
 
   // Add the new ref and state
   const mediaInitialized = useRef(false);
   const connectionStates = useRef<{ [key: string]: string }>({});
   const [audioCallParticipants, setAudioCallParticipants] = useState<string[]>([]);
 
-  // Update the ICE servers configuration
+  // ICE servers configuration
   const iceServers = [
     {
       urls: "turn:alu-globe-game-room-turn-server.onrender.com", // 3478
@@ -134,42 +137,76 @@ export const LiveGameRoomPage = () => {
     { urls: "stun:stun2.l.google.com:19302" },
   ];
 
-  // Replace the candidate validation functions with the new ones
-  const validateIceCandidate = (candidate: any): boolean => {
-    if (!candidate || typeof candidate !== 'object') {
+  // Check media device availability
+  const checkMediaDevices = async (): Promise<MediaAvailability> => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return {
+        audio: devices.some((device) => device.kind === "audioinput"),
+        video: devices.some((device) => device.kind === "videoinput"),
+      };
+    } catch (error) {
+      console.error("❌ Error enumerating devices:", error);
+      return { audio: false, video: false };
+    }
+  };
+
+  // Request media permissions
+  const requestMediaPermissions = async (withVideo = false): Promise<boolean> => {
+    try {
+      const constraints = { audio: true, video: withVideo };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      stream.getTracks().forEach((track) => track.stop());
+      return true;
+    } catch (error) {
+      console.error("❌ Permission denied:", error);
       return false;
     }
-
-    // Handle nested candidate structure
-    const actualCandidate = candidate.candidate || candidate;
-    
-    return (
-      actualCandidate &&
-      typeof actualCandidate.candidate === 'string' &&
-      actualCandidate.candidate.trim() !== '' &&
-      (actualCandidate.sdpMid !== undefined || actualCandidate.sdpMLineIndex !== undefined)
-    );
   };
 
-  const normalizeCandidate = (candidateData: any): RTCIceCandidateInit | null => {
-    if (!validateIceCandidate(candidateData)) {
-      return null;
+  // Enable audio playback with proper context handling
+  const enableAudioPlayback = async () => {
+    console.log("🔊 Enabling audio playback...");
+    
+    try {
+      // Create or resume audio context
+      if (!audioContextRef.current) {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) {
+          audioContextRef.current = new AudioContext();
+        }
+      }
+      
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+        console.log("✅ Audio context resumed");
+      }
+
+      // Try to play all remote audio elements
+      const playPromises = Object.entries(remoteAudioRefs.current).map(([peerId, audioEl]) => {
+        if (audioEl && audioEl.srcObject) {
+          console.log(`🔊 Attempting to play audio for ${peerId}`);
+          return audioEl.play().then(() => {
+            console.log(`✅ Audio playing for ${peerId}`);
+          }).catch(error => {
+            console.log(`⚠️ Auto-play blocked for ${peerId}:`, error.name);
+          });
+        }
+        return Promise.resolve();
+      });
+      
+      await Promise.all(playPromises);
+    } catch (error) {
+      console.error("❌ Failed to enable audio playback:", error);
     }
-
-    // Handle nested structure
-    const candidate = candidateData.candidate || candidateData;
-    
-    return {
-      candidate: candidate.candidate,
-      sdpMid: candidate.sdpMid,
-      sdpMLineIndex: candidate.sdpMLineIndex,
-      usernameFragment: candidate.usernameFragment
-    };
   };
 
-  // Update the initLocalStream function
+  // Initialize local media stream
   const initLocalStream = async (): Promise<boolean> => {
-    if (!user?.id || mediaInitialized.current) return false;
+    if (!user?.id || mediaInitialized.current || localStream) {
+      console.log("⏭️ Skipping media initialization - already initialized");
+      return mediaInitialized.current;
+    }
     
     setIsInitializingMedia(true);
     
@@ -186,12 +223,9 @@ export const LiveGameRoomPage = () => {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          sampleRate: 44100,
         },
-        video: videoEnabled && video ? { 
-          facingMode: "user",
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        } : false,
+        video: false, // Start with audio only for simplicity
       };
 
       console.log("🎤 Requesting media stream with constraints:", constraints);
@@ -205,29 +239,38 @@ export const LiveGameRoomPage = () => {
         active: stream.active
       });
 
+      // Log audio track details
+      stream.getAudioTracks().forEach((track, i) => {
+        console.log(`  Audio track ${i}:`, {
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+          label: track.label
+        });
+      });
+
       setLocalStream(stream);
+      setAudioEnabled(true);
       mediaInitialized.current = true;
 
       // Set up local participant
-      setParticipants((prev) => {
-        const localParticipant = {
-          id: user.id,
-          name: user.username,
-          isLocal: true,
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
-          videoEnabled: stream.getVideoTracks().length > 0,
-          audioEnabled: stream.getAudioTracks().length > 0,
-          videoStream: stream.getVideoTracks().length > 0 ? stream : null,
-          audioStream: stream.getAudioTracks().length > 0 ? stream : null,
-        };
-        
-        return [localParticipant, ...prev.filter((p) => !p.isLocal)];
-      });
+      const localParticipant: Participant = {
+        id: user.id,
+        name: user.username,
+        isLocal: true,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+        videoEnabled: false,
+        audioEnabled: true,
+        videoStream: null,
+        audioStream: stream,
+      };
+      
+      setParticipants((prev) => [localParticipant, ...prev.filter((p) => !p.isLocal)]);
 
-      // Set up local audio element
+      // Set up local audio element (muted to prevent feedback)
       if (localAudioRef.current) {
         localAudioRef.current.srcObject = stream;
-        localAudioRef.current.muted = true; // Always mute local audio to prevent feedback
+        localAudioRef.current.muted = true;
       }
 
       return true;
@@ -243,78 +286,7 @@ export const LiveGameRoomPage = () => {
     }
   };
 
-  // Update the cleanupMedia function
-  const cleanupMedia = () => {
-    console.log("🧹 Cleaning up media streams and connections");
-    
-    // Stop local stream
-    if (localStream) {
-      localStream.getTracks().forEach((track) => {
-        console.log(`🛑 Stopping ${track.kind} track:`, track.label);
-        track.stop();
-      });
-      setLocalStream(null);
-    }
-
-    // Close all peer connections
-    Object.entries(peers).forEach(([peerId, peerData]) => {
-      console.log(`🔌 Closing peer connection for ${peerId}`);
-      (peerData as any).connection.close();
-    });
-
-    // Clear states
-    setPeers({});
-    setRemoteStreams({});
-    setQueuedCandidates({});
-    setParticipants((prev) => prev.filter((p) => p.isLocal));
-    setAudioCallParticipants([]);
-    mediaInitialized.current = false;
-    connectionStates.current = {};
-
-    // Clear audio elements
-    Object.values(remoteAudioRefs.current).forEach((audioEl) => {
-      if (audioEl) {
-        audioEl.srcObject = null;
-      }
-    });
-  };
-
-  // Update the enableAudioPlayback function
-  const enableAudioPlayback = async () => {
-    console.log("🔊 Enabling audio playback...");
-    
-    try {
-      // Resume audio context if suspended
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioContext) {
-        const audioContext = new AudioContext();
-        if (audioContext.state === 'suspended') {
-          await audioContext.resume();
-          console.log("✅ Audio context resumed");
-        }
-        audioContext.close();
-      }
-    } catch (error) {
-      console.error("❌ Failed to create audio context:", error);
-    }
-    
-    // Try to play all remote audio elements
-    const playPromises = Object.entries(remoteAudioRefs.current).map(([peerId, audioEl]) => {
-      if (audioEl && audioEl.srcObject) {
-        console.log(`🔊 Attempting to play audio for ${peerId}`);
-        return audioEl.play().then(() => {
-          console.log(`✅ Audio playing for ${peerId}`);
-        }).catch(error => {
-          console.log(`⚠️ Auto-play blocked for ${peerId}:`, error.name);
-        });
-      }
-      return Promise.resolve();
-    });
-    
-    await Promise.all(playPromises);
-  };
-
-  // Update the createPeerConnection function
+  // Create peer connection
   const createPeerConnection = (peerId: string): PeerConnection => {
     console.log(`🔄 Creating peer connection for ${peerId}`);
     
@@ -359,7 +331,10 @@ export const LiveGameRoomPage = () => {
       console.log(`🎵 Received ${event.track.kind} track from ${peerId}`);
       
       const stream = event.streams[0];
-      if (!stream) return;
+      if (!stream) {
+        console.warn(`⚠️ No stream received from ${peerId}`);
+        return;
+      }
 
       console.log(`📺 Stream details for ${peerId}:`, {
         id: stream.id,
@@ -373,10 +348,19 @@ export const LiveGameRoomPage = () => {
 
       // Set up audio element for audio tracks
       if (event.track.kind === 'audio') {
+        console.log(`🔊 Setting up audio element for ${peerId}`);
+        
         setTimeout(() => {
+          // Create audio element if it doesn't exist
+          if (!remoteAudioRefs.current[peerId]) {
+            const audioEl = new Audio();
+            audioEl.autoplay = true;
+            audioEl.setAttribute('playsinline', '');
+            remoteAudioRefs.current[peerId] = audioEl;
+          }
+          
           const audioEl = remoteAudioRefs.current[peerId];
           if (audioEl) {
-            console.log(`🔊 Setting up audio element for ${peerId}`);
             audioEl.srcObject = stream;
             audioEl.muted = isDeafened;
             
@@ -385,15 +369,19 @@ export const LiveGameRoomPage = () => {
               console.log(`✅ Audio playing for ${peerId}`);
             }).catch(error => {
               console.warn(`⚠️ Audio autoplay blocked for ${peerId}:`, error.name);
+              // Try to play again after user interaction
+              document.addEventListener('click', () => {
+                audioEl.play().catch(console.error);
+              }, { once: true });
             });
           }
-        }, 100);
+        }, 500); // Give some time for the stream to be ready
       }
 
       // Update participants
       setParticipants((prev) => {
         const existing = prev.find((p) => p.id === peerId);
-        const updatedParticipant = {
+        const updatedParticipant: Participant = {
           id: peerId,
           name: existing?.name || playerIdToUsername[peerId] || peerId.slice(0, 8),
           videoEnabled: stream.getVideoTracks().length > 0,
@@ -415,9 +403,10 @@ export const LiveGameRoomPage = () => {
     connection.oniceconnectionstatechange = () => {
       const state = connection.iceConnectionState;
       console.log(`🔗 ICE connection state for ${peerId}: ${state}`);
-      connectionStates.current[peerId] = state;
       
-      if (state === "failed" || state === "closed") {
+      if (state === "connected" || state === "completed") {
+        console.log(`✅ Successfully connected to ${peerId}`);
+      } else if (state === "failed" || state === "closed") {
         console.log(`❌ Connection ${state} for ${peerId}, cleaning up`);
         cleanupPeer(peerId);
       }
@@ -439,76 +428,7 @@ export const LiveGameRoomPage = () => {
     return peerData;
   };
 
-  // Add the cleanupPeer function
-  const cleanupPeer = (peerId: string) => {
-    console.log(`🧹 Cleaning up peer ${peerId}`);
-    
-    const peerData = peers[peerId];
-    if (peerData) {
-      (peerData as any).connection.close();
-    }
-
-    setPeers((prev) => {
-      const newPeers = { ...prev };
-      delete newPeers[peerId];
-      return newPeers;
-    });
-
-    setRemoteStreams((prev) => {
-      const newStreams = { ...prev };
-      delete newStreams[peerId];
-      return newStreams;
-    });
-
-    setParticipants((prev) => prev.filter((p) => p.id !== peerId));
-    
-    setQueuedCandidates((prev) => {
-      const newQueues = { ...prev };
-      delete newQueues[peerId];
-      return newQueues;
-    });
-
-    // Clear audio element
-    if (remoteAudioRefs.current[peerId]) {
-      remoteAudioRefs.current[peerId]!.srcObject = null;
-      delete remoteAudioRefs.current[peerId];
-    }
-
-    delete connectionStates.current[peerId];
-  };
-
-  // Add the processQueuedCandidates function
-  const processQueuedCandidates = async (peerId: string) => {
-    const peerData = peers[peerId];
-    const queuedForPeer = queuedCandidates[peerId];
-    
-    if (!peerData || !queuedForPeer || queuedForPeer.length === 0) {
-      return;
-    }
-
-    console.log(`🧊 Processing ${queuedForPeer.length} queued candidates for ${peerId}`);
-    
-    for (const candidateData of queuedForPeer) {
-      try {
-        const normalizedCandidate = normalizeCandidate(candidateData);
-        if (normalizedCandidate) {
-          await (peerData as any).connection.addIceCandidate(new RTCIceCandidate(normalizedCandidate));
-          console.log(`✅ Added queued candidate for ${peerId}`);
-        }
-      } catch (error) {
-        console.error(`❌ Error adding queued candidate for ${peerId}:`, error);
-      }
-    }
-    
-    // Clear processed candidates
-    setQueuedCandidates((prev) => {
-      const newQueues = { ...prev };
-      delete newQueues[peerId];
-      return newQueues;
-    });
-  };
-
-  // Update the setupConnection function
+  // Setup connection to peer
   const setupConnection = async (peerId: string) => {
     if (peers[peerId] || peerId === user?.id) {
       console.log(`⏭️ Skipping connection setup for ${peerId} (already exists or is self)`);
@@ -528,7 +448,7 @@ export const LiveGameRoomPage = () => {
       console.log(`📞 Creating offer for ${peerId}`);
       const offer = await peerData.connection.createOffer({
         offerToReceiveAudio: true,
-        offerToReceiveVideo: videoEnabled,
+        offerToReceiveVideo: false,
       });
       
       console.log(`📋 Setting local description for ${peerId}`);
@@ -548,7 +468,81 @@ export const LiveGameRoomPage = () => {
     }
   };
 
-  // Update the signal handler useEffect
+  // Clean up peer connection
+  const cleanupPeer = (peerId: string) => {
+    console.log(`🧹 Cleaning up peer ${peerId}`);
+    
+    const peerData = peers[peerId];
+    if (peerData) {
+      peerData.connection.close();
+    }
+
+    setPeers((prev) => {
+      const newPeers = { ...prev };
+      delete newPeers[peerId];
+      return newPeers;
+    });
+
+    setRemoteStreams((prev) => {
+      const newStreams = { ...prev };
+      delete newStreams[peerId];
+      return newStreams;
+    });
+
+    setParticipants((prev) => prev.filter((p) => p.id !== peerId));
+
+    // Clear audio element
+    if (remoteAudioRefs.current[peerId]) {
+      const audioEl = remoteAudioRefs.current[peerId];
+      if (audioEl) {
+        audioEl.srcObject = null;
+      }
+      delete remoteAudioRefs.current[peerId];
+    }
+  };
+
+  // Clean up all media
+  const cleanupMedia = () => {
+    console.log("🧹 Cleaning up media streams and connections");
+    
+    // Stop local stream
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        console.log(`🛑 Stopping ${track.kind} track:`, track.label);
+        track.stop();
+      });
+      setLocalStream(null);
+    }
+
+    // Close all peer connections
+    Object.entries(peers).forEach(([peerId, peerData]) => {
+      console.log(`🔌 Closing peer connection for ${peerId}`);
+      peerData.connection.close();
+    });
+
+    // Clear states
+    setPeers({});
+    setRemoteStreams({});
+    setParticipants((prev) => prev.filter((p) => p.isLocal));
+    setAudioCallParticipants([]);
+    mediaInitialized.current = false;
+
+    // Clear audio elements
+    Object.values(remoteAudioRefs.current).forEach((audioEl) => {
+      if (audioEl) {
+        audioEl.srcObject = null;
+      }
+    });
+    remoteAudioRefs.current = {};
+
+    // Close audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+  };
+
+  // Handle WebRTC signaling
   useEffect(() => {
     if (!socket || !user?.id) return;
 
@@ -569,23 +563,23 @@ export const LiveGameRoomPage = () => {
         if (type === "offer") {
           if (!peerData) {
             console.log(`📞 Received offer from ${senderId}, creating peer connection`);
-            peerData = createPeerConnection(senderId) as any;
+            peerData = createPeerConnection(senderId);
           }
           
-          if (!localStream) { // peerData.isInitialized
-            console.error(`❌ Cannot handle offer from ${senderId} - no local stream`);
+          if (!peerData.isInitialized) {
+            console.error(`❌ Cannot handle offer from ${senderId} - peer not initialized`);
             return;
           }
           
           console.log(`📋 Setting remote description (offer) for ${senderId}`);
-          await (peerData as any).connection.setRemoteDescription(new RTCSessionDescription(signal));
-          (peerData as any).remoteDescriptionSet = true;
+          await peerData.connection.setRemoteDescription(new RTCSessionDescription(signal));
+          peerData.remoteDescriptionSet = true;
           
           console.log(`📞 Creating answer for ${senderId}`);
-          const answer = await (peerData as any).connection.createAnswer();
+          const answer = await peerData.connection.createAnswer();
           
           console.log(`📋 Setting local description (answer) for ${senderId}`);
-          await (peerData as any).connection.setLocalDescription(answer);
+          await peerData.connection.setLocalDescription(answer);
           
           console.log(`📤 Sending answer to ${senderId}`);
           socket.emit("signal", {
@@ -596,39 +590,23 @@ export const LiveGameRoomPage = () => {
             targetId: senderId,
           });
           
-          // Process queued candidates
-          await processQueuedCandidates(senderId);
-          
         } else if (type === "answer" && peerData) {
           console.log(`📞 Received answer from ${senderId}, setting remote description`);
-          await (peerData as any).connection.setRemoteDescription(new RTCSessionDescription(signal));
-          (peerData as any).remoteDescriptionSet = true;
+          await peerData.connection.setRemoteDescription(new RTCSessionDescription(signal));
+          peerData.remoteDescriptionSet = true;
           
-          // Process queued candidates
-          await processQueuedCandidates(senderId);
-          
-        } else if (type === "candidate") {
-          const normalizedCandidate = normalizeCandidate(signal);
-          if (!normalizedCandidate) {
-            console.warn(`❌ Invalid ICE candidate from ${senderId}`);
-            return;
-          }
-
+        } else if (type === "candidate" && peerData) {
           console.log(`🧊 Processing ICE candidate from ${senderId}`);
-
-          if (peerData && peerData.remoteDescription) {
+          
+          if (peerData.remoteDescriptionSet) {
             try {
-              await (peerData as any).connection.addIceCandidate(new RTCIceCandidate(normalizedCandidate));
+              await peerData.connection.addIceCandidate(new RTCIceCandidate(signal.candidate));
               console.log(`✅ Added ICE candidate from ${senderId}`);
             } catch (error) {
               console.error(`❌ Failed to add ICE candidate from ${senderId}:`, error);
             }
           } else {
-            console.log(`🧊 Queueing candidate from ${senderId} (no remote description yet)`);
-            setQueuedCandidates((prev) => ({
-              ...prev,
-              [senderId]: [...(prev[senderId] || []), normalizedCandidate],
-            }));
+            console.log(`⏳ Queuing candidate from ${senderId} (no remote description yet)`);
           }
         }
       } catch (error) {
@@ -646,7 +624,7 @@ export const LiveGameRoomPage = () => {
         prev.includes(peerId) ? prev : [...prev, peerId]
       );
       
-      // Small delay to ensure both sides are ready
+      // Setup connection with a delay to ensure both sides are ready
       setTimeout(() => {
         setupConnection(peerId);
       }, 1000);
@@ -669,9 +647,9 @@ export const LiveGameRoomPage = () => {
       socket.off("peerJoinedAudio", handlePeerJoined);
       socket.off("peerLeftAudio", handlePeerLeft);
     };
-  }, [socket, user?.id, roomId, peers, inAudioCall, localStream]);
+  }, [socket, user?.id, roomId, peers, inAudioCall]);
 
-  // Update the audio call state management useEffect
+  // Handle audio call state changes
   useEffect(() => {
     if (!user?.id) return;
     
@@ -725,179 +703,61 @@ export const LiveGameRoomPage = () => {
         cleanupMedia();
       }
     };
-  }, [inAudioCall, user?.id]);
+  }, [inAudioCall, user?.id, socket, roomId]);
 
-  
-  // -----------------------------------------
-
-
-
-  const unwrapAndValidateCandidate = (candidateData: any): RTCIceCandidateInit | null => {
-    let candidate = candidateData;
-    
-    // Handle nested candidate structure: {candidate: {actual_candidate_data}}
-    if (candidateData && candidateData.candidate && typeof candidateData.candidate === 'object') {
-      candidate = candidateData.candidate;
-    }
-    
-    // Validate the candidate
-    if (!candidate || 
-        !candidate.candidate || 
-        typeof candidate.candidate !== 'string' ||
-        candidate.candidate.trim() === '' ||
-        (candidate.sdpMid === null && candidate.sdpMLineIndex === null)) {
-      return null;
-    }
-    
-    return candidate;
-  };
-
-  const isValidIceCandidate = (candidate: any): boolean => {
-    return unwrapAndValidateCandidate(candidate) !== null;
-  };
-
-
-
-  // Check media device availability
-  const checkMediaDevices = async (): Promise<MediaAvailability> => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      return {
-        audio: devices.some((device) => device.kind === "audioinput"),
-        video: devices.some((device) => device.kind === "videoinput"),
-      };
-    } catch (error) {
-      console.error("Error enumerating devices:", error);
-      return { audio: false, video: false };
-    }
-  };
-
-  // Request media permissions
-  const requestMediaPermissions = async (withVideo = false): Promise<boolean> => {
-    try {
-      const constraints = { audio: true, video: withVideo };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      stream.getTracks().forEach((track) => track.stop());
-      return true;
-    } catch (error) {
-      console.error("Permission denied:", error);
-      return false;
-    }
-  };
-
-  const cleanupInvalidCandidates = () => {
-  setQueuedCandidates((prev) => {
-    const cleaned: Record<string, RTCIceCandidateInit[]> = {};
-    
-    Object.entries(prev).forEach(([peerId, candidates]) => {
-      const validCandidates = candidates.filter(isValidIceCandidate);
-      if (validCandidates.length > 0) {
-        cleaned[peerId] = validCandidates;
-      }
-    });
-    
-    return cleaned;
-  });
-};
-
-useEffect(() => {
-  console.log(`🎵 Audio call state changed: inAudioCall=${inAudioCall}`);
-  console.log(`🎵 Current participants:`, participants.map(p => ({
-    id: p.id,
-    name: p.name,
-    audioEnabled: p.audioEnabled,
-    hasAudioStream: !!p.audioStream,
-    isLocal: p.isLocal
-  })));
-  
-  // Check if audio elements are properly set up
-  Object.entries(remoteAudioRefs.current).forEach(([peerId, audioEl]) => {
-    if (audioEl && audioEl.srcObject) {
-      console.log(`🔊 Audio element for ${peerId}:`, {
-        paused: audioEl.paused,
-        muted: audioEl.muted,
-        volume: audioEl.volume,
-        readyState: audioEl.readyState
-      });
-    }
-  });
-}, [inAudioCall, participants]);
-
-useEffect(() => {
-  if (localStream) {
-    console.log(`🎤 Local stream updated:`, {
-      id: localStream.id,
-      active: localStream.active,
-      audioTracks: localStream.getAudioTracks().length,
-      videoTracks: localStream.getVideoTracks().length
-    });
-    
-    localStream.getAudioTracks().forEach((track, i) => {
-      console.log(`  Local audio track ${i}:`, {
-        enabled: track.enabled,
-        muted: track.muted,
-        readyState: track.readyState,
-        label: track.label
-      });
-    });
-  }
-}, [localStream]);
-
-useEffect(() => {
-  const cleanupInterval = setInterval(cleanupInvalidCandidates, 30000); // Every 30 seconds
-  return () => clearInterval(cleanupInterval);
-}, []);
-
-  // Effect for media device initialization
+  // Debug logging
   useEffect(() => {
-    const initializeMedia = async () => {
-      const available = await checkMediaDevices();
-      setMediaAvailable(available);
-    };
-    initializeMedia();
-  }, []);
-
-  // Effect for audio call state changes
-  useEffect(() => {
-    if (!user?.id) return;
-    if (inAudioCall) {
-      const joinAudioCall = async () => {
-        const hasPermission = await requestMediaPermissions();
-        if (!hasPermission) {
-          alert(
-            "Microphone access is required for audio calls. Please enable microphone permissions."
-          );
-          setInAudioCall(false);
-          return;
-        }
-        const { audio } = await checkMediaDevices();
-        if (!audio) {
-          alert(
-            "No microphone found. Please connect a microphone to join the audio call."
-          );
-          setInAudioCall(false);
-          return;
-        }
-        await initLocalStream();
-        socket?.emit("joinAudio", { roomId, userId: user.id });
-      };
-      joinAudioCall();
-    } else {
-      cleanupMedia();
-      socket?.emit("leaveAudio", { roomId, userId: user.id });
-      setIsDeafened(false);
-    }
-    return () => {
-      cleanupMedia();
-    };
-  }, [inAudioCall]);
-
-
-
-  
-
+    console.log(`🎵 Audio call state changed: inAudioCall=${inAudioCall}`);
+    console.log(`🎵 Current participants:`, participants.map(p => ({
+      id: p.id,
+      name: p.name,
+      audioEnabled: p.audioEnabled,
+      hasAudioStream: !!p.audioStream,
+      isLocal: p.isLocal
+    })));
+  }, [inAudioCall, participants]);
 
   // Media control functions
+  const toggleAudioCall = async () => {
+    if (!inAudioCall) {
+      console.log("🎵 Joining audio call...");
+      await enableAudioPlayback();
+      setInAudioCall(true);
+    } else {
+      console.log("🎵 Leaving audio call...");
+      setInAudioCall(false);
+    }
+  };
+
+  const toggleMute = () => {
+    const newAudioEnabled = !audioEnabled;
+    setAudioEnabled(newAudioEnabled);
+    if (localStream) {
+      localStream.getAudioTracks().forEach((track) => {
+        track.enabled = newAudioEnabled;
+      });
+    }
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.isLocal ? { ...p, audioEnabled: newAudioEnabled } : p
+      )
+    );
+  };
+
+  const toggleDeafen = () => {
+    const newDeafened = !isDeafened;
+    setIsDeafened(newDeafened);
+    
+    // Update all remote audio elements
+    Object.values(remoteAudioRefs.current).forEach((audioEl) => {
+      if (audioEl) {
+        audioEl.muted = newDeafened;
+      }
+    });
+  };
+
+
+  //   // Media control functions
   const toggleVideo = async () => {
     if (isScreenSharing) {
       localStream?.getVideoTracks().forEach((track) => track.stop());
@@ -917,13 +777,13 @@ useEffect(() => {
           const newVideoTrack = stream.getVideoTracks()[0];
           localStream.addTrack(newVideoTrack);
           Object.values(peers).forEach((peer) => {
-            const sender = peer
+            const sender = (peer as any)
               .getSenders()
-              .find((s) => s.track?.kind === "video");
+              .find((s:any) => s.track?.kind === "video");
             if (sender) {
               sender.replaceTrack(newVideoTrack);
             } else {
-              peer.addTrack(newVideoTrack, localStream);
+              (peer as any).addTrack(newVideoTrack, localStream);
             }
           });
         } catch (error) {
@@ -945,45 +805,8 @@ useEffect(() => {
     );
   };
 
-  const toggleAudio = () => {
-    const newAudioEnabled = !audioEnabled;
-    setAudioEnabled(newAudioEnabled);
-    if (localStream) {
-      localStream.getAudioTracks().forEach((track) => {
-        track.enabled = newAudioEnabled;
-      });
-    }
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.isLocal ? { ...p, audioEnabled: newAudioEnabled } : p
-      )
-    );
-  };
 
-  const toggleAudioCall = async () => {
-  if (!inAudioCall) {
-    console.log("🎵 Joining audio call...");
-    
-    // Enable audio playback with user gesture
-    await enableAudioPlayback();
-    
-    setInAudioCall(true);
-  } else {
-    console.log("🎵 Leaving audio call...");
-    cleanupMedia();
-    setInAudioCall(false);
-    setIsDeafened(false);
-  }
-};
-
-  const toggleDeafen = () => {
-    setIsDeafened(!isDeafened);
-  };
-
-  const toggleMute = () => {
-    toggleAudio();
-  };
-
+  
   const handleScreenShare = async () => {
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -992,7 +815,7 @@ useEffect(() => {
       });
       const videoTrack = screenStream.getVideoTracks()[0];
       Object.values(peers).forEach((peer) => {
-        const sender = peer.getSenders().find((s) => s.track?.kind === "video");
+        const sender = (peer as any).getSenders().find((s:any) => s.track?.kind === "video");
         if (sender) sender.replaceTrack(videoTrack);
       });
       setParticipants((prev) =>
@@ -1020,7 +843,7 @@ useEffect(() => {
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     const videoTrack = stream.getVideoTracks()[0];
     Object.values(peers).forEach((peer) => {
-      const sender = peer.getSenders().find((s) => s.track?.kind === "video");
+      const sender = (peer as any).getSenders().find((s:any) => s.track?.kind === "video");
       if (sender) sender.replaceTrack(videoTrack);
     });
     if (localStream) {
