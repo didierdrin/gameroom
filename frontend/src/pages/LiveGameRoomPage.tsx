@@ -437,6 +437,7 @@ export const LiveGameRoomPage = () => {
     };
   }, [socket, user?.id, roomId, peers, inAudioCall]);
 
+  // ... existing code ...
   const setupConnection = async (peerId: string) => {
     if (peers[peerId] || peerId === user?.id) return;
     const peer = createPeerConnection(peerId);
@@ -459,7 +460,10 @@ export const LiveGameRoomPage = () => {
     if (queuedCandidates[peerId]?.length) {
       for (const candidate of queuedCandidates[peerId]) {
         try {
-          await peer.addIceCandidate(candidate);
+          // Add validation before adding the candidate
+          if (candidate && candidate.candidate && candidate.sdpMid !== null && candidate.sdpMLineIndex !== null) {
+            await peer.addIceCandidate(candidate);
+          }
         } catch (error) {
           console.error("Error adding queued candidate:", error);
         }
@@ -471,6 +475,7 @@ export const LiveGameRoomPage = () => {
       });
     }
   };
+// ... existing code ...
 
   // Media control functions
   const toggleVideo = async () => {
