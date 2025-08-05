@@ -343,6 +343,7 @@ export const LiveGameRoomPage = () => {
   useEffect(() => {
     if (!socket || !user?.id) return;
 
+    
     const handleSignal = async ({
       type,
       signal,
@@ -369,16 +370,19 @@ export const LiveGameRoomPage = () => {
         } else if (peer && type === "answer") {
           await peer.setRemoteDescription(new RTCSessionDescription(signal));
         } else if (type === "candidate") {
-          if (peer && peer.remoteDescription) {
-            await peer.addIceCandidate(new RTCIceCandidate(signal));
-          } else {
-            setQueuedCandidates((prev) => ({
-              ...prev,
-              [senderId]: [
-                ...(prev[senderId] || []),
-                new RTCIceCandidate(signal),
-              ],
-            }));
+          // Add validation for ICE candidate
+          if (signal && signal.candidate && signal.sdpMid !== null && signal.sdpMLineIndex !== null) {
+            if (peer && peer.remoteDescription) {
+              await peer.addIceCandidate(new RTCIceCandidate(signal));
+            } else {
+              setQueuedCandidates((prev) => ({
+                ...prev,
+                [senderId]: [
+                  ...(prev[senderId] || []),
+                  new RTCIceCandidate(signal),
+                ],
+              }));
+            }
           }
         }
       } catch (error) {
@@ -393,11 +397,15 @@ export const LiveGameRoomPage = () => {
       candidate: RTCIceCandidateInit;
       senderId: string;
     }) => {
-      setQueuedCandidates((prev) => ({
-        ...prev,
-        [senderId]: [...(prev[senderId] || []), new RTCIceCandidate(candidate)],
-      }));
+      // Add validation for queued candidates
+      if (candidate && candidate.candidate && candidate.sdpMid !== null && candidate.sdpMLineIndex !== null) {
+        setQueuedCandidates((prev) => ({
+          ...prev,
+          [senderId]: [...(prev[senderId] || []), new RTCIceCandidate(candidate)],
+        }));
+      }
     };
+
 
     const handlePeerJoined = (peerId: string) => {
       if (peerId === user.id || !inAudioCall) return;
