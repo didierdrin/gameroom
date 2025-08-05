@@ -44,12 +44,12 @@ interface MediaAvailability {
   video: boolean;
 }
 
-interface PeerConnection {
-  connection: RTCPeerConnection;
-  isInitialized: boolean;
-  remoteDescriptionSet: boolean;
+// Jitsi API type declaration
+declare global {
+  interface Window {
+    JitsiMeetExternalAPI: any;
+  }
 }
-
 
 export const LiveGameRoomPage = () => {
   const { id: roomId } = useParams<{ id: string }>();
@@ -97,765 +97,230 @@ export const LiveGameRoomPage = () => {
 
   const [inAudioCall, setInAudioCall] = useState(false);
   const [isDeafened, setIsDeafened] = useState(false);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [remoteStreams, setRemoteStreams] = useState<{
-    [key: string]: MediaStream;
-  }>({});
-  
-  const [peers, setPeers] = useState<Record<string, PeerConnection>>({});
-  const [queuedCandidates, setQueuedCandidates] = useState<
-  Record<string, RTCIceCandidateInit[]> // Changed from RTCIceCandidate[] to RTCIceCandidateInit[]
->({});
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [jitsiApi, setJitsiApi] = useState<any>(null);
+  const [jitsiLoaded, setJitsiLoaded] = useState(false);
 
-  const localAudioRef = useRef<HTMLAudioElement>(null);
-  const remoteAudioRefs = useRef<{ [key: string]: HTMLAudioElement | null }>({});
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
-  // Add this with your other refs
-const audioContextRef = useRef<AudioContext | null>(null);
+  const jitsiContainerRef = useRef<HTMLDivElement>(null);
 
   const gameType = gameState?.gameType || roomInfo?.gameType || "ludo";
 
-
-
-
-  // Add the new ref and state
-  const mediaInitialized = useRef(false);
-  const connectionStates = useRef<{ [key: string]: string }>({});
-  const [audioCallParticipants, setAudioCallParticipants] = useState<string[]>([]);
-
-  // ICE servers configuration
-  const iceServers = [
-    {
-      urls: "turn:alu-globe-game-room-turn-server.onrender.com", // 3478
-      username: "aluglobe2025",
-      credential: "aluglobe2025development",
+  // Jitsi configuration
+  const jitsiConfig = {
+    roomName: `vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c/game-room-${roomId}-${user?.id}`,
+    jwt: "eyJraWQiOiJ2cGFhcy1tYWdpYy1jb29raWUtNzNlMGIwMjM4YjlhNDQ3YWIyZDViZjliOWI0MWZmN2MvZDUzMDk0LVNBTVBMRV9BUFAiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJqaXRzaSIsImlzcyI6ImNoYXQiLCJpYXQiOjE3NTQzNzMzNjQsImV4cCI6MTc1NDM4MDU2NCwibmJmIjoxNzU0MzczMzU5LCJzdWIiOiJ2cGFhcy1tYWdpYy1jb29raWUtNzNlMGIwMjM4YjlhNDQ3YWIyZDViZjliOWI0MWZmN2MiLCJjb250ZXh0Ijp7ImZlYXR1cmVzIjp7ImxpdmVzdHJlYW1pbmciOnRydWUsImZpbGUtdXBsb2FkIjp0cnVlLCJvdXRib3VuZC1jYWxsIjp0cnVlLCJzaXAtb3V0Ym91bmQtY2FsbCI6ZmFsc2UsInRyYW5zY3JpcHRpb24iOnRydWUsImxpc3QtdmlzaXRvcnMiOmZhbHNlLCJyZWNvcmRpbmciOnRydWUsImZsaXAiOmZhbHNlfSwidXNlciI6eyJoaWRkZW4tZnJvbS1yZWNvcmRlciI6ZmFsc2UsIm1vZGVyYXRvciI6dHJ1ZSwibmFtZSI6Im5zZWRpZGllciIsImlkIjoiZ29vZ2xlLW9hdXRoMnwxMTgzOTQzMjA5NDE4OTYwMzEzNDgiLCJhdmF0YXIiOiIiLCJlbWFpbCI6Im5zZWRpZGllckBnbWFpbC5jb20ifX0sInJvb20iOiIqIn0.dVUKisZng1ZUiumuLXArpHEBkM3AbxP67p6EYFF4Q6tp8ikr4i4Jg83vIMXtAZiNuAtS7RZBzjl7dlTi79gl-XUP0g1nyLGNqYXeKg5v-G_3FaSZGAWAychFWFxE8uV7wqo-51jDY5b8iOFYTt9qImCtnp8pim5ScAokqGqdr64QrA3YyoYw7gaq3nFASZ6RDzU8QEo_YM2CcdDdYkX8-NKEaliglXkrEy_lb5QLX3krmOIOxUzL1u4IifmaQ-bHQTv_pNmI_i4H3p36L0ylFf8qxyUvkB-mQ8DcmaGzGGGHbKlK_trIV3Q6wQSFJzwy_6FYi4b9FrZWU_kVm0HlKg",
+    interfaceConfigOverwrite: {
+      DISABLE_VIDEO_BACKGROUND: true,
+      DEFAULT_BACKGROUND: '#1a1a2e',
+      TOOLBAR_BUTTONS: [
+        'microphone', 'camera', 'desktop',
+        'hangup', 'chat', 'settings'
+      ],
+      SHOW_JITSI_WATERMARK: false,
+      SHOW_WATERMARK_FOR_GUESTS: false,
+      SHOW_POWERED_BY: false,
     },
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-  ];
-
-  // Check media device availability
-  const checkMediaDevices = async (): Promise<MediaAvailability> => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      return {
-        audio: devices.some((device) => device.kind === "audioinput"),
-        video: devices.some((device) => device.kind === "videoinput"),
-      };
-    } catch (error) {
-      console.error("❌ Error enumerating devices:", error);
-      return { audio: false, video: false };
-    }
+    configOverwrite: {
+      disableSimulcast: true,
+      startWithAudioMuted: false,
+      startWithVideoMuted: true,
+      enableNoAudioDetection: true,
+      enableNoisyMicDetection: true,
+      prejoinPageEnabled: false,
+      disableDeepLinking: true,
+      disableInviteFunctions: true,
+      toolbarButtons: [
+        'microphone', 'camera', 'desktop',
+        'hangup', 'chat', 'settings'
+      ],
+    },
   };
 
-  // Request media permissions
-  const requestMediaPermissions = async (withVideo = false): Promise<boolean> => {
-    try {
-      const constraints = { audio: true, video: withVideo };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      stream.getTracks().forEach((track) => track.stop());
-      return true;
-    } catch (error) {
-      console.error("❌ Permission denied:", error);
-      return false;
-    }
-  };
-
-  // Enable audio playback with proper context handling
-  const enableAudioPlayback = async () => {
-    console.log("🔊 Enabling audio playback...");
-    
-    try {
-      // Create or resume audio context
-      if (!audioContextRef.current) {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContext) {
-          audioContextRef.current = new AudioContext();
-        }
-      }
-      
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-        await audioContextRef.current.resume();
-        console.log("✅ Audio context resumed");
-      }
-
-      // Try to play all remote audio elements
-      const playPromises = Object.entries(remoteAudioRefs.current).map(([peerId, audioEl]) => {
-        if (audioEl && audioEl.srcObject) {
-          console.log(`🔊 Attempting to play audio for ${peerId}`);
-          return audioEl.play().then(() => {
-            console.log(`✅ Audio playing for ${peerId}`);
-          }).catch(error => {
-            console.log(`⚠️ Auto-play blocked for ${peerId}:`, error.name);
-          });
-        }
-        return Promise.resolve();
-      });
-      
-      await Promise.all(playPromises);
-    } catch (error) {
-      console.error("❌ Failed to enable audio playback:", error);
-    }
-  };
-
-  // Initialize local media stream
-  const initLocalStream = async (): Promise<boolean> => {
-    if (!user?.id || mediaInitialized.current || localStream) {
-      console.log("⏭️ Skipping media initialization - already initialized");
-      return mediaInitialized.current;
-    }
-    
-    setIsInitializingMedia(true);
-    
-    try {
-      const { audio, video } = await checkMediaDevices();
-      setMediaAvailable({ audio, video });
-      
-      if (!audio) {
-        throw new Error("No audio devices available");
-      }
-
-      const constraints = {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 44100,
-        },
-        video: false, // Start with audio only for simplicity
-      };
-
-      console.log("🎤 Requesting media stream with constraints:", constraints);
-      
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
-      console.log("✅ Media stream obtained:", {
-        id: stream.id,
-        audioTracks: stream.getAudioTracks().length,
-        videoTracks: stream.getVideoTracks().length,
-        active: stream.active
-      });
-
-      // Log audio track details
-      stream.getAudioTracks().forEach((track, i) => {
-        console.log(`  Audio track ${i}:`, {
-          enabled: track.enabled,
-          muted: track.muted,
-          readyState: track.readyState,
-          label: track.label
-        });
-      });
-
-      setLocalStream(stream);
-      setAudioEnabled(true);
-      mediaInitialized.current = true;
-
-      // Set up local participant
-      const localParticipant: Participant = {
-        id: user.id,
-        name: user.username,
-        isLocal: true,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
-        videoEnabled: false,
-        audioEnabled: true,
-        videoStream: null,
-        audioStream: stream,
-      };
-      
-      setParticipants((prev) => [localParticipant, ...prev.filter((p) => !p.isLocal)]);
-
-      // Set up local audio element (muted to prevent feedback)
-      if (localAudioRef.current) {
-        localAudioRef.current.srcObject = stream;
-        localAudioRef.current.muted = true;
-      }
-
-      return true;
-    } catch (error) {
-      console.error("❌ Error accessing media:", error);
-      setParticipants((prev) => prev.filter((p) => !p.isLocal));
-      setLocalStream(null);
-      setMediaAvailable((prev) => ({ ...prev, audio: false }));
-      mediaInitialized.current = false;
-      return false;
-    } finally {
-      setIsInitializingMedia(false);
-    }
-  };
-
-  // Create peer connection
-  const createPeerConnection = (peerId: string): PeerConnection => {
-    console.log(`🔄 Creating peer connection for ${peerId}`);
-    
-    const connection = new RTCPeerConnection({ iceServers });
-    
-    const peerData: PeerConnection = {
-      connection,
-      isInitialized: false,
-      remoteDescriptionSet: false
-    };
-
-    // Add local stream tracks if available
-    if (localStream) {
-      console.log(`📡 Adding local stream tracks to peer ${peerId}`);
-      localStream.getTracks().forEach((track) => {
-        console.log(`  Adding ${track.kind} track: ${track.label}`);
-        connection.addTrack(track, localStream);
-      });
-      peerData.isInitialized = true;
-    } else {
-      console.warn(`⚠️ No local stream available for ${peerId}`);
-    }
-
-    // ICE candidate handling
-    connection.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log(`🧊 Generated ICE candidate for ${peerId}`);
-        socket?.emit("signal", {
-          signal: { candidate: event.candidate },
-          callerId: user?.id,
-          roomId,
-          targetId: peerId,
-          type: "candidate",
-        });
-      } else {
-        console.log(`✅ ICE candidate gathering complete for ${peerId}`);
-      }
-    };
-
-    // Remote stream handling
-    connection.ontrack = (event) => {
-      console.log(`🎵 Received ${event.track.kind} track from ${peerId}`);
-      
-      const stream = event.streams[0];
-      if (!stream) {
-        console.warn(`⚠️ No stream received from ${peerId}`);
+  // Load Jitsi External API
+  useEffect(() => {
+    const loadJitsiScript = () => {
+      if (window.JitsiMeetExternalAPI) {
+        setJitsiLoaded(true);
         return;
       }
 
-      console.log(`📺 Stream details for ${peerId}:`, {
-        id: stream.id,
-        audioTracks: stream.getAudioTracks().length,
-        videoTracks: stream.getVideoTracks().length,
-        active: stream.active
-      });
-
-      // Update remote streams
-      setRemoteStreams(prev => ({ ...prev, [peerId]: stream }));
-
-      // Set up audio element for audio tracks
-      if (event.track.kind === 'audio') {
-        console.log(`🔊 Setting up audio element for ${peerId}`);
-        
-        setTimeout(() => {
-          // Create audio element if it doesn't exist
-          if (!remoteAudioRefs.current[peerId]) {
-            const audioEl = new Audio();
-            audioEl.autoplay = true;
-            audioEl.setAttribute('playsinline', '');
-            remoteAudioRefs.current[peerId] = audioEl;
-          }
-          
-          const audioEl = remoteAudioRefs.current[peerId];
-          if (audioEl) {
-            audioEl.srcObject = stream;
-            audioEl.muted = isDeafened;
-            
-            // Attempt to play
-            audioEl.play().then(() => {
-              console.log(`✅ Audio playing for ${peerId}`);
-            }).catch(error => {
-              console.warn(`⚠️ Audio autoplay blocked for ${peerId}:`, error.name);
-              // Try to play again after user interaction
-              document.addEventListener('click', () => {
-                audioEl.play().catch(console.error);
-              }, { once: true });
-            });
-          }
-        }, 500); // Give some time for the stream to be ready
-      }
-
-      // Update participants
-      setParticipants((prev) => {
-        const existing = prev.find((p) => p.id === peerId);
-        const updatedParticipant: Participant = {
-          id: peerId,
-          name: existing?.name || playerIdToUsername[peerId] || peerId.slice(0, 8),
-          videoEnabled: stream.getVideoTracks().length > 0,
-          audioEnabled: stream.getAudioTracks().length > 0,
-          videoStream: stream.getVideoTracks().length > 0 ? stream : null,
-          audioStream: stream.getAudioTracks().length > 0 ? stream : null,
-          isLocal: false,
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${peerId}`,
-        };
-        
-        if (existing) {
-          return prev.map((p) => p.id === peerId ? { ...p, ...updatedParticipant } : p);
-        }
-        return [...prev, updatedParticipant];
-      });
+      const script = document.createElement('script');
+      script.src = 'https://8x8.vc/vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c/external_api.js';
+      script.async = true;
+      script.onload = () => {
+        setJitsiLoaded(true);
+      };
+      script.onerror = () => {
+        console.error('Failed to load Jitsi External API');
+      };
+      document.head.appendChild(script);
     };
 
-    // Connection state monitoring
-    connection.oniceconnectionstatechange = () => {
-      const state = connection.iceConnectionState;
-      console.log(`🔗 ICE connection state for ${peerId}: ${state}`);
-      
-      if (state === "connected" || state === "completed") {
-        console.log(`✅ Successfully connected to ${peerId}`);
-      } else if (state === "failed" || state === "closed") {
-        console.log(`❌ Connection ${state} for ${peerId}, cleaning up`);
-        cleanupPeer(peerId);
-      }
-    };
+    loadJitsiScript();
+  }, []);
 
-    connection.onicegatheringstatechange = () => {
-      console.log(`🧊 ICE gathering state for ${peerId}: ${connection.iceGatheringState}`);
-    };
+  // Initialize Jitsi when needed
+  const initializeJitsi = () => {
+    if (!jitsiLoaded || !jitsiContainerRef.current || jitsiApi) return;
 
-    connection.onsignalingstatechange = () => {
-      console.log(`📡 Signaling state for ${peerId}: ${connection.signalingState}`);
-    };
-
-    connection.onconnectionstatechange = () => {
-      console.log(`🔌 Connection state for ${peerId}: ${connection.connectionState}`);
-    };
-
-    setPeers((prev:any) => ({ ...prev, [peerId]: peerData }));
-    return peerData;
-  };
-
-  // Setup connection to peer
-  const setupConnection = async (peerId: string) => {
-    if (peers[peerId] || peerId === user?.id) {
-      console.log(`⏭️ Skipping connection setup for ${peerId} (already exists or is self)`);
-      return;
-    }
-    
-    console.log(`🚀 Setting up connection to ${peerId}`);
-    
-    const peerData = createPeerConnection(peerId);
-    
-    if (!peerData.isInitialized) {
-      console.error(`❌ Peer connection not properly initialized for ${peerId}`);
-      return;
-    }
+    console.log('🎵 Initializing Jitsi Meet...');
     
     try {
-      console.log(`📞 Creating offer for ${peerId}`);
-      const offer = await peerData.connection.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: false,
+      const api = new window.JitsiMeetExternalAPI("8x8.vc", {
+        roomName: jitsiConfig.roomName,
+        parentNode: jitsiContainerRef.current,
+        jwt: jitsiConfig.jwt,
+        interfaceConfigOverwrite: jitsiConfig.interfaceConfigOverwrite,
+        configOverwrite: jitsiConfig.configOverwrite,
+        userInfo: {
+          displayName: user?.username || 'Anonymous',
+          // email: user?.email || '',
+        },
       });
-      
-      console.log(`📋 Setting local description for ${peerId}`);
-      await peerData.connection.setLocalDescription(offer);
-      
-      console.log(`📤 Sending offer to ${peerId}`);
-      socket?.emit("signal", {
-        type: "offer",
-        signal: offer,
-        callerId: user?.id,
-        roomId,
-        targetId: peerId,
+
+      // Jitsi event listeners
+      api.on('participantJoined', (participant: any) => {
+        console.log('👋 Participant joined:', participant);
+        updateParticipants();
       });
+
+      api.on('participantLeft', (participant: any) => {
+        console.log('👋 Participant left:', participant);
+        updateParticipants();
+      });
+
+      api.on('audioMuteStatusChanged', (data: any) => {
+        console.log('🔊 Audio mute status changed:', data);
+        setAudioEnabled(!data.muted);
+      });
+
+      api.on('videoMuteStatusChanged', (data: any) => {
+        console.log('📹 Video mute status changed:', data);
+        setVideoEnabled(!data.muted);
+      });
+
+      api.on('screenShareStatusChanged', (data: any) => {
+        console.log('🖥️ Screen share status changed:', data);
+        setIsScreenSharing(data.on);
+      });
+
+      api.on('readyToClose', () => {
+        console.log('🔌 Jitsi ready to close');
+        setInAudioCall(false);
+      });
+
+      setJitsiApi(api);
+      setInAudioCall(true);
+      
+      // Update media availability
+      setMediaAvailable({
+        audio: true,
+        video: true,
+      });
+
+      // Initialize participant list
+      updateParticipants();
+
     } catch (error) {
-      console.error(`❌ Error creating offer for ${peerId}:`, error);
-      cleanupPeer(peerId);
+      console.error('❌ Error initializing Jitsi:', error);
     }
   };
 
-  // Clean up peer connection
-  const cleanupPeer = (peerId: string) => {
-    console.log(`🧹 Cleaning up peer ${peerId}`);
-    
-    const peerData = peers[peerId];
-    if (peerData) {
-      peerData.connection.close();
-    }
+  // Update participants from Jitsi
+  const updateParticipants = () => {
+    if (!jitsiApi) return;
 
-    setPeers((prev) => {
-      const newPeers = { ...prev };
-      delete newPeers[peerId];
-      return newPeers;
-    });
+    try {
+      const jitsiParticipants = jitsiApi.getParticipantsInfo();
+      console.log('👥 Jitsi participants:', jitsiParticipants);
 
-    setRemoteStreams((prev) => {
-      const newStreams = { ...prev };
-      delete newStreams[peerId];
-      return newStreams;
-    });
+      const updatedParticipants: Participant[] = jitsiParticipants.map((p: any) => ({
+        id: p.participantId || p.id,
+        name: p.displayName || p.name || 'Anonymous',
+        videoEnabled: !p.isVideoMuted,
+        audioEnabled: !p.isAudioMuted,
+        videoStream: null, // Jitsi handles streams internally
+        audioStream: null, // Jitsi handles streams internally
+        isLocal: p.isLocal || false,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.participantId || p.id}`,
+      }));
 
-    setParticipants((prev) => prev.filter((p) => p.id !== peerId));
-
-    // Clear audio element
-    if (remoteAudioRefs.current[peerId]) {
-      const audioEl = remoteAudioRefs.current[peerId];
-      if (audioEl) {
-        audioEl.srcObject = null;
-      }
-      delete remoteAudioRefs.current[peerId];
+      setParticipants(updatedParticipants);
+    } catch (error) {
+      console.error('❌ Error updating participants:', error);
     }
   };
 
-  // Clean up all media
-  const cleanupMedia = () => {
-    console.log("🧹 Cleaning up media streams and connections");
-    
-    // Stop local stream
-    if (localStream) {
-      localStream.getTracks().forEach((track) => {
-        console.log(`🛑 Stopping ${track.kind} track:`, track.label);
-        track.stop();
-      });
-      setLocalStream(null);
-    }
-
-    // Close all peer connections
-    Object.entries(peers).forEach(([peerId, peerData]) => {
-      console.log(`🔌 Closing peer connection for ${peerId}`);
-      peerData.connection.close();
-    });
-
-    // Clear states
-    setPeers({});
-    setRemoteStreams({});
-    setParticipants((prev) => prev.filter((p) => p.isLocal));
-    setAudioCallParticipants([]);
-    mediaInitialized.current = false;
-
-    // Clear audio elements
-    Object.values(remoteAudioRefs.current).forEach((audioEl) => {
-      if (audioEl) {
-        audioEl.srcObject = null;
-      }
-    });
-    remoteAudioRefs.current = {};
-
-    // Close audio context
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-  };
-
-  // Handle WebRTC signaling
-  useEffect(() => {
-    if (!socket || !user?.id) return;
-
-    const handleSignal = async ({
-      type,
-      signal,
-      senderId,
-    }: {
-      type: "offer" | "answer" | "candidate";
-      signal: any;
-      senderId: string;
-    }) => {
-      console.log(`📨 Received ${type} signal from ${senderId}`);
-      
+  // Clean up Jitsi
+  const cleanupJitsi = () => {
+    if (jitsiApi) {
+      console.log('🧹 Cleaning up Jitsi...');
       try {
-        let peerData = peers[senderId];
-        
-        if (type === "offer") {
-          if (!peerData) {
-            console.log(`📞 Received offer from ${senderId}, creating peer connection`);
-            peerData = createPeerConnection(senderId);
-          }
-          
-          if (!peerData.isInitialized) {
-            console.error(`❌ Cannot handle offer from ${senderId} - peer not initialized`);
-            return;
-          }
-          
-          console.log(`📋 Setting remote description (offer) for ${senderId}`);
-          await peerData.connection.setRemoteDescription(new RTCSessionDescription(signal));
-          peerData.remoteDescriptionSet = true;
-          
-          console.log(`📞 Creating answer for ${senderId}`);
-          const answer = await peerData.connection.createAnswer();
-          
-          console.log(`📋 Setting local description (answer) for ${senderId}`);
-          await peerData.connection.setLocalDescription(answer);
-          
-          console.log(`📤 Sending answer to ${senderId}`);
-          socket.emit("signal", {
-            type: "answer",
-            signal: answer,
-            callerId: user.id,
-            roomId,
-            targetId: senderId,
-          });
-          
-        } else if (type === "answer" && peerData) {
-          console.log(`📞 Received answer from ${senderId}, setting remote description`);
-          await peerData.connection.setRemoteDescription(new RTCSessionDescription(signal));
-          peerData.remoteDescriptionSet = true;
-          
-        } else if (type === "candidate" && peerData) {
-          console.log(`🧊 Processing ICE candidate from ${senderId}`);
-          
-          if (peerData.remoteDescriptionSet) {
-            try {
-              await peerData.connection.addIceCandidate(new RTCIceCandidate(signal.candidate));
-              console.log(`✅ Added ICE candidate from ${senderId}`);
-            } catch (error) {
-              console.error(`❌ Failed to add ICE candidate from ${senderId}:`, error);
-            }
-          } else {
-            console.log(`⏳ Queuing candidate from ${senderId} (no remote description yet)`);
-          }
-        }
+        jitsiApi.dispose();
       } catch (error) {
-        console.error(`❌ Signal handling error from ${senderId}:`, error);
+        console.error('Error disposing Jitsi:', error);
       }
-    };
-
-    const handlePeerJoined = (data: { peerId: string }) => {
-      const { peerId } = data;
-      console.log(`👋 Peer joined audio call: ${peerId}`);
-      
-      if (peerId === user.id || !inAudioCall) return;
-      
-      setAudioCallParticipants(prev => 
-        prev.includes(peerId) ? prev : [...prev, peerId]
-      );
-      
-      // Setup connection with a delay to ensure both sides are ready
-      setTimeout(() => {
-        setupConnection(peerId);
-      }, 1000);
-    };
-
-    const handlePeerLeft = (data: { peerId: string }) => {
-      const { peerId } = data;
-      console.log(`👋 Peer left audio call: ${peerId}`);
-      
-      setAudioCallParticipants(prev => prev.filter(id => id !== peerId));
-      cleanupPeer(peerId);
-    };
-
-    socket.on("signal", handleSignal);
-    socket.on("peerJoinedAudio", handlePeerJoined);
-    socket.on("peerLeftAudio", handlePeerLeft);
-
-    return () => {
-      socket.off("signal", handleSignal);
-      socket.off("peerJoinedAudio", handlePeerJoined);
-      socket.off("peerLeftAudio", handlePeerLeft);
-    };
-  }, [socket, user?.id, roomId, peers, inAudioCall]);
-
-  // Handle audio call state changes
-  useEffect(() => {
-    if (!user?.id) return;
-    
-    if (inAudioCall) {
-      const joinAudioCall = async () => {
-        console.log("🎵 Joining audio call...");
-        
-        // Check permissions first
-        const hasPermission = await requestMediaPermissions();
-        if (!hasPermission) {
-          alert("Microphone access is required for audio calls. Please enable microphone permissions.");
-          setInAudioCall(false);
-          return;
-        }
-
-        // Check device availability
-        const { audio } = await checkMediaDevices();
-        if (!audio) {
-          alert("No microphone found. Please connect a microphone to join the audio call.");
-          setInAudioCall(false);
-          return;
-        }
-
-        // Initialize media stream
-        const success = await initLocalStream();
-        if (!success) {
-          alert("Failed to initialize audio. Please check your microphone and try again.");
-          setInAudioCall(false);
-          return;
-        }
-
-        // Enable audio playback
-        await enableAudioPlayback();
-
-        // Notify server
-        socket?.emit("joinAudio", { roomId, userId: user.id });
-        
-        console.log("✅ Successfully joined audio call");
-      };
-      
-      joinAudioCall();
-    } else {
-      console.log("🎵 Leaving audio call...");
-      cleanupMedia();
-      socket?.emit("leaveAudio", { roomId, userId: user.id });
-      setIsDeafened(false);
+      setJitsiApi(null);
     }
-
-    return () => {
-      if (inAudioCall) {
-        cleanupMedia();
-      }
-    };
-  }, [inAudioCall, user?.id, socket, roomId]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log(`🎵 Audio call state changed: inAudioCall=${inAudioCall}`);
-    console.log(`🎵 Current participants:`, participants.map(p => ({
-      id: p.id,
-      name: p.name,
-      audioEnabled: p.audioEnabled,
-      hasAudioStream: !!p.audioStream,
-      isLocal: p.isLocal
-    })));
-  }, [inAudioCall, participants]);
+    setParticipants([]);
+    setInAudioCall(false);
+    setAudioEnabled(false);
+    setVideoEnabled(false);
+    setIsScreenSharing(false);
+  };
 
   // Media control functions
   const toggleAudioCall = async () => {
     if (!inAudioCall) {
-      console.log("🎵 Joining audio call...");
-      await enableAudioPlayback();
-      setInAudioCall(true);
+      console.log("🎵 Joining audio/video call...");
+      if (jitsiLoaded) {
+        initializeJitsi();
+      } else {
+        alert('Jitsi is still loading. Please wait a moment and try again.');
+      }
     } else {
-      console.log("🎵 Leaving audio call...");
-      setInAudioCall(false);
+      console.log("🎵 Leaving audio/video call...");
+      cleanupJitsi();
     }
   };
 
   const toggleMute = () => {
-    const newAudioEnabled = !audioEnabled;
-    setAudioEnabled(newAudioEnabled);
-    if (localStream) {
-      localStream.getAudioTracks().forEach((track) => {
-        track.enabled = newAudioEnabled;
-      });
+    if (jitsiApi) {
+      jitsiApi.executeCommand('toggleAudio');
     }
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.isLocal ? { ...p, audioEnabled: newAudioEnabled } : p
-      )
-    );
+  };
+
+  const toggleVideo = async () => {
+    if (jitsiApi) {
+      jitsiApi.executeCommand('toggleVideo');
+    }
+  };
+
+  const handleScreenShare = async () => {
+    if (jitsiApi) {
+      jitsiApi.executeCommand('toggleShareScreen');
+    }
   };
 
   const toggleDeafen = () => {
+    // Jitsi doesn't have a native deafen function, but we can simulate it
     const newDeafened = !isDeafened;
     setIsDeafened(newDeafened);
     
-    // Update all remote audio elements
-    Object.values(remoteAudioRefs.current).forEach((audioEl) => {
-      if (audioEl) {
-        audioEl.muted = newDeafened;
+    if (jitsiApi) {
+      // We can't truly deafen in Jitsi, but we can mute our own audio as a workaround
+      if (newDeafened && audioEnabled) {
+        jitsiApi.executeCommand('toggleAudio');
       }
-    });
-  };
-
-
-  //   // Media control functions
-  const toggleVideo = async () => {
-    if (isScreenSharing) {
-      localStream?.getVideoTracks().forEach((track) => track.stop());
-      setIsScreenSharing(false);
-    }
-    const newVideoEnabled = !videoEnabled;
-    setVideoEnabled(newVideoEnabled);
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = newVideoEnabled;
-      } else if (newVideoEnabled) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-          });
-          const newVideoTrack = stream.getVideoTracks()[0];
-          localStream.addTrack(newVideoTrack);
-          Object.values(peers).forEach((peer) => {
-            const sender = (peer as any)
-              .getSenders()
-              .find((s:any) => s.track?.kind === "video");
-            if (sender) {
-              sender.replaceTrack(newVideoTrack);
-            } else {
-              (peer as any).addTrack(newVideoTrack, localStream);
-            }
-          });
-        } catch (error) {
-          console.error("Error enabling video:", error);
-          setVideoEnabled(false);
-        }
-      }
-    }
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.isLocal
-          ? {
-              ...p,
-              videoEnabled: newVideoEnabled,
-              videoStream: newVideoEnabled && localStream ? localStream : null,
-            }
-          : p
-      )
-    );
-  };
-
-
-  
-  const handleScreenShare = async () => {
-    try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false,
-      });
-      const videoTrack = screenStream.getVideoTracks()[0];
-      Object.values(peers).forEach((peer) => {
-        const sender = (peer as any).getSenders().find((s:any) => s.track?.kind === "video");
-        if (sender) sender.replaceTrack(videoTrack);
-      });
-      setParticipants((prev) =>
-        prev.map((p) =>
-          p.isLocal
-            ? {
-                ...p,
-                videoStream: screenStream,
-                videoEnabled: true,
-              }
-            : p
-        )
-      );
-      setIsScreenSharing(true);
-      videoTrack.onended = () => {
-        toggleVideo();
-      };
-    } catch (error) {
-      console.error("Screen share error:", error);
     }
   };
 
   const handleCameraSwitch = async () => {
-    const constraints = { video: { facingMode: "user" } };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    const videoTrack = stream.getVideoTracks()[0];
-    Object.values(peers).forEach((peer) => {
-      const sender = (peer as any).getSenders().find((s:any) => s.track?.kind === "video");
-      if (sender) sender.replaceTrack(videoTrack);
-    });
-    if (localStream) {
-      localStream.getVideoTracks().forEach((track) => track.stop());
-      localStream.addTrack(videoTrack);
-    }
-    setIsScreenSharing(false);
-    stream.getTracks().forEach((track) => {
-      if (track.kind !== "video") track.stop();
-    });
+    // Jitsi doesn't expose camera switching directly, users can do it through the UI
+    console.log('Camera switching should be done through Jitsi UI');
   };
 
+  // Game logic (unchanged)
   useEffect(() => {
     if (!user) {
       navigate("/login");
@@ -1048,6 +513,13 @@ const audioContextRef = useRef<AudioContext | null>(null);
     }
   }, [socket, roomId]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupJitsi();
+    };
+  }, []);
+
   const handleRollDice = () => {
     if (
       socket &&
@@ -1216,6 +688,7 @@ const audioContextRef = useRef<AudioContext | null>(null);
   };
 
   const handleExit = () => {
+    cleanupJitsi();
     if (socket) {
       socket.emit("leaveGame", { roomId, playerId: user?.id });
     }
@@ -1317,7 +790,18 @@ const audioContextRef = useRef<AudioContext | null>(null);
           </div>
         )}
       </div>
-      {showVideoGrid && (
+
+      {/* Jitsi Meet Container - Hidden by default */}
+      <div
+        ref={jitsiContainerRef}
+        className={`fixed inset-0 z-40 bg-black ${
+          showVideoGrid ? 'block' : 'hidden'
+        }`}
+        style={{ height: '100vh', width: '100vw' }}
+      />
+
+      {/* Custom Video Grid Overlay when Jitsi is not in full view */}
+      {showVideoGrid && !inAudioCall && (
         <div className="fixed inset-0 bg-gray-900 z-40 p-4 overflow-auto">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-white">Participants</h2>
@@ -1331,6 +815,8 @@ const audioContextRef = useRef<AudioContext | null>(null);
           <VideoGrid participants={participants} />
         </div>
       )}
+
+      {/* Media Controls */}
       <MediaControls
         videoEnabled={videoEnabled && mediaAvailable.video}
         audioEnabled={audioEnabled && mediaAvailable.audio}
@@ -1342,33 +828,13 @@ const audioContextRef = useRef<AudioContext | null>(null);
         onToggleDeafen={toggleDeafen}
         isDeafened={isDeafened}
         inAudioCall={inAudioCall}
-        onToggleAudioCall={
-          async () => {
-            await enableAudioPlayback();
-            toggleAudioCall();
-          }
-        }
-        remoteParticipants={Object.keys(remoteStreams)}
+        onToggleAudioCall={toggleAudioCall}
+        remoteParticipants={participants.filter(p => !p.isLocal).map(p => p.id)}
         mediaAvailable={mediaAvailable}
         isInitializingMedia={isInitializingMedia}
       />
-      <audio
-        ref={localAudioRef}
-        autoPlay
-        playsInline
-        muted={true}
-        style={{ display: "none" }}
-      />
-      {Object.entries(remoteStreams).map(([peerId]) => (
-        <audio
-          key={peerId}
-          ref={(el) => (remoteAudioRefs.current[peerId] = el)}
-          autoPlay
-          playsInline
-          muted={isDeafened}
-          style={{ display: "none" }}
-        />
-      ))}
+
+      {/* Overlay for mobile sidebars */}
       {(showPlayers || showChat) && (
         <div
           className="fixed inset-0 bg-black/50 z-20 sm:hidden"
@@ -1381,7 +847,6 @@ const audioContextRef = useRef<AudioContext | null>(null);
     </div>
   );
 };
-
 
 
 // import React, { useEffect, useState, useRef } from "react";
