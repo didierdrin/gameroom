@@ -96,8 +96,8 @@ export const LiveGameRoomPage = () => {
   }>({});
   const [peers, setPeers] = useState<{ [key: string]: RTCPeerConnection }>({});
   const [queuedCandidates, setQueuedCandidates] = useState<
-    Record<string, RTCIceCandidate[]>
-  >({});
+  Record<string, RTCIceCandidateInit[]> // Changed from RTCIceCandidate[] to RTCIceCandidateInit[]
+>({});
   const [participants, setParticipants] = useState<Participant[]>([]);
 
   const localAudioRef = useRef<HTMLAudioElement>(null);
@@ -201,6 +201,26 @@ export const LiveGameRoomPage = () => {
     setParticipants((prev) => prev.filter((p) => p.isLocal));
   };
 
+  const cleanupInvalidCandidates = () => {
+  setQueuedCandidates((prev) => {
+    const cleaned: Record<string, RTCIceCandidateInit[]> = {};
+    
+    Object.entries(prev).forEach(([peerId, candidates]) => {
+      const validCandidates = candidates.filter(isValidIceCandidate);
+      if (validCandidates.length > 0) {
+        cleaned[peerId] = validCandidates;
+      }
+    });
+    
+    return cleaned;
+  });
+};
+
+useEffect(() => {
+  const cleanupInterval = setInterval(cleanupInvalidCandidates, 30000); // Every 30 seconds
+  return () => clearInterval(cleanupInterval);
+}, []);
+
   // Effect for media device initialization
   useEffect(() => {
     const initializeMedia = async () => {
@@ -250,7 +270,7 @@ export const LiveGameRoomPage = () => {
     const peer = new RTCPeerConnection({
       iceServers: [
         {
-          urls: "turn:alu-globe-game-room-turn-server.onrender.com",//3478 443
+          urls: "turn:alu-globe-game-room-turn-server.onrender.com:3478", // Fixed port
           username: "aluglobe2025",
           credential: "aluglobe2025development",
         },
@@ -258,25 +278,30 @@ export const LiveGameRoomPage = () => {
         { urls: "stun:stun1.l.google.com:19302" },
       ],
     });
-
+  
     if (localStream) {
       localStream.getTracks().forEach((track) => {
         peer.addTrack(track, localStream);
       });
     }
-
+  
     peer.onicecandidate = (event) => {
       if (event.candidate) {
-        socket?.emit("signal", {
-          signal: { candidate: event.candidate },
-          callerId: user?.id,
-          roomId,
-          targetId: peerId,
-          type: "candidate",
-        });
+        // Validate candidate before sending
+        if (isValidIceCandidate(event.candidate)) {
+          socket?.emit("signal", {
+            signal: { candidate: event.candidate },
+            callerId: user?.id,
+            roomId,
+            targetId: peerId,
+            type: "candidate",
+          });
+        } else {
+          console.warn("Generated invalid ICE candidate, not sending:", event.candidate);
+        }
       }
     };
-
+  
     peer.ontrack = (event) => {
       const stream = event.streams[0];
       setParticipants((prev) => {
@@ -315,7 +340,7 @@ export const LiveGameRoomPage = () => {
         ];
       });
     };
-
+  
     peer.oniceconnectionstatechange = () => {
       console.log(
         `ICE connection state changed for ${peerId}:`,
@@ -332,17 +357,37 @@ export const LiveGameRoomPage = () => {
           return newPeers;
         });
         setParticipants((prev) => prev.filter((p) => p.id !== peerId));
+        
+        // Clear any queued candidates for this peer
+        setQueuedCandidates((prev) => {
+          const newQueues = { ...prev };
+          delete newQueues[peerId];
+          return newQueues;
+        });
       }
     };
-
+  
     setPeers((prev) => ({ ...prev, [peerId]: peer }));
     return peer;
   };
+
+  const isValidIceCandidate = (candidate: any): boolean => {
+    return (
+      candidate &&
+      candidate.candidate &&
+      typeof candidate.candidate === 'string' &&
+      candidate.candidate.trim() !== '' &&
+      (candidate.sdpMid !== null || candidate.sdpMLineIndex !== null)
+    );
+  };
+
+  
 
   // WebRTC signaling handlers
   useEffect(() => {
     if (!socket || !user?.id) return;
 
+    
     
     const handleSignal = async ({
       type,
@@ -355,6 +400,7 @@ export const LiveGameRoomPage = () => {
     }) => {
       try {
         let peer = peers[senderId];
+        
         if (!peer && type === "offer") {
           peer = createPeerConnection(senderId);
           await peer.setRemoteDescription(new RTCSessionDescription(signal));
@@ -370,22 +416,24 @@ export const LiveGameRoomPage = () => {
         } else if (peer && type === "answer") {
           await peer.setRemoteDescription(new RTCSessionDescription(signal));
         } else if (type === "candidate") {
-          // Fixed validation: Check if candidate exists and has valid sdpMid OR sdpMLineIndex
-          if (signal && signal.candidate && 
-              (signal.sdpMid !== null || signal.sdpMLineIndex !== null)) {
-            if (peer && peer.remoteDescription) {
+          // Validate the candidate before processing
+          if (!isValidIceCandidate(signal)) {
+            console.warn("Invalid ICE candidate received, skipping:", signal);
+            return;
+          }
+    
+          if (peer && peer.remoteDescription) {
+            try {
               await peer.addIceCandidate(new RTCIceCandidate(signal));
-            } else {
-              setQueuedCandidates((prev) => ({
-                ...prev,
-                [senderId]: [
-                  ...(prev[senderId] || []),
-                  new RTCIceCandidate(signal),
-                ],
-              }));
+            } catch (error) {
+              console.error("Failed to add ICE candidate:", error, signal);
             }
           } else {
-            console.warn("Invalid ICE candidate received:", signal);
+            // Store raw candidate data, not RTCIceCandidate object
+            setQueuedCandidates((prev) => ({
+              ...prev,
+              [senderId]: [...(prev[senderId] || []), signal], // Store raw signal data
+            }));
           }
         }
       } catch (error) {
@@ -400,16 +448,16 @@ export const LiveGameRoomPage = () => {
       candidate: RTCIceCandidateInit;
       senderId: string;
     }) => {
-      // Fixed validation: Check if candidate exists and has valid sdpMid OR sdpMLineIndex
-      if (candidate && candidate.candidate && 
-          (candidate.sdpMid !== null || candidate.sdpMLineIndex !== null)) {
-        setQueuedCandidates((prev) => ({
-          ...prev,
-          [senderId]: [...(prev[senderId] || []), new RTCIceCandidate(candidate)],
-        }));
-      } else {
-        console.warn("Invalid queued ICE candidate received:", candidate);
+      // Validate the candidate before queuing
+      if (!isValidIceCandidate(candidate)) {
+        console.warn("Invalid queued ICE candidate received, skipping:", candidate);
+        return;
       }
+    
+      setQueuedCandidates((prev) => ({
+        ...prev,
+        [senderId]: [...(prev[senderId] || []), candidate], // Store raw candidate data
+      }));
     };
 
 
@@ -446,7 +494,9 @@ export const LiveGameRoomPage = () => {
 
   const setupConnection = async (peerId: string) => {
     if (peers[peerId] || peerId === user?.id) return;
+    
     const peer = createPeerConnection(peerId);
+    
     try {
       const offer = await peer.createOffer({
         offerToReceiveAudio: true,
@@ -462,30 +512,8 @@ export const LiveGameRoomPage = () => {
       });
     } catch (error) {
       console.error("Error creating offer:", error);
-    }
-    
-    // Process queued candidates with validation
-    if (queuedCandidates[peerId]?.length) {
-      for (const candidate of queuedCandidates[peerId]) {
-        try {
-          // Fixed validation: Check if candidate exists and has valid sdpMid OR sdpMLineIndex
-          if (candidate && candidate.candidate && 
-              (candidate.sdpMid !== null || candidate.sdpMLineIndex !== null)) {
-            await peer.addIceCandidate(candidate);
-          } else {
-            console.warn("Skipping invalid queued candidate:", candidate);
-          }
-        } catch (error) {
-          console.error("Error adding queued candidate:", error);
-        }
-      }
-      setQueuedCandidates((prev) => {
-        const newQueues = { ...prev };
-        delete newQueues[peerId];
-        return newQueues;
-      });
-    }
-  };
+      return;
+    }};
 
   // Media control functions
   const toggleVideo = async () => {
