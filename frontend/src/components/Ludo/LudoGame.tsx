@@ -40,9 +40,9 @@ export const LudoGame: React.FC<LudoGameProps> = ({
 
   // No extra wrappers, just the Provider and Ludo
   return (
-    <Provider store={store}>
+    // <Provider store={store}>
       <Ludo />
-   </Provider> 
+  //  </Provider> 
   );
 };
 
