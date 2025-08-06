@@ -106,111 +106,86 @@ export const LiveGameRoomPage = () => {
   const gameType = gameState?.gameType || roomInfo?.gameType || "ludo";
 
   // Jitsi configuration
-  // Improved Jitsi configuration
-  const jitsiConfig = {
-    roomName: `vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c/game-room-${roomId}-${user?.id}`,
-    jwt: "eyJraWQiOiJ2cGFhcy1tYWdpYy1jb29raWUtNzNlMGIwMjM4YjlhNDQ3YWIyZDViZjliOWI0MWZmN2MvZDUzMDk0LVNBTVBMRV9BUFAiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJqaXRzaSIsImlzcyI6ImNoYXQiLCJpYXQiOjE3NTQzNzMzNjQsImV4cCI6MTc1NDM4MDU2NCwibmJmIjoxNzU0MzczMzU5LCJzdWIiOiJ2cGFhcy1tYWdpYy1jb29raWUtNzNlMGIwMjM4YjlhNDQ3YWIyZDViZjliOWI0MWZmN2MiLCJjb250ZXh0Ijp7ImZlYXR1cmVzIjp7ImxpdmVzdHJlYW1pbmciOnRydWUsImZpbGUtdXBsb2FkIjp0cnVlLCJvdXRib3VuZC1jYWxsIjp0cnVlLCJzaXAtb3V0Ym91bmQtY2FsbCI6ZmFsc2UsInRyYW5zY3JpcHRpb24iOnRydWUsImxpc3QtdmlzaXRvcnMiOmZhbHNlLCJyZWNvcmRpbmciOnRydWUsImZsaXAiOmZhbHNlfSwidXNlciI6eyJoaWRkZW4tZnJvbS1yZWNvcmRlciI6ZmFsc2UsIm1vZGVyYXRvciI6dHJ1ZSwibmFtZSI6Im5zZWRpZGllciIsImlkIjoiZ29vZ2xlLW9hdXRoMnwxMTgzOTQzMjA5NDE4OTYwMzEzNDgiLCJhdmF0YXIiOiIiLCJlbWFpbCI6Im5zZWRpZGllckBnbWFpbC5jb20ifX0sInJvb20iOiIqIn0.dVUKisZng1ZUiumuLXArpHEBkM3AbxP67p6EYFF4Q6tp8ikr4i4Jg83vIMXtAZiNuAtS7RZBzjl7dlTi79gl-XUP0g1nyLGNqYXeKg5v-G_3FaSZGAWAychFWFxE8uV7wqo-51jDY5b8iOFYTt9qImCtnp8pim5ScAokqGqdr64QrA3YyoYw7gaq3nFASZ6RDzU8QEo_YM2CcdDdYkX8-NKEaliglXkrEy_lb5QLX3krmOIOxUzL1u4IifmaQ-bHQTv_pNmI_i4H3p36L0ylFf8qxyUvkB-mQ8DcmaGzGGGHbKlK_trIV3Q6wQSFJzwy_6FYi4b9FrZWU_kVm0HlKg",
-    interfaceConfigOverwrite: {
-      DISABLE_VIDEO_BACKGROUND: true,
-      DEFAULT_BACKGROUND: '#1a1a2e',
-      TOOLBAR_BUTTONS: [
-        'microphone', 'camera', 'desktop',
-        'hangup', 'chat', 'settings'
-      ],
-      SHOW_JITSI_WATERMARK: false,
-      SHOW_WATERMARK_FOR_GUESTS: false,
-      SHOW_POWERED_BY: false,
-      SHOW_BRAND_WATERMARK: false,
-      JITSI_WATERMARK_LINK: '',
-      // Remove speaker selection to avoid the error
-      SETTINGS_SECTIONS: ['devices', 'language', 'moderator', 'profile', 'calendar'],
-      // Disable problematic features
-      DISABLE_FOCUS_INDICATOR: true,
-      DISABLE_DOMINANT_SPEAKER_INDICATOR: true,
+  // Replace your current jitsiConfig with this:
+const jitsiConfig = {
+  roomName: `game-room-${roomId}-${user?.id}`,
+  width: '100%',
+  height: '100%',
+  parentNode: jitsiContainerRef.current,
+  configOverwrite: {
+    disableSimulcast: false,
+    startWithAudioMuted: false,
+    startWithVideoMuted: true,
+    enableNoAudioDetection: true,
+    enableNoisyMicDetection: true,
+    prejoinPageEnabled: false,
+    disableDeepLinking: true,
+    disableInviteFunctions: true,
+    p2p: {
+      enabled: false,
     },
-    configOverwrite: {
-      // Core settings
-      disableSimulcast: false, // Enable simulcast for better performance
-      startWithAudioMuted: false,
-      startWithVideoMuted: true,
-      enableNoAudioDetection: true,
-      enableNoisyMicDetection: true,
-      prejoinPageEnabled: false,
-      disableDeepLinking: true,
-      disableInviteFunctions: true,
-      
-      // Remove problematic features
-      disableSpeakerSelection: true,
-      disableAudioLevels: false,
-      disableStats: true,
-      
-      // Analytics and tracking - disable to avoid 404s
-      analytics: {
-        disabled: true,
-      },
-      
-      // Disable features that might cause API calls
-      enableWelcomePage: false,
-      enableClosePage: false,
-      
-      // P2P settings
-      p2p: {
-        enabled: false, // Disable P2P to use Jitsi servers
-      },
-      
-      // Connection settings
-      connectionTimeout: 10000,
-      
-      // Disable features that might call external APIs
-      callStatsID: null,
-      enableTalkWhileMuted: false,
-      
-      // Video settings
-      constraints: {
-        video: {
-          height: {
-            ideal: 720,
-            max: 720,
-            min: 240
-          }
+    constraints: {
+      video: {
+        height: {
+          ideal: 720,
+          max: 720,
+          min: 240
         }
-      },
-      
-      // Audio settings
-      enableSaveLogs: false,
-      
-      // Disable external API calls
-      deploymentInfo: {
-        shard: "",
-        region: "",
-        userRegion: ""
       }
-    },
-  };
+    }
+  },
+  interfaceConfigOverwrite: {
+    DISABLE_VIDEO_BACKGROUND: true,
+    DEFAULT_BACKGROUND: '#1a1a2e',
+    TOOLBAR_BUTTONS: [
+      'microphone', 'camera', 'desktop',
+      'hangup', 'chat', 'settings'
+    ],
+    SHOW_JITSI_WATERMARK: false,
+    SHOW_WATERMARK_FOR_GUESTS: false,
+    SHOW_POWERED_BY: false,
+    SHOW_BRAND_WATERMARK: false,
+    JITSI_WATERMARK_LINK: '',
+    SETTINGS_SECTIONS: ['devices', 'language', 'moderator', 'profile', 'calendar'],
+    DISABLE_FOCUS_INDICATOR: true,
+    DISABLE_DOMINANT_SPEAKER_INDICATOR: true,
+  },
+  userInfo: {
+    displayName: user?.username || 'Anonymous',
+  }
+};
   
 
   // Load Jitsi External API
-  useEffect(() => {
-    const loadJitsiScript = () => {
-      if (window.JitsiMeetExternalAPI) {
-        setJitsiLoaded(true);
-        return;
-      }
+  // Replace your current useEffect for loading Jitsi with this:
+useEffect(() => {
+  const loadJitsiScript = () => {
+    if (window.JitsiMeetExternalAPI) {
+      setJitsiLoaded(true);
+      return;
+    }
 
-      const script = document.createElement('script');
-      script.src = 'https://8x8.vc/vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c/external_api.js';
-      script.async = true;
-      script.onload = () => {
-        setJitsiLoaded(true);
-      };
-      script.onerror = () => {
-        console.error('Failed to load Jitsi External API');
-      };
-      document.head.appendChild(script);
+    const script = document.createElement('script');
+    script.src = 'https://meet.jit.si/external_api.js';
+    script.async = true;
+    script.onload = () => {
+      setJitsiLoaded(true);
     };
+    script.onerror = () => {
+      console.error('Failed to load Jitsi External API');
+    };
+    document.head.appendChild(script);
+  };
 
-    loadJitsiScript();
-  }, []);
+  loadJitsiScript();
+
+  return () => {
+    // Cleanup
+    if (window.JitsiMeetExternalAPI) {
+      delete window.JitsiMeetExternalAPI;
+    }
+  };
+}, []);
 
   // Initialize Jitsi when needed
   const initializeJitsi = () => {
@@ -219,17 +194,7 @@ export const LiveGameRoomPage = () => {
     console.log('🎵 Initializing Jitsi Meet...');
     
     try {
-      const api = new window.JitsiMeetExternalAPI("8x8.vc", {
-        roomName: jitsiConfig.roomName,
-        parentNode: jitsiContainerRef.current,
-        jwt: jitsiConfig.jwt,
-        interfaceConfigOverwrite: jitsiConfig.interfaceConfigOverwrite,
-        configOverwrite: jitsiConfig.configOverwrite,
-        userInfo: {
-          displayName: user?.username || 'Anonymous',
-          // email: user?.email || '',
-        },
-      });
+      const api = new window.JitsiMeetExternalAPI("meet.jit.si", jitsiConfig);
 
       // Jitsi event listeners
       api.on('participantJoined', (participant: any) => {
