@@ -1,4 +1,4 @@
-import { BaseColors, WalkwayPosition } from 'state/interfaces';
+import { BaseColors, WalkwayPosition } from '../../../state/interfaces'; 
 
 export interface ICoin {
   isRetired: boolean;
