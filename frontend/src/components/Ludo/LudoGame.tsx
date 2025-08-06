@@ -4,6 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import { Provider } from 'react-redux';
 import { store } from './src-ludo/state/store';
 import { Ludo } from './src-ludo/containers/Ludo/Container';
+import { useDispatch } from 'react-redux';
+import { setPlayers, getInitialGameData, moveCoin, spawnCoin } from './src-ludo/containers/Ludo/state/actions';
+import { enableDie, rollDie, rollDieComplete } from './src-ludo/containers/Dice/state/actions';
+
 
 interface LudoGameProps {
   socket: any;
@@ -15,8 +19,6 @@ interface LudoGameProps {
   onStartGame: () => void;
 }
 
-const compatibleStore = store as any;
-
 export const LudoGame: React.FC<LudoGameProps> = ({
   socket,
   roomId,
@@ -26,150 +28,233 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   onMoveCoin,
   onStartGame,
 }) => {
-  const { user } = useAuth();
-  const [gameStarted, setGameStarted] = useState(false);
-  const [playerCount, setPlayerCount] = useState(4);
+  const dispatch = useDispatch();
 
-  // Convert gameState to the format expected by the working ludo game
+  // 1. Initialize Redux Ludo with correct player count
   useEffect(() => {
-    if (gameState?.gameStarted && !gameStarted) {
-      setGameStarted(true);
-      // Set player count based on actual players in the room
-      const actualPlayerCount = gameState.players?.length || 4;
-      setPlayerCount(actualPlayerCount);
+    if (gameState?.players?.length) {
+      dispatch(setPlayers(gameState.players.length));
+      dispatch(getInitialGameData());
     }
-  }, [gameState?.gameStarted, gameStarted]);
+  }, [gameState?.players?.length, dispatch]);
 
-  // Handle socket events for the working ludo game
+  // 2. Listen for server events and update Redux
   useEffect(() => {
     if (!socket) return;
 
-    const handleLudoAction = (data: any) => {
-      // Handle actions from the working ludo game
-      console.log('Ludo action:', data);
-      
-      // Emit to server if needed
-      if (data.type === 'moveCoin') {
-        socket.emit('moveCoin', {
-          roomId,
-          playerId: currentPlayer,
-          coinId: data.coinId,
-          targetPosition: data.targetPosition
-        });
-      } else if (data.type === 'rollDice') {
-        socket.emit('rollDice', {
-          roomId,
-          playerId: currentPlayer
-        });
-      }
+    const handleDiceRolled = (data: any) => {
+      // Update Redux with dice value
+      dispatch(rollDieComplete(data.diceValue));
     };
 
-    // Listen for game state updates from server
-    const handleGameStateUpdate = (data: any) => {
-      console.log('Game state update:', data);
-      // Update the Redux store with new game state
-      // This would need to be implemented based on the working ludo's state structure
+    const handleCoinMoved = (data: any) => {
+      // Update Redux with coin move
+      dispatch(moveCoin(data.coinId, data.position, data.cellId));
     };
 
-    socket.on('ludoAction', handleLudoAction);
-    socket.on('gameStateUpdate', handleGameStateUpdate);
+    socket.on('diceRolled', handleDiceRolled);
+    socket.on('coinMoved', handleCoinMoved);
 
     return () => {
-      socket.off('ludoAction', handleLudoAction);
-      socket.off('gameStateUpdate', handleGameStateUpdate);
+      socket.off('diceRolled', handleDiceRolled);
+      socket.off('coinMoved', handleCoinMoved);
     };
-  }, [socket, currentPlayer, roomId]);
+  }, [socket, dispatch]);
 
-  // Custom wrapper component to integrate with the working ludo game
-  const LudoGameWrapper: React.FC = () => {
-    const [showPlayerConfig, setShowPlayerConfig] = useState(!gameStarted);
-
-    // Dispatch initial game data when component mounts
-  useEffect(() => {
-    if (!showPlayerConfig) {
-      // Dispatch the action to initialize the game data
-      store.dispatch({ type: 'GET_INITIAL_GAME_DATA' });
+  // 3. When local player acts, emit to server
+  const handleRollDice = () => {
+    if (gameState.currentTurn === currentPlayer) {
+      socket.emit('rollDice', { roomId, playerId: currentPlayer });
+      dispatch(rollDie()); // Optimistically update UI
     }
-  }, [showPlayerConfig]);
-
-  
-    const handleStartGame = (count: number) => {
-      setPlayerCount(count);
-      setShowPlayerConfig(false);
-      setGameStarted(true);
-      onStartGame();
-    };
-
-    if (showPlayerConfig) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full bg-gray-100">
-          <h2 className="text-2xl font-bold mb-8 text-gray-800">Ludo Game Setup</h2>
-          <div className="flex gap-4">
-            <button 
-              onClick={() => handleStartGame(2)}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              2 Players
-            </button>
-            <button 
-              onClick={() => handleStartGame(3)}
-              className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-            >
-              3 Players
-            </button>
-            <button 
-              onClick={() => handleStartGame(4)}
-              className="px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
-            >
-              4 Players
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="w-full h-full">
-        <Ludo />
-      </div>
-    );
   };
 
+  const handleMoveCoin = (coinId: string, position: number, cellId: string) => {
+    if (gameState.currentTurn === currentPlayer) {
+      socket.emit('moveCoin', { roomId, playerId: currentPlayer, coinId, position, cellId });
+      dispatch(moveCoin(coinId, position, cellId)); // Optimistically update UI
+    }
+  };
+
+  // 4. Render the Redux Ludo board
   return (
-    <div className="flex flex-col items-center p-4 bg-gray-100 min-h-screen">
-      <h1 className="text-4xl font-bold mb-4 text-gray-800">Ludo Game</h1>
-      
-      {gameState?.winner && (
-        <div className="mb-4 p-4 bg-green-100 border border-green-400 rounded">
-          <h2 className="text-2xl font-bold text-green-800">
-            �� {gameState.players.find((p:any) => p.id === gameState.winner)?.name || 'Unknown'} Wins! 🎉
-          </h2>
-        </div>
-      )}
-      
-      {!gameStarted && (
-        <button
-          onClick={onStartGame}
-          className="mb-4 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          disabled={gameState?.players?.length < 2 || gameState?.players[0]?.id !== currentPlayer}
-        >
-          Start Game
-        </button>
-      )}
-      
-      <div className="w-full max-w-4xl">
-        <Provider store={compatibleStore}>
-          <LudoGameWrapper />
-        </Provider>
-      </div>
-      
-      <div className="mt-4 text-sm text-gray-600 max-w-md text-center">
-        <p><strong>Rules:</strong> Roll a 6 to bring a coin into play. Land on opponents (outside star zones) to capture them. Reach the center with all coins to win!</p>
-        <p><strong>Coin Tips:</strong> Coins with a ring are movable. Click after rolling the dice.</p>
-      </div>
-    </div>
+    <Provider store={store}>
+      <Ludo
+        // You may need to pass props or use Redux selectors to control UI
+        // For example, disable dice/coins if not current player's turn
+        // You can customize the Ludo component or its children as needed
+      />
+      {/* Optionally, add your own UI for winner, rules, etc. */}
+    </Provider>
   );
 };
+
+
+// interface LudoGameProps {
+//   socket: any;
+//   roomId: string;
+//   currentPlayer: string;
+//   gameState: any;
+//   onRollDice: () => void;
+//   onMoveCoin: (coinId: string) => void;
+//   onStartGame: () => void;
+// }
+
+// const compatibleStore = store as any;
+
+// export const LudoGame: React.FC<LudoGameProps> = ({
+//   socket,
+//   roomId,
+//   currentPlayer,
+//   gameState,
+//   onRollDice,
+//   onMoveCoin,
+//   onStartGame,
+// }) => {
+//   const { user } = useAuth();
+//   const [gameStarted, setGameStarted] = useState(false);
+//   const [playerCount, setPlayerCount] = useState(4);
+
+//   // Convert gameState to the format expected by the working ludo game
+//   useEffect(() => {
+//     if (gameState?.gameStarted && !gameStarted) {
+//       setGameStarted(true);
+//       // Set player count based on actual players in the room
+//       const actualPlayerCount = gameState.players?.length || 4;
+//       setPlayerCount(actualPlayerCount);
+//     }
+//   }, [gameState?.gameStarted, gameStarted]);
+
+//   // Handle socket events for the working ludo game
+//   useEffect(() => {
+//     if (!socket) return;
+
+//     const handleLudoAction = (data: any) => {
+//       // Handle actions from the working ludo game
+//       console.log('Ludo action:', data);
+      
+//       // Emit to server if needed
+//       if (data.type === 'moveCoin') {
+//         socket.emit('moveCoin', {
+//           roomId,
+//           playerId: currentPlayer,
+//           coinId: data.coinId,
+//           targetPosition: data.targetPosition
+//         });
+//       } else if (data.type === 'rollDice') {
+//         socket.emit('rollDice', {
+//           roomId,
+//           playerId: currentPlayer
+//         });
+//       }
+//     };
+
+//     // Listen for game state updates from server
+//     const handleGameStateUpdate = (data: any) => {
+//       console.log('Game state update:', data);
+//       // Update the Redux store with new game state
+//       // This would need to be implemented based on the working ludo's state structure
+//     };
+
+//     socket.on('ludoAction', handleLudoAction);
+//     socket.on('gameStateUpdate', handleGameStateUpdate);
+
+//     return () => {
+//       socket.off('ludoAction', handleLudoAction);
+//       socket.off('gameStateUpdate', handleGameStateUpdate);
+//     };
+//   }, [socket, currentPlayer, roomId]);
+
+//   // Custom wrapper component to integrate with the working ludo game
+//   const LudoGameWrapper: React.FC = () => {
+//     const [showPlayerConfig, setShowPlayerConfig] = useState(!gameStarted);
+
+//     // Dispatch initial game data when component mounts
+//   useEffect(() => {
+//     if (!showPlayerConfig) {
+//       // Dispatch the action to initialize the game data
+//       store.dispatch({ type: 'GET_INITIAL_GAME_DATA' });
+//     }
+//   }, [showPlayerConfig]);
+
+  
+//     const handleStartGame = (count: number) => {
+//       setPlayerCount(count);
+//       setShowPlayerConfig(false);
+//       setGameStarted(true);
+//       onStartGame();
+//     };
+
+//     if (showPlayerConfig) {
+//       return (
+//         <div className="flex flex-col items-center justify-center h-full bg-gray-100">
+//           <h2 className="text-2xl font-bold mb-8 text-gray-800">Ludo Game Setup</h2>
+//           <div className="flex gap-4">
+//             <button 
+//               onClick={() => handleStartGame(2)}
+//               className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+//             >
+//               2 Players
+//             </button>
+//             <button 
+//               onClick={() => handleStartGame(3)}
+//               className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+//             >
+//               3 Players
+//             </button>
+//             <button 
+//               onClick={() => handleStartGame(4)}
+//               className="px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+//             >
+//               4 Players
+//             </button>
+//           </div>
+//         </div>
+//       );
+//     }
+
+//     return (
+//       <div className="w-full h-full">
+//         <Ludo />
+//       </div>
+//     );
+//   };
+
+//   return (
+//     <div className="flex flex-col items-center p-4 bg-gray-100 min-h-screen">
+//       <h1 className="text-4xl font-bold mb-4 text-gray-800">Ludo Game</h1>
+      
+//       {gameState?.winner && (
+//         <div className="mb-4 p-4 bg-green-100 border border-green-400 rounded">
+//           <h2 className="text-2xl font-bold text-green-800">
+//             �� {gameState.players.find((p:any) => p.id === gameState.winner)?.name || 'Unknown'} Wins! 🎉
+//           </h2>
+//         </div>
+//       )}
+      
+//       {!gameStarted && (
+//         <button
+//           onClick={onStartGame}
+//           className="mb-4 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+//           disabled={gameState?.players?.length < 2 || gameState?.players[0]?.id !== currentPlayer}
+//         >
+//           Start Game
+//         </button>
+//       )}
+      
+//       <div className="w-full max-w-4xl">
+//         <Provider store={compatibleStore}>
+//           <LudoGameWrapper />
+//         </Provider>
+//       </div>
+      
+//       <div className="mt-4 text-sm text-gray-600 max-w-md text-center">
+//         <p><strong>Rules:</strong> Roll a 6 to bring a coin into play. Land on opponents (outside star zones) to capture them. Reach the center with all coins to win!</p>
+//         <p><strong>Coin Tips:</strong> Coins with a ring are movable. Click after rolling the dice.</p>
+//       </div>
+//     </div>
+//   );
+// };
 
 
 
