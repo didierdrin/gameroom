@@ -1,6 +1,6 @@
 import { createSelector } from 'reselect';
 
-import { IApplicationState } from 'state/interfaces';
+import { IApplicationState } from '../../../state/interfaces';
 
 import { IState } from './interfaces';
 

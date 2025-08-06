@@ -1,4 +1,4 @@
-import { IReduxAction } from 'state/interfaces';
+import { IReduxAction } from '../../../state/interfaces';
 
 import { Rolls } from './interfaces';
 

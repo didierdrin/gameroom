@@ -1,9 +1,17 @@
+
+
 // import { ForkEffect } from 'redux-saga/effects';
 import { Effect } from 'redux-saga/effects';
 
 import { IState as IDiceState } from '../containers/Dice/state/interfaces';
 import { IState as ILudoState } from '../containers/Ludo/state/interfaces';
 import { IState as IContextMenuState } from '../services/contextMenu/interfaces';
+
+import { Actions as LudoActions } from '../containers/Ludo/state/actions';
+import { Actions as ContextMenuActions } from '../services/contextMenu/actions';
+import { Actions as DiceActions } from '../containers/Dice/state/actions';
+
+export type GlobalActions = LudoActions | ContextMenuActions | DiceActions;
 
 export enum BaseColors {
   RED = 'RED',

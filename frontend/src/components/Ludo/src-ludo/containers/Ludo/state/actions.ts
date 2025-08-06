@@ -1,5 +1,5 @@
-import { Rolls } from 'containers/Dice/state/interfaces';
-import { IReduxAction, WalkwayPosition } from 'state/interfaces';
+import { Rolls } from '../../../containers/Dice/state/interfaces';
+import { IReduxAction, WalkwayPosition } from '../../../state/interfaces';
 
 import { IBase, ICell, ICoin, IState, IWalkway, BaseID } from './interfaces';
 

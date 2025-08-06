@@ -43,7 +43,7 @@ function * rollDieSaga() {
 function * watchForRollDieComplete() {
   while (true) {
     yield take(ActionTypes.ROLL_DIE_COMPLETE);
-    yield call(rollDieCompleteSaga);
+    yield call(rollDieCompleteSaga as any);
   }
 }
 

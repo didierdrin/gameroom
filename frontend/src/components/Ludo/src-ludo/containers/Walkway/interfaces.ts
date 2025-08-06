@@ -1,5 +1,5 @@
-import { CellType } from 'containers/Ludo/state/interfaces';
-import { WalkwayPosition } from 'state/interfaces';
+import { CellType } from '../../containers/Ludo/state/interfaces';
+import { WalkwayPosition } from '../../state/interfaces';
 
 export interface IContextMenuOptions {
   cellID: string,
