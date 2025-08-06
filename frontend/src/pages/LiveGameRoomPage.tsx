@@ -162,6 +162,7 @@ export const LiveGameRoomPage = () => {
       if (response.ok) {
         const data = await response.json();
         return data.token;
+        console.log("JWT from backend:", data.token); 
       } else {
         // Fallback: create a temporary token (not secure for production)
         console.warn('JWT generation endpoint not available, using fallback method');
