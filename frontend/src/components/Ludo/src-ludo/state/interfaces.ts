@@ -20,12 +20,14 @@ export enum BaseColors {
   YELLOW = 'YELLOW',
 }
 
-export enum WalkwayPosition {
-  NORTH = 'NORTH',
-  EAST = 'EAST',
-  WEST = 'WEST',
-  SOUTH = 'SOUTH',
-}
+// export enum WalkwayPosition {
+//   NORTH = 'NORTH',
+//   EAST = 'EAST',
+//   WEST = 'WEST',
+//   SOUTH = 'SOUTH',
+// }
+// Add to your interfaces file or at the top of sagas.ts
+export type WalkwayPosition = 'NORTH_WEST' | 'NORTH_EAST' | 'SOUTH_WEST' | 'SOUTH_EAST';
 
 export interface IApplicationState {
   ludo: ILudoState;
