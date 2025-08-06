@@ -146,16 +146,14 @@ export const LiveGameRoomPage = () => {
 
       // For demo purposes, we'll make a request to your backend
       // Replace this with your actual JWT generation endpoint
-      const response = await fetch('/api/generate-jwt', {
+      const response = await fetch('https://alu-globe-game-room-turn-server.onrender.com/token', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user?.id,
           userName: user?.username,
-          roomName: `gameroom-${roomId}`,
-          appId: JAAS_APP_ID
+          // avatar: `your-avatar-url`,
+          roomName: `gameroom-${roomId}`
         })
       });
 
