@@ -65,7 +65,7 @@ function * watchForGetInitialGameData() {
 
 function * getInitialGameDataSaga() {
   const data: IServerGameData = yield call(api.get as any, { url: '/initialGameData.json' });
-  console.log('Loaded data:', data); // Add this line for debugging
+  console.log('Loaded data:', data); 
   const basesArray = data.bases.map((base) => ({ ...base, spawnable: false }));
   const bases = mapByProperty(basesArray, 'ID');
   const coins = data.coins.map((coin) => ({ ...coin, color: bases[coin.baseID].color }));
@@ -81,22 +81,6 @@ function * getInitialGameDataSaga() {
   console.log('Processed game data:', gameData); // Add this line for debugging
   yield put(getInitialGameDataSuccess(gameData));
 }
-// function * getInitialGameDataSaga() {
-//   const data: IServerGameData = yield call(api.get as any, { url: '/initialGameData.json' });
-//   const basesArray = data.bases.map((base) => ({ ...base, spawnable: false }));
-//   const bases = mapByProperty(basesArray, 'ID');
-//   const coins = data.coins.map((coin) => ({ ...coin, color: bases[coin.baseID].color }));
-//   const gameData: IState = {
-//     bases,
-//     cells: data.cells,
-//     coins: mapByProperty(coins, 'coinID'),
-//     currentTurn: BaseID.BASE_3,
-//     links: data.links,
-//     relationships: data.relationships,
-//     walkways: mapByProperty(data.walkways, 'ID'),
-//   };
-//   yield put(getInitialGameDataSuccess(gameData));
-// }
 
 
 
