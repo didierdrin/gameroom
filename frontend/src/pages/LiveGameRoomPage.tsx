@@ -219,41 +219,35 @@ export const LiveGameRoomPage = () => {
   // JaaS Jitsi configuration
   const jitsiConfig = {
     roomName: generateRoomName(),
-    width: '100%',
-    height: '100%',
-    parentNode: jitsiContainerRef.current,
-    jwt: jwtToken, // Add JWT token for authentication
-    configOverwrite: {
-      // JaaS specific settings
-      startWithAudioMuted: true,
-      startWithVideoMuted: true,
-      prejoinPageEnabled: false,
-      disableDeepLinking: true,
-      disableInviteFunctions: true,
-      
-      // Audio/Video settings
-      constraints: {
-        video: {
-          height: { ideal: 480, max: 720, min: 240 },
-          width: { ideal: 640, max: 1280, min: 320 }
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      },
-      
-      // Connection settings
-      p2p: {
-        enabled: false
-      },
-      useStunTurn: true,
-      
-      // Remove lobby settings since we're using JWT
-      enableLobbyChat: false,
-      requireDisplayName: false,
+  width: '100%',
+  height: '100%',
+  parentNode: jitsiContainerRef.current,
+  jwt: jwtToken,
+  configOverwrite: {
+    startWithAudioMuted: true,
+    startWithVideoMuted: true,
+    prejoinPageEnabled: false,
+    disableDeepLinking: true,
+    disableInviteFunctions: true,
+    constraints: {
+      video: {
+        height: { ideal: 480, max: 720, min: 240 },
+        width: { ideal: 640, max: 1280, min: 320 }
+      }
     },
+    p2p: { enabled: false },
+    useStunTurn: true,
+    enableLobbyChat: false,
+    requireDisplayName: false,
+    // Add JaaS specific config
+    hosts: {
+      domain: '8x8.vc',
+      muc: 'conference.8x8.vc'
+    },
+    serviceUrl: 'https://8x8.vc/',
+    bosh: 'https://8x8.vc/http-bind',
+    clientNode: 'http://jitsi.org/jitsimeet'
+  },
     interfaceConfigOverwrite: {
       // Minimal toolbar for game integration
       TOOLBAR_BUTTONS: [

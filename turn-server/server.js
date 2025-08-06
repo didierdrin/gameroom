@@ -11,22 +11,44 @@ const JAAS_API_SECRET = 'vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c/bc8
 const JAAS_SUB = 'vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c';
 
 app.post('/token', (req, res) => {
-  const { roomName, userName } = req.body;
+  const { userId, userName, roomName } = req.body;
+
+  const header = {
+    alg: 'RS256',
+    kid: 'vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c/bc8b7e', // Your API key
+    typ: 'JWT'
+  };
 
   const payload = {
     aud: 'jitsi',
-    iss: JAAS_APP_ID,
-    sub: JAAS_SUB,
+    iss: 'chat',
+    sub: JAAS_APP_ID,
     room: roomName,
-    exp: Math.floor(Date.now() / 1000) + 60 * 60,
+    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 3, // 3 hours
+    nbf: Math.floor(Date.now() / 1000) - 10, // Not before 10 seconds ago
     context: {
       user: {
+        id: userId,
         name: userName || 'Guest',
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+        email: `${userId}@game.local`,
+        moderator: 'true'
       },
-    },
+      features: {
+        livestreaming: 'true',
+        recording: 'true',
+        transcription: 'true',
+        "outbound-call": 'true'
+      }
+    }
   };
 
-  const token = jwt.sign(payload, JAAS_API_SECRET, { algorithm: 'HS256' });
+  // Note: In production, you should sign with your private key
+  // This is just for demo purposes
+  const token = jwt.sign(payload, JAAS_API_SECRET, { 
+    algorithm: 'RS256',
+    header
+  });
 
   res.json({ token });
 });
