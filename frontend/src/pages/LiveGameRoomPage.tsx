@@ -156,7 +156,7 @@ export const LiveGameRoomPage = () => {
       JITSI_WATERMARK_LINK: '',
       // Remove problematic settings
       DISABLE_FOCUS_INDICATOR: false,
-      DISABLE_DOMINANT_SPEAKER_INDICATOR: false
+      DISABLE_DOMINANT_SPEAKER_INDICATOR: false,
       DISABLE_CHROME_EXTENSION_BANNER: true,
     },
     userInfo: {
