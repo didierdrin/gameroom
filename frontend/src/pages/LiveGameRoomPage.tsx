@@ -100,60 +100,69 @@ export const LiveGameRoomPage = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [jitsiApi, setJitsiApi] = useState<any>(null);
   const [jitsiLoaded, setJitsiLoaded] = useState(false);
+  const [jitsiError, setJitsiError] = useState<string | null>(null);
 
   const jitsiContainerRef = useRef<HTMLDivElement>(null);
 
   const gameType = gameState?.gameType || roomInfo?.gameType || "ludo";
 
   // Jitsi configuration
-  // Replace your current jitsiConfig with this:
-const jitsiConfig = {
-  roomName: `game-room-${roomId}-${user?.id}`,
-  width: '100%',
-  height: '100%',
-  parentNode: jitsiContainerRef.current,
-  configOverwrite: {
-    disableSimulcast: false,
-    startWithAudioMuted: false,
-    startWithVideoMuted: true,
-    enableNoAudioDetection: true,
-    enableNoisyMicDetection: true,
-    prejoinPageEnabled: false,
-    disableDeepLinking: true,
-    disableInviteFunctions: true,
-    p2p: {
-      enabled: false,
-    },
-    constraints: {
-      video: {
-        height: {
-          ideal: 720,
-          max: 720,
-          min: 240
+  const jitsiConfig = {
+    roomName: `game-room-${roomId}-${user?.id}`,
+    width: '100%',
+    height: '100%',
+    parentNode: jitsiContainerRef.current,
+    configOverwrite: {
+      disableSimulcast: false,
+      startWithAudioMuted: true,
+      startWithVideoMuted: true,
+      enableNoAudioDetection: true,
+      enableNoisyMicDetection: true,
+      prejoinPageEnabled: false,
+      disableDeepLinking: true,
+      disableInviteFunctions: true,
+      constraints: {
+        video: {
+          height: {
+            ideal: 720,
+            max: 720,
+            min: 240
+          }
         }
-      }
+      },
+      p2p: {
+        enabled: false
+      },
+      // Add this to prevent members-only room issues
+      hosts: {
+        domain: 'meet.jit.si',
+        muc: 'conference.meet.jit.si'
+      },
+      // Disable features causing errors
+      disableSpeakerStats: true,
+      disableRemoteMute: true
+    },
+    interfaceConfigOverwrite: {
+      DISABLE_VIDEO_BACKGROUND: true,
+      DEFAULT_BACKGROUND: '#1a1a2e',
+      TOOLBAR_BUTTONS: [
+        'microphone', 'camera', 'desktop',
+        'hangup', 'chat', 'settings'
+      ],
+      SHOW_JITSI_WATERMARK: false,
+      SHOW_WATERMARK_FOR_GUESTS: false,
+      SHOW_POWERED_BY: false,
+      SHOW_BRAND_WATERMARK: false,
+      JITSI_WATERMARK_LINK: '',
+      // Remove problematic settings
+      DISABLE_FOCUS_INDICATOR: false,
+      DISABLE_DOMINANT_SPEAKER_INDICATOR: false
+      DISABLE_CHROME_EXTENSION_BANNER: true,
+    },
+    userInfo: {
+      displayName: user?.username || 'Anonymous',
     }
-  },
-  interfaceConfigOverwrite: {
-    DISABLE_VIDEO_BACKGROUND: true,
-    DEFAULT_BACKGROUND: '#1a1a2e',
-    TOOLBAR_BUTTONS: [
-      'microphone', 'camera', 'desktop',
-      'hangup', 'chat', 'settings'
-    ],
-    SHOW_JITSI_WATERMARK: false,
-    SHOW_WATERMARK_FOR_GUESTS: false,
-    SHOW_POWERED_BY: false,
-    SHOW_BRAND_WATERMARK: false,
-    JITSI_WATERMARK_LINK: '',
-    SETTINGS_SECTIONS: ['devices', 'language', 'moderator', 'profile', 'calendar'],
-    DISABLE_FOCUS_INDICATOR: true,
-    DISABLE_DOMINANT_SPEAKER_INDICATOR: true,
-  },
-  userInfo: {
-    displayName: user?.username || 'Anonymous',
-  }
-};
+  };
   
 
   // Load Jitsi External API
@@ -170,14 +179,19 @@ useEffect(() => {
     script.async = true;
     script.onload = () => {
       setJitsiLoaded(true);
+      console.log('Jitsi script loaded successfully');
     };
-    script.onerror = () => {
-      console.error('Failed to load Jitsi External API');
+    script.onerror = (error) => {
+      console.error('Failed to load Jitsi script:', error);
+      alert('Failed to load video chat features. Please refresh the page.');
     };
     document.head.appendChild(script);
   };
 
-  loadJitsiScript();
+  // Only load if we need it
+  if (showVideoGrid) {
+    loadJitsiScript();
+  }
 
   return () => {
     // Cleanup
@@ -185,62 +199,52 @@ useEffect(() => {
       delete window.JitsiMeetExternalAPI;
     }
   };
-}, []);
+}, [showVideoGrid]);
 
   // Initialize Jitsi when needed
   const initializeJitsi = () => {
     if (!jitsiLoaded || !jitsiContainerRef.current || jitsiApi) return;
-
+  
     console.log('🎵 Initializing Jitsi Meet...');
     
     try {
       const api = new window.JitsiMeetExternalAPI("meet.jit.si", jitsiConfig);
-
-      // Jitsi event listeners
-      api.on('participantJoined', (participant: any) => {
-        console.log('👋 Participant joined:', participant);
-        updateParticipants();
+  
+      // Error handling
+      api.on('error', (error: any) => {
+        console.error('Jitsi error:', error);
+        if (error?.message?.includes('membersOnly')) {
+          alert('This room is members-only. Please contact the room owner for access.');
+        }
       });
-
-      api.on('participantLeft', (participant: any) => {
-        console.log('👋 Participant left:', participant);
-        updateParticipants();
-      });
-
-      api.on('audioMuteStatusChanged', (data: any) => {
-        console.log('🔊 Audio mute status changed:', data);
-        setAudioEnabled(!data.muted);
-      });
-
-      api.on('videoMuteStatusChanged', (data: any) => {
-        console.log('📹 Video mute status changed:', data);
-        setVideoEnabled(!data.muted);
-      });
-
-      api.on('screenShareStatusChanged', (data: any) => {
-        console.log('🖥️ Screen share status changed:', data);
-        setIsScreenSharing(data.on);
-      });
-
+  
       api.on('readyToClose', () => {
         console.log('🔌 Jitsi ready to close');
-        setInAudioCall(false);
+        cleanupJitsi();
       });
-
+  
+      // Keep your existing event listeners
+      api.on('participantJoined', updateParticipants);
+      api.on('participantLeft', updateParticipants);
+      api.on('audioMuteStatusChanged', (data: any) => {
+        setAudioEnabled(!data.muted);
+      });
+      api.on('videoMuteStatusChanged', (data: any) => {
+        setVideoEnabled(!data.muted);
+      });
+      api.on('screenShareStatusChanged', (data: any) => {
+        setIsScreenSharing(data.on);
+      });
+  
       setJitsiApi(api);
       setInAudioCall(true);
-      
-      // Update media availability
-      setMediaAvailable({
-        audio: true,
-        video: true,
-      });
-
-      // Initialize participant list
+      setMediaAvailable({ audio: true, video: true });
       updateParticipants();
-
+  
     } catch (error) {
       console.error('❌ Error initializing Jitsi:', error);
+      alert('Failed to initialize video call. Please try again.');
+      cleanupJitsi();
     }
   };
 
@@ -289,18 +293,21 @@ useEffect(() => {
 
   // Media control functions
   const toggleAudioCall = async () => {
+    setJitsiError(null); // Reset error state
+    
     if (!inAudioCall) {
       console.log("🎵 Joining audio/video call...");
       if (jitsiLoaded) {
         initializeJitsi();
       } else {
-        alert('Jitsi is still loading. Please wait a moment and try again.');
+        setJitsiError('Jitsi is still loading. Please wait a moment and try again.');
       }
     } else {
       console.log("🎵 Leaving audio/video call...");
       cleanupJitsi();
     }
   };
+  
 
   const toggleMute = () => {
     if (jitsiApi) {
