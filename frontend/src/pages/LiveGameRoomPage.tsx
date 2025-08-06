@@ -101,151 +101,257 @@ export const LiveGameRoomPage = () => {
   const [jitsiApi, setJitsiApi] = useState<any>(null);
   const [jitsiLoaded, setJitsiLoaded] = useState(false);
   const [jitsiError, setJitsiError] = useState<string | null>(null);
+  const [isJitsiInitializing, setIsJitsiInitializing] = useState(false);
+
 
   const jitsiContainerRef = useRef<HTMLDivElement>(null);
 
   const gameType = gameState?.gameType || roomInfo?.gameType || "ludo";
 
-  // Jitsi configuration
+   // Generate a cleaner room name to avoid membersOnly issues
+   const generateRoomName = () => {
+    // Use a simpler room name format to avoid conflicts
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 8);
+    return `gameroom-${roomId}-${randomId}-${timestamp}`;
+  };
+
+  // Improved Jitsi configuration
   const jitsiConfig = {
-    roomName: `game-room-${roomId}-${user?.id}`,
+    roomName: generateRoomName(),
     width: '100%',
     height: '100%',
     parentNode: jitsiContainerRef.current,
     configOverwrite: {
-      disableSimulcast: false,
-      startWithAudioMuted: true,
-      startWithVideoMuted: true,
-      enableNoAudioDetection: true,
-      enableNoisyMicDetection: true,
-      prejoinPageEnabled: false,
-      disableDeepLinking: true,
-      disableInviteFunctions: true,
-      constraints: {
-        video: {
-          height: {
-            ideal: 720,
-            max: 720,
-            min: 240
-          }
-        }
-      },
+      // Disable p2p to avoid connection issues
       p2p: {
         enabled: false
       },
-      // Add this to prevent members-only room issues
-      hosts: {
-        domain: 'meet.jit.si',
-        muc: 'conference.meet.jit.si'
+      // Start with media muted
+      startWithAudioMuted: true,
+      startWithVideoMuted: true,
+      // Disable problematic features
+      prejoinPageEnabled: false,
+      disableDeepLinking: true,
+      disableInviteFunctions: true,
+      disableSimulcast: false,
+      
+      // Audio/Video constraints
+      constraints: {
+        video: {
+          height: { ideal: 480, max: 720, min: 240 },
+          width: { ideal: 640, max: 1280, min: 320 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true
+        }
       },
-      // Disable features causing errors
-      disableSpeakerStats: true,
-      disableRemoteMute: true
+      
+      // Connection settings
+      useStunTurn: true,
+      
+      // Lobby and security settings - IMPORTANT FIX
+      enableLobbyChat: false,
+      requireDisplayName: false,
+      
+      // Remove hosts config that might cause membersOnly issues
+      // The default Jitsi server settings should handle this automatically
     },
     interfaceConfigOverwrite: {
-      DISABLE_VIDEO_BACKGROUND: true,
-      DEFAULT_BACKGROUND: '#1a1a2e',
+      // Minimal toolbar
       TOOLBAR_BUTTONS: [
         'microphone', 'camera', 'desktop',
-        'hangup', 'chat', 'settings'
+        'hangup', 'settings'
       ],
+      
+      // Disable branding
       SHOW_JITSI_WATERMARK: false,
       SHOW_WATERMARK_FOR_GUESTS: false,
       SHOW_POWERED_BY: false,
       SHOW_BRAND_WATERMARK: false,
-      JITSI_WATERMARK_LINK: '',
-      // Remove problematic settings
+      
+      // UI settings
+      DEFAULT_BACKGROUND: '#1a1a2e',
+      DISABLE_VIDEO_BACKGROUND: true,
+      DISABLE_CHROME_EXTENSION_BANNER: true,
       DISABLE_FOCUS_INDICATOR: false,
       DISABLE_DOMINANT_SPEAKER_INDICATOR: false,
-      DISABLE_CHROME_EXTENSION_BANNER: true,
+      
+      // Hide problematic elements
+      SETTINGS_SECTIONS: ['devices', 'language'],
+      HIDE_INVITE_MORE_HEADER: true,
     },
     userInfo: {
-      displayName: user?.username || 'Anonymous',
+      displayName: user?.username || `Player-${Date.now().toString().slice(-4)}`,
     }
   };
-  
 
-  // Load Jitsi External API
-  // Replace your current useEffect for loading Jitsi with this:
-useEffect(() => {
-  const loadJitsiScript = () => {
-    if (window.JitsiMeetExternalAPI) {
-      setJitsiLoaded(true);
+  // Load Jitsi External API with better error handling
+  useEffect(() => {
+    const loadJitsiScript = async () => {
+      if (window.JitsiMeetExternalAPI) {
+        setJitsiLoaded(true);
+        return;
+      }
+
+      try {
+        console.log('🔄 Loading Jitsi script...');
+        
+        // Remove any existing script first
+        const existingScript = document.querySelector('script[src*="external_api.js"]');
+        if (existingScript) {
+          existingScript.remove();
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://meet.jit.si/external_api.js';
+        script.async = true;
+        script.crossOrigin = 'anonymous';
+        
+        const loadPromise = new Promise((resolve, reject) => {
+          script.onload = () => {
+            console.log('✅ Jitsi script loaded successfully');
+            setJitsiLoaded(true);
+            setJitsiError(null);
+            resolve(true);
+          };
+          
+          script.onerror = (error) => {
+            console.error('❌ Failed to load Jitsi script:', error);
+            setJitsiError('Failed to load video chat. Please check your connection.');
+            reject(error);
+          };
+        });
+
+        document.head.appendChild(script);
+        await loadPromise;
+        
+      } catch (error) {
+        console.error('❌ Error loading Jitsi:', error);
+        setJitsiError('Failed to initialize video chat');
+      }
+    };
+
+    loadJitsiScript();
+
+    // Cleanup on unmount
+    return () => {
+      const script = document.querySelector('script[src*="external_api.js"]');
+      if (script) {
+        script.remove();
+      }
+    };
+  }, []);
+
+  // Initialize Jitsi when needed with better error handling
+  const initializeJitsi = async () => {
+    if (!jitsiLoaded || !jitsiContainerRef.current || jitsiApi || isJitsiInitializing) {
+      console.log('❌ Cannot initialize Jitsi:', { jitsiLoaded, hasContainer: !!jitsiContainerRef.current, hasApi: !!jitsiApi, isInitializing: isJitsiInitializing });
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = 'https://meet.jit.si/external_api.js';
-    script.async = true;
-    script.onload = () => {
-      setJitsiLoaded(true);
-      console.log('Jitsi script loaded successfully');
-    };
-    script.onerror = (error) => {
-      console.error('Failed to load Jitsi script:', error);
-      alert('Failed to load video chat features. Please refresh the page.');
-    };
-    document.head.appendChild(script);
-  };
-
-  // Only load if we need it
-  if (showVideoGrid) {
-    loadJitsiScript();
-  }
-
-  return () => {
-    // Cleanup
-    if (window.JitsiMeetExternalAPI) {
-      delete window.JitsiMeetExternalAPI;
-    }
-  };
-}, [showVideoGrid]);
-
-  // Initialize Jitsi when needed
-  const initializeJitsi = () => {
-    if (!jitsiLoaded || !jitsiContainerRef.current || jitsiApi) return;
-  
-    console.log('🎵 Initializing Jitsi Meet...');
+    setIsJitsiInitializing(true);
+    setJitsiError(null);
     
     try {
+      console.log('🎵 Initializing Jitsi Meet with config:', jitsiConfig.roomName);
+      
       const api = new window.JitsiMeetExternalAPI("meet.jit.si", jitsiConfig);
-  
-      // Error handling
-      api.on('error', (error: any) => {
-        console.error('Jitsi error:', error);
-        if (error?.message?.includes('membersOnly')) {
-          alert('This room is members-only. Please contact the room owner for access.');
-        }
-      });
-  
+
+      // Set up event listeners with better error handling
       api.on('readyToClose', () => {
         console.log('🔌 Jitsi ready to close');
         cleanupJitsi();
       });
-  
-      // Keep your existing event listeners
-      api.on('participantJoined', updateParticipants);
-      api.on('participantLeft', updateParticipants);
+
+      api.on('videoConferenceJoined', (data: any) => {
+        console.log('✅ Successfully joined video conference:', data);
+        setInAudioCall(true);
+        setMediaAvailable({ audio: true, video: true });
+        setIsJitsiInitializing(false);
+        updateParticipants();
+      });
+
+      api.on('videoConferenceLeft', (data: any) => {
+        console.log('👋 Left video conference:', data);
+        cleanupJitsi();
+      });
+
+      // Enhanced error handling
+      api.on('errorOccurred', (error: any) => {
+        console.error('❌ Jitsi error occurred:', error);
+        handleJitsiError(error);
+      });
+
+      // Participant events
+      api.on('participantJoined', (data: any) => {
+        console.log('👤 Participant joined:', data);
+        updateParticipants();
+      });
+
+      api.on('participantLeft', (data: any) => {
+        console.log('👤 Participant left:', data);
+        updateParticipants();
+      });
+
+      // Media events
       api.on('audioMuteStatusChanged', (data: any) => {
+        console.log('🎤 Audio mute changed:', data);
         setAudioEnabled(!data.muted);
       });
+
       api.on('videoMuteStatusChanged', (data: any) => {
+        console.log('📹 Video mute changed:', data);
         setVideoEnabled(!data.muted);
       });
+
       api.on('screenShareStatusChanged', (data: any) => {
+        console.log('🖥️ Screen share changed:', data);
         setIsScreenSharing(data.on);
       });
-  
+
       setJitsiApi(api);
-      setInAudioCall(true);
-      setMediaAvailable({ audio: true, video: true });
-      updateParticipants();
-  
+      
+      // Set a timeout to handle cases where the join event doesn't fire
+      setTimeout(() => {
+        if (isJitsiInitializing) {
+          console.log('⚠️ Jitsi initialization taking longer than expected');
+          setIsJitsiInitializing(false);
+          // Don't clean up here, let it continue trying
+        }
+      }, 10000);
+
     } catch (error) {
       console.error('❌ Error initializing Jitsi:', error);
-      alert('Failed to initialize video call. Please try again.');
+      setJitsiError('Failed to initialize video call. Please try again.');
+      setIsJitsiInitializing(false);
       cleanupJitsi();
     }
+  };
+
+  // Handle Jitsi errors more specifically
+  const handleJitsiError = (error: any) => {
+    console.error('Jitsi error details:', error);
+    
+    if (error?.message?.includes('membersOnly') || error?.message?.includes('conference.connectionError.membersOnly')) {
+      setJitsiError('Room access restricted. Trying with a different room...');
+      // Try to rejoin with a new room name
+      setTimeout(() => {
+        cleanupJitsi();
+        if (inAudioCall) {
+          initializeJitsi();
+        }
+      }, 2000);
+    } else if (error?.message?.includes('connection') || error?.message?.includes('network')) {
+      setJitsiError('Network connection issue. Please check your internet connection.');
+    } else if (error?.message?.includes('media') || error?.message?.includes('permission')) {
+      setJitsiError('Media permission denied. Please allow camera/microphone access.');
+    } else {
+      setJitsiError('Video call error occurred. Please try again.');
+    }
+    
+    setIsJitsiInitializing(false);
   };
 
   // Update participants from Jitsi
@@ -254,7 +360,7 @@ useEffect(() => {
 
     try {
       const jitsiParticipants = jitsiApi.getParticipantsInfo();
-      console.log('👥 Jitsi participants:', jitsiParticipants);
+      console.log('👥 Updating participants:', jitsiParticipants);
 
       const updatedParticipants: Participant[] = jitsiParticipants.map((p: any) => ({
         id: p.participantId || p.id,
@@ -273,41 +379,49 @@ useEffect(() => {
     }
   };
 
-  // Clean up Jitsi
+  // Clean up Jitsi with better cleanup
   const cleanupJitsi = () => {
+    console.log('🧹 Cleaning up Jitsi...');
+    
     if (jitsiApi) {
-      console.log('🧹 Cleaning up Jitsi...');
       try {
         jitsiApi.dispose();
       } catch (error) {
-        console.error('Error disposing Jitsi:', error);
+        console.error('Error disposing Jitsi API:', error);
       }
       setJitsiApi(null);
     }
+    
     setParticipants([]);
     setInAudioCall(false);
     setAudioEnabled(false);
     setVideoEnabled(false);
     setIsScreenSharing(false);
+    setIsJitsiInitializing(false);
+    setJitsiError(null);
   };
 
-  // Media control functions
+  // Media control functions with loading states
   const toggleAudioCall = async () => {
-    setJitsiError(null); // Reset error state
+    if (isJitsiInitializing) {
+      console.log('⚠️ Jitsi is already initializing...');
+      return;
+    }
+
+    setJitsiError(null);
     
     if (!inAudioCall) {
       console.log("🎵 Joining audio/video call...");
       if (jitsiLoaded) {
-        initializeJitsi();
+        await initializeJitsi();
       } else {
-        setJitsiError('Jitsi is still loading. Please wait a moment and try again.');
+        setJitsiError('Video chat is still loading. Please wait a moment and try again.');
       }
     } else {
       console.log("🎵 Leaving audio/video call...");
       cleanupJitsi();
     }
   };
-  
 
   const toggleMute = () => {
     if (jitsiApi) {
@@ -328,12 +442,10 @@ useEffect(() => {
   };
 
   const toggleDeafen = () => {
-    // Jitsi doesn't have a native deafen function, but we can simulate it
     const newDeafened = !isDeafened;
     setIsDeafened(newDeafened);
     
     if (jitsiApi) {
-      // We can't truly deafen in Jitsi, but we can mute our own audio as a workaround
       if (newDeafened && audioEnabled) {
         jitsiApi.executeCommand('toggleAudio');
       }
