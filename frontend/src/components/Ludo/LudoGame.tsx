@@ -42,7 +42,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   return (
     <Provider store={store}>
       <Ludo />
-    </Provider>
+   </Provider> 
   );
 };
 

@@ -149,6 +149,8 @@ class LudoBare extends React.PureComponent<IProps, IState> {
 }
 
 export const Ludo = connect(mapStateToProps, mapDispatchToProps)(LudoBare) as unknown as React.ComponentClass<IPublicProps>;
+
+
 // import React from 'react';
 // import { connect } from 'react-redux';
 // import { createStructuredSelector } from 'reselect';
