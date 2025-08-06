@@ -846,7 +846,8 @@ export const LiveGameRoomPage = () => {
     switch (lowerCaseGameType) {
       case "ludo":
         return (
-          <div className="relative w-full h-full">
+          // className="relative w-full h-full"
+          <div > 
             <LudoGame
               gameState={gameState}
               currentPlayer={user!.id}
@@ -856,7 +857,7 @@ export const LiveGameRoomPage = () => {
               socket={socket!}
               roomId={roomId!}
             />
-            {gameState.currentTurn === user?.id &&
+            {/* {gameState.currentTurn === user?.id &&
               typeof gameState.diceValue === "number" && (
                 <div className="absolute bottom-4 right-4">
                   <Dice
@@ -865,7 +866,7 @@ export const LiveGameRoomPage = () => {
                     disabled={gameState.diceRolled && gameState.diceValue !== 6}
                   />
                 </div>
-              )}
+              )} */}
           </div>
         );
       case "trivia":
