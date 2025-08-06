@@ -113,7 +113,7 @@ const generateRoomName = () => {
   // Use a simpler room name format to avoid conflicts
   const timestamp = Date.now();
   const randomId = Math.random().toString(36).substring(2, 8);
-  return `gameroom-${roomId}-${randomId}-${timestamp}`;
+  return `gameroom-${roomId}`;  // return `gameroom-${roomId}-${randomId}-${timestamp}`;
 };
 
 // Improved Jitsi configuration
