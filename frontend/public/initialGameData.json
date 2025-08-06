@@ -202,22 +202,22 @@
   "walkways": [
     {
       "ID": "WALKWAY_1",
-      "position": "NORTH_WEST",
+      "position": "WEST",
       "baseID": "BASE_1"
     },
     {
       "ID": "WALKWAY_2",
-      "position": "NORTH_EAST",
+      "position": "NORTH",
       "baseID": "BASE_2"
     },
     {
       "ID": "WALKWAY_3",
-      "position": "SOUTH_WEST",
+      "position": "EAST",
       "baseID": "BASE_3"
     },
     {
       "ID": "WALKWAY_4",
-      "position": "SOUTH_EAST",
+      "position": "SOUTH",
       "baseID": "BASE_4"
     }
   ],
@@ -266,374 +266,731 @@
     }
   ],
   "cells": {
-    "NORTH_WEST": {
-      "NW_0_0": {
+    "WEST": {
+      "WEST_0_0": {
         "baseID": "BASE_1",
-        "cellID": "NW_0_0",
+        "cellID": "WEST_0_0",
         "column": 0,
-        "position": "NORTH_WEST",
+        "position": "WEST",
         "row": 0,
         "cellType": "SPAWN",
         "coinIDs": []
       },
-      "NW_0_1": {
+      "WEST_0_1": {
         "baseID": "BASE_1",
-        "cellID": "NW_0_1",
+        "cellID": "WEST_0_1",
         "column": 1,
-        "position": "NORTH_WEST",
+        "position": "WEST",
         "row": 0,
         "cellType": "NORMAL",
         "coinIDs": []
       },
-      "NW_0_2": {
+      "WEST_0_2": {
         "baseID": "BASE_1",
-        "cellID": "NW_0_2",
+        "cellID": "WEST_0_2",
         "column": 2,
-        "position": "NORTH_WEST",
+        "position": "WEST",
         "row": 0,
         "cellType": "NORMAL",
         "coinIDs": []
       },
-      "NW_1_0": {
+      "WEST_0_3": {
         "baseID": "BASE_1",
-        "cellID": "NW_1_0",
+        "cellID": "WEST_0_3",
+        "column": 3,
+        "position": "WEST",
+        "row": 0,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "WEST_0_4": {
+        "baseID": "BASE_1",
+        "cellID": "WEST_0_4",
+        "column": 4,
+        "position": "WEST",
+        "row": 0,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "WEST_0_5": {
+        "baseID": "BASE_1",
+        "cellID": "WEST_0_5",
+        "column": 5,
+        "position": "WEST",
+        "row": 0,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "WEST_1_0": {
+        "baseID": "BASE_1",
+        "cellID": "WEST_1_0",
         "column": 0,
-        "position": "NORTH_WEST",
+        "position": "WEST",
         "row": 1,
         "cellType": "HOMEPATH",
         "coinIDs": []
       },
-      "NW_1_1": {
+      "WEST_1_1": {
         "baseID": "BASE_1",
-        "cellID": "NW_1_1",
+        "cellID": "WEST_1_1",
         "column": 1,
-        "position": "NORTH_WEST",
+        "position": "WEST",
         "row": 1,
         "cellType": "HOMEPATH",
         "coinIDs": []
       },
-      "NW_1_2": {
+      "WEST_1_2": {
         "baseID": "BASE_1",
-        "cellID": "NW_1_2",
+        "cellID": "WEST_1_2",
         "column": 2,
-        "position": "NORTH_WEST",
+        "position": "WEST",
+        "row": 1,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "WEST_1_3": {
+        "baseID": "BASE_1",
+        "cellID": "WEST_1_3",
+        "column": 3,
+        "position": "WEST",
+        "row": 1,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "WEST_1_4": {
+        "baseID": "BASE_1",
+        "cellID": "WEST_1_4",
+        "column": 4,
+        "position": "WEST",
+        "row": 1,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "WEST_1_5": {
+        "baseID": "BASE_1",
+        "cellID": "WEST_1_5",
+        "column": 5,
+        "position": "WEST",
         "row": 1,
         "cellType": "STAR",
         "coinIDs": []
       },
-      "NW_2_0": {
+      "WEST_2_0": {
         "baseID": "BASE_1",
-        "cellID": "NW_2_0",
+        "cellID": "WEST_2_0",
         "column": 0,
-        "position": "NORTH_WEST",
+        "position": "WEST",
         "row": 2,
-        "cellType": "HOMEPATH",
+        "cellType": "NORMAL",
         "coinIDs": []
       },
-      "NW_2_1": {
+      "WEST_2_1": {
         "baseID": "BASE_1",
-        "cellID": "NW_2_1",
+        "cellID": "WEST_2_1",
         "column": 1,
-        "position": "NORTH_WEST",
+        "position": "WEST",
         "row": 2,
-        "cellType": "HOMEPATH",
+        "cellType": "NORMAL",
         "coinIDs": []
       },
-      "NW_2_2": {
+      "WEST_2_2": {
         "baseID": "BASE_1",
-        "cellID": "NW_2_2",
+        "cellID": "WEST_2_2",
         "column": 2,
-        "position": "NORTH_WEST",
+        "position": "WEST",
+        "row": 2,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "WEST_2_3": {
+        "baseID": "BASE_1",
+        "cellID": "WEST_2_3",
+        "column": 3,
+        "position": "WEST",
+        "row": 2,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "WEST_2_4": {
+        "baseID": "BASE_1",
+        "cellID": "WEST_2_4",
+        "column": 4,
+        "position": "WEST",
+        "row": 2,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "WEST_2_5": {
+        "baseID": "BASE_1",
+        "cellID": "WEST_2_5",
+        "column": 5,
+        "position": "WEST",
         "row": 2,
         "cellType": "NORMAL",
         "coinIDs": []
       }
     },
-    "NORTH_EAST": {
-      "NE_0_0": {
+    "NORTH": {
+      "NORTH_0_0": {
         "baseID": "BASE_2",
-        "cellID": "NE_0_0",
+        "cellID": "NORTH_0_0",
         "column": 0,
-        "position": "NORTH_EAST",
+        "position": "NORTH",
         "row": 0,
         "cellType": "NORMAL",
         "coinIDs": []
       },
-      "NE_0_1": {
+      "NORTH_0_1": {
         "baseID": "BASE_2",
-        "cellID": "NE_0_1",
+        "cellID": "NORTH_0_1",
         "column": 1,
-        "position": "NORTH_EAST",
+        "position": "NORTH",
         "row": 0,
         "cellType": "NORMAL",
         "coinIDs": []
       },
-      "NE_0_2": {
+      "NORTH_0_2": {
         "baseID": "BASE_2",
-        "cellID": "NE_0_2",
+        "cellID": "NORTH_0_2",
         "column": 2,
-        "position": "NORTH_EAST",
+        "position": "NORTH",
         "row": 0,
-        "cellType": "SPAWN",
+        "cellType": "NORMAL",
         "coinIDs": []
       },
-      "NE_1_0": {
+      "NORTH_1_0": {
         "baseID": "BASE_2",
-        "cellID": "NE_1_0",
+        "cellID": "NORTH_1_0",
         "column": 0,
-        "position": "NORTH_EAST",
+        "position": "NORTH",
         "row": 1,
         "cellType": "STAR",
         "coinIDs": []
       },
-      "NE_1_1": {
+      "NORTH_1_1": {
         "baseID": "BASE_2",
-        "cellID": "NE_1_1",
+        "cellID": "NORTH_1_1",
         "column": 1,
-        "position": "NORTH_EAST",
+        "position": "NORTH",
         "row": 1,
         "cellType": "HOMEPATH",
         "coinIDs": []
       },
-      "NE_1_2": {
+      "NORTH_1_2": {
         "baseID": "BASE_2",
-        "cellID": "NE_1_2",
+        "cellID": "NORTH_1_2",
         "column": 2,
-        "position": "NORTH_EAST",
+        "position": "NORTH",
         "row": 1,
-        "cellType": "HOMEPATH",
+        "cellType": "SPAWN",
         "coinIDs": []
       },
-      "NE_2_0": {
+      "NORTH_2_0": {
         "baseID": "BASE_2",
-        "cellID": "NE_2_0",
+        "cellID": "NORTH_2_0",
         "column": 0,
-        "position": "NORTH_EAST",
+        "position": "NORTH",
         "row": 2,
         "cellType": "NORMAL",
         "coinIDs": []
       },
-      "NE_2_1": {
+      "NORTH_2_1": {
         "baseID": "BASE_2",
-        "cellID": "NE_2_1",
+        "cellID": "NORTH_2_1",
         "column": 1,
-        "position": "NORTH_EAST",
+        "position": "NORTH",
         "row": 2,
         "cellType": "HOMEPATH",
         "coinIDs": []
       },
-      "NE_2_2": {
+      "NORTH_2_2": {
         "baseID": "BASE_2",
-        "cellID": "NE_2_2",
+        "cellID": "NORTH_2_2",
         "column": 2,
-        "position": "NORTH_EAST",
+        "position": "NORTH",
+        "row": 2,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "NORTH_3_0": {
+        "baseID": "BASE_2",
+        "cellID": "NORTH_3_0",
+        "column": 0,
+        "position": "NORTH",
+        "row": 3,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "NORTH_3_1": {
+        "baseID": "BASE_2",
+        "cellID": "NORTH_3_1",
+        "column": 1,
+        "position": "NORTH",
+        "row": 3,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "NORTH_3_2": {
+        "baseID": "BASE_2",
+        "cellID": "NORTH_3_2",
+        "column": 2,
+        "position": "NORTH",
+        "row": 3,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "NORTH_4_0": {
+        "baseID": "BASE_2",
+        "cellID": "NORTH_4_0",
+        "column": 0,
+        "position": "NORTH",
+        "row": 4,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "NORTH_4_1": {
+        "baseID": "BASE_2",
+        "cellID": "NORTH_4_1",
+        "column": 1,
+        "position": "NORTH",
+        "row": 4,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "NORTH_4_2": {
+        "baseID": "BASE_2",
+        "cellID": "NORTH_4_2",
+        "column": 2,
+        "position": "NORTH",
+        "row": 4,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "NORTH_5_0": {
+        "baseID": "BASE_2",
+        "cellID": "NORTH_5_0",
+        "column": 0,
+        "position": "NORTH",
+        "row": 5,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "NORTH_5_1": {
+        "baseID": "BASE_2",
+        "cellID": "NORTH_5_1",
+        "column": 1,
+        "position": "NORTH",
+        "row": 5,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "NORTH_5_2": {
+        "baseID": "BASE_2",
+        "cellID": "NORTH_5_2",
+        "column": 2,
+        "position": "NORTH",
+        "row": 5,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      }
+    },
+    "EAST": {
+      "EAST_0_0": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_0_0",
+        "column": 0,
+        "position": "EAST",
+        "row": 0,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_0_1": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_0_1",
+        "column": 1,
+        "position": "EAST",
+        "row": 0,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_0_2": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_0_2",
+        "column": 2,
+        "position": "EAST",
+        "row": 0,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_0_3": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_0_3",
+        "column": 3,
+        "position": "EAST",
+        "row": 0,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_0_4": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_0_4",
+        "column": 4,
+        "position": "EAST",
+        "row": 0,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_0_5": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_0_5",
+        "column": 5,
+        "position": "EAST",
+        "row": 0,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_1_0": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_1_0",
+        "column": 0,
+        "position": "EAST",
+        "row": 1,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_1_1": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_1_1",
+        "column": 1,
+        "position": "EAST",
+        "row": 1,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_1_2": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_1_2",
+        "column": 2,
+        "position": "EAST",
+        "row": 1,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_1_3": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_1_3",
+        "column": 3,
+        "position": "EAST",
+        "row": 1,
+        "cellType": "STAR",
+        "coinIDs": []
+      },
+      "EAST_1_4": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_1_4",
+        "column": 4,
+        "position": "EAST",
+        "row": 1,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "EAST_1_5": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_1_5",
+        "column": 5,
+        "position": "EAST",
+        "row": 1,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "EAST_2_0": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_2_0",
+        "column": 0,
+        "position": "EAST",
+        "row": 2,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_2_1": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_2_1",
+        "column": 1,
+        "position": "EAST",
+        "row": 2,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "EAST_2_2": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_2_2",
+        "column": 2,
+        "position": "EAST",
+        "row": 2,
+        "cellType": "SPAWN",
+        "coinIDs": []
+      },
+      "EAST_2_3": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_2_3",
+        "column": 3,
+        "position": "EAST",
+        "row": 2,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "EAST_2_4": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_2_4",
+        "column": 4,
+        "position": "EAST",
+        "row": 2,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "EAST_2_5": {
+        "baseID": "BASE_3",
+        "cellID": "EAST_2_5",
+        "column": 5,
+        "position": "EAST",
         "row": 2,
         "cellType": "HOMEPATH",
         "coinIDs": []
       }
     },
-    "SOUTH_WEST": {
-      "SW_0_0": {
-        "baseID": "BASE_3",
-        "cellID": "SW_0_0",
+    "SOUTH": {
+      "SOUTH_0_0": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_0_0",
         "column": 0,
-        "position": "SOUTH_WEST",
+        "position": "SOUTH",
         "row": 0,
         "cellType": "NORMAL",
         "coinIDs": []
       },
-      "SW_0_1": {
-        "baseID": "BASE_3",
-        "cellID": "SW_0_1",
+      "SOUTH_0_1": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_0_1",
         "column": 1,
-        "position": "SOUTH_WEST",
+        "position": "SOUTH",
         "row": 0,
         "cellType": "HOMEPATH",
         "coinIDs": []
       },
-      "SW_0_2": {
-        "baseID": "BASE_3",
-        "cellID": "SW_0_2",
+      "SOUTH_0_2": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_0_2",
         "column": 2,
-        "position": "SOUTH_WEST",
+        "position": "SOUTH",
         "row": 0,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "SOUTH_1_0": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_1_0",
+        "column": 0,
+        "position": "SOUTH",
+        "row": 1,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "SOUTH_1_1": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_1_1",
+        "column": 1,
+        "position": "SOUTH",
+        "row": 1,
         "cellType": "HOMEPATH",
         "coinIDs": []
       },
-      "SW_1_0": {
-        "baseID": "BASE_3",
-        "cellID": "SW_1_0",
-        "column": 0,
-        "position": "SOUTH_WEST",
+      "SOUTH_1_2": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_1_2",
+        "column": 2,
+        "position": "SOUTH",
         "row": 1,
         "cellType": "STAR",
         "coinIDs": []
       },
-      "SW_1_1": {
-        "baseID": "BASE_3",
-        "cellID": "SW_1_1",
-        "column": 1,
-        "position": "SOUTH_WEST",
-        "row": 1,
-        "cellType": "HOMEPATH",
-        "coinIDs": []
-      },
-      "SW_1_2": {
-        "baseID": "BASE_3",
-        "cellID": "SW_1_2",
-        "column": 2,
-        "position": "SOUTH_WEST",
-        "row": 1,
-        "cellType": "HOMEPATH",
-        "coinIDs": []
-      },
-      "SW_2_0": {
-        "baseID": "BASE_3",
-        "cellID": "SW_2_0",
+      "SOUTH_2_0": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_2_0",
         "column": 0,
-        "position": "SOUTH_WEST",
+        "position": "SOUTH",
         "row": 2,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "SOUTH_2_1": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_2_1",
+        "column": 1,
+        "position": "SOUTH",
+        "row": 2,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "SOUTH_2_2": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_2_2",
+        "column": 2,
+        "position": "SOUTH",
+        "row": 2,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "SOUTH_3_0": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_3_0",
+        "column": 0,
+        "position": "SOUTH",
+        "row": 3,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "SOUTH_3_1": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_3_1",
+        "column": 1,
+        "position": "SOUTH",
+        "row": 3,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "SOUTH_3_2": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_3_2",
+        "column": 2,
+        "position": "SOUTH",
+        "row": 3,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "SOUTH_4_0": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_4_0",
+        "column": 0,
+        "position": "SOUTH",
+        "row": 4,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "SOUTH_4_1": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_4_1",
+        "column": 1,
+        "position": "SOUTH",
+        "row": 4,
+        "cellType": "HOMEPATH",
+        "coinIDs": []
+      },
+      "SOUTH_4_2": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_4_2",
+        "column": 2,
+        "position": "SOUTH",
+        "row": 4,
+        "cellType": "NORMAL",
+        "coinIDs": []
+      },
+      "SOUTH_5_0": {
+        "baseID": "BASE_4",
+        "cellID": "SOUTH_5_0",
+        "column": 0,
+        "position": "SOUTH",
+        "row": 5,
         "cellType": "SPAWN",
         "coinIDs": []
       },
-      "SW_2_1": {
-        "baseID": "BASE_3",
-        "cellID": "SW_2_1",
-        "column": 1,
-        "position": "SOUTH_WEST",
-        "row": 2,
-        "cellType": "NORMAL",
-        "coinIDs": []
-      },
-      "SW_2_2": {
-        "baseID": "BASE_3",
-        "cellID": "SW_2_2",
-        "column": 2,
-        "position": "SOUTH_WEST",
-        "row": 2,
-        "cellType": "NORMAL",
-        "coinIDs": []
-      }
-    },
-    "SOUTH_EAST": {
-      "SE_0_0": {
+      "SOUTH_5_1": {
         "baseID": "BASE_4",
-        "cellID": "SE_0_0",
-        "column": 0,
-        "position": "SOUTH_EAST",
-        "row": 0,
+        "cellID": "SOUTH_5_1",
+        "column": 1,
+        "position": "SOUTH",
+        "row": 5,
         "cellType": "HOMEPATH",
         "coinIDs": []
       },
-      "SE_0_1": {
+      "SOUTH_5_2": {
         "baseID": "BASE_4",
-        "cellID": "SE_0_1",
-        "column": 1,
-        "position": "SOUTH_EAST",
-        "row": 0,
-        "cellType": "HOMEPATH",
-        "coinIDs": []
-      },
-      "SE_0_2": {
-        "baseID": "BASE_4",
-        "cellID": "SE_0_2",
+        "cellID": "SOUTH_5_2",
         "column": 2,
-        "position": "SOUTH_EAST",
-        "row": 0,
+        "position": "SOUTH",
+        "row": 5,
         "cellType": "NORMAL",
-        "coinIDs": []
-      },
-      "SE_1_0": {
-        "baseID": "BASE_4",
-        "cellID": "SE_1_0",
-        "column": 0,
-        "position": "SOUTH_EAST",
-        "row": 1,
-        "cellType": "HOMEPATH",
-        "coinIDs": []
-      },
-      "SE_1_1": {
-        "baseID": "BASE_4",
-        "cellID": "SE_1_1",
-        "column": 1,
-        "position": "SOUTH_EAST",
-        "row": 1,
-        "cellType": "HOMEPATH",
-        "coinIDs": []
-      },
-      "SE_1_2": {
-        "baseID": "BASE_4",
-        "cellID": "SE_1_2",
-        "column": 2,
-        "position": "SOUTH_EAST",
-        "row": 1,
-        "cellType": "STAR",
-        "coinIDs": []
-      },
-      "SE_2_0": {
-        "baseID": "BASE_4",
-        "cellID": "SE_2_0",
-        "column": 0,
-        "position": "SOUTH_EAST",
-        "row": 2,
-        "cellType": "NORMAL",
-        "coinIDs": []
-      },
-      "SE_2_1": {
-        "baseID": "BASE_4",
-        "cellID": "SE_2_1",
-        "column": 1,
-        "position": "SOUTH_EAST",
-        "row": 2,
-        "cellType": "NORMAL",
-        "coinIDs": []
-      },
-      "SE_2_2": {
-        "baseID": "BASE_4",
-        "cellID": "SE_2_2",
-        "column": 2,
-        "position": "SOUTH_EAST",
-        "row": 2,
-        "cellType": "SPAWN",
         "coinIDs": []
       }
     }
   },
   "links": {
-    "NW_0_0": [{"cellID": "NW_0_1", "position": "NORTH_WEST"}],
-    "NW_0_1": [{"cellID": "NW_0_2", "position": "NORTH_WEST"}],
-    "NW_0_2": [{"cellID": "NE_0_0", "position": "NORTH_EAST"}],
-    "NE_0_0": [{"cellID": "NE_0_1", "position": "NORTH_EAST"}],
-    "NE_0_1": [{"cellID": "NE_0_2", "position": "NORTH_EAST"}],
-    "NE_0_2": [{"cellID": "SE_0_2", "position": "SOUTH_EAST"}],
-    "SE_0_2": [{"cellID": "SE_1_2", "position": "SOUTH_EAST"}],
-    "SE_1_2": [{"cellID": "SE_2_2", "position": "SOUTH_EAST"}],
-    "SE_2_2": [{"cellID": "SE_2_1", "position": "SOUTH_EAST"}],
-    "SE_2_1": [{"cellID": "SE_2_0", "position": "SOUTH_EAST"}],
-    "SE_2_0": [{"cellID": "SW_2_2", "position": "SOUTH_WEST"}],
-    "SW_2_2": [{"cellID": "SW_2_1", "position": "SOUTH_WEST"}],
-    "SW_2_1": [{"cellID": "SW_2_0", "position": "SOUTH_WEST"}],
-    "SW_2_0": [{"cellID": "SW_1_0", "position": "SOUTH_WEST"}],
-    "SW_1_0": [{"cellID": "SW_0_0", "position": "SOUTH_WEST"}],
-    "SW_0_0": [{"cellID": "NW_2_0", "position": "NORTH_WEST"}],
-    "NW_2_0": [{"cellID": "NW_1_0", "position": "NORTH_WEST"}, {"cellID": "SW_0_1", "position": "SOUTH_WEST"}],
-    "SW_0_1": [{"cellID": "SW_0_2", "position": "SOUTH_WEST"}],
-    "SW_0_2": [{"cellID": "SE_0_0", "position": "SOUTH_EAST"}],
-    "SE_0_0": [{"cellID": "SE_0_1", "position": "SOUTH_EAST"}],
-    "SE_0_1": [{"cellID": "SE_1_0", "position": "SOUTH_EAST"}],
-    "SE_1_0": [{"cellID": "SE_1_1", "position": "SOUTH_EAST"}],
-    "SE_1_1": [{"cellID": "HOME", "position": "HOME"}],
-    "NW_1_0": [{"cellID": "NW_1_1", "position": "NORTH_WEST"}],
-    "NW_1_1": [{"cellID": "NW_2_1", "position": "NORTH_WEST"}],
-    "NW_2_1": [{"cellID": "HOME", "position": "HOME"}],
-    "NW_2_2": [{"cellID": "NE_2_0", "position": "NORTH_EAST"}],
-    "NE_2_0": [{"cellID": "NE_2_1", "position": "NORTH_EAST"}, {"cellID": "NE_1_0", "position": "NORTH_EAST"}],
-    "NE_1_0": [{"cellID": "NE_1_1", "position": "NORTH_EAST"}],
-    "NE_1_1": [{"cellID": "NE_1_2", "position": "NORTH_EAST"}],
-    "NE_1_2": [{"cellID": "NE_2_1", "position": "NORTH_EAST"}],
-    "NE_2_1": [{"cellID": "NE_2_2", "position": "NORTH_EAST"}],
-    "NE_2_2": [{"cellID": "HOME", "position": "HOME"}],
-    "SW_1_1": [{"cellID": "SW_1_2", "position": "SOUTH_WEST"}],
-    "SW_1_2": [{"cellID": "HOME", "position": "HOME"}]
+    "WEST_0_0": [{"cellID": "WEST_0_1", "position": "WEST"}],
+    "WEST_0_1": [{"cellID": "WEST_0_2", "position": "WEST"}],
+    "WEST_0_2": [{"cellID": "WEST_0_3", "position": "WEST"}],
+    "WEST_0_3": [{"cellID": "WEST_0_4", "position": "WEST"}],
+    "WEST_0_4": [{"cellID": "WEST_0_5", "position": "WEST"}],
+    "WEST_0_5": [{"cellID": "NORTH_5_0", "position": "NORTH"}],
+    "NORTH_5_0": [{"cellID": "NORTH_4_0", "position": "NORTH"}],
+    "NORTH_4_0": [{"cellID": "NORTH_3_0", "position": "NORTH"}],
+    "NORTH_3_0": [{"cellID": "NORTH_2_0", "position": "NORTH"}],
+    "NORTH_2_0": [{"cellID": "NORTH_1_0", "position": "NORTH"}],
+    "NORTH_1_0": [{"cellID": "NORTH_0_0", "position": "NORTH"}],
+    "NORTH_0_0": [{"cellID": "NORTH_0_1", "position": "NORTH"}],
+    "NORTH_0_1": [{"cellID": "NORTH_0_2", "position": "NORTH"}, {"cellID": "NORTH_1_1", "position": "NORTH"}],
+    "NORTH_1_1": [{"cellID": "NORTH_2_1", "position": "NORTH"}],
+    "NORTH_2_1": [{"cellID": "NORTH_3_1", "position": "NORTH"}],
+    "NORTH_3_1": [{"cellID": "NORTH_4_1", "position": "NORTH"}],
+    "NORTH_4_1": [{"cellID": "NORTH_5_1", "position": "NORTH"}],
+    "NORTH_0_2": [{"cellID": "NORTH_1_2", "position": "NORTH"}],
+    "NORTH_1_2": [{"cellID": "NORTH_2_2", "position": "NORTH"}],
+    "NORTH_2_2": [{"cellID": "NORTH_3_2", "position": "NORTH"}],
+    "NORTH_3_2": [{"cellID": "NORTH_4_2", "position": "NORTH"}],
+    "NORTH_4_2": [{"cellID": "NORTH_5_2", "position": "NORTH"}],
+    "NORTH_5_2": [{"cellID": "EAST_0_0", "position": "EAST"}],
+    "EAST_0_0": [{"cellID": "EAST_0_1", "position": "EAST"}],
+    "EAST_0_1": [{"cellID": "EAST_0_2", "position": "EAST"}],
+    "EAST_0_2": [{"cellID": "EAST_0_3", "position": "EAST"}],
+    "EAST_0_3": [{"cellID": "EAST_0_4", "position": "EAST"}],
+    "EAST_0_4": [{"cellID": "EAST_0_5", "position": "EAST"}],
+    "EAST_0_5": [{"cellID": "EAST_1_5", "position": "EAST"}],
+    "EAST_1_5": [{"cellID": "EAST_2_5", "position": "EAST"}, {"cellID": "EAST_1_4", "position": "EAST"}],
+    "EAST_1_4": [{"cellID": "EAST_1_3", "position": "EAST"}],
+    "EAST_1_3": [{"cellID": "EAST_1_2", "position": "EAST"}],
+    "EAST_1_2": [{"cellID": "EAST_1_1", "position": "EAST"}],
+    "EAST_1_1": [{"cellID": "EAST_1_0", "position": "EAST"}],
+    "EAST_2_5": [{"cellID": "EAST_2_4", "position": "EAST"}],
+    "EAST_2_4": [{"cellID": "EAST_2_3", "position": "EAST"}],
+    "EAST_2_3": [{"cellID": "EAST_2_2", "position": "EAST"}],
+    "EAST_2_2": [{"cellID": "EAST_2_1", "position": "EAST"}],
+    "EAST_2_1": [{"cellID": "EAST_2_0", "position": "EAST"}],
+    "EAST_2_0": [{"cellID": "SOUTH_0_2", "position": "SOUTH"}],
+    "SOUTH_0_2": [{"cellID": "SOUTH_1_2", "position": "SOUTH"}],
+    "SOUTH_1_2": [{"cellID": "SOUTH_2_2", "position": "SOUTH"}],
+    "SOUTH_2_2": [{"cellID": "SOUTH_3_2", "position": "SOUTH"}],
+    "SOUTH_3_2": [{"cellID": "SOUTH_4_2", "position": "SOUTH"}],
+    "SOUTH_4_2": [{"cellID": "SOUTH_5_2", "position": "SOUTH"}],
+    "SOUTH_5_2": [{"cellID": "SOUTH_5_1", "position": "SOUTH"}],
+    "SOUTH_5_1": [{"cellID": "SOUTH_5_0", "position": "SOUTH"}, {"cellID": "SOUTH_4_1", "position": "SOUTH"}],
+    "SOUTH_5_0": [{"cellID": "SOUTH_4_0", "position": "SOUTH"}],
+    "SOUTH_4_0": [{"cellID": "SOUTH_3_0", "position": "SOUTH"}],
+    "SOUTH_3_0": [{"cellID": "SOUTH_2_0", "position": "SOUTH"}],
+    "SOUTH_2_0": [{"cellID": "SOUTH_1_0", "position": "SOUTH"}],
+    "SOUTH_1_0": [{"cellID": "SOUTH_0_0", "position": "SOUTH"}],
+    "SOUTH_0_0": [{"cellID": "WEST_2_5", "position": "WEST"}],
+    "WEST_2_5": [{"cellID": "WEST_2_4", "position": "WEST"}],
+    "WEST_2_4": [{"cellID": "WEST_2_3", "position": "WEST"}],
+    "WEST_2_3": [{"cellID": "WEST_2_2", "position": "WEST"}],
+    "WEST_2_2": [{"cellID": "WEST_2_1", "position": "WEST"}],
+    "WEST_2_1": [{"cellID": "WEST_2_0", "position": "WEST"}],
+    "WEST_2_0": [{"cellID": "WEST_1_0", "position": "WEST"}],
+    "WEST_1_0": [{"cellID": "WEST_0_0", "position": "WEST"}, {"cellID": "WEST_1_1", "position": "WEST"}],
+    "WEST_1_1": [{"cellID": "WEST_1_2", "position": "WEST"}],
+    "WEST_1_2": [{"cellID": "WEST_1_3", "position": "WEST"}],
+    "WEST_1_3": [{"cellID": "WEST_1_4", "position": "WEST"}],
+    "WEST_1_4": [{"cellID": "WEST_1_5", "position": "WEST"}],
+    "SOUTH_0_1": [{"cellID": "HOME", "position": "HOME"}],
+    "EAST_1_0": [{"cellID": "HOME", "position": "HOME"}],
+    "NORTH_5_1": [{"cellID": "HOME", "position": "HOME"}],
+    "WEST_1_5": [{"cellID": "HOME", "position": "HOME"}]
   }
 }
