@@ -152,7 +152,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
 
   return (
     <div className="flex flex-col items-center p-4 bg-gray-100 min-h-screen">
-      <h1 className="text-4xl font-bold mb-4 text-gray-800">Ludo Game</h1>
+      {/* <h1 className="text-4xl font-bold mb-4 text-gray-800">Ludo Game</h1> */}
       
       {gameState?.winner && (
         <div className="mb-4 p-4 bg-green-100 border border-green-400 rounded">
