@@ -2,6 +2,59 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 180px;
+  height: 180px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+}
+
+.OuterContainer:hover {
+  box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+  transform: translateY(-2px);
+}
+
+.InnerContainer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  background-color: rgba(255,255,255,0.9);
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid rgba(255,255,255,0.3);
+  width: 140px;
+  height: 140px;
+  align-items: center;
+  justify-items: center;
+}
+
+.Spawnable {
+  box-shadow: 0px 4px 20px 2px rgba(255,255,255,0.8);
+  transform: scale(1.05);
+}
+
+/* Color-specific styling for bases */
+.OuterContainer[data-color="BLUE"] {
+  background: linear-gradient(135deg, #4285f4 0%, #1a73e8 100%);
+}
+
+.OuterContainer[data-color="GREEN"] {
+  background: linear-gradient(135deg, #34a853 0%, #137333 100%);
+}
+
+.OuterContainer[data-color="RED"] {
+  background: linear-gradient(135deg, #ea4335 0%, #c5221f 100%);
+}
+
+.OuterContainer[data-color="YELLOW"] {
+  background: linear-gradient(135deg, #fbbc04 0%, #f29900 100%);
+}
+
+/* .OuterContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .InnerContainer {
@@ -14,4 +67,4 @@
 
 .Spawnable {
   box-shadow: 0px 2px 30px 0px #FFFFFF;
-}
+} */
