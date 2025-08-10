@@ -1,20 +1,13 @@
+
 // src/games/Ludo/LudoGame.tsx
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-// import { Provider } from 'react-redux';
-// import { store } from './src-ludo/state/store';
-// import { Ludo } from './src-ludo/containers/Ludo/Container';
-import { useDispatch } from 'react-redux';
-import { setPlayers, getInitialGameData, moveCoin, spawnCoin } from './src-ludo/containers/Ludo/state/actions';
-import { enableDie, rollDie, rollDieComplete } from './src-ludo/containers/Dice/state/actions';
-
-
-import { Player, GameState } from '../Ludo/types/game';
-// import { Dice } from './Dice';
-
 import { Provider } from 'react-redux';
 import { store } from './src-ludo/state/store';
 import { Ludo } from './src-ludo/containers/Ludo/Container';
+
+import './src-ludo/prototypeOverrides';
+import * as serviceWorker from './src-ludo/serviceWorker';
+import './src-ludo/index.css';
 
 
 interface LudoGameProps {
@@ -27,24 +20,65 @@ interface LudoGameProps {
   onStartGame: () => void;
 }
 
-export const LudoGame: React.FC<LudoGameProps> = ({
-  // socket,
-  // roomId,
-  // currentPlayer,
-  // gameState,
-  // onRollDice,
-  // onMoveCoin,
-  // onStartGame,
-}) => {
+export const LudoGame: React.FC<LudoGameProps> = ({  
+  }) => {
   // Optionally, you can handle socket/gameState sync here if needed
-
-  // No extra wrappers, just the Provider and Ludo
   return (
     <Provider store={store}>
       <Ludo />
    </Provider> 
   );
 };
+
+
+
+// // src/games/Ludo/LudoGame.tsx
+// import React, { useEffect, useState } from 'react';
+// import { useAuth } from '../../context/AuthContext';
+// // import { Provider } from 'react-redux';
+// // import { store } from './src-ludo/state/store';
+// // import { Ludo } from './src-ludo/containers/Ludo/Container';
+// import { useDispatch } from 'react-redux';
+// import { setPlayers, getInitialGameData, moveCoin, spawnCoin } from './src-ludo/containers/Ludo/state/actions';
+// import { enableDie, rollDie, rollDieComplete } from './src-ludo/containers/Dice/state/actions';
+
+
+// import { Player, GameState } from '../Ludo/types/game';
+// // import { Dice } from './Dice';
+
+// import { Provider } from 'react-redux';
+// import { store } from './src-ludo/state/store';
+// import { Ludo } from './src-ludo/containers/Ludo/Container';
+
+
+// interface LudoGameProps {
+//   socket: any;
+//   roomId: string;
+//   currentPlayer: string;
+//   gameState: any;
+//   onRollDice: () => void;
+//   onMoveCoin: (coinId: string) => void;
+//   onStartGame: () => void;
+// }
+
+// export const LudoGame: React.FC<LudoGameProps> = ({
+//   // socket,
+//   // roomId,
+//   // currentPlayer,
+//   // gameState,
+//   // onRollDice,
+//   // onMoveCoin,
+//   // onStartGame,
+// }) => {
+//   // Optionally, you can handle socket/gameState sync here if needed
+
+//   // No extra wrappers, just the Provider and Ludo
+//   return (
+//     <Provider store={store}>
+//       <Ludo />
+//    </Provider> 
+//   );
+// };
 
 
 
