@@ -7,7 +7,7 @@ import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game
 @WebSocketGateway({ cors: { origin: 'https://alu-globe-gameroom.onrender.com', credentials: true } })
 export class GameGateway {
   @WebSocketServer() server: Server;
-
+  private connectedSockets = new Map<string, Socket>();
   constructor(private readonly gameService: GameService) {}
 
   afterInit() {
@@ -16,10 +16,20 @@ export class GameGateway {
 
   async handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
+    this.connectedSockets.set(client.id, client);
   }
+
+  // async handleDisconnect(client: Socket) {
+  //   console.log(`Client disconnected: ${client.id}`);
+  //   await this.gameService.handleDisconnect(client);
+  //   const rooms = await this.gameService.getActiveGameRooms();
+  //   this.server.emit('gameRoomsList', { rooms });
+  // }
 
   async handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
+    // Clean up all references
+    this.connectedSockets.delete(client.id);
     await this.gameService.handleDisconnect(client);
     const rooms = await this.gameService.getActiveGameRooms();
     this.server.emit('gameRoomsList', { rooms });
@@ -302,6 +312,18 @@ handleCandidate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
   client.to(data.roomId).emit('webrtc-candidate', { candidate: data.candidate, from: client.id });
 }
 
+// Add to your main gateway or service
+// @Cron('*/5 * * * *') // Every 5 minutes
+// logMemoryUsage() {
+//   const used = process.memoryUsage();
+//   this.logger.log(`Memory Usage: 
+//     RSS: ${Math.round(used.rss / 1024 / 1024 * 100) / 100} MB
+//     Heap Used: ${Math.round(used.heapUsed / 1024 / 1024 * 100) / 100} MB
+//     Heap Total: ${Math.round(used.heapTotal / 1024 / 1024 * 100) / 100} MB
+//     Active Rooms: ${this.gameRooms.size}
+//     Connected Sockets: ${this.connectedSockets.size}
+//   `);
+// }
 
   
 }
