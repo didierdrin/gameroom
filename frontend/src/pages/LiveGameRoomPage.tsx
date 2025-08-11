@@ -84,7 +84,7 @@ export const LiveGameRoomPage = () => {
   const [showPlayers, setShowPlayers] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(false);
-  
+
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showVideoGrid, setShowVideoGrid] = useState(false);
   const [roomInfo, setRoomInfo] = useState<any>(null);
@@ -122,7 +122,7 @@ export const LiveGameRoomPage = () => {
   // Start audio call
   const startAudioCall = async () => {
     if (!socket) return;
-    
+
     try {
       localStreamRef.current = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -273,7 +273,9 @@ export const LiveGameRoomPage = () => {
   const toggleVideo = async () => {
     try {
       if (!videoEnabled) {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
         // Handle video stream logic here
         setVideoEnabled(true);
       } else {
@@ -288,7 +290,9 @@ export const LiveGameRoomPage = () => {
   const handleScreenShare = async () => {
     try {
       if (!isScreenSharing) {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+        });
         // Handle screen share logic here
         setIsScreenSharing(true);
       } else {
@@ -303,7 +307,7 @@ export const LiveGameRoomPage = () => {
   const toggleDeafen = () => {
     setIsDeafened(!isDeafened);
     // Implement deafen logic - mute all remote audio
-    Object.values(remoteAudioRefs.current).forEach(audioEl => {
+    Object.values(remoteAudioRefs.current).forEach((audioEl) => {
       audioEl.muted = !isDeafened;
     });
   };
@@ -320,7 +324,7 @@ export const LiveGameRoomPage = () => {
       return;
     }
     if (!socket || !roomId) return;
-    
+
     console.log("Socket connected, joining room:", roomId);
     setIsConnected(true);
     socket.emit("joinGame", {
@@ -512,10 +516,10 @@ export const LiveGameRoomPage = () => {
     return () => {
       // Clean up WebRTC connections
       pcRef.current?.close();
-      localStreamRef.current?.getTracks().forEach(track => track.stop());
-      
+      localStreamRef.current?.getTracks().forEach((track) => track.stop());
+
       // Clean up remote audio elements
-      Object.values(remoteAudioRefs.current).forEach(audioEl => {
+      Object.values(remoteAudioRefs.current).forEach((audioEl) => {
         audioEl.remove();
       });
     };
@@ -585,7 +589,7 @@ export const LiveGameRoomPage = () => {
 
   const renderGameContent = () => {
     if (!socket) return null;
-    
+
     const lowerCaseGameType = gameType.toLowerCase();
     if (!gameState?.gameStarted) {
       return (
@@ -698,7 +702,7 @@ export const LiveGameRoomPage = () => {
   const handleExit = () => {
     // Clean up before leaving
     leaveAudioCall();
-    
+
     if (socket) {
       socket.emit("leaveGame", { roomId, playerId: user?.id });
     }
@@ -855,10 +859,6 @@ export const LiveGameRoomPage = () => {
   );
 };
 
-
-
-
-
 // import React, { useEffect, useState, useRef } from "react";
 // import { useParams, useNavigate } from "react-router-dom";
 // import { Player, GameState } from "../components/Ludo/types/game";
@@ -945,7 +945,7 @@ export const LiveGameRoomPage = () => {
 //   const [showPlayers, setShowPlayers] = useState(true);
 //   const [fullscreen, setFullscreen] = useState(false);
 //   const [videoEnabled, setVideoEnabled] = useState(false);
-  
+
 //   const [isScreenSharing, setIsScreenSharing] = useState(false);
 //   const [showVideoGrid, setShowVideoGrid] = useState(false);
 //   const [roomInfo, setRoomInfo] = useState<any>(null);

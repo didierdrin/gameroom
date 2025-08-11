@@ -4,7 +4,21 @@ import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
 
-@WebSocketGateway({ cors: { origin: 'https://alu-globe-gameroom.onrender.com', credentials: true } })
+// @WebSocketGateway({ cors: { origin: 'https://alu-globe-gameroom.onrender.com', credentials: true } })
+@WebSocketGateway({ 
+  cors: { 
+    origin: [
+      'http://localhost:5173',
+      'https://alu-globe-gameroom-frontend.vercel.app',
+      'https://alu-globe-gameroom.onrender.com'
+    ], 
+    credentials: true 
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ['websocket']
+})
+
 export class GameGateway {
   @WebSocketServer() server: Server;
   private connectedSockets = new Map<string, Socket>();
@@ -19,13 +33,7 @@ export class GameGateway {
     this.connectedSockets.set(client.id, client);
   }
 
-  // async handleDisconnect(client: Socket) {
-  //   console.log(`Client disconnected: ${client.id}`);
-  //   await this.gameService.handleDisconnect(client);
-  //   const rooms = await this.gameService.getActiveGameRooms();
-  //   this.server.emit('gameRoomsList', { rooms });
-  // }
-
+ 
   async handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
     // Clean up all references
@@ -312,7 +320,23 @@ handleCandidate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
   client.to(data.roomId).emit('webrtc-candidate', { candidate: data.candidate, from: client.id });
 }
 
-// Add to your main gateway or service
+
+  
+}
+
+
+
+
+
+
+ // async handleDisconnect(client: Socket) {
+  //   console.log(`Client disconnected: ${client.id}`);
+  //   await this.gameService.handleDisconnect(client);
+  //   const rooms = await this.gameService.getActiveGameRooms();
+  //   this.server.emit('gameRoomsList', { rooms });
+  // }
+
+  // Add to your main gateway or service
 // @Cron('*/5 * * * *') // Every 5 minutes
 // logMemoryUsage() {
 //   const used = process.memoryUsage();
@@ -324,6 +348,3 @@ handleCandidate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
 //     Connected Sockets: ${this.connectedSockets.size}
 //   `);
 // }
-
-  
-}
