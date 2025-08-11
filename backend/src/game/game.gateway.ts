@@ -306,21 +306,65 @@ async handleGetChatHistory(
 
 
 
-// inside your gateway
 @SubscribeMessage('webrtc-offer')
 handleOffer(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-  client.to(data.roomId).emit('webrtc-offer', { sdp: data.sdp, from: client.id });
+  try {
+    console.log(`WebRTC offer from ${client.id} in room ${data.roomId}`);
+    // Broadcast to all clients in the room except sender
+    client.to(data.roomId).emit('webrtc-offer', { 
+      sdp: data.sdp, 
+      from: client.id,
+      roomId: data.roomId
+    });
+  } catch (error) {
+    console.error('Error handling WebRTC offer:', error);
+    client.emit('webrtc-error', { message: 'Failed to process offer' });
+  }
 }
 
 @SubscribeMessage('webrtc-answer')
 handleAnswer(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-  client.to(data.roomId).emit('webrtc-answer', { sdp: data.sdp, from: client.id });
+  try {
+    console.log(`WebRTC answer from ${client.id} in room ${data.roomId}`);
+    client.to(data.roomId).emit('webrtc-answer', { 
+      sdp: data.sdp, 
+      from: client.id,
+      roomId: data.roomId
+    });
+  } catch (error) {
+    console.error('Error handling WebRTC answer:', error);
+    client.emit('webrtc-error', { message: 'Failed to process answer' });
+  }
 }
 
 @SubscribeMessage('webrtc-candidate')
 handleCandidate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-  client.to(data.roomId).emit('webrtc-candidate', { candidate: data.candidate, from: client.id });
+  try {
+    console.log(`WebRTC candidate from ${client.id} in room ${data.roomId}`);
+    client.to(data.roomId).emit('webrtc-candidate', { 
+      candidate: data.candidate, 
+      from: client.id,
+      roomId: data.roomId
+    });
+  } catch (error) {
+    console.error('Error handling WebRTC candidate:', error);
+    client.emit('webrtc-error', { message: 'Failed to process candidate' });
+  }
 }
+
+// Add error handling for WebRTC
+@SubscribeMessage('webrtc-error')
+handleWebRTCError(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+  console.error(`WebRTC error from ${client.id}:`, data);
+  // Notify other clients in the room about the error
+  client.to(data.roomId).emit('webrtc-error', {
+    from: client.id,
+    message: data.message,
+    roomId: data.roomId
+  });
+}
+
+
 
 
   

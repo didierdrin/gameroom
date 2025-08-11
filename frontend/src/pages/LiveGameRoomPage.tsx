@@ -122,53 +122,188 @@ export const LiveGameRoomPage = () => {
     ],
   }), []);
 
-  // Start audio call
-  const startAudioCall = async () => {
-    if (!socket) return;
 
-    try {
-      localStreamRef.current = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: false,
-      });
 
-      pcRef.current = new RTCPeerConnection(rtcConfig);
 
-      // Add local audio to connection
-      localStreamRef.current.getTracks().forEach((track) => {
-        pcRef.current?.addTrack(track, localStreamRef.current!);
-      });
+  // ... existing code ...
 
-      // Handle remote tracks
-      pcRef.current.ontrack = (event) => {
-        const [stream] = event.streams;
-        const audioEl = document.createElement("audio");
-        audioEl.srcObject = stream;
-        audioEl.autoplay = true;
-        document.body.appendChild(audioEl);
-      };
-
-      // ICE candidate handler
-      pcRef.current.onicecandidate = (event) => {
-        if (event.candidate && socket) {
-          socket.emit("webrtc-candidate", {
-            candidate: event.candidate,
-            roomId,
-          });
-        }
-      };
-
-      // Create offer
-      const offer = await pcRef.current.createOffer();
-      await pcRef.current.setLocalDescription(offer);
-
-      socket.emit("webrtc-offer", { sdp: offer, roomId });
-
-      setInAudioCall(true);
-    } catch (err) {
-      console.error("Error starting audio call:", err);
+// Add this function after the existing state declarations
+const checkMediaDevices = async () => {
+  try {
+    // Check if getUserMedia is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('getUserMedia not supported');
+      setMediaAvailable({ audio: false, video: false });
+      return;
     }
-  };
+
+    // Check available devices
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioDevices = devices.filter(device => device.kind === 'audioinput');
+    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+    setMediaAvailable({
+      audio: audioDevices.length > 0,
+      video: videoDevices.length > 0
+    });
+
+    console.log('Available devices:', { audio: audioDevices.length, video: videoDevices.length });
+  } catch (error) {
+    console.error('Error checking media devices:', error);
+    setMediaAvailable({ audio: false, video: false });
+  }
+};
+
+// Add this useEffect to check devices on mount
+useEffect(() => {
+  checkMediaDevices();
+}, []);
+
+// Update the startAudioCall function with better error handling
+const startAudioCall = async () => {
+  if (!socket) return;
+
+  try {
+    setIsInitializingMedia(true);
+    
+    // Check if we have permission or need to request it
+    if (!mediaAvailable.audio) {
+      console.log('No audio device available, checking permissions...');
+      await checkMediaDevices();
+      
+      if (!mediaAvailable.audio) {
+        throw new Error('No audio device available. Please check your microphone permissions and ensure a microphone is connected.');
+      }
+    }
+
+    // Request microphone access with fallback
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        },
+        video: false
+      });
+    } catch (mediaError: any) {
+      if (mediaError.name === 'NotAllowedError') {
+        throw new Error('Microphone access denied. Please allow microphone access in your browser settings.');
+      } else if (mediaError.name === 'NotFoundError') {
+        throw new Error('No microphone found. Please connect a microphone and try again.');
+      } else if (mediaError.name === 'NotReadableError') {
+        throw new Error('Microphone is in use by another application. Please close other apps using the microphone.');
+      } else {
+        throw new Error(`Microphone error: ${mediaError.message}`);
+      }
+    }
+
+    localStreamRef.current = stream;
+
+    // Create RTCPeerConnection with updated config
+    pcRef.current = new RTCPeerConnection(rtcConfig);
+
+    // Add local audio to connection
+    stream.getTracks().forEach((track) => {
+      pcRef.current?.addTrack(track, stream);
+    });
+
+    // Handle remote tracks
+    pcRef.current.ontrack = (event) => {
+      const [remoteStream] = event.streams;
+      const audioEl = document.createElement("audio");
+      audioEl.srcObject = remoteStream;
+      audioEl.autoplay = true;
+      audioEl.id = `remote-audio-${Date.now()}`;
+      document.body.appendChild(audioEl);
+      
+      // Store reference for cleanup
+      const audioId = audioEl.id;
+      remoteAudioRefs.current[audioId] = audioEl;
+    };
+
+    // ICE candidate handler
+    pcRef.current.onicecandidate = (event) => {
+      if (event.candidate && socket) {
+        socket.emit("webrtc-candidate", {
+          candidate: event.candidate,
+          roomId,
+        });
+      }
+    };
+
+    // Create offer
+    const offer = await pcRef.current.createOffer();
+    await pcRef.current.setLocalDescription(offer);
+
+    socket.emit("webrtc-offer", { sdp: offer, roomId });
+
+    setInAudioCall(true);
+    console.log('Audio call started successfully');
+  } catch (err: any) {
+    console.error("Error starting audio call:", err);
+    
+    // Show user-friendly error message
+    const errorMessage = err.message || 'Failed to start audio call';
+    alert(`Audio Call Error: ${errorMessage}`);
+    
+    // Reset state
+    setIsInitializingMedia(false);
+    setInAudioCall(false);
+  } finally {
+    setIsInitializingMedia(false);
+  }
+};
+
+
+  
+  // const startAudioCall = async () => {
+  //   if (!socket) return;
+
+  //   try {
+  //     localStreamRef.current = await navigator.mediaDevices.getUserMedia({
+  //       audio: true,
+  //       video: false,
+  //     });
+
+  //     pcRef.current = new RTCPeerConnection(rtcConfig);
+
+  //     // Add local audio to connection
+  //     localStreamRef.current.getTracks().forEach((track) => {
+  //       pcRef.current?.addTrack(track, localStreamRef.current!);
+  //     });
+
+  //     // Handle remote tracks
+  //     pcRef.current.ontrack = (event) => {
+  //       const [stream] = event.streams;
+  //       const audioEl = document.createElement("audio");
+  //       audioEl.srcObject = stream;
+  //       audioEl.autoplay = true;
+  //       document.body.appendChild(audioEl);
+  //     };
+
+  //     // ICE candidate handler
+  //     pcRef.current.onicecandidate = (event) => {
+  //       if (event.candidate && socket) {
+  //         socket.emit("webrtc-candidate", {
+  //           candidate: event.candidate,
+  //           roomId,
+  //         });
+  //       }
+  //     };
+
+  //     // Create offer
+  //     const offer = await pcRef.current.createOffer();
+  //     await pcRef.current.setLocalDescription(offer);
+
+  //     socket.emit("webrtc-offer", { sdp: offer, roomId });
+
+  //     setInAudioCall(true);
+  //   } catch (err) {
+  //     console.error("Error starting audio call:", err);
+  //   }
+  // };
 
   // Listen for offer
   useEffect(() => {
@@ -270,13 +405,15 @@ export const LiveGameRoomPage = () => {
   };
 
   // Media control functions
-  const toggleAudioCall = async () => {
-    if (inAudioCall) {
-      leaveAudioCall();
-    } else {
-      await startAudioCall();
-    }
-  };
+ // Update the toggleAudioCall function
+const toggleAudioCall = async () => {
+  if (inAudioCall) {
+    leaveAudioCall();
+  } else {
+    await startAudioCall();
+  }
+};
+
 
   const toggleVideo = async () => {
     try {

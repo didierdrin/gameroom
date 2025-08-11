@@ -34,9 +34,9 @@ export const ProfilePage = () => {
       try {
         setLoading(true);
         // Fetch user profile data
-        const profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/users/${authUser.id}`);
+        const profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}`);
         const profileData = await profileResponse.json();
-        const statsResponse = await fetch(`https://alu-globe-gameroom.onrender.com/users/${authUser.id}/stats`);
+        const statsResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}/stats`);
         const statsData = await statsResponse.json();
         
         // Format join date
@@ -46,7 +46,7 @@ export const ProfilePage = () => {
         });
 
         // Calculate rank (this would ideally come from the backend)
-        const rankResponse = await fetch('https://alu-globe-gameroom.onrender.com/users/leaderboard');
+        const rankResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard');
         const rankData = await rankResponse.json(); 
         const rankIndex = rankData.findIndex((u:any) => u._id === authUser.id);
         const rank = rankIndex >= 0 ? `#${rankIndex + 1}` : 'Unranked';

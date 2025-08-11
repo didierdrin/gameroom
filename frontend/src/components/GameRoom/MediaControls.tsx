@@ -52,33 +52,39 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
   return (
     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-1 sm:gap-2 bg-gray-800 p-1 sm:p-2 rounded-lg border border-gray-700 shadow-lg z-50">
       
-      {/* Join/Leave Call Button */}
-      <button
-        onClick={onToggleAudioCall}
-        disabled={isInitializingMedia}
-        className={`p-2 sm:p-3 rounded-lg transition-colors font-medium ${
-          isInitializingMedia
-            ? 'bg-gray-600 cursor-not-allowed'
-            : inAudioCall
-            ? 'bg-green-600 hover:bg-green-700 text-white'
-            : 'bg-purple-600 hover:bg-purple-700 text-white'
-        }`}
-        title={
-          isInitializingMedia
-            ? 'Initializing...'
-            : inAudioCall
-            ? 'Leave call'
-            : 'Join call'
-        }
-      >
-        <div className="flex items-center space-x-1">
-          <PhoneIcon size={18} className="sm:hidden" />
-          <PhoneIcon size={20} className="hidden sm:block" />
-          <span className="hidden md:inline text-sm">
-            {inAudioCall ? 'Leave' : 'Join'}
-          </span>
-        </div>
-      </button>
+     
+
+{/* Join/Leave Call Button */}
+<button
+  onClick={onToggleAudioCall}
+  disabled={isInitializingMedia || !mediaAvailable.audio}
+  className={`p-2 sm:p-3 rounded-lg transition-colors font-medium ${
+    isInitializingMedia || !mediaAvailable.audio
+      ? 'bg-gray-600 cursor-not-allowed'
+      : inAudioCall
+      ? 'bg-green-600 hover:bg-green-700 text-white'
+      : 'bg-purple-600 hover:bg-purple-700 text-white'
+  }`}
+  title={
+    !mediaAvailable.audio
+      ? 'No microphone available'
+      : isInitializingMedia
+      ? 'Initializing...'
+      : inAudioCall
+      ? 'Leave call'
+      : 'Join call'
+  }
+>
+  <div className="flex items-center space-x-1">
+    <PhoneIcon size={18} className="sm:hidden" />
+    <PhoneIcon size={20} className="hidden sm:block" />
+    <span className="hidden md:inline text-sm">
+      {inAudioCall ? 'Leave' : 'Join'}
+    </span>
+  </div>
+</button>
+
+
 
       {/* Call controls - only show when in call */}
       {inAudioCall && (

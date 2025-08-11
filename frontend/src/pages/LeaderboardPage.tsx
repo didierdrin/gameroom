@@ -23,7 +23,7 @@ export const LeaderboardPage = () => {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const response = await fetch(`https://alu-globe-gameroom.onrender.com/users/leaderboard?gameType=${gameFilter === 'all' ? '' : gameFilter}`);
+        const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/leaderboard?gameType=${gameFilter === 'all' ? '' : gameFilter}`);
         const data = await response.json(); 
         setLeaderboardData(data);
       } catch (error) {
@@ -93,6 +93,33 @@ export const LeaderboardPage = () => {
       </div>
     );
   };
+
+
+  // if (loading) {
+  //   return (
+  //     <div className="p-6 overflow-y-auto h-screen pb-20">
+  //       <SectionTitle title="Leaderboards" subtitle="See who's on top of the ALU Globe gaming world" />
+  //       <div className="flex items-center justify-center h-64">
+  //         <div className="text-gray-400">Loading leaderboard...</div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  // if (error) {
+  //   return (
+  //     <div className="p-6 overflow-y-auto h-screen pb-20">
+  //       <SectionTitle title="Leaderboards" subtitle="See who's on top of the ALU Globe gaming world" />
+  //       <div className="flex items-center justify-center h-64">
+  //         <div className="text-red-400">{error}</div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+
+
+
 
   return (
     <div className="p-6 overflow-y-auto h-screen pb-20">
