@@ -284,5 +284,24 @@ async handleGetChatHistory(
 }
 
 
+
+
+// inside your gateway
+@SubscribeMessage('webrtc-offer')
+handleOffer(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+  client.to(data.roomId).emit('webrtc-offer', { sdp: data.sdp, from: client.id });
+}
+
+@SubscribeMessage('webrtc-answer')
+handleAnswer(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+  client.to(data.roomId).emit('webrtc-answer', { sdp: data.sdp, from: client.id });
+}
+
+@SubscribeMessage('webrtc-candidate')
+handleCandidate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+  client.to(data.roomId).emit('webrtc-candidate', { candidate: data.candidate, from: client.id });
+}
+
+
   
 }

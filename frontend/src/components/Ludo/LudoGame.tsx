@@ -281,15 +281,7 @@ useEffect(() => {
     players[currentPlayer]?.id.startsWith('ai-')
   }
 />
-          {/* <Dice
-            value={diceValue!}
-            onRoll={onRollDice}          
-            disabled={
-              diceRolled || 
-              players[currentPlayer]?.id !== currentPlayerId || 
-              players[currentPlayer]?.id.startsWith('ai-') // Add this condition
-            }
-          /> */}
+   
         </div>
       </div>
       <div className="grid grid-cols-[repeat(15,_2.5rem)] grid-rows-[repeat(15,_2.5rem)] gap-0 border-4 border-gray-800 bg-white">
@@ -303,37 +295,4 @@ useEffect(() => {
     </div>
   );
 };
-
-
-// // src/games/Ludo/LudoGame.tsx
-// import React, { useEffect, useState } from 'react';
-// import { Provider } from 'react-redux';
-// import { store } from './src-ludo/state/store';
-// import { Ludo } from './src-ludo/containers/Ludo/Container';
-
-// import './src-ludo/prototypeOverrides';
-// import * as serviceWorker from './src-ludo/serviceWorker';
-// import './src-ludo/index.css';
-
-
-// interface LudoGameProps {
-//   socket: any;
-//   roomId: string;
-//   currentPlayer: string;
-//   gameState: any;
-//   onRollDice: () => void;
-//   onMoveCoin: (coinId: string) => void;
-//   onStartGame: () => void;
-// }
-
-// export const LudoGame: React.FC<LudoGameProps> = ({  
-//   }) => {
-//   // Optionally, you can handle socket/gameState sync here if needed
-//   return (
-//     <Provider store={store}>
-//       <Ludo />
-//    </Provider> 
-//   );
-// };
-
 
