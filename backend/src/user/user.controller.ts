@@ -1,5 +1,5 @@
 // src/user/user.controller.ts
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Query } from '@nestjs/common';
 import { UserService } from './user.service';
 
 @Controller('user')
@@ -32,4 +32,16 @@ export class UserController {
   async getUser(@Param('id') id: string) {
     return this.userService.findById(id);
   }
+
+  @Get('leaderboard')
+  async getLeaderboard(@Query('gameType') gameType?: string) {
+    return this.userService.getLeaderboard(10, gameType);
+  }
+
+  @Get(':id/stats')
+  async getUserStats(@Param('id') id: string) {
+    return this.userService.getUserStats(id);
+  }
+
+  
 }

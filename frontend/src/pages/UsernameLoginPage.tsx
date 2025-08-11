@@ -27,14 +27,18 @@ const handleLogin = async () => {
       username,
     });
 
+    // Type the response data
+    const userData = response.data as { _id: string; username: string };
+
     // Pass both id and username
-    login({ id: response.data._id, username: response.data.username });
+    login({ id: userData._id, username: userData.username });
     navigate('/', { replace: true });
   } catch (err) {
     console.error(err);
     setError('Failed to login. Try again.');
   }
 };
+
 
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

@@ -12,6 +12,7 @@ import { Types } from 'mongoose';
 import axios from 'axios'; 
 import { Socket, Server } from 'socket.io';
 import { Chess } from 'chess.js';
+import { UserService } from 'src/user/user.service';
 interface PublicGameRoom {
   id: string;
   roomId: string;
@@ -102,6 +103,7 @@ export class GameService {
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoomDocument>,
     @InjectModel(GameSessionEntity.name) private gameSessionModel: Model<GameSessionDocument>,
     private readonly triviaService: TriviaService,
+    private readonly userService: UserService,
   ) {}
 
   setServer(server: Server) {
@@ -907,14 +909,28 @@ async moveCoin(moveCoinDto: MoveCoinDto) {
         },
         startedAt: new Date(),
         endedAt: gameState.gameOver ? new Date() : undefined,
-        isTournament: false // Set appropriately if you have tournaments
+        isTournament: false
       };
-  
+
+      // Update user stats for all players
+      for (const player of gameState.players) {
+        const score = gameState.kahootState?.scores?.[player.id] || 
+                     gameState.triviaState?.scores?.[player.id] || 
+                     (gameState.winner === player.id ? 10 : (gameState.players.length > 1 ? 5 : 0));
+        
+        await this.userService.updateGameStats(
+          player.id,
+          gameState.gameType,
+          score,
+          gameState.winner === player.id
+        );
+      }
+
       // Only include gameRoom if the room exists
       if (room) {
         sessionData.gameRoom = room._id as Types.ObjectId;
       }
-  
+
       const gameSession = new this.gameSessionModel(sessionData);
       await gameSession.save();
     } catch (error) {
