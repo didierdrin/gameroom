@@ -8,20 +8,21 @@ import { GameRoom, GameRoomSchema } from './schemas/game-room.schema';
 import { GameSessionEntity, GameSessionSchema } from './schemas/game-session.schema';
 import { RedisModule } from '../redis/redis.module';
 import { TriviaService } from 'src/trivia/trivia.service';
-import { Server } from 'socket.io';
+import { UserModule } from 'src/user/user.module';
 @Module({
-  imports: [
-    RedisModule,
+  imports: [    
     MongooseModule.forFeature([
       { name: GameRoom.name, schema: GameRoomSchema },
       { name: GameSessionEntity.name, schema: GameSessionSchema },
-    ]),
+    ]), 
+    RedisModule,
+    UserModule, 
   ],
   controllers: [GameController],
   providers: [
     GameService, 
     GameGateway, 
-    TriviaService, 
+    TriviaService,
 ],
   exports: [GameService],
 })
