@@ -71,7 +71,9 @@ export class GameGateway {
       const result = await this.gameService.joinGame(data);
       client.join(data.roomId);
       client.emit('playerJoined', { roomId: data.roomId, playerId: data.playerId, playerName: data.playerName, success: true });
-      client.to(data.roomId).emit('playerConnected', { playerId: data.playerId, playerName: data.playerName, roomId: data.roomId, currentPlayers: result.game.currentPlayers });
+      if (result.isNewJoin) {
+        client.to(data.roomId).emit('playerConnected', { playerId: data.playerId, playerName: data.playerName, roomId: data.roomId, currentPlayers: result.game.currentPlayers });
+      }
       const gameState = await this.gameService.getGameState(data.roomId);
       this.server.to(data.roomId).emit('gameState', {
         ...gameState,

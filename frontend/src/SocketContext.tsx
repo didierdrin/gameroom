@@ -31,20 +31,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       pingTimeout: 60000,
       pingInterval: 25000,
     } as ExtendedConnectOpts);
-    // const newSocket = io('https://alu-globe-gameroom.onrender.com', {
-    //   transports: ['websocket'],
-    //   reconnection: true,
-    //   reconnectionAttempts: 5,
-    //   reconnectionDelay: 1000,
-    //   reconnectionDelayMax: 5000,
-    //   timeout: 20000,
-    //   forceNew: true,
-    //   upgrade: true,
-    //   rememberUpgrade: false,
-    //   pingTimeout: 60000,
-    //   pingInterval: 25000,
-    // });
-
+ 
     newSocket.on('connect', () => {
       console.log('Socket connected');
       setIsConnected(true);
@@ -139,3 +126,19 @@ export const useConnectedSocket = (): SocketType => {
   //     newSocket.disconnect();
   //   };
   // }, []);
+
+
+
+     // const newSocket = io('https://alu-globe-gameroom.onrender.com', {
+    //   transports: ['websocket'],
+    //   reconnection: true,
+    //   reconnectionAttempts: 5,
+    //   reconnectionDelay: 1000,
+    //   reconnectionDelayMax: 5000,
+    //   timeout: 20000,
+    //   forceNew: true,
+    //   upgrade: true,
+    //   rememberUpgrade: false,
+    //   pingTimeout: 60000,
+    //   pingInterval: 25000,
+    // });

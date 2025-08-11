@@ -238,6 +238,7 @@ export class GameService {
     if (!gameRoom) throw new Error('Game room not found');
     if (gameRoom.currentPlayers >= gameRoom.maxPlayers) throw new Error('Game room is full');
     if (gameRoom.isPrivate && gameRoom.password !== joinGameDto.password) throw new Error('Invalid password');
+    let isNewJoin = false;
     if (!gameRoom.playerIds.includes(joinGameDto.playerId)) {
       gameRoom.playerIds.push(joinGameDto.playerId);
       gameRoom.currentPlayers = gameRoom.playerIds.length;
@@ -273,8 +274,9 @@ export class GameService {
         gameState.coins[joinGameDto.playerId] = [0, 0, 0, 0];
       }
       await this.updateGameState(joinGameDto.roomId, gameState);
+      isNewJoin = true;
     }
-    return { game: gameRoom, player: joinGameDto.playerId };
+    return { game: gameRoom, player: joinGameDto.playerId, isNewJoin };
   }
 
 

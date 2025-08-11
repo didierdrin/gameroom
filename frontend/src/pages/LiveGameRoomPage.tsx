@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { MediaControls } from "../components/GameRoom/MediaControls";
 import { VideoGrid } from "../components/GameRoom/VideoGrid";
-import { useSocket } from "../SocketContext";
+import { useSocket, useSocketConnection } from "../SocketContext";
 import { useAuth } from "../context/AuthContext";
 import { SocketType } from "../SocketContext";
 
@@ -56,6 +56,7 @@ export const LiveGameRoomPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const socket = useSocket();
+  const isSocketConnected = useSocketConnection();
 
   const [gameState, setGameState] = useState<GameState>({
     roomId: roomId || "",
@@ -88,7 +89,9 @@ export const LiveGameRoomPage = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showVideoGrid, setShowVideoGrid] = useState(false);
   const [roomInfo, setRoomInfo] = useState<any>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  // Track if we've already joined this room to avoid duplicate joins
+  const hasJoinedRef = useRef(false);
+  const playerNameMapRef = useRef<Record<string, string>>({});
   const [mediaAvailable, setMediaAvailable] = useState<MediaAvailability>({
     audio: false,
     video: false,
@@ -106,18 +109,18 @@ export const LiveGameRoomPage = () => {
   const [audioEnabled, setAudioEnabled] = useState(true);
 
   // TURN/STUN config
-  const rtcConfig: RTCConfiguration = {
+  const rtcConfig: RTCConfiguration = React.useMemo(() => ({
     iceServers: [
       {
         urls: [
-          `stun:alu-globe-game-room-turn-server.onrender.com`, // your STUN ${window.location.hostname}::3478
-          `turn:alu-globe-game-room-turn-server.onrender.com`, // your TURN
+          `stun:alu-globe-game-room-turn-server.onrender.com`,
+          `turn:alu-globe-game-room-turn-server.onrender.com`,
         ],
         username: "aluglobe2025",
         credential: "aluglobe2025development",
       },
     ],
-  };
+  }), []);
 
   // Start audio call
   const startAudioCall = async () => {
@@ -242,6 +245,11 @@ export const LiveGameRoomPage = () => {
     };
   }, [socket, roomId, rtcConfig]);
 
+  // Keep a ref of the latest playerIdToUsername mapping for stable handlers
+  useEffect(() => {
+    playerNameMapRef.current = playerIdToUsername;
+  }, [playerIdToUsername]);
+
   // Leave audio call
   const leaveAudioCall = () => {
     pcRef.current?.close();
@@ -317,7 +325,7 @@ export const LiveGameRoomPage = () => {
     console.log("Camera switching should be done through Jitsi UI");
   };
 
-  // Game logic (unchanged)
+  // Game logic: join once and attach listeners once
   useEffect(() => {
     if (!user) {
       navigate("/login");
@@ -325,18 +333,21 @@ export const LiveGameRoomPage = () => {
     }
     if (!socket || !roomId) return;
 
-    console.log("Socket connected, joining room:", roomId);
-    setIsConnected(true);
-    socket.emit("joinGame", {
-      roomId,
-      playerId: user.id,
-      playerName: user.username,
-      password: "",
-    });
-    setPlayerIdToUsername((prev) => ({
-      ...prev,
-      [user.id]: user.username,
-    }));
+    // Join only once per mount/room
+    if (!hasJoinedRef.current && isSocketConnected) {
+      console.log("Socket connected, joining room:", roomId);
+      hasJoinedRef.current = true;
+      socket.emit("joinGame", {
+        roomId,
+        playerId: user.id,
+        playerName: user.username,
+        password: "",
+      });
+      setPlayerIdToUsername((prev) => ({
+        ...prev,
+        [user.id]: user.username,
+      }));
+    }
 
     const handleGameState = (newGameState: GameState) => {
       console.log("Game state received:", {
@@ -346,7 +357,7 @@ export const LiveGameRoomPage = () => {
       });
       const updatedPlayers = newGameState.players.map((p) => ({
         ...p,
-        name: playerIdToUsername[p.id] || p.name || p.id,
+        name: playerNameMapRef.current[p.id] || p.name || p.id,
       }));
       setGameState((prev) => ({
         ...prev,
@@ -503,7 +514,7 @@ export const LiveGameRoomPage = () => {
       socket.off("error", handleError);
       socket.off("chatHistory", handleChatHistory);
     };
-  }, [socket, roomId, user, navigate, playerIdToUsername]);
+  }, [socket, roomId, user, navigate, isSocketConnected]);
 
   useEffect(() => {
     if (socket && roomId) {
@@ -598,7 +609,7 @@ export const LiveGameRoomPage = () => {
           <p className="text-gray-400 mb-4">
             Players in room: {players.length}
           </p>
-          {isConnected && (
+          {isSocketConnected && (
             <div className="text-green-400 mb-4">✅ Connected to room</div>
           )}
           <button
@@ -709,7 +720,7 @@ export const LiveGameRoomPage = () => {
     navigate("/");
   };
 
-  if (!socket || !isConnected) {
+  if (!socket || !isSocketConnected) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900">
         <div className="text-center">

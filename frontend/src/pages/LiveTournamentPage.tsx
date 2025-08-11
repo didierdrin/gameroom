@@ -107,7 +107,7 @@ export const LiveTournamentPage = ({
           </div>}
       </div>
       {/* Media Controls */}
-      <MediaControls videoEnabled={videoEnabled} audioEnabled={audioEnabled} isScreenSharing={isScreenSharing} onToggleVideo={() => setVideoEnabled(!videoEnabled)} onToggleAudio={() => setAudioEnabled(!audioEnabled)} onToggleScreenShare={() => setIsScreenSharing(!isScreenSharing)} onLeaveCall={onExit} />
+      {/* <MediaControls videoEnabled={videoEnabled} audioEnabled={audioEnabled} isScreenSharing={isScreenSharing} onToggleVideo={() => setVideoEnabled(!videoEnabled)} onToggleAudio={() => setAudioEnabled(!audioEnabled)} onToggleScreenShare={() => setIsScreenSharing(!isScreenSharing)} onLeaveCall={onExit} /> */}
       {/* Mobile Overlay */}
       {(showParticipants || showChat) && <div className="fixed inset-0 bg-black/50 z-20 sm:hidden" onClick={() => {
       setShowParticipants(false);
