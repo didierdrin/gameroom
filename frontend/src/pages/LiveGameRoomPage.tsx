@@ -110,8 +110,8 @@ export const LiveGameRoomPage = () => {
     iceServers: [
       {
         urls: [
-          `stun:alu-globe-game-room-turn-server.onrender.com:3478`, // your STUN ${window.location.hostname}:
-          `turn:alu-globe-game-room-turn-server.onrender.com:3478`, // your TURN
+          `stun:alu-globe-game-room-turn-server.onrender.com`, // your STUN ${window.location.hostname}::3478
+          `turn:alu-globe-game-room-turn-server.onrender.com`, // your TURN
         ],
         username: "aluglobe2025",
         credential: "aluglobe2025development",
