@@ -19,6 +19,9 @@ const SocketContext = createContext<SocketContextType>({
   isConnected: false,
 });
 
+// Singleton socket instance to prevent duplicate connections (StrictMode-safe)
+let sharedSocket: SocketType | null = null;
+
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [socket, setSocket] = useState<SocketType | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -26,44 +29,62 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   
   useEffect(() => {
-    const newSocket = io('https://alu-globe-gameroom.onrender.com', {
-      transports: ['websocket'],
-      pingTimeout: 60000,
-      pingInterval: 25000,
-    } as ExtendedConnectOpts);
- 
-    newSocket.on('connect', () => {
+    if (!sharedSocket) {
+      sharedSocket = io('https://alu-globe-gameroom.onrender.com', {
+        transports: ['websocket'],
+        pingTimeout: 60000,
+        pingInterval: 25000,
+      } as ExtendedConnectOpts);
+    }
+
+    // Ensure we don't double-register handlers
+    sharedSocket.off('connect');
+    sharedSocket.off('disconnect');
+    sharedSocket.off('connect_error');
+    sharedSocket.off('reconnect');
+    sharedSocket.off('reconnect_error');
+    sharedSocket.off('reconnect_failed');
+
+    sharedSocket.on('connect', () => {
       console.log('Socket connected');
       setIsConnected(true);
     });
 
-    newSocket.on('disconnect', (reason:any) => {
+    sharedSocket.on('disconnect', (reason:any) => {
       console.log('Socket disconnected:', reason);
       setIsConnected(false);
     });
 
-    newSocket.on('connect_error', (error: any) => {
+    sharedSocket.on('connect_error', (error: any) => {
       console.error('Socket connection error:', error);
       setIsConnected(false);
     });
 
-    newSocket.on('reconnect', (attemptNumber:any) => {
+    sharedSocket.on('reconnect', (attemptNumber:any) => {
       console.log('Socket reconnected after', attemptNumber, 'attempts');
       setIsConnected(true);
     });
 
-    newSocket.on('reconnect_error', (error:any) => {
+    sharedSocket.on('reconnect_error', (error:any) => {
       console.error('Socket reconnection error:', error);
     });
 
-    newSocket.on('reconnect_failed', () => {
+    sharedSocket.on('reconnect_failed', () => {
       console.error('Socket reconnection failed');
     });
 
-    setSocket(newSocket);
+    setSocket(sharedSocket);
 
     return () => {
-      newSocket.disconnect();
+      // Detach listeners but keep the socket connection alive (avoids StrictMode double-connect)
+      if (sharedSocket) {
+        sharedSocket.off('connect');
+        sharedSocket.off('disconnect');
+        sharedSocket.off('connect_error');
+        sharedSocket.off('reconnect');
+        sharedSocket.off('reconnect_error');
+        sharedSocket.off('reconnect_failed');
+      }
     };
   }, []);
 
