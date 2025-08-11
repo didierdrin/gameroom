@@ -2,37 +2,22 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Player, GameState } from '../Ludo/types/game';
 import { Dice } from './Dice';
+import { SocketType } from "../../SocketContext";
 
-interface LudoGameProps {
-  gameState?: GameState;
-  currentPlayerId?: string;
-  onRollDice?: () => void;
-  onMoveCoin?: (coinId: string) => void;
-  onStartGame?: () => void;
+export interface LudoGameProps {
+  gameState: GameState;
+  currentPlayerId: string;
+  onRollDice: () => void;
+  onMoveCoin: (coinId: string) => void;
+  onStartGame: () => void;
+  socket: SocketType; // ✅ added
+  roomId: string; // also passed in LiveGameRoomPage
 }
+
 
 export const LudoGame: React.FC<LudoGameProps> = ({
   gameState,
@@ -51,17 +36,41 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   const { players, currentPlayer, diceValue, diceRolled, winner, gameStarted, coins } = gameState;
 
   // Debug log for game state and current player
-  useEffect(() => {
-    console.log('LudoGame State:', {
-      currentPlayer: players[currentPlayer]?.id,
-      currentPlayerId,
-      diceValue,
-      diceRolled,
-      movableCoins,
-      coins: JSON.stringify(coins),
-      players: players.map((p) => ({ id: p.id, name: p.name, coins: p.coins })),
+useEffect(() => {
+  if (diceRolled && players[currentPlayer]?.id === currentPlayerId) {
+    const currentPlayerData = players[currentPlayer];
+    const playerCoins = coins![currentPlayerData.id] || [0, 0, 0, 0];
+    const movable: number[] = [];
+    
+    playerCoins.forEach((position, index) => {
+      if (position === 0 && diceValue === 6) {
+        movable.push(index);
+      } else if (position > 0 && position < 57 && position + diceValue! <= 57) {
+        movable.push(index);
+      }
     });
-  }, [currentPlayer, players, currentPlayerId, diceValue, diceRolled, coins, movableCoins]);
+    
+    setMovableCoins(movable);
+    console.log('Movable coins updated:', movable);
+  } else {
+    setMovableCoins([]);
+  }
+}, [diceRolled, diceValue, currentPlayer, players, currentPlayerId, coins]);
+
+
+
+
+// useEffect(() => {
+  //   console.log('LudoGame State:', {
+  //     currentPlayer: players[currentPlayer]?.id,
+  //     currentPlayerId,
+  //     diceValue,
+  //     diceRolled,
+  //     movableCoins,
+  //     coins: JSON.stringify(coins),
+  //     players: players.map((p) => ({ id: p.id, name: p.name, coins: p.coins })),
+  //   });
+  // }, [currentPlayer, players, currentPlayerId, diceValue, diceRolled, coins, movableCoins]);
 
   const boardPath: number[][] = [
     [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [5, 6], [4, 6], [3, 6], [2, 6], [1, 6], [0, 6],
@@ -264,15 +273,23 @@ export const LudoGame: React.FC<LudoGameProps> = ({
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-2 text-slate-400">Dice</h3>
           <Dice
+  value={diceValue!}
+  onRoll={onRollDice}
+  disabled={
+    diceRolled || 
+    players[currentPlayer]?.id !== currentPlayerId || 
+    players[currentPlayer]?.id.startsWith('ai-')
+  }
+/>
+          {/* <Dice
             value={diceValue!}
-            onRoll={() => onRollDice}
-            // disabled={diceRolled || players[currentPlayer]?.id !== currentPlayerId || players[currentPlayer]?.id.startsWith('ai-')}
+            onRoll={onRollDice}          
             disabled={
               diceRolled || 
               players[currentPlayer]?.id !== currentPlayerId || 
               players[currentPlayer]?.id.startsWith('ai-') // Add this condition
             }
-          />
+          /> */}
         </div>
       </div>
       <div className="grid grid-cols-[repeat(15,_2.5rem)] grid-rows-[repeat(15,_2.5rem)] gap-0 border-4 border-gray-800 bg-white">

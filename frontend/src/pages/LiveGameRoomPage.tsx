@@ -104,7 +104,6 @@ export const LiveGameRoomPage = () => {
   const [isJitsiInitializing, setIsJitsiInitializing] = useState(false);
   const email = (user as any).email || `${user?.id}@game.local`;
 
-
   const [jwtToken, setJwtToken] = useState<string>("");
 
   const jitsiContainerRef = useRef<HTMLDivElement>(null);
@@ -112,8 +111,8 @@ export const LiveGameRoomPage = () => {
   const gameType = gameState?.gameType || roomInfo?.gameType || "ludo";
 
   // JaaS Configuration
-  const JAAS_APP_ID = 'vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c';
-  const JAAS_KID = 'vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c/bc8b7e';
+  const JAAS_APP_ID = "vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c";
+  const JAAS_KID = "vpaas-magic-cookie-73e0b0238b9a447ab2d5bf9b9b41ff7c/bc8b7e";
 
   // Generate JWT token for JaaS authentication
   const generateJWT = async () => {
@@ -121,53 +120,58 @@ export const LiveGameRoomPage = () => {
       // In production, this should be done on your backend server
       // For now, we'll create a simple JWT payload and use it
       const payload = {
-        aud: 'jitsi',
+        aud: "jitsi",
         context: {
           user: {
             id: user?.id || `user-${Date.now()}`,
             name: user?.username || `Player-${Date.now().toString().slice(-4)}`,
             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`,
-            email:  `${user?.id}@game.local`,
-            moderator: 'true'
+            email: `${user?.id}@game.local`,
+            moderator: "true",
           },
           features: {
-            livestreaming: 'true',
-            recording: 'true',
-            transcription: 'true',
-            "outbound-call": 'true'
-          }
+            livestreaming: "true",
+            recording: "true",
+            transcription: "true",
+            "outbound-call": "true",
+          },
         },
-        iss: 'chat',
+        iss: "chat",
         room: `gameroom-${roomId}`,
         sub: JAAS_APP_ID,
-        exp: Math.round(Date.now() / 1000) + (3 * 60 * 60), // 3 hours
-        nbf: Math.round(Date.now() / 1000) - 10
+        exp: Math.round(Date.now() / 1000) + 3 * 60 * 60, // 3 hours
+        nbf: Math.round(Date.now() / 1000) - 10,
       };
 
       // For demo purposes, we'll make a request to your backend
       // Replace this with your actual JWT generation endpoint
-      const response = await fetch('https://alu-globe-game-room-turn-server.onrender.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user?.id,
-          userName: user?.username,
-          // avatar: `your-avatar-url`,
-          roomName: `gameroom-${roomId}`
-        })
-      });
+      const response = await fetch(
+        "https://alu-globe-game-room-turn-server.onrender.com/token",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user?.id,
+            userName: user?.username,
+            // avatar: `your-avatar-url`,
+            roomName: `gameroom-${roomId}`,
+          }),
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
         return data.token.replace(/^"|"$/g, "");
-        console.log("JWT from backend:", data.token); 
+        console.log("JWT from backend:", data.token);
       } else {
         // Fallback: create a temporary token (not secure for production)
-        console.warn('JWT generation endpoint not available, using fallback method');
+        console.warn(
+          "JWT generation endpoint not available, using fallback method"
+        );
         return createFallbackToken();
       }
     } catch (error) {
-      console.error('Error generating JWT:', error);
+      console.error("Error generating JWT:", error);
       return createFallbackToken();
     }
   };
@@ -176,35 +180,39 @@ export const LiveGameRoomPage = () => {
   const createFallbackToken = () => {
     // This is a simplified approach for demo purposes
     // In production, JWT generation must happen on a secure backend
-    const header = btoa(JSON.stringify({
-      alg: 'RS256',
-      kid: JAAS_KID,
-      typ: 'JWT'
-    }));
+    const header = btoa(
+      JSON.stringify({
+        alg: "RS256",
+        kid: JAAS_KID,
+        typ: "JWT",
+      })
+    );
 
-    const payload = btoa(JSON.stringify({
-      aud: 'jitsi',
-      context: {
-        user: {
-          id: user?.id || `user-${Date.now()}`,
-          name: user?.username || `Player-${Date.now().toString().slice(-4)}`,
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`,
-          email: `${user?.id}@game.local`,
-          moderator: 'true'
+    const payload = btoa(
+      JSON.stringify({
+        aud: "jitsi",
+        context: {
+          user: {
+            id: user?.id || `user-${Date.now()}`,
+            name: user?.username || `Player-${Date.now().toString().slice(-4)}`,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`,
+            email: `${user?.id}@game.local`,
+            moderator: "true",
+          },
+          features: {
+            livestreaming: "true",
+            recording: "true",
+            transcription: "true",
+            "outbound-call": "true",
+          },
         },
-        features: {
-          livestreaming: 'true',
-          recording: 'true',
-          transcription: 'true',
-          "outbound-call": 'true'
-        }
-      },
-      iss: 'chat',
-      room: `gameroom-${roomId}`,
-      sub: JAAS_APP_ID,
-      exp: Math.round(Date.now() / 1000) + (3 * 60 * 60),
-      nbf: Math.round(Date.now() / 1000) - 10
-    }));
+        iss: "chat",
+        room: `gameroom-${roomId}`,
+        sub: JAAS_APP_ID,
+        exp: Math.round(Date.now() / 1000) + 3 * 60 * 60,
+        nbf: Math.round(Date.now() / 1000) - 10,
+      })
+    );
 
     // Note: This creates an unsigned token for demo purposes
     // For production, you MUST sign this with your private key on the backend
@@ -219,61 +227,66 @@ export const LiveGameRoomPage = () => {
   // JaaS Jitsi configuration
   const jitsiConfig = {
     roomName: generateRoomName(),
-  width: '100%',
-  height: '100%',
-  parentNode: jitsiContainerRef.current,
-  jwt: jwtToken,
-  configOverwrite: {
-    startWithAudioMuted: true,
-    startWithVideoMuted: true,
-    prejoinPageEnabled: false,
-    disableDeepLinking: true,
-    disableInviteFunctions: true,
-    constraints: {
-      video: {
-        height: { ideal: 480, max: 720, min: 240 },
-        width: { ideal: 640, max: 1280, min: 320 }
-      }
+    width: "100%",
+    height: "100%",
+    parentNode: jitsiContainerRef.current,
+    jwt: jwtToken,
+    configOverwrite: {
+      startWithAudioMuted: true,
+      startWithVideoMuted: true,
+      prejoinPageEnabled: false,
+      disableDeepLinking: true,
+      disableInviteFunctions: true,
+      constraints: {
+        video: {
+          height: { ideal: 480, max: 720, min: 240 },
+          width: { ideal: 640, max: 1280, min: 320 },
+        },
+      },
+      p2p: { enabled: false },
+      useStunTurn: true,
+      enableLobbyChat: false,
+      requireDisplayName: false,
+      // Add JaaS specific config
+      hosts: {
+        domain: "8x8.vc",
+        muc: "conference.8x8.vc",
+      },
+      serviceUrl: "https://8x8.vc/",
+      bosh: "https://8x8.vc/http-bind",
+      clientNode: "http://jitsi.org/jitsimeet",
     },
-    p2p: { enabled: false },
-    useStunTurn: true,
-    enableLobbyChat: false,
-    requireDisplayName: false,
-    // Add JaaS specific config
-    hosts: {
-      domain: '8x8.vc',
-      muc: 'conference.8x8.vc'
-    },
-    serviceUrl: 'https://8x8.vc/',
-    bosh: 'https://8x8.vc/http-bind',
-    clientNode: 'http://jitsi.org/jitsimeet'
-  },
     interfaceConfigOverwrite: {
       // Minimal toolbar for game integration
       TOOLBAR_BUTTONS: [
-        'microphone', 'camera', 'desktop',
-        'hangup', 'chat', 'settings'
+        "microphone",
+        "camera",
+        "desktop",
+        "hangup",
+        "chat",
+        "settings",
       ],
-      
+
       // Disable branding
       SHOW_JITSI_WATERMARK: false,
       SHOW_WATERMARK_FOR_GUESTS: false,
       SHOW_POWERED_BY: false,
       SHOW_BRAND_WATERMARK: false,
-      
+
       // UI customization
-      DEFAULT_BACKGROUND: '#1a1a2e',
+      DEFAULT_BACKGROUND: "#1a1a2e",
       DISABLE_VIDEO_BACKGROUND: true,
       DISABLE_CHROME_EXTENSION_BANNER: true,
-      
+
       // Hide problematic elements
       HIDE_INVITE_MORE_HEADER: true,
-      SETTINGS_SECTIONS: ['devices', 'language'],
+      SETTINGS_SECTIONS: ["devices", "language"],
     },
     userInfo: {
-      displayName: user?.username || `Player-${Date.now().toString().slice(-4)}`,
-      email:  undefined
-    }
+      displayName:
+        user?.username || `Player-${Date.now().toString().slice(-4)}`,
+      email: undefined,
+    },
   };
 
   // Load Jitsi External API
@@ -285,40 +298,43 @@ export const LiveGameRoomPage = () => {
       }
 
       try {
-        console.log('🔄 Loading Jitsi script...');
-        
-        const existingScript = document.querySelector('script[src*="external_api.js"]');
+        console.log("🔄 Loading Jitsi script...");
+
+        const existingScript = document.querySelector(
+          'script[src*="external_api.js"]'
+        );
         if (existingScript) {
           existingScript.remove();
         }
 
-        const script = document.createElement('script');
+        const script = document.createElement("script");
         // Use JaaS domain instead of public meet.jit.si
-        script.src = 'https://8x8.vc/external_api.js';
+        script.src = "https://8x8.vc/external_api.js";
         script.async = true;
-        script.crossOrigin = 'anonymous';
-        
+        script.crossOrigin = "anonymous";
+
         const loadPromise = new Promise((resolve, reject) => {
           script.onload = () => {
-            console.log('✅ Jitsi script loaded successfully');
+            console.log("✅ Jitsi script loaded successfully");
             setJitsiLoaded(true);
             setJitsiError(null);
             resolve(true);
           };
-          
+
           script.onerror = (error) => {
-            console.error('❌ Failed to load Jitsi script:', error);
-            setJitsiError('Failed to load video chat. Please check your connection.');
+            console.error("❌ Failed to load Jitsi script:", error);
+            setJitsiError(
+              "Failed to load video chat. Please check your connection."
+            );
             reject(error);
           };
         });
 
         document.head.appendChild(script);
         await loadPromise;
-        
       } catch (error) {
-        console.error('❌ Error loading Jitsi:', error);
-        setJitsiError('Failed to initialize video chat');
+        console.error("❌ Error loading Jitsi:", error);
+        setJitsiError("Failed to initialize video chat");
       }
     };
 
@@ -334,101 +350,108 @@ export const LiveGameRoomPage = () => {
 
   // Initialize Jitsi with JWT
   const initializeJitsi = async () => {
-    if (!jitsiLoaded || !jitsiContainerRef.current || jitsiApi || isJitsiInitializing) {
-      console.log('❌ Cannot initialize Jitsi:', { 
-        jitsiLoaded, 
-        hasContainer: !!jitsiContainerRef.current, 
-        hasApi: !!jitsiApi, 
-        isInitializing: isJitsiInitializing 
+    if (
+      !jitsiLoaded ||
+      !jitsiContainerRef.current ||
+      jitsiApi ||
+      isJitsiInitializing
+    ) {
+      console.log("❌ Cannot initialize Jitsi:", {
+        jitsiLoaded,
+        hasContainer: !!jitsiContainerRef.current,
+        hasApi: !!jitsiApi,
+        isInitializing: isJitsiInitializing,
       });
       return;
     }
 
     setIsJitsiInitializing(true);
     setJitsiError(null);
-    
+
     try {
       // Generate JWT token
-      console.log('🔑 Generating JWT token...');
+      console.log("🔑 Generating JWT token...");
       const token = await generateJWT();
       setJwtToken(token);
 
       // Update config with token
       const configWithToken = {
         ...jitsiConfig,
-        jwt: token
+        jwt: token,
       };
 
-      console.log('🎵 Initializing JaaS Jitsi Meet with room:', configWithToken.roomName);
-      
+      console.log(
+        "🎵 Initializing JaaS Jitsi Meet with room:",
+        configWithToken.roomName
+      );
+
       // Use JaaS domain instead of public meet.jit.si
       const api = new window.JitsiMeetExternalAPI("8x8.vc", configWithToken);
 
       // Set up event listeners
-      api.on('readyToClose', () => {
-        console.log('🔌 Jitsi ready to close');
+      api.on("readyToClose", () => {
+        console.log("🔌 Jitsi ready to close");
         cleanupJitsi();
       });
 
-      api.on('videoConferenceJoined', (data: any) => {
-        console.log('✅ Successfully joined video conference:', data);
+      api.on("videoConferenceJoined", (data: any) => {
+        console.log("✅ Successfully joined video conference:", data);
         setInAudioCall(true);
         setMediaAvailable({ audio: true, video: true });
         setIsJitsiInitializing(false);
         updateParticipants();
       });
 
-      api.on('videoConferenceLeft', (data: any) => {
-        console.log('👋 Left video conference:', data);
+      api.on("videoConferenceLeft", (data: any) => {
+        console.log("👋 Left video conference:", data);
         cleanupJitsi();
       });
 
       // Enhanced error handling
-      api.on('errorOccurred', (error: any) => {
-        console.error('❌ Jitsi error occurred:', error);
+      api.on("errorOccurred", (error: any) => {
+        console.error("❌ Jitsi error occurred:", error);
         handleJitsiError(error);
       });
 
       // Participant events
-      api.on('participantJoined', (data: any) => {
-        console.log('👤 Participant joined:', data);
+      api.on("participantJoined", (data: any) => {
+        console.log("👤 Participant joined:", data);
         updateParticipants();
       });
 
-      api.on('participantLeft', (data: any) => {
-        console.log('👤 Participant left:', data);
+      api.on("participantLeft", (data: any) => {
+        console.log("👤 Participant left:", data);
         updateParticipants();
       });
 
       // Media events
-      api.on('audioMuteStatusChanged', (data: any) => {
-        console.log('🎤 Audio mute changed:', data);
+      api.on("audioMuteStatusChanged", (data: any) => {
+        console.log("🎤 Audio mute changed:", data);
         setAudioEnabled(!data.muted);
       });
 
-      api.on('videoMuteStatusChanged', (data: any) => {
-        console.log('📹 Video mute changed:', data);
+      api.on("videoMuteStatusChanged", (data: any) => {
+        console.log("📹 Video mute changed:", data);
         setVideoEnabled(!data.muted);
       });
 
-      api.on('screenShareStatusChanged', (data: any) => {
-        console.log('🖥️ Screen share changed:', data);
+      api.on("screenShareStatusChanged", (data: any) => {
+        console.log("🖥️ Screen share changed:", data);
         setIsScreenSharing(data.on);
       });
 
       setJitsiApi(api);
-      
+
       // Timeout handler
       setTimeout(() => {
         if (isJitsiInitializing) {
-          console.log('⚠️ Jitsi initialization taking longer than expected');
+          console.log("⚠️ Jitsi initialization taking longer than expected");
           setIsJitsiInitializing(false);
         }
       }, 10000);
-
     } catch (error) {
-      console.error('❌ Error initializing Jitsi:', error);
-      setJitsiError('Failed to initialize video call. Please try again.');
+      console.error("❌ Error initializing Jitsi:", error);
+      setJitsiError("Failed to initialize video call. Please try again.");
       setIsJitsiInitializing(false);
       cleanupJitsi();
     }
@@ -436,26 +459,44 @@ export const LiveGameRoomPage = () => {
 
   // Handle Jitsi errors
   const handleJitsiError = (error: any) => {
-    console.error('Jitsi error details:', error);
-    
-    if (error?.message?.includes('membersOnly') || error?.message?.includes('conference.connectionError.membersOnly')) {
-      setJitsiError('Authentication failed. Regenerating token...');
+    console.error("Jitsi error details:", error);
+
+    if (
+      error?.message?.includes("membersOnly") ||
+      error?.message?.includes("conference.connectionError.membersOnly")
+    ) {
+      setJitsiError("Authentication failed. Regenerating token...");
       setTimeout(() => {
         cleanupJitsi();
         if (inAudioCall) {
           initializeJitsi();
         }
       }, 2000);
-    } else if (error?.message?.includes('connection') || error?.message?.includes('network')) {
-      setJitsiError('Network connection issue. Please check your internet connection.');
-    } else if (error?.message?.includes('media') || error?.message?.includes('permission')) {
-      setJitsiError('Media permission denied. Please allow camera/microphone access.');
-    } else if (error?.message?.includes('jwt') || error?.message?.includes('token')) {
-      setJitsiError('Authentication token expired. Please refresh and try again.');
+    } else if (
+      error?.message?.includes("connection") ||
+      error?.message?.includes("network")
+    ) {
+      setJitsiError(
+        "Network connection issue. Please check your internet connection."
+      );
+    } else if (
+      error?.message?.includes("media") ||
+      error?.message?.includes("permission")
+    ) {
+      setJitsiError(
+        "Media permission denied. Please allow camera/microphone access."
+      );
+    } else if (
+      error?.message?.includes("jwt") ||
+      error?.message?.includes("token")
+    ) {
+      setJitsiError(
+        "Authentication token expired. Please refresh and try again."
+      );
     } else {
-      setJitsiError('Video call error occurred. Please try again.');
+      setJitsiError("Video call error occurred. Please try again.");
     }
-    
+
     setIsJitsiInitializing(false);
   };
 
@@ -465,38 +506,42 @@ export const LiveGameRoomPage = () => {
 
     try {
       const jitsiParticipants = jitsiApi.getParticipantsInfo();
-      console.log('👥 Updating participants:', jitsiParticipants);
+      console.log("👥 Updating participants:", jitsiParticipants);
 
-      const updatedParticipants: Participant[] = jitsiParticipants.map((p: any) => ({
-        id: p.participantId || p.id,
-        name: p.displayName || p.name || 'Anonymous',
-        videoEnabled: !p.isVideoMuted,
-        audioEnabled: !p.isAudioMuted,
-        videoStream: null,
-        audioStream: null,
-        isLocal: p.isLocal || false,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.participantId || p.id}`,
-      }));
+      const updatedParticipants: Participant[] = jitsiParticipants.map(
+        (p: any) => ({
+          id: p.participantId || p.id,
+          name: p.displayName || p.name || "Anonymous",
+          videoEnabled: !p.isVideoMuted,
+          audioEnabled: !p.isAudioMuted,
+          videoStream: null,
+          audioStream: null,
+          isLocal: p.isLocal || false,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${
+            p.participantId || p.id
+          }`,
+        })
+      );
 
       setParticipants(updatedParticipants);
     } catch (error) {
-      console.error('❌ Error updating participants:', error);
+      console.error("❌ Error updating participants:", error);
     }
   };
 
   // Clean up Jitsi
   const cleanupJitsi = () => {
-    console.log('🧹 Cleaning up Jitsi...');
-    
+    console.log("🧹 Cleaning up Jitsi...");
+
     if (jitsiApi) {
       try {
         jitsiApi.dispose();
       } catch (error) {
-        console.error('Error disposing Jitsi API:', error);
+        console.error("Error disposing Jitsi API:", error);
       }
       setJitsiApi(null);
     }
-    
+
     setParticipants([]);
     setInAudioCall(false);
     setAudioEnabled(false);
@@ -509,18 +554,20 @@ export const LiveGameRoomPage = () => {
   // Media control functions
   const toggleAudioCall = async () => {
     if (isJitsiInitializing) {
-      console.log('⚠️ Jitsi is already initializing...');
+      console.log("⚠️ Jitsi is already initializing...");
       return;
     }
 
     setJitsiError(null);
-    
+
     if (!inAudioCall) {
       console.log("🎵 Joining audio/video call...");
       if (jitsiLoaded) {
         await initializeJitsi();
       } else {
-        setJitsiError('Video chat is still loading. Please wait a moment and try again.');
+        setJitsiError(
+          "Video chat is still loading. Please wait a moment and try again."
+        );
       }
     } else {
       console.log("🎵 Leaving audio/video call...");
@@ -530,36 +577,36 @@ export const LiveGameRoomPage = () => {
 
   const toggleMute = () => {
     if (jitsiApi) {
-      jitsiApi.executeCommand('toggleAudio');
+      jitsiApi.executeCommand("toggleAudio");
     }
   };
 
   const toggleVideo = async () => {
     if (jitsiApi) {
-      jitsiApi.executeCommand('toggleVideo');
+      jitsiApi.executeCommand("toggleVideo");
     }
   };
 
   const handleScreenShare = async () => {
     if (jitsiApi) {
-      jitsiApi.executeCommand('toggleShareScreen');
+      jitsiApi.executeCommand("toggleShareScreen");
     }
   };
 
   const toggleDeafen = () => {
     const newDeafened = !isDeafened;
     setIsDeafened(newDeafened);
-    
+
     if (jitsiApi) {
       if (newDeafened && audioEnabled) {
-        jitsiApi.executeCommand('toggleAudio');
+        jitsiApi.executeCommand("toggleAudio");
       }
     }
   };
 
   const handleCameraSwitch = async () => {
     // Jitsi doesn't expose camera switching directly, users can do it through the UI
-    console.log('Camera switching should be done through Jitsi UI');
+    console.log("Camera switching should be done through Jitsi UI");
   };
 
   // Game logic (unchanged)
@@ -830,7 +877,9 @@ export const LiveGameRoomPage = () => {
       return (
         <div className="flex flex-col items-center justify-center h-full">
           <h2 className="text-2xl mb-4">Waiting for players...</h2>
-          <p className="text-gray-400 mb-4">Players in room: {players.length}</p>
+          <p className="text-gray-400 mb-4">
+            Players in room: {players.length}
+          </p>
           {isConnected && (
             <div className="text-green-400 mb-4">✅ Connected to room</div>
           )}
@@ -846,29 +895,31 @@ export const LiveGameRoomPage = () => {
     switch (lowerCaseGameType) {
       case "ludo":
         return (
-          // className="relative w-full h-full"
-          <div > 
+          <div>
             <LudoGame
               gameState={gameState}
-              currentPlayer={user!.id}
+              currentPlayerId={user!.id}
               onRollDice={handleRollDice}
               onMoveCoin={handleMoveCoin}
               onStartGame={handleStartGame}
               socket={socket!}
               roomId={roomId!}
             />
-            {/* {gameState.currentTurn === user?.id &&
-              typeof gameState.diceValue === "number" && (
+            {/* Only show dice when it's the current player's turn and they need to roll */}
+            {gameState.currentTurn === user?.id &&
+              !gameState.diceRolled &&
+              !gameState.gameOver && (
                 <div className="absolute bottom-4 right-4">
                   <Dice
-                    value={gameState.diceValue}
+                    value={gameState.diceValue || 0}
                     onRoll={handleRollDice}
-                    disabled={gameState.diceRolled && gameState.diceValue !== 6}
+                    disabled={false}
                   />
                 </div>
-              )} */}
+              )}
           </div>
         );
+
       case "trivia":
         return (
           <TriviaGame
@@ -999,7 +1050,11 @@ export const LiveGameRoomPage = () => {
             onClick={() => setFullscreen(!fullscreen)}
             className="hidden sm:block p-2 rounded-lg hover:bg-gray-700"
           >
-            {fullscreen ? <MinimizeIcon size={20} /> : <MaximizeIcon size={20} />}
+            {fullscreen ? (
+              <MinimizeIcon size={20} />
+            ) : (
+              <MaximizeIcon size={20} />
+            )}
           </button>
         </div>
       </div>
@@ -1038,9 +1093,9 @@ export const LiveGameRoomPage = () => {
       <div
         ref={jitsiContainerRef}
         className={`fixed inset-0 z-40 bg-black ${
-          showVideoGrid ? 'block' : 'hidden'
+          showVideoGrid ? "block" : "hidden"
         }`}
-        style={{ height: '100vh', width: '100vw' }}
+        style={{ height: "100vh", width: "100vw" }}
       />
 
       {/* Custom Video Grid Overlay when Jitsi is not in full view */}
@@ -1072,7 +1127,9 @@ export const LiveGameRoomPage = () => {
         isDeafened={isDeafened}
         inAudioCall={inAudioCall}
         onToggleAudioCall={toggleAudioCall}
-        remoteParticipants={participants.filter(p => !p.isLocal).map(p => p.id)}
+        remoteParticipants={participants
+          .filter((p) => !p.isLocal)
+          .map((p) => p.id)}
         mediaAvailable={mediaAvailable}
         isInitializingMedia={isInitializingMedia}
       />
