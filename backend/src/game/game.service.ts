@@ -292,11 +292,12 @@ export class GameService {
       if (gameState.diceRolled && gameState.diceValue !== 6) throw new Error('Dice already rolled');
 
       // Only roll if diceValue is 0 or player explicitly wants to roll during extra turn
-      if (gameState.diceValue !== 6 && gameState.diceValue === 6) {
+      if (gameState.diceValue === 0 || gameState.diceValue === 6) {
         const diceValue = Math.floor(Math.random() * 6) + 1;
         gameState.diceValue = diceValue;
         gameState.diceRolled = true;
-        // gameState.consecutiveSixes = diceValue === 6 ? gameState.consecutiveSixes! + 1 : 0;
+        
+        gameState.consecutiveSixes = diceValue === 6 ? (gameState.consecutiveSixes || 0) + 1 : 0;
         console.log(`Dice rolled by ${rollDiceDto.playerId}: ${diceValue}, consecutive sixes: ${gameState.consecutiveSixes}`);
       } else {
         console.log(`Using existing dice value ${gameState.diceValue} for ${rollDiceDto.playerId}'s extra turn`);
