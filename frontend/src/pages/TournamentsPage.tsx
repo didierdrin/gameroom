@@ -62,14 +62,14 @@ export const TournamentsPage = () => {
   const [activeTab, setActiveTab] = useState('active');
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
-  const handleRegisterClick = tournament => {
+  const handleRegisterClick = (tournament:any) => {
     setSelectedTournament(tournament);
     setShowRegistrationModal(true);
   };
   const handleRegisterSubmit = () => {
     setShowRegistrationModal(false);
   };
-  const renderTournamentCard = tournament => {
+  const renderTournamentCard = (tournament:any) => {
     const isActive = activeTab === 'active';
     return <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 overflow-hidden">
         <div className="h-40 relative">

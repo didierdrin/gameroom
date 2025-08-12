@@ -45,14 +45,18 @@ export const ProfilePage = () => {
           year: 'numeric'
         });
 
+     
+
         // Calculate rank (this would ideally come from the backend)
         const rankResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard');
         const rankData = await rankResponse.json(); 
-        const rankIndex = rankData.findIndex((u:any) => u._id === authUser.id);
+        // Fix: rankData is already an array, no need for .data
+        const rankIndex = Array.isArray(rankData) ? rankData.findIndex((u:any) => u._id === authUser.id) : -1;
+
         const rank = rankIndex >= 0 ? `#${rankIndex + 1}` : 'Unranked';
 
-        // Format game stats
-        const gameStats = statsData.gameStats.reduce(({acc, stat}:any) => {
+        // Format game stats - Fix the reduce function destructuring
+        const gameStats = statsData.gameStats.reduce((acc: any, stat: any) => {
           acc[stat.gameType] = {
             played: stat.count,
             won: stat.wins,
@@ -61,6 +65,8 @@ export const ProfilePage = () => {
           };
           return acc;
         }, {});
+
+
 
         // Get recent games from game history (last 5)
         const recentGames = statsData.gameHistory
@@ -391,6 +397,7 @@ export const ProfilePage = () => {
     </div>
   );
 };
+
 
 // import React, { useState, useEffect } from 'react';
 // import { SectionTitle } from '../components/UI/SectionTitle';
