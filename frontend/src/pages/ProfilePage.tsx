@@ -27,121 +27,263 @@ export const ProfilePage = () => {
     }>
   });
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!authUser) return;
+  // ... existing code ...
+
+useEffect(() => {
+  const fetchUserData = async () => {
+    if (!authUser) return;
+    
+    try {
+      setLoading(true);
+      // Fetch user profile data
+      const profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}`);
+      const profileResult = await profileResponse.json();
       
-      try {
-        setLoading(true);
-        // Fetch user profile data
-        const profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}`);
-        const profileData = await profileResponse.json();
-        const statsResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}/stats`);
-        const statsData = await statsResponse.json();
-        
-        // Format join date
-        const joinDate = new Date(profileData.createdAt).toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric'
+      // Check if profile request was successful
+      if (!profileResult.success) {
+        throw new Error(profileResult.error || 'Failed to fetch profile data');
+      }
+      
+      const profileData = profileResult.data;
+      
+      const statsResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}/stats`);
+      const statsResult = await statsResponse.json();
+      
+      // Check if stats request was successful
+      if (!statsResult.success) {
+        throw new Error(statsResult.error || 'Failed to fetch stats data');
+      }
+      
+      const statsData = statsResult.data;
+      
+      // Format join date
+      const joinDate = new Date(profileData.createdAt).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric'
+      });
+
+      // Calculate rank (this would ideally come from the backend)
+      const rankResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard');
+      const rankResult = await rankResponse.json();
+      
+      // Check if leaderboard request was successful
+      if (!rankResult.success) {
+        throw new Error(rankResult.error || 'Failed to fetch leaderboard data');
+      }
+      
+      const rankData = rankResult.data;
+      const rankIndex = Array.isArray(rankData) ? rankData.findIndex((u:any) => u._id === authUser.id) : -1;
+      const rank = rankIndex >= 0 ? `#${rankIndex + 1}` : 'Unranked';
+
+      // Format game stats - Add null check for gameStats
+      const gameStats = statsData.gameStats && Array.isArray(statsData.gameStats) 
+        ? statsData.gameStats.reduce((acc: any, stat: any) => {
+            acc[stat.gameType] = {
+              played: stat.count,
+              won: stat.wins,
+              winRate: Math.round((stat.wins / stat.count) * 100),
+              avgScore: Math.round(stat.score / stat.count)
+            };
+            return acc;
+          }, {})
+        : {};
+
+      // Get recent games from game history (last 5) - Add null check
+      const recentGames = statsData.gameHistory && Array.isArray(statsData.gameHistory)
+        ? statsData.gameHistory
+            .slice(0, 5)
+            .map((game:any) => ({
+              id: game.roomId,
+              name: `${game.gameType} Game`,
+              type: game.gameType,
+              date: new Date(game.date).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              }),
+              result: game.won ? 'Won' : 'Lost',
+              score: game.score
+            }))
+        : [];
+
+      // Determine favorite games (top 3 by count) - Add null check
+      const favoriteGames = statsData.gameStats && Array.isArray(statsData.gameStats)
+        ? [...statsData.gameStats]
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3)
+            .map(stat => stat.gameType)
+        : [];
+
+      // Generate badges based on achievements
+      const badges = [];
+      if (statsData.gamesWon >= 10) {
+        badges.push({
+          id: 1,
+          name: 'Game Master',
+          icon: '🏆',
+          description: 'Won 10 or more games',
+          date: new Date().toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          })
         });
+      }
+      if (statsData.gameStats && Array.isArray(statsData.gameStats) && statsData.gameStats.some((stat:any) => stat.wins >= 5)) {
+        badges.push({
+          id: 2,
+          name: 'Multi-Game Champion',
+          icon: '🥇',
+          description: 'Won 5+ games in multiple categories',
+          date: new Date().toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          })
+        });
+      }
+      // Add more badge conditions as needed...
+
+      setUserData({
+        username: profileData.username,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileData.username)}`,
+        joinDate,
+        totalScore: statsData.totalScore || 0,
+        gamesPlayed: statsData.gamesPlayed || 0,
+        gamesWon: statsData.gamesWon || 0,
+        rank,
+        gameStats,
+        recentGames,
+        favoriteGames,
+        badges
+      });
+    } catch (error) {
+      console.error('Failed to fetch user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchUserData();
+}, [authUser]);
+
+
+
+  // useEffect(() => {
+  //   const fetchUserData = async () => {
+  //     if (!authUser) return;
+      
+  //     try {
+  //       setLoading(true);
+  //       // Fetch user profile data
+  //       const profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}`);
+  //       const profileData = await profileResponse.json();
+  //       const statsResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}/stats`);
+  //       const statsData = await statsResponse.json();
+        
+  //       // Format join date
+  //       const joinDate = new Date(profileData.createdAt).toLocaleDateString('en-US', {
+  //         month: 'long',
+  //         year: 'numeric'
+  //       });
 
      
 
-        // Calculate rank (this would ideally come from the backend)
-        const rankResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard');
-        const rankData = await rankResponse.json(); 
-        // Fix: rankData is already an array, no need for .data
-        const rankIndex = Array.isArray(rankData) ? rankData.findIndex((u:any) => u._id === authUser.id) : -1;
+  //       // Calculate rank (this would ideally come from the backend)
+  //       const rankResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard');
+  //       const rankData = await rankResponse.json(); 
+  //       // Fix: rankData is already an array, no need for .data
+  //       const rankIndex = Array.isArray(rankData) ? rankData.findIndex((u:any) => u._id === authUser.id) : -1;
 
-        const rank = rankIndex >= 0 ? `#${rankIndex + 1}` : 'Unranked';
+  //       const rank = rankIndex >= 0 ? `#${rankIndex + 1}` : 'Unranked';
 
-        // Format game stats - Fix the reduce function destructuring
-        const gameStats = statsData.gameStats.reduce((acc: any, stat: any) => {
-          acc[stat.gameType] = {
-            played: stat.count,
-            won: stat.wins,
-            winRate: Math.round((stat.wins / stat.count) * 100),
-            avgScore: Math.round(stat.score / stat.count)
-          };
-          return acc;
-        }, {});
+  //       // Format game stats - Fix the reduce function destructuring
+  //       const gameStats = statsData.gameStats.reduce((acc: any, stat: any) => {
+  //         acc[stat.gameType] = {
+  //           played: stat.count,
+  //           won: stat.wins,
+  //           winRate: Math.round((stat.wins / stat.count) * 100),
+  //           avgScore: Math.round(stat.score / stat.count)
+  //         };
+  //         return acc;
+  //       }, {});
 
 
 
-        // Get recent games from game history (last 5)
-        const recentGames = statsData.gameHistory
-          .slice(0, 5)
-          .map((game:any) => ({
-            id: game.roomId,
-            name: `${game.gameType} Game`,
-            type: game.gameType,
-            date: new Date(game.date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            }),
-            result: game.won ? 'Won' : 'Lost',
-            score: game.score
-          }));
+  //       // Get recent games from game history (last 5)
+  //       const recentGames = statsData.gameHistory
+  //         .slice(0, 5)
+  //         .map((game:any) => ({
+  //           id: game.roomId,
+  //           name: `${game.gameType} Game`,
+  //           type: game.gameType,
+  //           date: new Date(game.date).toLocaleDateString('en-US', {
+  //             month: 'short',
+  //             day: 'numeric',
+  //             year: 'numeric'
+  //           }),
+  //           result: game.won ? 'Won' : 'Lost',
+  //           score: game.score
+  //         }));
 
-        // Determine favorite games (top 3 by count)
-        const favoriteGames = [...statsData.gameStats]
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 3)
-          .map(stat => stat.gameType);
+  //       // Determine favorite games (top 3 by count)
+  //       const favoriteGames = [...statsData.gameStats]
+  //         .sort((a, b) => b.count - a.count)
+  //         .slice(0, 3)
+  //         .map(stat => stat.gameType);
 
-        // Generate badges based on achievements
-        const badges = [];
-        if (statsData.gamesWon >= 10) {
-          badges.push({
-            id: 1,
-            name: 'Game Master',
-            icon: '🏆',
-            description: 'Won 10 or more games',
-            date: new Date().toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            })
-          });
-        }
-        if (statsData.gameStats.some((stat:any) => stat.wins >= 5)) {
-          badges.push({
-            id: 2,
-            name: 'Multi-Game Champion',
-            icon: '🥇',
-            description: 'Won 5+ games in multiple categories',
-            date: new Date().toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            })
-          });
-        }
-        // Add more badge conditions as needed...
+  //       // Generate badges based on achievements
+  //       const badges = [];
+  //       if (statsData.gamesWon >= 10) {
+  //         badges.push({
+  //           id: 1,
+  //           name: 'Game Master',
+  //           icon: '🏆',
+  //           description: 'Won 10 or more games',
+  //           date: new Date().toLocaleDateString('en-US', {
+  //             month: 'short',
+  //             day: 'numeric',
+  //             year: 'numeric'
+  //           })
+  //         });
+  //       }
+  //       if (statsData.gameStats.some((stat:any) => stat.wins >= 5)) {
+  //         badges.push({
+  //           id: 2,
+  //           name: 'Multi-Game Champion',
+  //           icon: '🥇',
+  //           description: 'Won 5+ games in multiple categories',
+  //           date: new Date().toLocaleDateString('en-US', {
+  //             month: 'short',
+  //             day: 'numeric',
+  //             year: 'numeric'
+  //           })
+  //         });
+  //       }
+  //       // Add more badge conditions as needed...
 
-        setUserData({
-          username: profileData.username,
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileData.username)}`,
-          joinDate,
-          totalScore: statsData.totalScore,
-          gamesPlayed: statsData.gamesPlayed,
-          gamesWon: statsData.gamesWon,
-          rank,
-          gameStats,
-          recentGames,
-          favoriteGames,
-          badges
-        });
-      } catch (error) {
-        console.error('Failed to fetch user data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  //       setUserData({
+  //         username: profileData.username,
+  //         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileData.username)}`,
+  //         joinDate,
+  //         totalScore: statsData.totalScore,
+  //         gamesPlayed: statsData.gamesPlayed,
+  //         gamesWon: statsData.gamesWon,
+  //         rank,
+  //         gameStats,
+  //         recentGames,
+  //         favoriteGames,
+  //         badges
+  //       });
+  //     } catch (error) {
+  //       console.error('Failed to fetch user data:', error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchUserData();
-  }, [authUser]);
+  //   fetchUserData();
+  // }, [authUser]);
 
   const renderStats = () => {
     if (loading) return <div className="text-center py-8">Loading stats...</div>;
