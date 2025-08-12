@@ -372,25 +372,3 @@ handleWebRTCError(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
 
 
 
-
-
-
- // async handleDisconnect(client: Socket) {
-  //   console.log(`Client disconnected: ${client.id}`);
-  //   await this.gameService.handleDisconnect(client);
-  //   const rooms = await this.gameService.getActiveGameRooms();
-  //   this.server.emit('gameRoomsList', { rooms });
-  // }
-
-  // Add to your main gateway or service
-// @Cron('*/5 * * * *') // Every 5 minutes
-// logMemoryUsage() {
-//   const used = process.memoryUsage();
-//   this.logger.log(`Memory Usage: 
-//     RSS: ${Math.round(used.rss / 1024 / 1024 * 100) / 100} MB
-//     Heap Used: ${Math.round(used.heapUsed / 1024 / 1024 * 100) / 100} MB
-//     Heap Total: ${Math.round(used.heapTotal / 1024 / 1024 * 100) / 100} MB
-//     Active Rooms: ${this.gameRooms.size}
-//     Connected Sockets: ${this.connectedSockets.size}
-//   `);
-// }
