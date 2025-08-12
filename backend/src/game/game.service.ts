@@ -73,7 +73,7 @@ interface GameState {
   roomName: string;
   gameType: string;
   // Ludo-specific
-  diceValues?: Record<string, number>;
+  diceValue?: number;
   diceRolled?: boolean;
   consecutiveSixes?: number;
   coins?: Record<string, number[]>;
@@ -220,7 +220,7 @@ export class GameService {
           players: [{ id: hostId, name: hostId, color: colors[0], coins: [0, 0, 0, 0] }],
           currentTurn: hostId,
           currentPlayer: 0,
-          diceValues: {},
+          diceValue: 0,
           diceRolled: false,
           consecutiveSixes: 0,
           coins: { [hostId]: [0, 0, 0, 0] },
@@ -283,334 +283,205 @@ export class GameService {
 
 
 
+
+
   async rollDice(rollDiceDto: RollDiceDto) {
-    const { roomId, playerId } = rollDiceDto; 
     try {
-      const gameState = await this.getGameState(roomId);
-      
-      // Basic validations
-      if (gameState.currentTurn !== playerId) {
-        throw new Error('Not your turn');
-      }
-      
-      if (gameState.gameOver) {
-        throw new Error('Game is already over');
-      }
-      
-      if (gameState.diceRolled) {
-        throw new Error('Dice already rolled for this turn');
-      }
-      
-      // Roll the dice
-      const diceValue = Math.floor(Math.random() * 6) + 1;
-      
-      // Update dice values in game state
-      gameState.diceValues = gameState.diceValues || {};
-      gameState.diceValues[playerId] = diceValue;
-      gameState.diceRolled = true;
-      
-      // Handle consecutive sixes logic
-      if (diceValue === 6) {
-        gameState.consecutiveSixes = (gameState.consecutiveSixes || 0) + 1;
+      const gameState = await this.getGameState(rollDiceDto.roomId);
+      if (gameState.currentTurn !== rollDiceDto.playerId) throw new Error('Not your turn');
+      if (gameState.diceRolled && gameState.diceValue !== 6) throw new Error('Dice already rolled');
+
+      // Only roll if diceValue is 0 or player explicitly wants to roll during extra turn
+      if (gameState.diceValue !== 6 && gameState.diceValue === 6) {
+        const diceValue = Math.floor(Math.random() * 6) + 1;
+        gameState.diceValue = diceValue;
+        gameState.diceRolled = true;
+        // gameState.consecutiveSixes = diceValue === 6 ? gameState.consecutiveSixes! + 1 : 0;
+        console.log(`Dice rolled by ${rollDiceDto.playerId}: ${diceValue}, consecutive sixes: ${gameState.consecutiveSixes}`);
       } else {
-        gameState.consecutiveSixes = 0;
+        console.log(`Using existing dice value ${gameState.diceValue} for ${rollDiceDto.playerId}'s extra turn`);
       }
-  
-      console.log(`Player ${playerId} rolled ${diceValue}. Consecutive sixes: ${gameState.consecutiveSixes}`);
-  
-      // Check for three consecutive sixes rule - player loses turn
-      if (gameState.consecutiveSixes >= 3) {
-        console.log(`Player ${playerId} rolled three consecutive sixes - losing turn`);
-        
-        // Reset state and pass turn
-        gameState.diceValues = {};
+
+      // Check for three consecutive 6s
+      if (gameState.consecutiveSixes! >= 3) {
+        console.log(`Player ${rollDiceDto.playerId} rolled three 6s, losing turn`);
+        gameState.diceValue = 0;
         gameState.diceRolled = false;
         gameState.consecutiveSixes = 0;
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
         gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
-        
-        await this.updateGameState(roomId, gameState);
-        
-        // Handle AI turn if next player is AI
+        await this.updateGameState(rollDiceDto.roomId, gameState);
         if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
+          console.log(`Scheduling AI turn for ${gameState.currentTurn} after three 6s`);
           setTimeout(() => {
-            this.handleAITurn(roomId, gameState.currentTurn).catch(console.error);
+            this.handleAITurn(rollDiceDto.roomId, gameState.currentTurn).catch((error) => {
+              console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
+            });
           }, 1000);
         }
-        
-        return { 
-          roomId, 
-          diceValue, 
-          playerId, 
-          noValidMove: true,
-          message: 'Three consecutive sixes - turn lost',
-          turnPassed: true
-        };
+        return { roomId: rollDiceDto.roomId, diceValue: gameState.diceValue, playerId: rollDiceDto.playerId, noValidMove: true };
       }
-  
-      // Check if player has any valid moves
-      const playerCoins = gameState.coins?.[playerId] || [0, 0, 0, 0];
-      const playerIndex = gameState.players.findIndex(p => p.id === playerId);
-      let hasValidMove = false;
-  
-      // Check each coin for valid moves
-      for (let i = 0; i < playerCoins.length; i++) {
-        const coinPosition = playerCoins[i];
-        
-        // Can move coin out of base with a 6
-        if (coinPosition === 0 && diceValue === 6) {
-          hasValidMove = true;
-          break;
-        }
-        
-        // Can move coin that's already on the board
-        if (coinPosition > 0 && coinPosition < 57) {
-          const newPosition = coinPosition + diceValue;
-          if (newPosition <= 57) {
-            hasValidMove = true;
-            break;
-          }
-        }
-      }
-  
-      // If no valid moves, pass turn
+
+      // Check if the player has any valid moves
+      const playerCoins = gameState.coins![rollDiceDto.playerId] || [0, 0, 0, 0];
+      const hasValidMove = gameState.diceValue === 6 || playerCoins.some((pos) => pos > 0 && pos + gameState.diceValue! <= 57);
+
       if (!hasValidMove) {
-        console.log(`Player ${playerId} has no valid moves with dice ${diceValue} - passing turn`);
-        
-        // Reset state and pass turn
-        gameState.diceValues = {};
+        console.log(`No valid moves for ${rollDiceDto.playerId} (dice: ${gameState.diceValue}), passing turn`);
+        gameState.diceValue = 0;
         gameState.diceRolled = false;
         gameState.consecutiveSixes = 0;
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
         gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
-        
-        await this.updateGameState(roomId, gameState);
-        
-        // Handle AI turn if next player is AI
+        await this.updateGameState(rollDiceDto.roomId, gameState);
         if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
+          console.log(`Scheduling AI turn for ${gameState.currentTurn}`);
           setTimeout(() => {
-            this.handleAITurn(roomId, gameState.currentTurn).catch(console.error);
+            this.handleAITurn(rollDiceDto.roomId, gameState.currentTurn).catch((error) => {
+              console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
+            });
           }, 1000);
         }
-        
-        return { 
-          roomId, 
-          diceValue, 
-          playerId, 
-          noValidMove: true,
-          message: 'No valid moves available - turn passed',
-          turnPassed: true
-        };
+        return { roomId: rollDiceDto.roomId, diceValue: gameState.diceValue, playerId: rollDiceDto.playerId, noValidMove: true };
       }
-  
-      // Valid moves available - save state
-      await this.updateGameState(roomId, gameState);
-  
-      // If player is AI, automatically make their move
-      if (playerId.startsWith('ai-')) {
+
+      await this.updateGameState(rollDiceDto.roomId, gameState);
+
+      // If player is AI, trigger their move
+      if (rollDiceDto.playerId.startsWith('ai-')) {
+        console.log(`Scheduling AI move for ${rollDiceDto.playerId}`);
         setTimeout(() => {
-          this.handleAIMove(roomId, playerId).catch(console.error);
+          this.handleAIMove(rollDiceDto.roomId, rollDiceDto.playerId).catch((error) => {
+            console.error(`Error in AI move for ${rollDiceDto.playerId}:`, error);
+          });
         }, 1000);
       }
-  
-      return { 
-        roomId, 
-        diceValue, 
-        playerId, 
-        noValidMove: false,
-        message: 'Dice rolled successfully - choose a coin to move',
-        turnPassed: false
-      };
-      
+
+      return { roomId: rollDiceDto.roomId, diceValue: gameState.diceValue, playerId: rollDiceDto.playerId, noValidMove: false };
     } catch (error) {
-      console.error(`Error in rollDice for player ${playerId}:`, error);
+      console.error(`Error in rollDice for ${rollDiceDto.playerId}:`, error);
       throw error;
     }
   }
-
 
   async moveCoin(moveCoinDto: MoveCoinDto) {
     try {
       const gameState = await this.getGameState(moveCoinDto.roomId);
-      const { roomId, playerId, coinId } = moveCoinDto;
-      
-      // Basic validations
-      if (gameState.currentTurn !== playerId) {
-        throw new Error('Not your turn');
+      if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
+        // Process AI turn immediately
+        await this.handleAITurn(moveCoinDto.roomId, gameState.currentTurn);
       }
+      if (gameState.currentTurn !== moveCoinDto.playerId) throw new Error('Not your turn');
       
-      if (gameState.gameOver) {
-        throw new Error('Game is already over');
-      }
-      
-      if (!gameState.diceRolled) {
-        throw new Error('You must roll the dice first');
-      }
-  
-      // Parse coin information
-      const [color, coinIndexStr] = coinId.split('-');
+      if (!gameState.diceRolled) throw new Error('You must roll the dice first');
+      const [color, coinIndexStr] = moveCoinDto.coinId.split('-');
       const coinIndex = parseInt(coinIndexStr) - 1;
-      
-      if (coinIndex < 0 || coinIndex > 3) {
-        throw new Error('Invalid coin index');
-      }
-  
-      // Get player and coin information
-      const playerIndex = gameState.players.findIndex(p => p.id === playerId);
-      if (playerIndex === -1) {
-        throw new Error('Player not found in game');
-      }
-  
-      const currentPosition = gameState.coins?.[playerId][coinIndex];
-      const diceValue = gameState.diceValues?.[playerId];
-      let newPosition = currentPosition;
+      const playerIndex = gameState.players.findIndex((p) => p.id === moveCoinDto.playerId);
+      const coinPosition = gameState.coins![moveCoinDto.playerId][coinIndex];
+      let newPosition = coinPosition;
       let captured = false;
-  
-      console.log(`Moving coin ${coinId} for player ${playerId} from position ${currentPosition} with dice ${diceValue}`);
-  
-      // Determine new position based on current position and dice value
-      if (currentPosition === 0) {
-        // Coin is in base - can only move out with a 6
-        if (diceValue !== 6) {
-          throw new Error('Need a 6 to move coin out of base');
-        }
+
+      console.log(`Move coin attempt: ${moveCoinDto.coinId} by ${moveCoinDto.playerId}, current position: ${coinPosition}, dice: ${gameState.diceValue}`);
+
+      // Validate move
+      if (coinPosition === 0 && gameState.diceValue === 6) {
         newPosition = this.startPositions[playerIndex];
-      } else if (currentPosition! > 0 && currentPosition! <= 51) {
-        // Coin is on the main board
-        newPosition = currentPosition! + diceValue!;
-        
-        // Check if coin enters home column (positions 52-57)
-        if (newPosition > 51) {
-          const homeColumnPosition = 52 + (newPosition - 52);
-          if (homeColumnPosition > 57) {
-            throw new Error('Move goes beyond home - invalid move');
-          }
-          newPosition = homeColumnPosition;
-        }
-      } else if (currentPosition! >= 52 && currentPosition! < 57) {
-        // Coin is in home column
-        newPosition = currentPosition! + diceValue!;
-        if (newPosition > 57) {
-          throw new Error('Move goes beyond home - invalid move');
+      } else if (coinPosition > 0) {
+        newPosition = coinPosition + gameState.diceValue!;
+        if (newPosition > 57) throw new Error('Invalid move: Beyond home');
+        if (newPosition > 51 && newPosition < 57) {
+          const homeStretchPosition = newPosition - 51;
+          if (homeStretchPosition > 6) throw new Error('Invalid move: Beyond home stretch');
         }
       } else {
-        throw new Error('Invalid current coin position');
+        throw new Error('Invalid move: Coin in base requires a 6');
       }
-  
-      // Check for captures (only on main board, not in safe positions or home column)
-      if (newPosition >= 1 && newPosition <= 51 && !this.safePositions.includes(newPosition)) {
+
+      // Check for captures (only on non-safe positions and not in home column)
+      if (!this.safePositions.includes(newPosition % 52) && newPosition <= 51) {
         for (const opponentId of Object.keys(gameState.coins!)) {
-          if (opponentId !== playerId) {
-            const opponentCoins = gameState.coins![opponentId];
-            for (let i = 0; i < opponentCoins.length; i++) {
-              if (opponentCoins[i] === newPosition) {
-                // Capture the opponent's coin
-                gameState.coins![opponentId][i] = 0;
-                const opponentPlayerIndex = gameState.players.findIndex(p => p.id === opponentId);
-                if (opponentPlayerIndex !== -1) {
-                  if (gameState.players[opponentPlayerIndex].coins) {
-                    gameState.players[opponentPlayerIndex].coins[i] = 0;
-                  }
-                }
+          if (opponentId !== moveCoinDto.playerId) {
+            gameState.coins![opponentId].forEach((pos, idx) => {
+              if (pos === newPosition) {
+                gameState.coins![opponentId][idx] = 0;
+                gameState.players[gameState.players.findIndex((p) => p.id === opponentId)].coins![idx] = 0;
                 captured = true;
-                console.log(`Captured opponent ${opponentId} coin at position ${newPosition}`);
-                break;
+                console.log(`Captured opponent coin at position ${newPosition} for player ${opponentId}`);
               }
-            }
+            });
           }
         }
       }
-  
-    
-        // Update coin position
-        gameState.coins![playerId][coinIndex] = newPosition;
-        if (gameState.players[playerIndex].coins) {
-          gameState.players[playerIndex].coins[coinIndex] = newPosition;
-        }
-      
-      console.log(`Coin ${coinId} moved to position ${newPosition}${captured ? ' (captured opponent)' : ''}`);
-  
-      // Check for win condition
-      const allCoinsHome = gameState.coins![playerId].every(pos => pos === 57);
-      if (allCoinsHome) {
-        gameState.winner = playerId;
+
+      // Update coin position
+      gameState.coins![moveCoinDto.playerId][coinIndex] = newPosition;
+      gameState.players[playerIndex].coins![coinIndex] = newPosition;
+      console.log(`Coin moved: ${moveCoinDto.coinId} to position ${newPosition}`);
+
+      // Check win condition
+      const hasWon = gameState.coins![moveCoinDto.playerId].every((pos) => pos === 57);
+      if (hasWon) {
+        gameState.winner = moveCoinDto.playerId;
         gameState.gameOver = true;
-        
-        // Update room status
         await this.gameRoomModel.updateOne(
-          { roomId },
-          { status: 'completed', winner: playerId }
+          { roomId: moveCoinDto.roomId },
+          { status: 'completed', winner: moveCoinDto.playerId },
         );
-        
-        // Save game session
-        await this.saveGameSession(roomId, gameState);
-        
-        console.log(`Player ${playerId} has won the game!`);
+        await this.saveGameSession(moveCoinDto.roomId, gameState);
+        console.log(`Player ${moveCoinDto.playerId} has won!`);
       }
-  
-      // Determine if player gets an extra turn
-      const rolledSix = diceValue === 6;
-      const getsExtraTurn = rolledSix || captured;
-  
-      if (getsExtraTurn && !gameState.gameOver) {
-        // Player gets an extra turn - reset dice state but keep same player
-        gameState.diceRolled = false;
-        gameState.diceValues = { ...gameState.diceValues, [playerId]: 0 };
-        // Keep consecutiveSixes count for tracking three 6s rule
-        
-        console.log(`Player ${playerId} gets extra turn (${rolledSix ? 'rolled 6' : 'captured opponent'})`);
-      } else {
-        // Normal turn - pass to next player
-        gameState.diceValues = {};
+
+      // Update turn logic
+      if (gameState.diceValue !== 6 && !captured) {
+        // Normal turn: Pass to next player
+        gameState.diceValue = 0;
         gameState.diceRolled = false;
         gameState.consecutiveSixes = 0;
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
         gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
-        
-        console.log(`Turn passed to player ${gameState.currentTurn}`);
+      } else {
+        // Extra turn for 6 or capture
+        gameState.diceRolled = false;
+        // Preserve diceValue for human players to allow using the 6 again
+        if (!moveCoinDto.playerId.startsWith('ai-') && gameState.diceValue === 6) {
+          console.log(`Preserving dice value ${gameState.diceValue} for ${moveCoinDto.playerId}'s extra turn`);
+        } else {
+          gameState.diceValue = 0; // Reset for AI or after capture
+        }
       }
-  
-      // Save updated game state
-      await this.updateGameState(roomId, gameState);
-  
-      // Handle AI turn if next player is AI
+
+      await this.updateGameState(moveCoinDto.roomId, gameState);
+
+      // If next player is AI, trigger their turn
       if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
+        console.log(`Scheduling AI turn for ${gameState.currentTurn} after move`);
         setTimeout(() => {
-          this.handleAITurn(roomId, gameState.currentTurn).catch(console.error);
+          this.handleAITurn(moveCoinDto.roomId, gameState.currentTurn).catch((error) => {
+            console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
+          });
         }, 1000);
       }
-  
+
       return {
-        roomId,
-        playerId,
-        coinId,
-        oldPosition: currentPosition,
-        newPosition,
-        captured,
-        extraTurn: getsExtraTurn && !gameState.gameOver,
+        roomId: moveCoinDto.roomId,
         coins: gameState.coins,
         currentTurn: gameState.currentTurn,
         currentPlayer: gameState.currentPlayer,
-        diceValues: gameState.diceValues,
+        diceValue: gameState.diceValue,
         diceRolled: gameState.diceRolled,
         gameOver: gameState.gameOver,
         winner: gameState.winner,
-        message: gameState.gameOver 
-          ? `Game Over! ${gameState.winner} wins!` 
-          : getsExtraTurn 
-            ? `Extra turn for ${playerId}!`
-            : `Turn passed to ${gameState.currentTurn}`
       };
-      
     } catch (error) {
-      console.error(`Error in moveCoin for player ${moveCoinDto.playerId}:`, error);
+      console.error(`Error in moveCoin for ${moveCoinDto.playerId}:`, error);
       throw error;
     }
   }
 
+
   private async passTurn(roomId: string, gameState: GameState, diceValue: number) {
     // Reset dice values and state
-    gameState.diceValues = {};
+    gameState.diceValue = 0;
     gameState.diceRolled = false;
     gameState.consecutiveSixes = 0;
     
@@ -642,7 +513,7 @@ export class GameService {
         return;
       }
       if (gameState.diceRolled) {
-        console.log(`AI ${aiPlayerId} proceeding with existing dice roll: ${gameState.diceValues?.[gameState.currentTurn]}`);
+        console.log(`AI ${aiPlayerId} proceeding with existing dice roll: ${gameState.diceValue}`);
         await this.handleAIMove(roomId, aiPlayerId);
       } else {
         console.log(`AI ${aiPlayerId} rolling dice`);
@@ -668,10 +539,10 @@ export class GameService {
       // Determine movable coins
       playerCoins.forEach((position, index) => {
         let newPosition = position;
-        if (position === 0 && gameState.diceValues?.[gameState.currentTurn] === 6) {
+        if (position === 0 && gameState.diceValue === 6) {
           newPosition = this.startPositions[playerIndex];
         } else if (position > 0 && position < 57) {
-          newPosition = position + gameState.diceValues?.[gameState.currentTurn]!;
+          newPosition = position + gameState.diceValue!;
           if (newPosition <= 57) {
             let captures = false;
             if (!this.safePositions.includes(newPosition % 52) && newPosition <= 51) {
@@ -704,7 +575,7 @@ export class GameService {
       } else {
         // No valid moves: Pass turn
         console.log(`AI ${aiPlayerId} has no valid moves, passing turn`);
-        gameState.diceValues = {};
+        gameState.diceValue = 0;
         gameState.diceRolled = false;
         gameState.consecutiveSixes = 0;
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
@@ -908,7 +779,7 @@ export class GameService {
         if (gameState.currentTurn === client.id) {
           gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
           gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
-          gameState.diceValues = {};
+          gameState.diceValue = 0;
           gameState.diceRolled = false;
           gameState.consecutiveSixes = 0;
           await this.updateGameState(room.roomId, gameState);
@@ -939,7 +810,7 @@ export class GameService {
             name: player.id.startsWith('ai-') ? `AI ${index + 1}` : player.name,
           })),
           currentPlayer: parsedState.players.findIndex((p) => p.id === parsedState.currentTurn),
-          diceRolled: parsedState.diceValues?.[parsedState.currentTurn] ? parsedState.diceValues[parsedState.currentTurn] !== 0 : false,
+          diceRolled: parsedState.diceValue ? parsedState.diceValue !== 0 : false,
         };
       }
       const room = await this.getGameRoomById(roomId);
@@ -1015,7 +886,7 @@ export class GameService {
               ...acc,
               [playerId]: [0, 0, 0, 0],
             }), {}),
-            diceValues: {},
+            diceValue: 0,
             diceRolled: false,
             consecutiveSixes: 0,
             winner: null,
