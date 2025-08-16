@@ -20,6 +20,11 @@ export const GameRoomCard = ({
 
   // Get host's display name similar to PlayerList.tsx logic
   const getHostDisplayName = () => {
+    // Check if hostId exists and is valid
+    if (!hostId) {
+      return 'Unknown Host';
+    }
+    
     // Check if hostId is the current user
     const currentUserId = localStorage.getItem('userId');
     const currentUsername = localStorage.getItem('username');
@@ -29,7 +34,7 @@ export const GameRoomCard = ({
     }
     
     // For AI hosts
-    if (hostId.startsWith('ai-')) {
+    if (typeof hostId === 'string' && hostId.startsWith('ai-')) {
       return `AI ${hostId.split('-')[1]}`;
     }
     
@@ -46,6 +51,11 @@ export const GameRoomCard = ({
   };
 
   const getGameIcon = () => {
+    // Safety check for gameType
+    if (!gameType || typeof gameType !== 'string') {
+      return '🎮';
+    }
+    
     switch (gameType.toLowerCase()) {
       case 'kahoot':
         return '🎯';
@@ -84,6 +94,11 @@ export const GameRoomCard = ({
   new Date(startTime).getTime() - new Date().getTime() < 10 * 60 * 1000 && 
   new Date(startTime).getTime() > new Date().getTime();
   
+  // Additional safety checks for required properties
+  if (!gameRoom || typeof gameRoom !== 'object') {
+    return <div className="p-4 text-red-400">Invalid game room data</div>;
+  }
+  
   const hostDisplayName = getHostDisplayName();
   
   return <div className="relative bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/20 hover:border-purple-500/50">
@@ -101,7 +116,7 @@ export const GameRoomCard = ({
           </div>
         </div>
         <div className="flex items-center mb-4">
-          <img src={hostAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + hostId} alt={hostDisplayName} className="w-6 h-6 rounded-full border border-gray-700" />
+          <img src={hostAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${hostId || 'default'}`} alt={hostDisplayName} className="w-6 h-6 rounded-full border border-gray-700" />
           <p className="text-sm text-gray-300 ml-2">Hosted by {hostDisplayName}</p>
         </div>
         <div className="flex items-center justify-between mb-4">
