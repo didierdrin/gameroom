@@ -12,7 +12,7 @@ import { Types } from 'mongoose';
 import axios from 'axios'; 
 import { Socket, Server } from 'socket.io';
 import { Chess } from 'chess.js';
-import { UserService } from 'src/user/user.service';
+import { UserService } from '../user/user.service';
 interface PublicGameRoom {
   id: string;
   roomId: string;
@@ -383,7 +383,12 @@ export class GameService {
         throw new Error('Not your turn');
       }
       
-      // Check if dice can be rolled
+      // Check if game has started
+      if (!gameState.gameStarted) {
+        throw new Error('Game has not started yet');
+    
+      
+      // Check if dice can be rolled (allow re-rolling if player got a 6 and hasn't moved yet)
       if (gameState.diceRolled && gameState.diceValue !== 6) {
         throw new Error('Dice already rolled for this turn');
       }
@@ -393,30 +398,31 @@ export class GameService {
       gameState.diceValue = diceValue;
       gameState.diceRolled = true;
       
-      // Track consecutive sixes
-      gameState.consecutiveSixes = diceValue === 6 ? (gameState.consecutiveSixes || 0) + 1 : 0;
+      // Initialize consecutiveSixes if not set
+      if (gameState.consecutiveSixes === undefined) {
+        gameState.consecutiveSixes = 0;
+      }
+      
+      // Track consecutive sixes - only count if this is a new turn, not a re-roll
+      if (diceValue === 6) {
+        gameState.consecutiveSixes = (gameState.consecutiveSixes || 0) + 1;
+      } else {
+        gameState.consecutiveSixes = 0;
+      }
+      
       console.log(`Dice rolled by ${rollDiceDto.playerId}: ${diceValue}, consecutive sixes: ${gameState.consecutiveSixes}`);
 
       // Check for three consecutive 6s - lose turn
-      if (gameState.consecutiveSixes! >= 3) {
+      if (gameState.consecutiveSixes >= 3) {
         console.log(`Player ${rollDiceDto.playerId} rolled three 6s, losing turn`);
-        gameState.diceValue = 0;
-        gameState.diceRolled = false;
-        gameState.consecutiveSixes = 0;
-        gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-        gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
-        await this.updateGameState(rollDiceDto.roomId, gameState);
-        
-        // Handle AI turn if next player is AI
-        if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
-          console.log(`Scheduling AI turn for ${gameState.currentTurn} after three 6s`);
-          setTimeout(() => {
-            this.handleAITurn(rollDiceDto.roomId, gameState.currentTurn).catch((error) => {
-              console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
-            });
-          }, 1000);
-        }
-        return { roomId: rollDiceDto.roomId, diceValue: gameState.diceValue, playerId: rollDiceDto.playerId, noValidMove: true };
+        await this.passTurn(rollDiceDto.roomId, gameState, diceValue);
+        return { 
+          roomId: rollDiceDto.roomId, 
+          diceValue: 0, 
+          playerId: rollDiceDto.playerId, 
+          noValidMove: true,
+          message: 'Three consecutive 6s - turn lost!'
+        };
       }
 
       // Check if the player has any valid moves
@@ -425,23 +431,14 @@ export class GameService {
 
       if (!hasValidMove) {
         console.log(`No valid moves for ${rollDiceDto.playerId} (dice: ${diceValue}), passing turn`);
-        gameState.diceValue = 0;
-        gameState.diceRolled = false;
-        gameState.consecutiveSixes = 0;
-        gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-        gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
-        await this.updateGameState(rollDiceDto.roomId, gameState);
-        
-        // Handle AI turn if next player is AI
-        if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
-          console.log(`Scheduling AI turn for ${gameState.currentTurn}`);
-          setTimeout(() => {
-            this.handleAITurn(rollDiceDto.roomId, gameState.currentTurn).catch((error) => {
-              console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
-            });
-          }, 1000);
-        }
-        return { roomId: rollDiceDto.roomId, diceValue: gameState.diceValue, playerId: rollDiceDto.playerId, noValidMove: true };
+        await this.passTurn(rollDiceDto.roomId, gameState, diceValue);
+        return { 
+          roomId: rollDiceDto.roomId, 
+          diceValue: diceValue, 
+          playerId: rollDiceDto.playerId, 
+          noValidMove: true,
+          message: 'No valid moves available'
+        };
       }
 
       await this.updateGameState(rollDiceDto.roomId, gameState);
@@ -456,7 +453,13 @@ export class GameService {
         }, 1000);
       }
 
-      return { roomId: rollDiceDto.roomId, diceValue: gameState.diceValue, playerId: rollDiceDto.playerId, noValidMove: false };
+      return { 
+        roomId: rollDiceDto.roomId, 
+        diceValue: gameState.diceValue, 
+        playerId: rollDiceDto.playerId, 
+        noValidMove: false,
+        message: diceValue === 6 ? 'You rolled a 6! Extra turn!' : null
+      };
     } catch (error) {
       console.error(`Error in rollDice for ${rollDiceDto.playerId}:`, error);
       throw error;
@@ -559,26 +562,19 @@ export class GameService {
       // Update turn logic
       if (gameState.diceValue !== 6 && !captured) {
         // Normal turn: Pass to next player
-        gameState.diceValue = 0;
-        gameState.diceRolled = false;
-        gameState.consecutiveSixes = 0;
-        gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-        gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+        console.log(`Normal turn completion for ${moveCoinDto.playerId}, passing to next player`);
+        await this.passTurn(moveCoinDto.roomId, gameState);
       } else {
         // Extra turn for 6 or capture
+        console.log(`Extra turn for ${moveCoinDto.playerId} - ${gameState.diceValue === 6 ? 'rolled 6' : 'captured opponent'}`);
         gameState.diceRolled = false;
-        // Preserve diceValue for human players to allow using the 6 again
-        if (!moveCoinDto.playerId.startsWith('ai-') && gameState.diceValue === 6) {
-          console.log(`Preserving dice value ${gameState.diceValue} for ${moveCoinDto.playerId}'s extra turn`);
-        } else {
-          gameState.diceValue = 0; // Reset for AI or after capture
-        }
+        gameState.diceValue = 0; // Reset dice for next roll
+        // Don't pass turn - same player continues
+        await this.updateGameState(moveCoinDto.roomId, gameState);
       }
 
-      await this.updateGameState(moveCoinDto.roomId, gameState);
-
-      // If next player is AI, trigger their turn
-      if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
+      // If next player is AI and the turn was passed, trigger their turn
+      if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver && gameState.gameStarted) {
         console.log(`Scheduling AI turn for ${gameState.currentTurn} after move`);
         setTimeout(() => {
           this.handleAITurn(moveCoinDto.roomId, gameState.currentTurn).catch((error) => {
@@ -603,23 +599,30 @@ export class GameService {
     }
   }
 
-  private async passTurn(roomId: string, gameState: GameState, diceValue: number) {
+  private async passTurn(roomId: string, gameState: GameState, diceValue?: number) {
+    console.log(`Passing turn from ${gameState.currentTurn} in room ${roomId}`);
+    
     // Reset dice values and state
     gameState.diceValue = 0;
     gameState.diceRolled = false;
     gameState.consecutiveSixes = 0;
     
     // Move to next player
+    const previousPlayer = gameState.currentPlayer;
     gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
     gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+    
+    console.log(`Turn passed from player ${previousPlayer} to player ${gameState.currentPlayer} (${gameState.currentTurn})`);
     
     await this.updateGameState(roomId, gameState);
 
     // Handle AI turn if next player is AI
-    if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
+    if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver && gameState.gameStarted) {
       console.log(`Scheduling AI turn for ${gameState.currentTurn}`);
       setTimeout(() => {
-        this.handleAITurn(roomId, gameState.currentTurn).catch(console.error);
+        this.handleAITurn(roomId, gameState.currentTurn).catch((error) => {
+          console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
+        });
       }, 1000);
     }
   }
@@ -1241,16 +1244,31 @@ export class GameService {
 
       // Update user stats for all players
       for (const player of gameState.players) {
-        const score = gameState.kahootState?.scores?.[player.id] || 
-                     gameState.triviaState?.scores?.[player.id] || 
-                     (gameState.winner === player.id ? 10 : (gameState.players.length > 1 ? 5 : 0));
+        let score = 0;
         
-        await this.userService.updateGameStats(
-          player.id,
-          gameState.gameType,
-          score,
-          gameState.winner === player.id
-        );
+        // Calculate score based on game type
+        if (gameState.gameType === 'ludo') {
+          // For Ludo: Winner gets 100 points, others get 10 points for participation
+          score = gameState.winner === player.id ? 100 : 10;
+        } else if (gameState.kahootState?.scores?.[player.id] !== undefined) {
+          score = gameState.kahootState.scores[player.id];
+        } else if (gameState.triviaState?.scores?.[player.id] !== undefined) {
+          score = gameState.triviaState.scores[player.id];
+        } else {
+          // Default scoring for other games
+          score = gameState.winner === player.id ? 100 : (gameState.players.length > 1 ? 20 : 0);
+        }
+        
+        try {
+          await this.userService.updateGameStats(
+            player.id,
+            gameState.gameType,
+            score,
+            gameState.winner === player.id
+          );
+        } catch (error) {
+          console.error(`Error updating user stats for player ${player.id}:`, error);
+        }
       }
 
       // Only include gameRoom if the room exists
@@ -1260,6 +1278,8 @@ export class GameService {
 
       const gameSession = new this.gameSessionModel(sessionData);
       await gameSession.save();
+      
+      console.log(`Game session saved for room ${roomId}, winner: ${gameState.winner}`);
     } catch (error) {
       console.error(`Error in saveGameSession for room ${roomId}:`, error);
     }

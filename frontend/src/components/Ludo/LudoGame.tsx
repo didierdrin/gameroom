@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { Player, GameState } from '../Ludo/types/game';
+import { GameState } from '../Ludo/types/game';
 import { Dice } from './Dice';
 import { SocketType } from "../../SocketContext";
 import { Fireworks } from '../UI/Fireworks';
+import { useUsername } from '../../hooks/useUsername';
 
 export interface LudoGameProps {
   gameState: GameState;
@@ -23,7 +23,6 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   onMoveCoin,
   onStartGame,
 }) => {
-  const { user } = useAuth();
   const [movableCoins, setMovableCoins] = useState<number[]>([]);
   const [showFireworks, setShowFireworks] = useState(false);
 
@@ -89,8 +88,8 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     3: [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7], [8, 7]], // Yellow
   };
 
-  // Safe positions where coins cannot be captured
-  const safePositions: number[] = [1, 9, 14, 22, 27, 35, 40, 48];
+  // Safe positions where coins cannot be captured (used for board display)
+  // const safePositions: number[] = [1, 9, 14, 22, 27, 35, 40, 48];
 
   const handleMoveCoin = (coinIndex: number) => {
     // Only allow moves if it's the current player's turn and they have rolled the dice
@@ -246,11 +245,12 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     return board;
   };
 
-  const currentPlayerName = players[currentPlayer]?.id === currentPlayerId 
-    ? user?.username || players[currentPlayer]?.name || 'Player' 
-    : players[currentPlayer]?.name || 'Player';
-    
-  const winnerName = winner ? players.find((p) => p.id === winner)?.name || 'Unknown' : 'Unknown';
+  // Use username resolver for current player
+  const currentPlayerUserId = players[currentPlayer]?.id;
+  const { username: currentPlayerName } = useUsername(currentPlayerUserId);
+  
+  // Use username resolver for winner
+  const { username: winnerName } = useUsername(winner);
   const isCurrentPlayerTurn = players[currentPlayer]?.id === currentPlayerId;
   const canRollDice = gameStarted && !gameState.gameOver && !winner && isCurrentPlayerTurn && !diceRolled;
 
@@ -351,39 +351,54 @@ export const LudoGame: React.FC<LudoGameProps> = ({
       <div className="mt-6 w-full max-w-2xl">
         <h3 className="text-lg font-semibold mb-3 text-gray-800 text-center">Players</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {players.map((player, index) => (
-            <div
-              key={player.id}
-              className={`p-3 rounded-lg border-2 ${
-                index === currentPlayer && gameStarted
-                  ? 'border-yellow-400 bg-yellow-50'
-                  : 'border-gray-200 bg-white'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-8 h-8 rounded-full ${
-                    player.color === 'red'
-                      ? 'bg-red-500'
-                      : player.color === 'blue'
-                      ? 'bg-blue-500'
-                      : player.color === 'green'
-                      ? 'bg-green-500'
-                      : 'bg-yellow-400'
-                  }`}
-                />
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-800">
-                    {player.id === currentPlayerId ? 'You' : player.name}
-                    {index === currentPlayer && gameStarted && ' (Current)'}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Coins: {coins![player.id]?.filter(pos => pos === 57).length || 0}/4 home
-                  </p>
+          {players.map((player, index) => {
+            const PlayerNameDisplay = ({ playerId }: { playerId: string }) => {
+              const { username: playerName, isLoading } = useUsername(playerId);
+              
+              if (isLoading) return <span>Loading...</span>;
+              
+              if (playerId === currentPlayerId) {
+                const currentUsername = localStorage.getItem('username');
+                return <span>{currentUsername ? `${currentUsername} (You)` : 'You'}</span>;
+              }
+              
+              return <span>{playerName || 'Unknown Player'}</span>;
+            };
+            
+            return (
+              <div
+                key={player.id}
+                className={`p-3 rounded-lg border-2 ${
+                  index === currentPlayer && gameStarted
+                    ? 'border-yellow-400 bg-yellow-50'
+                    : 'border-gray-200 bg-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-full ${
+                      player.color === 'red'
+                        ? 'bg-red-500'
+                        : player.color === 'blue'
+                        ? 'bg-blue-500'
+                        : player.color === 'green'
+                        ? 'bg-green-500'
+                        : 'bg-yellow-400'
+                    }`}
+                  />
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-800">
+                      <PlayerNameDisplay playerId={player.id} />
+                      {index === currentPlayer && gameStarted && ' (Current)'}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Coins: {coins![player.id]?.filter(pos => pos === 57).length || 0}/4 home
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

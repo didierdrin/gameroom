@@ -7,8 +7,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { GameRoom, GameRoomSchema } from './schemas/game-room.schema';
 import { GameSessionEntity, GameSessionSchema } from './schemas/game-session.schema';
 import { RedisModule } from '../redis/redis.module';
-import { TriviaService } from 'src/trivia/trivia.service';
-import { UserModule } from 'src/user/user.module';
+import { TriviaService } from '../trivia/trivia.service';
+import { UserModule } from '../user/user.module';
 @Module({
   imports: [    
     MongooseModule.forFeature([

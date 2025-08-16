@@ -99,9 +99,20 @@ export class GameGateway {
     try {
       console.log('Rolling dice:', payload);
       const result = await this.gameService.rollDice(payload);
+      
+      // Emit dice result immediately
       this.server.to(payload.roomId).emit('diceRolled', result);
+      
+      // Get and emit updated game state
       const gameState = await this.gameService.getGameState(payload.roomId);
       this.server.to(payload.roomId).emit('gameState', gameState);
+      
+      console.log('Dice rolled result:', {
+        roomId: payload.roomId,
+        playerId: payload.playerId,
+        diceValue: result.diceValue,
+        noValidMove: result.noValidMove
+      });
     } catch (error) {
       console.error('Roll dice error:', error.message);
       client.emit('error', { message: error.message, type: 'rollDiceError' });
@@ -113,12 +124,34 @@ export class GameGateway {
     try {
       console.log('Moving coin:', payload);
       const result = await this.gameService.moveCoin(payload);
+      
+      // Emit coin move result
       this.server.to(payload.roomId).emit('coinMoved', result);
+      
+      // Get and emit updated game state
       const gameState = await this.gameService.getGameState(payload.roomId);
       this.server.to(payload.roomId).emit('gameState', gameState);
+      
+      // If game is over, emit game over event
       if (result.gameOver) {
-        this.server.to(payload.roomId).emit('gameOver', result);
+        this.server.to(payload.roomId).emit('gameOver', {
+          winner: result.winner,
+          roomId: payload.roomId,
+          finalState: gameState
+        });
+        console.log('Game over:', {
+          roomId: payload.roomId,
+          winner: result.winner
+        });
       }
+      
+      console.log('Coin moved result:', {
+        roomId: payload.roomId,
+        playerId: payload.playerId,
+        coinId: payload.coinId,
+        currentTurn: result.currentTurn,
+        gameOver: result.gameOver
+      });
     } catch (error) {
       console.error('Move coin error:', error.message);
       client.emit('error', { message: error.message, type: 'moveCoinError' });
