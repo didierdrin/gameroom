@@ -31,9 +31,15 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
     console.log('GameRoomCard getHostDisplayName - Full gameRoom data:', gameRoom);
     console.log('GameRoomCard getHostDisplayName - Extracted fields:', { hostName, host, playerIdToUsername });
     
-    // First check if we have a direct hostName (most reliable)
-    if (hostName && typeof hostName === 'string' && hostName.trim() !== '') {
-      console.log('Using hostName from backend:', hostName);
+    // Check if hostName is actually a user ID (MongoDB ObjectId format)
+    const isObjectId = (str: string) => /^[0-9a-fA-F]{24}$/.test(str);
+    
+    // If hostName looks like an ObjectId, it's actually a user ID, not a username
+    if (hostName && typeof hostName === 'string' && isObjectId(hostName)) {
+      console.log('hostName is actually a user ID, not a username:', hostName);
+      // Don't return this as the display name, continue to other resolution methods
+    } else if (hostName && typeof hostName === 'string' && hostName.trim() !== '' && !isObjectId(hostName)) {
+      console.log('Using hostName from backend (actual username):', hostName);
       return hostName;
     }
     
