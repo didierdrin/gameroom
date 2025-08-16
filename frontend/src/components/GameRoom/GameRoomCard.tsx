@@ -49,15 +49,6 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
       return 'Unknown Host';
     }
     
-    // Check if host is the current user
-    const currentUserId = localStorage.getItem('userId');
-    const currentUsername = localStorage.getItem('username');
-    
-    if (host === currentUserId) {
-      console.log('Current user is host, returning:', currentUsername ? `${currentUsername} (You)` : 'You');
-      return currentUsername ? `${currentUsername} (You)` : 'You';
-    }
-    
     // For AI hosts
     if (typeof host === 'string' && host.startsWith('ai-')) {
       console.log('AI host detected:', `AI ${host.split('-')[1]}`);
@@ -66,8 +57,27 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
     
     // Try to get username from the passed playerIdToUsername mapping first
     if (playerIdToUsername && playerIdToUsername[host]) {
-      console.log('Found username in playerIdToUsername mapping:', playerIdToUsername[host]);
-      return playerIdToUsername[host];
+      const username = playerIdToUsername[host];
+      console.log('Found username in playerIdToUsername mapping:', username);
+      
+      // Check if this host is the current user
+      const currentUserId = localStorage.getItem('userId');
+      if (host === currentUserId) {
+        console.log('Current user is host, returning:', `${username} (You)`);
+        return `${username} (You)`;
+      } else {
+        console.log('Other user is host, returning:', username);
+        return username;
+      }
+    }
+    
+    // Check if host is the current user (fallback for when playerIdToUsername doesn't have the mapping)
+    const currentUserId = localStorage.getItem('userId');
+    const currentUsername = localStorage.getItem('username');
+    
+    if (host === currentUserId) {
+      console.log('Current user is host, returning:', currentUsername ? `${currentUsername} (You)` : 'You');
+      return currentUsername ? `${currentUsername} (You)` : 'You';
     }
     
     // Try to get username from localStorage cache with multiple patterns
