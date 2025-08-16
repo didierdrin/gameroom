@@ -47,25 +47,33 @@ export class UserController {
     }
   }
 
+  @Post('populate-sample-data')
+  async populateSampleData() {
+    try {
+      const result = await this.userService.populateSampleGameData();
+      return {
+        success: result,
+        message: result ? 'Sample data populated successfully' : 'Failed to populate sample data'
+      };
+    } catch (error) {
+      console.error('Populate sample data error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
   @Get(':id')
   async getUser(@Param('id') id: string) {
     try {
       const user = await this.userService.findById(id);
       if (!user) {
-        return {
-          success: false,
-          error: 'User not found'
-        };
+        return { success: false, error: 'User not found' };
       }
-      return {
-        success: true,
-        data: user
-      };
+      return { success: true, data: user };
     } catch (error) {
-      return {
-        success: false,
-        error: error.message
-      };
+      return { success: false, error: error.message };
     }
   }
 
