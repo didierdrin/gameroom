@@ -12,7 +12,7 @@ interface GameRoom {
   roomId: string; 
   name: string;
   gameType: string;
-  hostId?: string; // Add hostId for username mapping
+  host: string; // Backend sends 'host' field, not 'hostId'
   hostName: string;
   hostAvatar: string;
   currentPlayers: number;
@@ -85,19 +85,32 @@ export const HomePage = () => {
       const rooms = payload.rooms;
       const now = new Date();
       
-      console.log('Received rooms:', rooms);
+      console.log('HomePage - Received rooms from backend:', rooms);
+      console.log('HomePage - Sample room structure:', rooms[0]);
       
       // Build playerIdToUsername mapping from room data
       const usernameMap: Record<string, string> = {};
       rooms.forEach(room => {
-        if (room.hostId && room.hostName) {
-          usernameMap[room.hostId] = room.hostName;
+        console.log('HomePage - Processing room:', { 
+          roomId: room.id, 
+          host: room.host, 
+          hostName: room.hostName,
+          hasHost: !!room.host,
+          hasHostName: !!room.hostName
+        });
+        
+        if (room.host && room.hostName) {
+          usernameMap[room.host] = room.hostName;
+          console.log('HomePage - Added to usernameMap:', room.host, '->', room.hostName);
         }
         // Also add current user's mapping if available
         if (user?.id && user?.username) {
           usernameMap[user.id] = user.username;
+          console.log('HomePage - Added current user to usernameMap:', user.id, '->', user.username);
         }
       });
+      
+      console.log('HomePage - Final usernameMap:', usernameMap);
       setPlayerIdToUsername(usernameMap);
       
       // Filter rooms based on scheduledTimeCombined

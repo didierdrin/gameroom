@@ -9,7 +9,7 @@ interface GameRoom {
   roomId: string;
   name: string;
   gameType: string;
-  hostId?: string; // Add hostId for username mapping
+  host: string; // Backend sends 'host' field, not 'hostId'
   hostName: string;
   hostAvatar: string;
   currentPlayers: number;
@@ -40,17 +40,33 @@ export const MyGameRoomsPage: React.FC<{ onJoinRoom: (roomId: string) => void }>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       
+      console.log('MyGameRoomsPage - Received data from backend:', data);
+      console.log('MyGameRoomsPage - Sample hosted room:', data.hosted[0]);
+      console.log('MyGameRoomsPage - Sample joined room:', data.joined[0]);
+      
       // Build playerIdToUsername mapping from room data
       const usernameMap: Record<string, string> = {};
       [...data.hosted, ...data.joined].forEach(room => {
-        if (room.hostId && room.hostName) {
-          usernameMap[room.hostId] = room.hostName;
+        console.log('MyGameRoomsPage - Processing room:', { 
+          roomId: room.id, 
+          host: room.host, 
+          hostName: room.hostName,
+          hasHost: !!room.host,
+          hasHostName: !!room.hostName
+        });
+        
+        if (room.host && room.hostName) {
+          usernameMap[room.host] = room.hostName;
+          console.log('MyGameRoomsPage - Added to usernameMap:', room.host, '->', room.hostName);
         }
         // Also add current user's mapping if available
         if (user?.id && user?.username) {
           usernameMap[user.id] = user.username;
+          console.log('MyGameRoomsPage - Added current user to usernameMap:', user.id, '->', user.username);
         }
       });
+      
+      console.log('MyGameRoomsPage - Final usernameMap:', usernameMap);
       setPlayerIdToUsername(usernameMap);
       
       setHostedRooms(data.hosted);

@@ -16,7 +16,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
     id,
     name,
     gameType,
-    hostId,
+    host, // Backend sends 'host' field, not 'hostId'
     hostName, // Check for hostName first
     hostAvatar,
     currentPlayers,
@@ -28,45 +28,97 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
 
   // Get host's display name similar to PlayerList.tsx logic
   const getHostDisplayName = () => {
-    console.log('GameRoomCard getHostDisplayName:', { hostName, hostId, playerIdToUsername });
+    console.log('GameRoomCard getHostDisplayName - Full gameRoom data:', gameRoom);
+    console.log('GameRoomCard getHostDisplayName - Extracted fields:', { hostName, host, playerIdToUsername });
     
     // First check if we have a direct hostName (most reliable)
-    if (hostName && typeof hostName === 'string') {
-      console.log('Using hostName:', hostName);
+    if (hostName && typeof hostName === 'string' && hostName.trim() !== '') {
+      console.log('Using hostName from backend:', hostName);
       return hostName;
     }
     
-    // Check if hostId exists and is valid
-    if (!hostId) {
-      console.log('No hostId, returning Unknown Host');
+    // Check if host exists and is valid
+    if (!host) {
+      console.log('No host field found, returning Unknown Host');
       return 'Unknown Host';
     }
     
-    // Check if hostId is the current user
+    // Check if host is the current user
     const currentUserId = localStorage.getItem('userId');
     const currentUsername = localStorage.getItem('username');
     
-    if (hostId === currentUserId) {
+    if (host === currentUserId) {
       console.log('Current user is host, returning:', currentUsername ? `${currentUsername} (You)` : 'You');
       return currentUsername ? `${currentUsername} (You)` : 'You';
     }
     
     // For AI hosts
-    if (typeof hostId === 'string' && hostId.startsWith('ai-')) {
-      console.log('AI host detected:', `AI ${hostId.split('-')[1]}`);
-      return `AI ${hostId.split('-')[1]}`;
+    if (typeof host === 'string' && host.startsWith('ai-')) {
+      console.log('AI host detected:', `AI ${host.split('-')[1]}`);
+      return `AI ${host.split('-')[1]}`;
     }
     
     // Try to get username from the passed playerIdToUsername mapping first
-    if (playerIdToUsername[hostId]) {
-      console.log('Found username in playerIdToUsername mapping:', playerIdToUsername[hostId]);
-      return playerIdToUsername[hostId];
+    if (playerIdToUsername && playerIdToUsername[host]) {
+      console.log('Found username in playerIdToUsername mapping:', playerIdToUsername[host]);
+      return playerIdToUsername[host];
     }
     
-    // Fallback to localStorage cache
-    const cachedUsername = localStorage.getItem(`username_${hostId}`);
-    console.log('Fallback to localStorage cache:', cachedUsername || hostId);
-    return cachedUsername || hostId;
+    // Try to get username from localStorage cache with multiple patterns
+    let cachedUsername = null;
+    
+    // Pattern 1: Direct username key
+    cachedUsername = localStorage.getItem(`username_${host}`);
+    if (cachedUsername) {
+      console.log('Found username in localStorage (pattern 1):', cachedUsername);
+      return cachedUsername;
+    }
+    
+    // Pattern 2: Check if there's a players cache
+    try {
+      const playersCache = localStorage.getItem('playersCache');
+      if (playersCache) {
+        const parsed = JSON.parse(playersCache);
+        if (parsed[host]?.username) {
+          console.log('Found username in playersCache:', parsed[host].username);
+          return parsed[host].username;
+        }
+      }
+    } catch (error) {
+      console.log('Error parsing playersCache:', error);
+    }
+    
+    // Pattern 3: Check if there's a usernames object
+    try {
+      const usernames = localStorage.getItem('usernames');
+      if (usernames) {
+        const parsed = JSON.parse(usernames);
+        if (parsed[host]) {
+          console.log('Found username in usernames object:', parsed[host]);
+          return parsed[host];
+        }
+      }
+    } catch (error) {
+      console.log('Error parsing usernames object:', error);
+    }
+    
+    // Pattern 4: Check if there's a user cache
+    try {
+      const userCache = localStorage.getItem('userCache');
+      if (userCache) {
+        const parsed = JSON.parse(userCache);
+        if (parsed[host]?.username) {
+          console.log('Found username in userCache:', parsed[host].username);
+          return parsed[host].username;
+        }
+      }
+    } catch (error) {
+      console.log('Error parsing userCache:', error);
+    }
+    
+    // If all else fails, return the host but try to make it more readable
+    console.log('No username found, returning formatted host:', host);
+    return host.length > 20 ? `${host.substring(0, 8)}...${host.substring(host.length - 8)}` : host;
   };
 
   const getGameIcon = () => {
@@ -135,7 +187,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
           </div>
         </div>
         <div className="flex items-center mb-4">
-          <img src={hostAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${hostId || 'default'}`} alt={hostDisplayName} className="w-6 h-6 rounded-full border border-gray-700" />
+          <img src={hostAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${host || 'default'}`} alt={hostDisplayName} className="w-6 h-6 rounded-full border border-gray-700" />
           <p className="text-sm text-gray-300 ml-2">Hosted by {hostDisplayName}</p>
         </div>
         <div className="flex items-center justify-between mb-4">
