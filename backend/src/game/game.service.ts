@@ -95,9 +95,6 @@ export class GameService {
   private safePositions = [1, 9, 14, 22, 27, 35, 40, 48];
   private homeColumnStart = 52; // Positions 52–57 are home column
 
-  
-
-
   constructor(
     private readonly redisService: RedisService,
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoomDocument>,
@@ -108,6 +105,24 @@ export class GameService {
 
   setServer(server: Server) {
     this.server = server;
+  }
+
+  // Helper method to check if player has valid moves
+  private checkValidMoves(playerCoins: number[], diceValue: number): boolean {
+    // Can always move if dice is 6 (can bring coin from base)
+    if (diceValue === 6) return true;
+    
+    // Check if any coin can move on the board
+    return playerCoins.some(pos => {
+      if (pos === 0) return false; // Coin in base, can't move without 6
+      if (pos >= 57) return false; // Coin already home
+      return pos + diceValue <= 57; // Can move without exceeding home
+    });
+  }
+
+  // Helper method to check win condition
+  private checkWinCondition(playerCoins: number[]): boolean {
+    return playerCoins.every(pos => pos === 57);
   }
 
   private async fetchTriviaQuestions(topic: string = 'general') {
@@ -181,7 +196,6 @@ export class GameService {
         };
         break;
       case 'kahoot':
-        // const questions = gameType === 'kahoot' ? await this.fetchTriviaQuestions(triviaTopic) : [];
         const questions = await this.fetchTriviaQuestions(triviaTopic || 'general');
         initialGameState = {
           roomId,
@@ -202,7 +216,6 @@ export class GameService {
           },
         };
         break;
-  
       case 'chess':
         initialGameState = {
           roomId,
@@ -232,7 +245,12 @@ export class GameService {
       default: // ludo, uno, pictionary, sudoku
         initialGameState = {
           roomId,
-          players: [{ id: hostId, name: hostId, color: colors[0], coins: [0, 0, 0, 0] }],
+          players: [{ 
+            id: hostId, 
+            name: hostId, 
+            color: colors[0], 
+            coins: [0, 0, 0, 0] 
+          }],
           currentTurn: hostId,
           currentPlayer: 0,
           diceValue: 0,
@@ -245,6 +263,16 @@ export class GameService {
           roomName,
           gameType: gameType.toLowerCase(),
         };
+        console.log('Ludo game initialized:', {
+          roomId,
+          hostId,
+          currentTurn: initialGameState.currentTurn,
+          players: initialGameState.players.map((p: any) => ({ 
+            id: p.id, 
+            color: p.color,
+            coins: p.coins
+          }))
+        });
     }
     await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
   }
@@ -255,14 +283,17 @@ export class GameService {
     if (!gameRoom) throw new Error('Game room not found');
     if (gameRoom.currentPlayers >= gameRoom.maxPlayers) throw new Error('Game room is full');
     if (gameRoom.isPrivate && gameRoom.password !== joinGameDto.password) throw new Error('Invalid password');
+    
     let isNewJoin = false;
     if (!gameRoom.playerIds.includes(joinGameDto.playerId)) {
       gameRoom.playerIds.push(joinGameDto.playerId);
       gameRoom.currentPlayers = gameRoom.playerIds.length;
       await gameRoom.save();
+      
       const gameState = await this.getGameState(joinGameDto.roomId);
       const colors = ['red', 'blue', 'green', 'yellow'];
       const playerIndex = gameState.players.length;
+      
       if (gameRoom.gameType === 'chess') {
         // For chess, the second player should be black
         const chessColor = 'black'; // Second player is always black
@@ -295,27 +326,45 @@ export class GameService {
           gameState.triviaState.answers[joinGameDto.playerId] = null;
         }
       } else {
+        // Ludo, Uno, Pictionary, Sudoku games
+        const playerColor = colors[playerIndex % colors.length];
         gameState.players.push({
           id: joinGameDto.playerId,
           name: joinGameDto.playerName || joinGameDto.playerId,
-          color: colors[playerIndex],
+          color: playerColor,
           coins: [0, 0, 0, 0],
         });
-        gameState.coins = gameState.coins || {};
+        
+        // Initialize coins for the new player
+        if (!gameState.coins) {
+          gameState.coins = {};
+        }
         gameState.coins[joinGameDto.playerId] = [0, 0, 0, 0];
-      }
-      await this.updateGameState(joinGameDto.roomId, gameState);
-              console.log('Game state updated after player join:', {
-          roomId: joinGameDto.roomId,
-          gameType: gameRoom.gameType,
-          currentTurn: gameState.currentTurn,
+        
+        console.log('Player joined Ludo game:', {
+          playerId: joinGameDto.playerId,
+          playerColor: playerColor,
+          totalPlayers: gameState.players.length,
           players: gameState.players.map((p: any) => ({ 
             id: p.id, 
-            chessColor: p.chessColor,
             color: p.color,
-            score: p.score
+            coins: p.coins
           }))
         });
+      }
+      
+      await this.updateGameState(joinGameDto.roomId, gameState);
+      console.log('Game state updated after player join:', {
+        roomId: joinGameDto.roomId,
+        gameType: gameRoom.gameType,
+        currentTurn: gameState.currentTurn,
+        players: gameState.players.map((p: any) => ({ 
+          id: p.id, 
+          chessColor: p.chessColor,
+          color: p.color,
+          score: p.score
+        }))
+      });
       isNewJoin = true;
     }
     return { game: gameRoom, player: joinGameDto.playerId, isNewJoin };
@@ -328,18 +377,27 @@ export class GameService {
   async rollDice(rollDiceDto: RollDiceDto) {
     try {
       const gameState = await this.getGameState(rollDiceDto.roomId);
-      if (gameState.currentTurn !== rollDiceDto.playerId) throw new Error('Not your turn');
-      if (gameState.diceRolled && gameState.diceValue !== 6) throw new Error('Dice already rolled');
+      
+      // Validate it's the player's turn
+      if (gameState.currentTurn !== rollDiceDto.playerId) {
+        throw new Error('Not your turn');
+      }
+      
+      // Check if dice can be rolled
+      if (gameState.diceRolled && gameState.diceValue !== 6) {
+        throw new Error('Dice already rolled for this turn');
+      }
 
-      // Always roll a new dice value when requested
+      // Roll a new dice value
       const diceValue = Math.floor(Math.random() * 6) + 1;
       gameState.diceValue = diceValue;
       gameState.diceRolled = true;
       
+      // Track consecutive sixes
       gameState.consecutiveSixes = diceValue === 6 ? (gameState.consecutiveSixes || 0) + 1 : 0;
       console.log(`Dice rolled by ${rollDiceDto.playerId}: ${diceValue}, consecutive sixes: ${gameState.consecutiveSixes}`);
 
-      // Check for three consecutive 6s
+      // Check for three consecutive 6s - lose turn
       if (gameState.consecutiveSixes! >= 3) {
         console.log(`Player ${rollDiceDto.playerId} rolled three 6s, losing turn`);
         gameState.diceValue = 0;
@@ -348,6 +406,8 @@ export class GameService {
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
         gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
         await this.updateGameState(rollDiceDto.roomId, gameState);
+        
+        // Handle AI turn if next player is AI
         if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
           console.log(`Scheduling AI turn for ${gameState.currentTurn} after three 6s`);
           setTimeout(() => {
@@ -361,16 +421,18 @@ export class GameService {
 
       // Check if the player has any valid moves
       const playerCoins = gameState.coins![rollDiceDto.playerId] || [0, 0, 0, 0];
-      const hasValidMove = gameState.diceValue === 6 || playerCoins.some((pos) => pos > 0 && pos + gameState.diceValue! <= 57);
+      const hasValidMove = this.checkValidMoves(playerCoins, diceValue);
 
       if (!hasValidMove) {
-        console.log(`No valid moves for ${rollDiceDto.playerId} (dice: ${gameState.diceValue}), passing turn`);
+        console.log(`No valid moves for ${rollDiceDto.playerId} (dice: ${diceValue}), passing turn`);
         gameState.diceValue = 0;
         gameState.diceRolled = false;
         gameState.consecutiveSixes = 0;
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
         gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
         await this.updateGameState(rollDiceDto.roomId, gameState);
+        
+        // Handle AI turn if next player is AI
         if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
           console.log(`Scheduling AI turn for ${gameState.currentTurn}`);
           setTimeout(() => {
@@ -404,17 +466,28 @@ export class GameService {
   async moveCoin(moveCoinDto: MoveCoinDto) {
     try {
       const gameState = await this.getGameState(moveCoinDto.roomId);
-      if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
-        // Process AI turn immediately
-        await this.handleAITurn(moveCoinDto.roomId, gameState.currentTurn);
-      }
-      if (gameState.currentTurn !== moveCoinDto.playerId) throw new Error('Not your turn');
       
-      if (!gameState.diceRolled) throw new Error('You must roll the dice first');
+      // Validate it's the player's turn
+      if (gameState.currentTurn !== moveCoinDto.playerId) {
+        throw new Error('Not your turn');
+      }
+      
+      // Check if dice has been rolled
+      if (!gameState.diceRolled) {
+        throw new Error('You must roll the dice first');
+      }
+
+      // Parse coin ID
       const [color, coinIndexStr] = moveCoinDto.coinId.split('-');
       const coinIndex = parseInt(coinIndexStr) - 1;
       const playerIndex = gameState.players.findIndex((p) => p.id === moveCoinDto.playerId);
-      const coinPosition = gameState.coins![moveCoinDto.playerId][coinIndex];
+      
+      if (playerIndex === -1) {
+        throw new Error('Player not found');
+      }
+
+      const playerCoins = gameState.coins![moveCoinDto.playerId];
+      const coinPosition = playerCoins[coinIndex];
       let newPosition = coinPosition;
       let captured = false;
 
@@ -422,26 +495,41 @@ export class GameService {
 
       // Validate move
       if (coinPosition === 0 && gameState.diceValue === 6) {
+        // Moving coin from base to start position
         newPosition = this.startPositions[playerIndex];
-      } else if (coinPosition > 0) {
+      } else if (coinPosition > 0 && coinPosition < 57) {
+        // Moving coin on the board
         newPosition = coinPosition + gameState.diceValue!;
-        if (newPosition > 57) throw new Error('Invalid move: Beyond home');
+        
+        // Check if move exceeds home
+        if (newPosition > 57) {
+          throw new Error('Invalid move: Beyond home');
+        }
+        
+        // Check if move is valid in home stretch
         if (newPosition > 51 && newPosition < 57) {
           const homeStretchPosition = newPosition - 51;
-          if (homeStretchPosition > 6) throw new Error('Invalid move: Beyond home stretch');
+          if (homeStretchPosition > 6) {
+            throw new Error('Invalid move: Beyond home stretch');
+          }
         }
       } else {
         throw new Error('Invalid move: Coin in base requires a 6');
       }
 
       // Check for captures (only on non-safe positions and not in home column)
-      if (!this.safePositions.includes(newPosition % 52) && newPosition <= 51) {
+      if (newPosition <= 51 && !this.safePositions.includes(newPosition % 52)) {
         for (const opponentId of Object.keys(gameState.coins!)) {
           if (opponentId !== moveCoinDto.playerId) {
-            gameState.coins![opponentId].forEach((pos, idx) => {
+            const opponentCoins = gameState.coins![opponentId];
+            opponentCoins.forEach((pos, idx) => {
               if (pos === newPosition) {
+                // Capture opponent coin
                 gameState.coins![opponentId][idx] = 0;
-                gameState.players[gameState.players.findIndex((p) => p.id === opponentId)].coins![idx] = 0;
+                const opponentPlayerIndex = gameState.players.findIndex((p) => p.id === opponentId);
+                if (opponentPlayerIndex !== -1) {
+                  gameState.players[opponentPlayerIndex].coins![idx] = 0;
+                }
                 captured = true;
                 console.log(`Captured opponent coin at position ${newPosition} for player ${opponentId}`);
               }
@@ -456,7 +544,7 @@ export class GameService {
       console.log(`Coin moved: ${moveCoinDto.coinId} to position ${newPosition}`);
 
       // Check win condition
-      const hasWon = gameState.coins![moveCoinDto.playerId].every((pos) => pos === 57);
+      const hasWon = this.checkWinCondition(gameState.coins![moveCoinDto.playerId]);
       if (hasWon) {
         gameState.winner = moveCoinDto.playerId;
         gameState.gameOver = true;
@@ -515,7 +603,6 @@ export class GameService {
     }
   }
 
-
   private async passTurn(roomId: string, gameState: GameState, diceValue: number) {
     // Reset dice values and state
     gameState.diceValue = 0;
@@ -547,8 +634,10 @@ export class GameService {
       const gameState = await this.getGameState(roomId);
   
       if (gameState.currentTurn !== aiPlayerId || gameState.gameOver) {
+        console.log(`AI turn skipped for ${aiPlayerId}: not their turn or game over`);
         return;
       }
+      
       if (gameState.diceRolled) {
         console.log(`AI ${aiPlayerId} proceeding with existing dice roll: ${gameState.diceValue}`);
         await this.handleAIMove(roomId, aiPlayerId);
@@ -571,44 +660,61 @@ export class GameService {
       }
 
       const playerIndex = gameState.players.findIndex((p) => p.id === aiPlayerId);
-      const playerCoins = gameState.coins![aiPlayerId] || [0, 0, 0, 0];
-      const movableCoins: { index: number; newPosition: number; captures: boolean }[] = [];
+      if (playerIndex === -1) {
+        console.log(`AI player ${aiPlayerId} not found in players array`);
+        return;
+      }
 
-      // Determine movable coins
+      const playerCoins = gameState.coins![aiPlayerId] || [0, 0, 0, 0];
+      const movableCoins: { index: number; newPosition: number; captures: boolean; priority: number }[] = [];
+
+      // Determine movable coins with priority
       playerCoins.forEach((position, index) => {
         let newPosition = position;
+        let captures = false;
+        let priority = 0;
+
         if (position === 0 && gameState.diceValue === 6) {
+          // Can move coin from base
           newPosition = this.startPositions[playerIndex];
+          priority = 1; // Low priority for moving from base
         } else if (position > 0 && position < 57) {
           newPosition = position + gameState.diceValue!;
           if (newPosition <= 57) {
-            let captures = false;
-            if (!this.safePositions.includes(newPosition % 52) && newPosition <= 51) {
+            // Check for captures
+            if (newPosition <= 51 && !this.safePositions.includes(newPosition % 52)) {
               for (const opponentId of Object.keys(gameState.coins!)) {
                 if (opponentId !== aiPlayerId && gameState.coins![opponentId].includes(newPosition)) {
                   captures = true;
+                  priority = 10; // Highest priority for captures
                   break;
                 }
               }
             }
-            movableCoins.push({ index, newPosition, captures });
+            
+            // Check if this is a home stretch move
+            if (newPosition > 51) {
+              priority = 5; // High priority for home stretch
+            } else if (position > 0) {
+              priority = 3; // Medium priority for regular moves
+            }
           }
+        }
+
+        if (newPosition !== position && newPosition <= 57) {
+          movableCoins.push({ index, newPosition, captures, priority });
         }
       });
 
       console.log(`AI ${aiPlayerId} movable coins: ${JSON.stringify(movableCoins)}`);
 
       if (movableCoins.length > 0) {
-        // Prioritize captures, then closest to home, else random
-        let coinToMove = movableCoins.find((coin) => coin.captures);
-        if (!coinToMove) {
-          coinToMove = movableCoins.reduce((best, coin) =>
-            coin.newPosition > best.newPosition ? coin : best,
-            movableCoins[0]
-          );
-        }
+        // Sort by priority: captures > home stretch > regular moves > base moves
+        movableCoins.sort((a, b) => b.priority - a.priority);
+        
+        const coinToMove = movableCoins[0];
         const coinId = `${gameState.players[playerIndex].color}-${coinToMove.index + 1}`;
-        console.log(`AI ${aiPlayerId} moving coin: ${coinId}`);
+        console.log(`AI ${aiPlayerId} moving coin: ${coinId} with priority ${coinToMove.priority}`);
         await this.moveCoin({ roomId, playerId: aiPlayerId, coinId });
       } else {
         // No valid moves: Pass turn
@@ -619,6 +725,7 @@ export class GameService {
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
         gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
         await this.updateGameState(roomId, gameState);
+        
         if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
           console.log(`Scheduling AI turn for ${gameState.currentTurn} after no valid move`);
           setTimeout(() => {

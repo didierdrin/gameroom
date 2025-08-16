@@ -67,8 +67,8 @@ export const GameRoomCard = ({
           </div>
         </div>
         <div className="flex items-center mb-4">
-          <img src={hostAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + hostName} alt={hostName} className="w-6 h-6 rounded-full border border-gray-700" />
-          <p className="text-sm text-gray-300 ml-2">Hosted by {hostName}</p>
+          <img src={hostAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + name} alt={name} className="w-6 h-6 rounded-full border border-gray-700" />
+          <p className="text-sm text-gray-300 ml-2">Hosted by {name}</p>
         </div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center text-sm text-gray-400">

@@ -125,7 +125,7 @@ export const LiveGameRoomPage = () => {
 
 
 
-  // ... existing code ...
+
 
 // Add this function after the existing state declarations
 const checkMediaDevices = async () => {
