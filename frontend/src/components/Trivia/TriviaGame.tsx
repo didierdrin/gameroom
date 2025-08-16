@@ -80,6 +80,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     if (currentQ + 1 < questions.length) {
       setCurrentQ(currentQ + 1);
       setTimer(30);
+      setSelected(null); // Reset selection for next question
     } else {
       // Show fireworks when game ends (after 5 questions)
       setShowFireworks(true);
@@ -90,6 +91,11 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
         total: questions.length 
       });
     }
+  };
+
+  const handleNextQuestion = () => {
+    // Only move to next question, don't submit answer
+    nextQuestion();
   };
 
   if (loading) {
@@ -181,7 +187,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
             <div className="p-4">
               <button
                 className="w-full p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                onClick={nextQuestion}
+                onClick={handleNextQuestion}
               >
                 {currentQ + 1 < questions.length ? 'Next Question' : 'See Results'}
               </button>
