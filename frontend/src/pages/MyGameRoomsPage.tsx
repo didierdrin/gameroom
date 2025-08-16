@@ -9,6 +9,7 @@ interface GameRoom {
   roomId: string;
   name: string;
   gameType: string;
+  hostId?: string; // Add hostId for username mapping
   hostName: string;
   hostAvatar: string;
   currentPlayers: number;
@@ -26,6 +27,7 @@ export const MyGameRoomsPage: React.FC<{ onJoinRoom: (roomId: string) => void }>
   const [activeTab, setActiveTab] = useState<'joined' | 'hosted' | 'past'>('joined');
   const [hostedRooms, setHostedRooms] = useState<GameRoom[]>([]);
   const [joinedRooms, setJoinedRooms] = useState<GameRoom[]>([]);
+  const [playerIdToUsername, setPlayerIdToUsername] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user || !socket) return;
@@ -37,6 +39,20 @@ export const MyGameRoomsPage: React.FC<{ onJoinRoom: (roomId: string) => void }>
       const sortedJoined = [...data.joined].sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
+      
+      // Build playerIdToUsername mapping from room data
+      const usernameMap: Record<string, string> = {};
+      [...data.hosted, ...data.joined].forEach(room => {
+        if (room.hostId && room.hostName) {
+          usernameMap[room.hostId] = room.hostName;
+        }
+        // Also add current user's mapping if available
+        if (user?.id && user?.username) {
+          usernameMap[user.id] = user.username;
+        }
+      });
+      setPlayerIdToUsername(usernameMap);
+      
       setHostedRooms(data.hosted);
       setJoinedRooms(sortedJoined);
     });
@@ -80,7 +96,7 @@ export const MyGameRoomsPage: React.FC<{ onJoinRoom: (roomId: string) => void }>
           <>
             <h3 className="text-lg font-medium mb-4">Game rooms you've joined</h3>
             {joinedRooms.length > 0 ? (
-              <GameRoomList gameRooms={joinedRooms} onJoinRoom={onJoinRoom} />
+              <GameRoomList gameRooms={joinedRooms} onJoinRoom={onJoinRoom} playerIdToUsername={playerIdToUsername} />
             ) : (
               <p className="text-gray-400">You haven't joined any rooms yet.</p>
             )}
@@ -94,13 +110,13 @@ export const MyGameRoomsPage: React.FC<{ onJoinRoom: (roomId: string) => void }>
                 {scheduledHosted.length > 0 && (
                   <>
                     <h4 className="text-md font-medium mb-2">Scheduled Rooms</h4>
-                    <GameRoomList gameRooms={scheduledHosted} onJoinRoom={onJoinRoom} />
+                    <GameRoomList gameRooms={scheduledHosted} onJoinRoom={onJoinRoom} playerIdToUsername={playerIdToUsername} />
                   </>
                 )}
                 {activeHosted.length > 0 && (
                   <>
                     <h4 className="text-md font-medium mb-2 mt-4">Active Rooms</h4>
-                    <GameRoomList gameRooms={activeHosted} onJoinRoom={onJoinRoom} />
+                    <GameRoomList gameRooms={activeHosted} onJoinRoom={onJoinRoom} playerIdToUsername={playerIdToUsername} />
                   </>
                 )}
               </>

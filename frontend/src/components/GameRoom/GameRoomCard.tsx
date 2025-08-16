@@ -1,15 +1,23 @@
 import React from 'react';
 import { UsersIcon, LockIcon, UnlockIcon, ClockIcon } from 'lucide-react';
 
-export const GameRoomCard = ({
+interface GameRoomCardProps {
+  gameRoom: any;
+  onJoinRoom: (gameRoom: any) => void;
+  playerIdToUsername?: Record<string, string>; // Add this prop for username mapping
+}
+
+export const GameRoomCard: React.FC<GameRoomCardProps> = ({
   gameRoom,
-  onJoinRoom
-}:any) => {
+  onJoinRoom,
+  playerIdToUsername = {}
+}) => {
   const {
     id,
     name,
     gameType,
-    hostId, // Changed from hostName to hostId to match the actual data structure
+    hostId,
+    hostName, // Check for hostName first
     hostAvatar,
     currentPlayers,
     maxPlayers,
@@ -20,8 +28,17 @@ export const GameRoomCard = ({
 
   // Get host's display name similar to PlayerList.tsx logic
   const getHostDisplayName = () => {
+    console.log('GameRoomCard getHostDisplayName:', { hostName, hostId, playerIdToUsername });
+    
+    // First check if we have a direct hostName (most reliable)
+    if (hostName && typeof hostName === 'string') {
+      console.log('Using hostName:', hostName);
+      return hostName;
+    }
+    
     // Check if hostId exists and is valid
     if (!hostId) {
+      console.log('No hostId, returning Unknown Host');
       return 'Unknown Host';
     }
     
@@ -30,23 +47,25 @@ export const GameRoomCard = ({
     const currentUsername = localStorage.getItem('username');
     
     if (hostId === currentUserId) {
+      console.log('Current user is host, returning:', currentUsername ? `${currentUsername} (You)` : 'You');
       return currentUsername ? `${currentUsername} (You)` : 'You';
     }
     
     // For AI hosts
     if (typeof hostId === 'string' && hostId.startsWith('ai-')) {
+      console.log('AI host detected:', `AI ${hostId.split('-')[1]}`);
       return `AI ${hostId.split('-')[1]}`;
     }
     
-    // For other human hosts, try to get from localStorage cache
-    // You can implement this based on how you store usernames in localStorage
-    // Common patterns:
-    // 1. If storing as individual keys: localStorage.getItem(`username_${hostId}`)
-    // 2. If storing as a JSON object: JSON.parse(localStorage.getItem('usernames') || '{}')[hostId]
-    // 3. If storing in a players cache: JSON.parse(localStorage.getItem('playersCache') || '{}')[hostId]?.username
+    // Try to get username from the passed playerIdToUsername mapping first
+    if (playerIdToUsername[hostId]) {
+      console.log('Found username in playerIdToUsername mapping:', playerIdToUsername[hostId]);
+      return playerIdToUsername[hostId];
+    }
     
-    // For now, using pattern 1 - adjust based on your actual storage pattern
+    // Fallback to localStorage cache
     const cachedUsername = localStorage.getItem(`username_${hostId}`);
+    console.log('Fallback to localStorage cache:', cachedUsername || hostId);
     return cachedUsername || hostId;
   };
 
@@ -111,7 +130,7 @@ export const GameRoomCard = ({
             {getGameIcon()}
           </div>
           <div className="ml-3">
-            <h3 className="font-bold text-white">{hostDisplayName}</h3>
+            <h3 className="font-bold text-white">{name}</h3>
             <p className="text-sm text-gray-400">{gameType}</p>
           </div>
         </div>

@@ -12,6 +12,7 @@ interface GameRoom {
   roomId: string; 
   name: string;
   gameType: string;
+  hostId?: string; // Add hostId for username mapping
   hostName: string;
   hostAvatar: string;
   currentPlayers: number;
@@ -73,6 +74,7 @@ export const HomePage = () => {
   const [error, setError] = useState('');
   const socket = useSocket();
   const { user } = useAuth();
+  const [playerIdToUsername, setPlayerIdToUsername] = useState<Record<string, string>>({});
 
   // Fetch game rooms when socket is available
   useEffect(() => {
@@ -84,6 +86,19 @@ export const HomePage = () => {
       const now = new Date();
       
       console.log('Received rooms:', rooms);
+      
+      // Build playerIdToUsername mapping from room data
+      const usernameMap: Record<string, string> = {};
+      rooms.forEach(room => {
+        if (room.hostId && room.hostName) {
+          usernameMap[room.hostId] = room.hostName;
+        }
+        // Also add current user's mapping if available
+        if (user?.id && user?.username) {
+          usernameMap[user.id] = user.username;
+        }
+      });
+      setPlayerIdToUsername(usernameMap);
       
       // Filter rooms based on scheduledTimeCombined
       const live = rooms.filter(r => {
@@ -291,7 +306,7 @@ const handleJoinRoom = async (gameRoom: GameRoom) => {
   ) : error ? (
     <div className="text-center text-red-500 py-8">{error}</div>
   ) : liveRooms.length > 0 ? (
-    <GameRoomList gameRooms={liveRooms} onJoinRoom={handleJoinRoom} />
+    <GameRoomList gameRooms={liveRooms} onJoinRoom={handleJoinRoom} playerIdToUsername={playerIdToUsername} />
   ) : (
     <div className="text-center py-8 text-gray-400">No live game rooms available</div>
   )}
@@ -310,7 +325,7 @@ const handleJoinRoom = async (gameRoom: GameRoom) => {
   ) : error ? (
     <div className="text-center text-red-500 py-8">{error}</div>
   ) : upcomingRooms.length > 0 ? (
-    <GameRoomList gameRooms={upcomingRooms} onJoinRoom={handleJoinRoom} />
+    <GameRoomList gameRooms={upcomingRooms} onJoinRoom={handleJoinRoom} playerIdToUsername={playerIdToUsername} />
   ) : (
     <div className="text-center py-8 text-gray-400">No upcoming game rooms scheduled</div>
   )}
