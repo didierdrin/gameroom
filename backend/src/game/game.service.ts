@@ -385,7 +385,7 @@ export class GameService {
       
       // Check if game has started
       if (!gameState.gameStarted) {
-        throw new Error('Game has not started yet');
+        throw new Error('Game has not started yet');}
     
       
       // Check if dice can be rolled (allow re-rolling if player got a 6 and hasn't moved yet)
