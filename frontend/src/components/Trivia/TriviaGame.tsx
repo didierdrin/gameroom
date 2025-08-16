@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SocketType } from '../../SocketContext';
+import { Fireworks } from '../UI/Fireworks';
 
 interface Question {
   id: string;
@@ -29,6 +30,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   const [timer, setTimer] = useState(30);
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState(0);
+  const [showFireworks, setShowFireworks] = useState(false);
 
   useEffect(() => {
     if (gameState.triviaState?.questions) {
@@ -79,6 +81,8 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       setCurrentQ(currentQ + 1);
       setTimer(30);
     } else {
+      // Show fireworks when game ends (after 5 questions)
+      setShowFireworks(true);
       socket.emit('triviaComplete', { 
         roomId, 
         playerId: currentPlayer, 
@@ -109,6 +113,10 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 
   return (
     <div className="flex flex-col h-full">
+      <Fireworks 
+        show={showFireworks} 
+        onComplete={() => setShowFireworks(false)} 
+      />
       {gameState.gameOver ? (
         <div className="text-center p-6">
           <h2 className="text-3xl font-bold mb-4">Game Over!</h2>

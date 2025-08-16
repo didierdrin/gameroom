@@ -44,13 +44,13 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   const isMountedRef = useRef(true); 
 
   const gameTypes = [
-    { id: 'kahoot', name: 'Kahoot', icon: '🎯' },
+    // { id: 'kahoot', name: 'Kahoot', icon: '🎯' },
     { id: 'ludo', name: 'Ludo', icon: '🎲' },
     { id: 'chess', name: 'Chess', icon: '♟️' },
-    { id: 'uno', name: 'UNO', icon: '🃏' },
+    // { id: 'uno', name: 'UNO', icon: '🃏' },
     { id: 'trivia', name: 'Trivia', icon: '❓' },
-    { id: 'pictionary', name: 'Pictionary', icon: '🎨' },
-    { id: 'sudoku', name: 'Sudoku', icon: '🔢' }
+    // { id: 'pictionary', name: 'Pictionary', icon: '🎨' },
+    // { id: 'sudoku', name: 'Sudoku', icon: '🔢' }
   ];
 
   useEffect(() => {

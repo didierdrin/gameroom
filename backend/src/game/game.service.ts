@@ -143,6 +143,12 @@ export class GameService {
     });
     await gameRoom.save();
     await this.initializeGameState(roomId, createGameDto.hostId, createGameDto.name, createGameDto.gameType, createGameDto.triviaTopic!);
+    console.log('Game created and initialized:', {
+      roomId,
+      gameType: createGameDto.gameType,
+      hostId: createGameDto.hostId,
+      maxPlayers: gameRoom.maxPlayers
+    });
     return gameRoom;
   }
 
@@ -213,6 +219,15 @@ export class GameService {
             moves: [],
           },
         };
+        console.log('Chess game initialized:', {
+          roomId,
+          hostId,
+          currentTurn: initialGameState.currentTurn,
+          players: initialGameState.players.map((p: any) => ({ 
+            id: p.id, 
+            chessColor: p.chessColor 
+          }))
+        });
         break;
       default: // ludo, uno, pictionary, sudoku
         initialGameState = {
@@ -249,11 +264,21 @@ export class GameService {
       const colors = ['red', 'blue', 'green', 'yellow'];
       const playerIndex = gameState.players.length;
       if (gameRoom.gameType === 'chess') {
-    
+        // For chess, the second player should be black
+        const chessColor = 'black'; // Second player is always black
         gameState.players.push({
           id: joinGameDto.playerId,
           name: joinGameDto.playerName || joinGameDto.playerId,
-          chessColor: gameState.players.length === 0 ? 'white' : 'black'
+          chessColor: chessColor
+        });
+        console.log('Player joined chess game:', {
+          playerId: joinGameDto.playerId,
+          chessColor: chessColor,
+          totalPlayers: gameState.players.length,
+          players: gameState.players.map((p: any) => ({ 
+            id: p.id, 
+            chessColor: p.chessColor 
+          }))
         });
       } else if (gameRoom.gameType === 'kahoot' || gameRoom.gameType === 'trivia') {
         gameState.players.push({
@@ -264,6 +289,10 @@ export class GameService {
         if (gameState.kahootState) {
           gameState.kahootState.scores[joinGameDto.playerId] = 0;
           gameState.kahootState.answers[joinGameDto.playerId] = null;
+        }
+        if (gameState.triviaState) {
+          gameState.triviaState.scores[joinGameDto.playerId] = 0;
+          gameState.triviaState.answers[joinGameDto.playerId] = null;
         }
       } else {
         gameState.players.push({
@@ -276,6 +305,17 @@ export class GameService {
         gameState.coins[joinGameDto.playerId] = [0, 0, 0, 0];
       }
       await this.updateGameState(joinGameDto.roomId, gameState);
+              console.log('Game state updated after player join:', {
+          roomId: joinGameDto.roomId,
+          gameType: gameRoom.gameType,
+          currentTurn: gameState.currentTurn,
+          players: gameState.players.map((p: any) => ({ 
+            id: p.id, 
+            chessColor: p.chessColor,
+            color: p.color,
+            score: p.score
+          }))
+        });
       isNewJoin = true;
     }
     return { game: gameRoom, player: joinGameDto.playerId, isNewJoin };
@@ -291,17 +331,13 @@ export class GameService {
       if (gameState.currentTurn !== rollDiceDto.playerId) throw new Error('Not your turn');
       if (gameState.diceRolled && gameState.diceValue !== 6) throw new Error('Dice already rolled');
 
-      // Only roll if diceValue is 0 or player explicitly wants to roll during extra turn
-      if (gameState.diceValue === 0 || gameState.diceValue === 6) {
-        const diceValue = Math.floor(Math.random() * 6) + 1;
-        gameState.diceValue = diceValue;
-        gameState.diceRolled = true;
-        
-        gameState.consecutiveSixes = diceValue === 6 ? (gameState.consecutiveSixes || 0) + 1 : 0;
-        console.log(`Dice rolled by ${rollDiceDto.playerId}: ${diceValue}, consecutive sixes: ${gameState.consecutiveSixes}`);
-      } else {
-        console.log(`Using existing dice value ${gameState.diceValue} for ${rollDiceDto.playerId}'s extra turn`);
-      }
+      // Always roll a new dice value when requested
+      const diceValue = Math.floor(Math.random() * 6) + 1;
+      gameState.diceValue = diceValue;
+      gameState.diceRolled = true;
+      
+      gameState.consecutiveSixes = diceValue === 6 ? (gameState.consecutiveSixes || 0) + 1 : 0;
+      console.log(`Dice rolled by ${rollDiceDto.playerId}: ${diceValue}, consecutive sixes: ${gameState.consecutiveSixes}`);
 
       // Check for three consecutive 6s
       if (gameState.consecutiveSixes! >= 3) {
@@ -518,7 +554,8 @@ export class GameService {
         await this.handleAIMove(roomId, aiPlayerId);
       } else {
         console.log(`AI ${aiPlayerId} rolling dice`);
-        await this.rollDice({ roomId, playerId: aiPlayerId });
+        const rollResult = await this.rollDice({ roomId, playerId: aiPlayerId });
+        console.log(`AI ${aiPlayerId} rolled: ${rollResult.diceValue}`);
       }
     } catch (error) {
       console.error(`Error in handleAITurn for ${aiPlayerId}:`, error);
@@ -625,9 +662,39 @@ export class GameService {
           gameState.kahootState!.answers[player.id] = null;
         });
         setTimeout(() => this.handleKahootQuestionTimeout(roomId), 20000);
+      } else if (room.gameType === 'trivia' && gameState.triviaState) {
+        gameState.triviaState.currentQuestionIndex = 0;
+        gameState.triviaState.questionTimer = 30;
+        gameState.players.forEach(player => {
+          gameState.triviaState!.answers[player.id] = null;
+        });
+      } else if (room.gameType === 'chess') {
+        // Ensure chess game starts with white's turn
+        gameState.currentTurn = gameState.players[0]?.id || '';
+        gameState.currentPlayer = 0;
+        console.log('Chess game started:', {
+          currentTurn: gameState.currentTurn,
+          players: gameState.players.map((p: any) => ({ 
+            id: p.id, 
+            chessColor: p.chessColor 
+          }))
+        });
       }
   
       await this.updateGameState(roomId, gameState);
+      
+              console.log('Game started, state updated:', {
+          roomId,
+          gameType: gameState.gameType,
+          currentTurn: gameState.currentTurn,
+          gameStarted: gameState.gameStarted,
+          players: gameState.players.map((p: any) => ({ 
+            id: p.id, 
+            chessColor: p.chessColor,
+            color: p.color,
+            score: p.score
+          }))
+        });
       
       // Emit to room only if server is available
       if (this.server) {
@@ -650,6 +717,14 @@ export class GameService {
   async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     const gameState = await this.getGameState(data.roomId);
     
+    console.log('Chess move attempt:', {
+      playerId: data.playerId,
+      currentTurn: gameState.currentTurn,
+      move: data.move,
+      gameStarted: gameState.gameStarted,
+      gameOver: gameState.gameOver
+    });
+    
     // Validate it's the player's turn
     if (gameState.currentTurn !== data.playerId) {
       throw new Error('Not your turn');
@@ -671,20 +746,36 @@ export class GameService {
         moves: [...gameState.chessState!.moves, move.san]
       };
   
-      // Switch turns only if game isn't over
-      if (!chess.isGameOver()) {
-        // Find the current player index
+      // Check if game is over
+      if (chess.isGameOver()) {
+        gameState.gameOver = true;
+        if (chess.isCheckmate()) {
+          gameState.winner = data.playerId;
+        } else if (chess.isDraw()) {
+          gameState.winner = 'draw';
+        }
+        await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
+        await this.saveGameSession(data.roomId, gameState);
+      } else {
+        // Switch turns only if game isn't over
         const currentPlayerIndex = gameState.players.findIndex(p => p.id === data.playerId);
-        // Switch to the other player's turn
         gameState.currentPlayer = (currentPlayerIndex + 1) % gameState.players.length;
         gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
-      } else {
-        gameState.gameOver = true;
-        gameState.winner = data.playerId;
-        // Handle game over logic...
       }
   
       await this.updateGameState(data.roomId, gameState);
+      
+      console.log('Chess move completed:', {
+        move: move.san,
+        newTurn: gameState.currentTurn,
+        gameOver: gameState.gameOver,
+        winner: gameState.winner,
+        players: gameState.players.map((p: any) => ({ 
+          id: p.id, 
+          chessColor: p.chessColor 
+        }))
+      });
+      
       return { roomId: data.roomId, move: move.san, gameState };
     } catch (error) {
       console.error('Chess move error:', error);
@@ -734,6 +825,49 @@ export class GameService {
     return { roomId: data.roomId, playerId: data.playerId, answerIndex: data.answerIndex };
   }
 
+  async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }) {
+    const gameState = await this.getGameState(data.roomId);
+    if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
+    if (!gameState.triviaState) throw new Error('Trivia state not initialized');
+    if (gameState.triviaState.answers[data.playerId] !== null) throw new Error('Answer already submitted');
+
+    gameState.triviaState.answers[data.playerId] = data.answer ? 0 : null; // Simple answer tracking
+    if (data.isCorrect) {
+      gameState.triviaState.scores[data.playerId] = (gameState.triviaState.scores[data.playerId] || 0) + 10;
+    }
+    
+    const allAnswered = gameState.players.every(p => gameState.triviaState!.answers[p.id] !== null);
+    
+    if (allAnswered) {
+      await this.processTriviaQuestion(data.roomId);
+    } else {
+      await this.updateGameState(data.roomId, gameState);
+    }
+    return { roomId: data.roomId, playerId: data.playerId, answer: data.answer, isCorrect: data.isCorrect };
+  }
+
+  async completeTriviaGame(data: { roomId: string; playerId: string; score: number; total: number }) {
+    const gameState = await this.getGameState(data.roomId);
+    if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
+    
+    // Update final scores
+    gameState.triviaState!.scores[data.playerId] = data.score;
+    
+    // Determine winner
+    const winner = Object.entries(gameState.triviaState!.scores).reduce((a, b) => 
+      (gameState.triviaState!.scores[a[0]] || 0) > (gameState.triviaState!.scores[b[0]] || 0) ? a : b
+    )[0];
+    
+    gameState.winner = winner;
+    gameState.gameOver = true;
+    
+    await this.updateGameState(data.roomId, gameState);
+    await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner });
+    await this.saveGameSession(data.roomId, gameState);
+    
+    return { roomId: data.roomId, winner, scores: gameState.triviaState!.scores };
+  }
+
   async processKahootQuestion(roomId: string) {
     const gameState = await this.getGameState(roomId);
     if (!gameState.kahootState) throw new Error('Kahoot state not initialized');
@@ -758,6 +892,27 @@ export class GameService {
       gameState.kahootState.answers = gameState.players.reduce((acc, p) => ({ ...acc, [p.id]: null }), {});
       gameState.kahootState.questionTimer = 20;
       setTimeout(() => this.handleKahootQuestionTimeout(roomId), 20000);
+    }
+
+    await this.updateGameState(roomId, gameState);
+    return gameState;
+  }
+
+  async processTriviaQuestion(roomId: string) {
+    const gameState = await this.getGameState(roomId);
+    if (!gameState.triviaState) throw new Error('Trivia state not initialized');
+    
+    gameState.triviaState.currentQuestionIndex++;
+    if (gameState.triviaState.currentQuestionIndex >= gameState.triviaState.questions.length) {
+      gameState.gameOver = true;
+      gameState.winner = gameState.players.reduce((a, b) => 
+        (gameState.triviaState!.scores[a.id] || 0) > (gameState.triviaState!.scores[b.id] || 0) ? a : b
+      ).id;
+      await this.gameRoomModel.updateOne({ roomId }, { status: 'completed', winner: gameState.winner });
+      await this.saveGameSession(roomId, gameState);
+    } else {
+      gameState.triviaState.answers = gameState.players.reduce((acc, p) => ({ ...acc, [p.id]: null }), {});
+      gameState.triviaState.questionTimer = 30;
     }
 
     await this.updateGameState(roomId, gameState);
@@ -804,6 +959,18 @@ export class GameService {
       const redisState = await this.redisService.get(`game:${roomId}`);
       if (redisState) {
         const parsedState: GameState = JSON.parse(redisState);
+        console.log(`Retrieved game state from Redis for room ${roomId}:`, {
+          currentTurn: parsedState.currentTurn,
+          gameStarted: parsedState.gameStarted,
+          gameOver: parsedState.gameOver,
+          gameType: parsedState.gameType,
+          players: parsedState.players.map((p: any) => ({ 
+            id: p.id, 
+            chessColor: p.chessColor,
+            color: p.color,
+            score: p.score
+          }))
+        });
         return {
           ...parsedState,
           players: parsedState.players.map((player, index) => ({
@@ -812,6 +979,7 @@ export class GameService {
           })),
           currentPlayer: parsedState.players.findIndex((p) => p.id === parsedState.currentTurn),
           diceRolled: parsedState.diceValue ? parsedState.diceValue !== 0 : false,
+          diceValue: parsedState.diceValue, // Ensure dice value is preserved
         };
       }
       const room = await this.getGameRoomById(roomId);
@@ -858,14 +1026,23 @@ export class GameService {
               score: 0,
             })),
             winner: null,
-            kahootState: {
-              currentQuestionIndex: 0,
-              questions,
-              scores: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}),
-              answers: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: null }), {}),
-              questionTimer: 20,
-            },
-       
+            ...(room.gameType === 'kahoot' ? {
+              kahootState: {
+                currentQuestionIndex: 0,
+                questions,
+                scores: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}),
+                answers: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: null }), {}),
+                questionTimer: 20,
+              }
+            } : {
+              triviaState: {
+                currentQuestionIndex: 0,
+                questions,
+                scores: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}),
+                answers: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: null }), {}),
+                questionTimer: 30,
+              }
+            })
           };
           break;
         default:
@@ -894,6 +1071,17 @@ export class GameService {
           };
       }
       await this.updateGameState(roomId, defaultGameState);
+              console.log('Default game state created and saved:', {
+          roomId,
+          gameType: defaultGameState.gameType,
+          currentTurn: defaultGameState.currentTurn,
+          players: defaultGameState.players.map((p: any) => ({ 
+            id: p.id, 
+            chessColor: p.chessColor,
+            color: p.color,
+            score: p.score
+          }))
+        });
       return this.getGameState(roomId);
     } catch (error) {
       console.error(`Error in getGameState for room ${roomId}:`, error);
@@ -904,6 +1092,18 @@ export class GameService {
   async updateGameState(roomId: string, gameState: GameState) {
     try {
       await this.redisService.set(`game:${roomId}`, JSON.stringify(gameState));
+      console.log(`Game state updated for room ${roomId}:`, {
+        currentTurn: gameState.currentTurn,
+        gameStarted: gameState.gameStarted,
+        gameOver: gameState.gameOver,
+        gameType: gameState.gameType,
+        players: gameState.players.map((p: any) => ({ 
+          id: p.id, 
+          chessColor: p.chessColor,
+          color: p.color,
+          score: p.score
+        }))
+      });
     } catch (error) {
       console.error(`Error in updateGameState for room ${roomId}:`, error);
       throw error;
@@ -977,23 +1177,41 @@ export class GameService {
         .sort({ createdAt: -1 })
         .lean()
         .exec();
-      return rooms.map((room) => ({
-        id: room.roomId,
-        roomId: room.roomId,
-        name: room.name,
-        gameType: room.gameType,
-        hostName: room.host,
-        hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
-        currentPlayers: room.currentPlayers,
-        maxPlayers: room.maxPlayers,
-        isPrivate: room.isPrivate,
-        isInviteOnly: room.isPrivate,
-        status: room.status,
-        host: room.host,
-        createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
-        scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : undefined,
-        scores: room.scores ? Object.fromEntries(Object.entries(room.scores)) : {},
-      }));
+      
+      const roomsWithHostNames = await Promise.all(
+        rooms.map(async (room) => {
+          let hostName = room.host;
+          try {
+            // Try to get the actual username from the user service
+            const user = await this.userService.findById(room.host);
+            if (user && user.username) {
+              hostName = user.username;
+            }
+          } catch (error) {
+            console.log(`Could not fetch username for host ${room.host}, using ID as fallback`);
+          }
+          
+          return {
+            id: room.roomId,
+            roomId: room.roomId,
+            name: room.name,
+            gameType: room.gameType,
+            hostName: hostName,
+            hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
+            currentPlayers: room.currentPlayers,
+            maxPlayers: room.maxPlayers,
+            isPrivate: room.isPrivate,
+            isInviteOnly: room.isPrivate,
+            status: room.status,
+            host: room.host,
+            createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
+            scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : undefined,
+            scores: room.scores ? Object.fromEntries(Object.entries(room.scores)) : {},
+          };
+        })
+      );
+      
+      return roomsWithHostNames;
     } catch (error) {
       console.error(`Error in getActiveGameRooms:`, error);
       throw error;
@@ -1027,45 +1245,73 @@ export class GameService {
         .lean()
         .exec();
 
-      const hosted = rooms
-        .filter((room) => room.host === playerId)
-        .map((room) => ({
-          id: room.roomId,
-          roomId: room.roomId,
-          name: room.name,
-          gameType: room.gameType,
-          hostName: room.host,
-          hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
-          currentPlayers: room.currentPlayers,
-          maxPlayers: room.maxPlayers,
-          isPrivate: room.isPrivate,
-          isInviteOnly: room.isPrivate,
-          status: room.status,
-          host: room.host,
-          createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
-          scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : undefined,
-          scores: room.scores ? Object.fromEntries(Object.entries(room.scores)) : {},
-        }));
+      const hosted = await Promise.all(
+        rooms
+          .filter((room) => room.host === playerId)
+          .map(async (room) => {
+            let hostName = room.host;
+            try {
+              const user = await this.userService.findById(room.host);
+              if (user && user.username) {
+                hostName = user.username;
+              }
+            } catch (error) {
+              console.log(`Could not fetch username for host ${room.host}, using ID as fallback`);
+            }
+            
+            return {
+              id: room.roomId,
+              roomId: room.roomId,
+              name: room.name,
+              gameType: room.gameType,
+              hostName: hostName,
+              hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
+              currentPlayers: room.currentPlayers,
+              maxPlayers: room.maxPlayers,
+              isPrivate: room.isPrivate,
+              isInviteOnly: room.isPrivate,
+              status: room.status,
+              host: room.host,
+              createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
+              scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : undefined,
+              scores: room.scores ? Object.fromEntries(Object.entries(room.scores)) : {},
+            };
+          })
+      );
 
-      const joined = rooms
-        .filter((room) => room.playerIds.includes(playerId))
-        .map((room) => ({
-          id: room.roomId,
-          roomId: room.roomId,
-          name: room.name,
-          gameType: room.gameType,
-          hostName: room.host,
-          hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
-          currentPlayers: room.currentPlayers,
-          maxPlayers: room.maxPlayers,
-          isPrivate: room.isPrivate,
-          isInviteOnly: room.isPrivate,
-          status: room.status,
-          host: room.host,
-          createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
-          scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : undefined,
-          scores: room.scores ? Object.fromEntries(Object.entries(room.scores)) : {},
-        }));
+      const joined = await Promise.all(
+        rooms
+          .filter((room) => room.playerIds.includes(playerId))
+          .map(async (room) => {
+            let hostName = room.host;
+            try {
+              const user = await this.userService.findById(room.host);
+              if (user && user.username) {
+                hostName = user.username;
+              }
+            } catch (error) {
+              console.log(`Could not fetch username for host ${room.host}, using ID as fallback`);
+            }
+            
+            return {
+              id: room.roomId,
+              roomId: room.roomId,
+              name: room.name,
+              gameType: room.gameType,
+              hostName: hostName,
+              hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
+              currentPlayers: room.currentPlayers,
+              maxPlayers: room.maxPlayers,
+              isPrivate: room.isPrivate,
+              isInviteOnly: room.isPrivate,
+              status: room.status,
+              host: room.host,
+              createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
+              scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : undefined,
+              scores: room.scores ? Object.fromEntries(Object.entries(room.scores)) : {},
+            };
+          })
+      );
 
       return { hosted, joined };
     } catch (error) {

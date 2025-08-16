@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Player, GameState } from '../Ludo/types/game';
 import { Dice } from './Dice';
 import { SocketType } from "../../SocketContext";
+import { Fireworks } from '../UI/Fireworks';
 
 export interface LudoGameProps {
   gameState: GameState;
@@ -25,12 +26,25 @@ export const LudoGame: React.FC<LudoGameProps> = ({
 }) => {
   const { user } = useAuth();
   const [movableCoins, setMovableCoins] = useState<number[]>([]);
+  const [showFireworks, setShowFireworks] = useState(false);
 
   if (!gameState || !currentPlayerId) {
     return <div className="text-center p-4">Loading...</div>;
   }
 
   const { players, currentPlayer, diceValue, diceRolled, winner, gameStarted, coins } = gameState;
+  
+  // Show fireworks when game ends
+  useEffect(() => {
+    if (winner !== null && !showFireworks) {
+      setShowFireworks(true);
+    }
+  }, [winner, showFireworks]);
+  
+  // Debug log for dice value
+  useEffect(() => {
+    console.log('Dice value updated:', diceValue, 'Dice rolled:', diceRolled);
+  }, [diceValue, diceRolled]);
 
   // Debug log for game state and current player
 useEffect(() => {
@@ -227,6 +241,10 @@ useEffect(() => {
 
   return (
     <div className="flex flex-col items-center p-4 bg-gray-100 min-h-screen">
+      <Fireworks 
+        show={showFireworks} 
+        onComplete={() => setShowFireworks(false)} 
+      />
       <h1 className="text-4xl font-bold mb-4 text-gray-800">Ludo Game</h1>
       {winner !== null && (
         <div className="mb-4 p-4 bg-green-100 border border-green-400 rounded">

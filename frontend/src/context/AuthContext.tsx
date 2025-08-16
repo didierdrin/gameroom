@@ -9,6 +9,7 @@ interface AuthContextType {
   user: AuthUser | null;
   login: (user: AuthUser) => void;
   logout: () => void;
+  updateUser: (updates: Partial<AuthUser>) => void; // Add this method
   isLoading: boolean;
 }
 
@@ -56,9 +57,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('username');
       setUser(null);
     }, []);
+
+    const updateUser = useCallback((updates: Partial<AuthUser>) => {
+      if (user) {
+        const updatedUser = { ...user, ...updates };
+        setUser(updatedUser);
+        
+        // Update localStorage
+        if (updates.id) {
+          localStorage.setItem('userId', updates.id);
+        }
+        if (updates.username) {
+          localStorage.setItem('username', updates.username);
+        }
+      }
+    }, [user]);
   
     return (
-      <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+      <AuthContext.Provider value={{ user, login, logout, updateUser, isLoading }}>
         {children}
       </AuthContext.Provider>
     );

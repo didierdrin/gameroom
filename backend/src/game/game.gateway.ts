@@ -75,6 +75,12 @@ export class GameGateway {
         client.to(data.roomId).emit('playerConnected', { playerId: data.playerId, playerName: data.playerName, roomId: data.roomId, currentPlayers: result.game.currentPlayers });
       }
       const gameState = await this.gameService.getGameState(data.roomId);
+      console.log('Emitting updated game state after join:', {
+        roomId: data.roomId,
+        gameType: result.game.gameType,
+        currentTurn: gameState.currentTurn,
+        players: gameState.players.map((p: any) => ({ id: p.id, chessColor: p.chessColor }))
+      });
       this.server.to(data.roomId).emit('gameState', {
         ...gameState,
         gameType: result.game.gameType,
@@ -124,6 +130,12 @@ export class GameGateway {
     try {
       console.log('Starting game:', data);
       const gameState = await this.gameService.startGame(data.roomId);
+      console.log('Game started, emitting state:', {
+        roomId: data.roomId,
+        gameType: gameState.gameType,
+        currentTurn: gameState.currentTurn,
+        gameStarted: gameState.gameStarted
+      });
       this.server.to(data.roomId).emit('gameState', {
         ...gameState,
         gameStarted: true,
@@ -152,6 +164,13 @@ export class GameGateway {
     try {
       console.log('Fetching game state for room:', data.roomId);
       const gameState = await this.gameService.getGameState(data.roomId);
+      console.log('Game state fetched:', {
+        roomId: data.roomId,
+        gameType: gameState.gameType,
+        currentTurn: gameState.currentTurn,
+        gameStarted: gameState.gameStarted,
+        gameOver: gameState.gameOver
+      });
       client.emit('gameState', gameState);
     } catch (error) {
       console.error('Get game state error:', error.message);
@@ -181,6 +200,11 @@ export class GameGateway {
       if (gameState.gameOver) {
         this.server.to(data.roomId).emit('gameOver', { winner: gameState.winner });
       }
+      console.log('Chess move processed, new game state:', {
+        currentTurn: gameState.currentTurn,
+        gameOver: gameState.gameOver,
+        winner: gameState.winner
+      });
     } catch (error) {
       console.error('Chess move error:', error.message);
       client.emit('error', { message: error.message, type: 'chessMoveError' });
@@ -201,6 +225,40 @@ export class GameGateway {
     } catch (error) {
       console.error('Kahoot answer error:', error.message);
       client.emit('error', { message: error.message, type: 'kahootAnswerError' });
+    }
+  }
+
+  @SubscribeMessage('triviaAnswer')
+  async handleTriviaAnswer(@MessageBody() data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }, @ConnectedSocket() client: Socket) {
+    try {
+      console.log('Trivia answer:', data);
+      const result = await this.gameService.submitTriviaAnswer(data);
+      this.server.to(data.roomId).emit('triviaAnswer', result);
+      const gameState = await this.gameService.getGameState(data.roomId);
+      this.server.to(data.roomId).emit('gameState', gameState);
+      if (gameState.gameOver) {
+        this.server.to(data.roomId).emit('gameOver', { winner: gameState.winner });
+      }
+    } catch (error) {
+      console.error('Trivia answer error:', error.message);
+      client.emit('error', { message: error.message, type: 'triviaAnswerError' });
+    }
+  }
+
+  @SubscribeMessage('triviaComplete')
+  async handleTriviaComplete(@MessageBody() data: { roomId: string; playerId: string; score: number; total: number }, @ConnectedSocket() client: Socket) {
+    try {
+      console.log('Trivia complete:', data);
+      const result = await this.gameService.completeTriviaGame(data);
+      this.server.to(data.roomId).emit('triviaComplete', result);
+      const gameState = await this.gameService.getGameState(data.roomId);
+      this.server.to(data.roomId).emit('gameState', gameState);
+      if (gameState.gameOver) {
+        this.server.to(data.roomId).emit('gameOver', { winner: gameState.winner });
+      }
+    } catch (error) {
+      console.error('Trivia complete error:', error.message);
+      client.emit('error', { message: error.message, type: 'triviaCompleteError' });
     }
   }
 

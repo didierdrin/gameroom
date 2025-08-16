@@ -21,11 +21,11 @@ export const Sidebar = () => {
       label: 'Create Game Room',
       icon: <PlusCircleIcon size={24} />
     },
-    {
-      path: '/tournaments',
-      label: 'Tournaments',
-      icon: <TrophyIcon size={24} />
-    },
+    // {
+    //   path: '/tournaments',
+    //   label: 'Tournaments',
+    //   icon: <TrophyIcon size={24} />
+    // },
     {
       path: '/leaderboard',
       label: 'Leaderboards',

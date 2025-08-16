@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Chessboard from 'chessboardjsx';
 import { Chess } from 'chess.js';
+import { Fireworks } from '../UI/Fireworks';
 
 interface GameRenderProps {
   socket: any;
@@ -22,6 +23,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   const [fen, setFen] = useState('start');
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
   const [localGameState, setLocalGameState] = useState(gameState);
+  const [showFireworks, setShowFireworks] = useState(false);
 
   useEffect(() => {
     // Initialize game from gameState
@@ -37,7 +39,37 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     // Set player color
     const player = gameState.players.find((p: any) => p.id === currentPlayer);
     setPlayerColor(player?.chessColor || 'white');
+    
+    // Update local game state
+    setLocalGameState(gameState);
+    
+    console.log('ChessGame State Updated:', {
+      board: gameState.chessState?.board,
+      currentTurn: gameState.currentTurn,
+      currentPlayer,
+      gameStarted: gameState.gameStarted,
+      gameOver: gameState.gameOver
+    });
   }, [gameState, currentPlayer]);
+
+  // Show fireworks when game ends
+  useEffect(() => {
+    if (gameState.gameOver && !showFireworks) {
+      setShowFireworks(true);
+    }
+  }, [gameState.gameOver, showFireworks]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('ChessGame Debug:', {
+      currentTurn: gameState.currentTurn,
+      currentPlayer,
+      gameOver: gameState.gameOver,
+      playerColor,
+      draggable: gameState.currentTurn === currentPlayer && !gameState.gameOver,
+      players: gameState.players.map((p: any) => ({ id: p.id, chessColor: p.chessColor }))
+    });
+  }, [gameState.currentTurn, currentPlayer, gameState.gameOver, playerColor, gameState.players]);
 
 
   // Update your handleMove to use localGameState
@@ -46,20 +78,29 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     targetSquare: string 
   }) => {
     try {
-      if (localGameState.currentTurn !== currentPlayer) {
+      // Check if it's the player's turn
+      if (gameState.currentTurn !== currentPlayer) {
         console.log("Not your turn");
         return null;
       }
   
-      const player = localGameState.players.find((p: any) => p.id === currentPlayer);
+      // Check if the game is over
+      if (gameState.gameOver) {
+        console.log("Game is over");
+        return null;
+      }
+  
+      const player = gameState.players.find((p: any) => p.id === currentPlayer);
       const moveColor = game.turn();
       
+      // Validate player color matches current turn
       if ((moveColor === 'w' && player?.chessColor !== 'white') || 
           (moveColor === 'b' && player?.chessColor !== 'black')) {
         console.log("Not your color's turn");
         return null;
       }
   
+      // Try to make the move
       const move = game.move({
         from: sourceSquare,
         to: targetSquare,
@@ -67,15 +108,10 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       });
   
       if (move) {
+        // Update local state immediately for responsive UI
         setFen(game.fen());
-        setLocalGameState((prev:any) => ({
-          ...prev,
-          chessState: {
-            ...prev.chessState,
-            board: game.fen(),
-            moves: [...(prev.chessState?.moves || []), `${sourceSquare}${targetSquare}`]
-          }
-        }));
+        
+        // Send move to server
         onChessMove(`${sourceSquare}${targetSquare}`);
       }
     } catch (e) {
@@ -86,12 +122,16 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 
   return (
     <div className="flex flex-col items-center justify-center h-full">
+      <Fireworks 
+        show={showFireworks} 
+        onComplete={() => setShowFireworks(false)} 
+      />
       <div className="w-full max-w-lg mb-4">
         <Chessboard
           position={fen}
           onDrop={handleMove}
           orientation={playerColor}
-          draggable={gameState.currentTurn === currentPlayer}
+          draggable={gameState.currentTurn === currentPlayer && !gameState.gameOver}
           boardStyle={{
             borderRadius: '8px',
             boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)',

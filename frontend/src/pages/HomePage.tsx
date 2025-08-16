@@ -234,12 +234,12 @@ const handleJoinRoom = async (gameRoom: GameRoom) => {
             >
               Create Game Room
             </button>
-            <button
+            {/* <button
               onClick={() => navigate("/tournaments")}
               className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
             >
               Join Tournament
-            </button>
+            </button> */}
           </div>
         </div>
         {/* Floating game icons */}
@@ -293,7 +293,7 @@ const handleJoinRoom = async (gameRoom: GameRoom) => {
   ) : liveRooms.length > 0 ? (
     <GameRoomList gameRooms={liveRooms} onJoinRoom={handleJoinRoom} />
   ) : (
-    <div className="text-center py-8">No live game rooms available</div>
+    <div className="text-center py-8 text-gray-400">No live game rooms available</div>
   )}
 </section>
 
