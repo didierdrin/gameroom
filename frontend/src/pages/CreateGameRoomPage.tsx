@@ -382,7 +382,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div className="flex items-center bg-gray-700/30 p-3 rounded-lg">
+            {/* <div className="flex items-center bg-gray-700/30 p-3 rounded-lg">
               <div className="mr-3">
                 <VideoIcon size={20} className={enableVideoChat ? 'text-purple-400' : 'text-gray-500'} />
               </div>
@@ -400,7 +400,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
                   <div className="relative w-11 h-6 bg-gray-600 peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                 </label>
               </div>
-            </div>
+            </div> */}
             <div className="flex items-center bg-gray-700/30 p-3 rounded-lg">
               <div className="mr-3">
                 <MicIcon size={20} className={enableVoiceChat ? 'text-purple-400' : 'text-gray-500'} />
