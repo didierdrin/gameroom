@@ -348,7 +348,7 @@ const handleJoinRoom = async (gameRoom: GameRoom) => {
     
 
       {/* Tournaments */}
-      <section className="mb-12">
+      {/* <section className="mb-12">
         <SectionTitle
           title="Tournaments"
           subtitle="Compete with other students and win exciting prizes!"
@@ -390,7 +390,7 @@ const handleJoinRoom = async (gameRoom: GameRoom) => {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
     </div>
   );
 };
