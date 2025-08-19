@@ -242,11 +242,18 @@ export class UserService {
           }
         },
         
-        // Lookup user information
+        // Convert string ID to ObjectId for lookup
+        {
+          $addFields: {
+            userObjectId: { $toObjectId: '$_id' }
+          }
+        },
+        
+        // Lookup user information using converted ObjectId
         {
           $lookup: {
             from: 'users',
-            localField: '_id',
+            localField: 'userObjectId',
             foreignField: '_id',
             as: 'userInfo'
           }
@@ -258,7 +265,7 @@ export class UserService {
         // Project final format - 5 points per win
         {
           $project: {
-            _id: 1,
+            _id: '$userObjectId',
             username: '$userInfo.username',
             avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$userInfo.username'] },
             score: { $multiply: ['$totalWins', 5] }, // 5 points per win
@@ -499,7 +506,7 @@ export class UserService {
               $sum: {
                 $cond: [
                   { $eq: ['$winner', userId] },
-                  5, // 5 points per win (changed from 100)
+                  5, // 5 points per win
                   0
                 ]
               }
@@ -531,7 +538,7 @@ export class UserService {
         { $sort: { count: -1 } }
       ];
 
-      const gameTypeStats = await this.gameRoomModel.aggregate(pipeline); // Changed from gameSessionModel
+      const gameTypeStats = await this.gameRoomModel.aggregate(pipeline);
       
       // Calculate overall totals
       const totalGames = gameTypeStats.reduce((sum, stat) => sum + stat.count, 0);
@@ -583,7 +590,7 @@ export class UserService {
             score: {
               $cond: [
                 { $eq: ['$winner', userId] },
-                5, // 5 points per win (changed from 100)
+                5, // 5 points per win
                 0
               ]
             },
@@ -606,7 +613,7 @@ export class UserService {
         { $limit: limit }
       ];
 
-      const recentGames = await this.gameRoomModel.aggregate(pipeline); // Changed from gameSessionModel
+      const recentGames = await this.gameRoomModel.aggregate(pipeline);
       
       return recentGames.map(game => ({
         id: game.roomId,
@@ -666,7 +673,7 @@ export class UserService {
         { $limit: limit }
       ];
 
-      const favoriteGames = await this.gameRoomModel.aggregate(pipeline); // Changed from gameSessionModel
+      const favoriteGames = await this.gameRoomModel.aggregate(pipeline);
       
       return favoriteGames.map(game => ({
         gameType: game._id,

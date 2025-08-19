@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { SearchIcon, FilterIcon } from "lucide-react";
+import { SearchIcon, FilterIcon, ChevronDownIcon, CheckIcon } from "lucide-react";
 import io from "socket.io-client";
 import { GameRoomList } from "../components/GameRoom/GameRoomList";
 import { SectionTitle } from "../components/UI/SectionTitle";
@@ -67,6 +67,9 @@ const MOCK_TOURNAMENTS: Tournament[] = [
 
 export const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [liveRooms, setLiveRooms] = useState<GameRoom[]>([]);
   const [upcomingRooms, setUpcomingRooms] = useState<GameRoom[]>([]);
@@ -154,6 +157,94 @@ export const HomePage = () => {
       socket.off('error', handleError);
     };
   }, [socket]);
+
+  // Filter options
+  const filterOptions = [
+    { id: 'public', label: 'Public Rooms', description: 'Open to everyone' },
+    { id: 'private', label: 'Private Rooms', description: 'Password protected' },
+    { id: 'latest', label: 'Latest Created', description: 'Recently created rooms' }
+  ];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
+        setIsFilterDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter and search logic
+  const filterRooms = useMemo(() => {
+    return (rooms: GameRoom[]) => {
+      let filteredRooms = [...rooms];
+
+      // Apply search filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        filteredRooms = filteredRooms.filter(room => 
+          room.name.toLowerCase().includes(query) ||
+          room.gameType.toLowerCase().includes(query) ||
+          room.hostName.toLowerCase().includes(query)
+        );
+      }
+
+      // Apply visibility filters
+      if (activeFilters.length > 0) {
+        filteredRooms = filteredRooms.filter(room => {
+          const isPublic = !room.isPrivate;
+          const isPrivate = room.isPrivate;
+          
+          // Check if room matches any active filter
+          return activeFilters.some(filter => {
+            switch (filter) {
+              case 'public':
+                return isPublic;
+              case 'private':
+                return isPrivate;
+              case 'latest':
+                return true; // We'll sort by latest after filtering
+              default:
+                return true;
+            }
+          });
+        });
+
+        // Sort by latest if latest filter is active
+        if (activeFilters.includes('latest')) {
+          filteredRooms = filteredRooms.sort((a, b) => {
+            const dateA = new Date(a.scheduledTimeCombined || Date.now()).getTime();
+            const dateB = new Date(b.scheduledTimeCombined || Date.now()).getTime();
+            return dateB - dateA; // Most recent first
+          });
+        }
+      }
+
+      return filteredRooms;
+    };
+  }, [searchQuery, activeFilters]);
+
+  // Apply filters to room lists
+  const filteredLiveRooms = useMemo(() => filterRooms(liveRooms), [liveRooms, filterRooms]);
+  const filteredUpcomingRooms = useMemo(() => filterRooms(upcomingRooms), [upcomingRooms, filterRooms]);
+
+  // Toggle filter selection
+  const toggleFilter = (filterId: string) => {
+    setActiveFilters(prev => 
+      prev.includes(filterId) 
+        ? prev.filter(f => f !== filterId)
+        : [...prev, filterId]
+    );
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setActiveFilters([]);
+    setSearchQuery("");
+  };
 
   // Get current user ID
   // const getCurrentUserId = () => {
@@ -286,63 +377,190 @@ const handleJoinRoom = async (gameRoom: GameRoom) => {
 
       {/* Search and Filter */}
       <div className="flex flex-wrap gap-4 mb-8">
-        <div className="relative flex-1">
+        {/* Search Input */}
+        <div className="relative flex-1 min-w-[300px]">
           <SearchIcon
             size={20}
             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
           />
           <input
             type="text"
-            placeholder="Search game rooms..."
-            className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="Search by room name, game type, or host..."
+            className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+          )}
         </div>
-        <button className="px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg hover:bg-gray-700/50 transition-colors flex items-center">
-          <FilterIcon size={20} className="mr-2" />
-          <span>Filter</span>
-        </button>
+
+        {/* Filter Dropdown */}
+        <div className="relative" ref={filterDropdownRef}>
+          <button 
+            onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+            className="px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg hover:bg-gray-700/50 transition-colors flex items-center min-w-[120px] justify-between"
+          >
+            <div className="flex items-center">
+              <FilterIcon size={20} className="mr-2" />
+              <span>Filter</span>
+              {activeFilters.length > 0 && (
+                <span className="ml-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
+                  {activeFilters.length}
+                </span>
+              )}
+            </div>
+            <ChevronDownIcon 
+              size={16} 
+              className={`ml-2 transition-transform ${isFilterDropdownOpen ? 'rotate-180' : ''}`} 
+            />
+          </button>
+
+          {/* Dropdown Menu */}
+          {isFilterDropdownOpen && (
+            <div className="absolute top-full left-0 mt-2 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-50 py-2">
+              {/* Header */}
+              <div className="px-4 py-2 border-b border-gray-700 flex justify-between items-center">
+                <h3 className="text-white font-medium">Filter Game Rooms</h3>
+                {activeFilters.length > 0 && (
+                  <button
+                    onClick={clearAllFilters}
+                    className="text-purple-400 hover:text-purple-300 text-sm transition-colors"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Options */}
+              <div className="py-2">
+                {filterOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => toggleFilter(option.id)}
+                    className="w-full px-4 py-3 hover:bg-gray-700/50 transition-colors flex items-center justify-between group"
+                  >
+                    <div className="flex-1 text-left">
+                      <div className="text-white font-medium">{option.label}</div>
+                      <div className="text-gray-400 text-sm">{option.description}</div>
+                    </div>
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                      activeFilters.includes(option.id)
+                        ? 'bg-purple-600 border-purple-600'
+                        : 'border-gray-600 group-hover:border-gray-500'
+                    }`}>
+                      {activeFilters.includes(option.id) && (
+                        <CheckIcon size={12} className="text-white" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-
-      
+      {/* Active Filters Display */}
+      {(activeFilters.length > 0 || searchQuery) && (
+        <div className="mb-6 flex flex-wrap gap-2 items-center">
+          <span className="text-gray-400 text-sm">Active filters:</span>
+          {searchQuery && (
+            <div className="bg-purple-600/20 border border-purple-600/50 text-purple-300 px-3 py-1 rounded-full text-sm flex items-center">
+              Search: "{searchQuery}"
+              <button
+                onClick={() => setSearchQuery("")}
+                className="ml-2 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {activeFilters.map(filterId => {
+            const option = filterOptions.find(opt => opt.id === filterId);
+            return (
+              <div key={filterId} className="bg-purple-600/20 border border-purple-600/50 text-purple-300 px-3 py-1 rounded-full text-sm flex items-center">
+                {option?.label}
+                <button
+                  onClick={() => toggleFilter(filterId)}
+                  className="ml-2 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
+          <button
+            onClick={clearAllFilters}
+            className="text-gray-400 hover:text-white text-sm underline transition-colors"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
 
       {/* Live Game Rooms */}
-<section className="mb-12">
-  <SectionTitle title="Live Game Rooms" subtitle="Join an active game room and start playing right away!" />
-  {loading ? (
-  <div className="flex justify-center py-8">
-  <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-</div>
-
-  ) : error ? (
-    <div className="text-center text-red-500 py-8">{error}</div>
-  ) : liveRooms.length > 0 ? (
-    <GameRoomList gameRooms={liveRooms} onJoinRoom={handleJoinRoom} playerIdToUsername={playerIdToUsername} />
-  ) : (
-    <div className="text-center py-8 text-gray-400">No live game rooms available</div>
-  )}
-</section>
+      <section className="mb-12">
+        <SectionTitle 
+          title={`Live Game Rooms${filteredLiveRooms.length !== liveRooms.length ? ` (${filteredLiveRooms.length} of ${liveRooms.length})` : ''}`}
+          subtitle="Join an active game room and start playing right away!" 
+        />
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : error ? (
+          <div className="text-center text-red-500 py-8">{error}</div>
+        ) : filteredLiveRooms.length > 0 ? (
+          <GameRoomList gameRooms={filteredLiveRooms} onJoinRoom={handleJoinRoom} playerIdToUsername={playerIdToUsername} />
+        ) : liveRooms.length > 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            No rooms match your current filters. 
+            <button 
+              onClick={clearAllFilters} 
+              className="text-purple-400 hover:text-purple-300 underline ml-1 transition-colors"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-400">No live game rooms available</div>
+        )}
+      </section>
 
       {/* Upcoming Game Rooms */}
-<section className="mb-12">
-  <SectionTitle
-    title="Upcoming Game Rooms"
-    subtitle="Game rooms scheduled to start soon. Register now to get notified!"
-  />
-  {loading ? (
-    <div className="flex justify-center py-8">
-      <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  ) : error ? (
-    <div className="text-center text-red-500 py-8">{error}</div>
-  ) : upcomingRooms.length > 0 ? (
-    <GameRoomList gameRooms={upcomingRooms} onJoinRoom={handleJoinRoom} playerIdToUsername={playerIdToUsername} />
-  ) : (
-    <div className="text-center py-8 text-gray-400">No upcoming game rooms scheduled</div>
-  )}
-</section>
+      <section className="mb-12">
+        <SectionTitle
+          title={`Upcoming Game Rooms${filteredUpcomingRooms.length !== upcomingRooms.length ? ` (${filteredUpcomingRooms.length} of ${upcomingRooms.length})` : ''}`}
+          subtitle="Game rooms scheduled to start soon. Register now to get notified!"
+        />
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : error ? (
+          <div className="text-center text-red-500 py-8">{error}</div>
+        ) : filteredUpcomingRooms.length > 0 ? (
+          <GameRoomList gameRooms={filteredUpcomingRooms} onJoinRoom={handleJoinRoom} playerIdToUsername={playerIdToUsername} />
+        ) : upcomingRooms.length > 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            No rooms match your current filters. 
+            <button 
+              onClick={clearAllFilters} 
+              className="text-purple-400 hover:text-purple-300 underline ml-1 transition-colors"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-400">No upcoming game rooms scheduled</div>
+        )}
+      </section>
 
 
     
