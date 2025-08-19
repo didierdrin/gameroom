@@ -316,12 +316,12 @@ export class UserService {
               vars: {
                 gameStats: {
                   $filter: {
-                    input: '$gameStats',
+                    input: { $ifNull: ['$gameStats', []] },
                     cond: { $eq: ['$$this.gameType', gameType] }
                   }
                 }
               },
-              in: { $multiply: [{ $sum: '$$gameStats.score' }, 5] } // 5 points per win
+              in: { $multiply: [{ $sum: '$$gameStats.score' }, 1] } // Keep original score
             }
           },
           gamesPlayed: {
@@ -329,7 +329,7 @@ export class UserService {
               vars: {
                 gameStats: {
                   $filter: {
-                    input: '$gameStats',
+                    input: { $ifNull: ['$gameStats', []] },
                     cond: { $eq: ['$$this.gameType', gameType] }
                   }
                 }
@@ -342,7 +342,7 @@ export class UserService {
               vars: {
                 gameStats: {
                   $filter: {
-                    input: '$gameStats',
+                    input: { $ifNull: ['$gameStats', []] },
                     cond: { $eq: ['$$this.gameType', gameType] }
                   }
                 }
@@ -358,14 +358,21 @@ export class UserService {
           username: 1
         };
       } else {
-        // For overall leaderboard
+        // For overall leaderboard - include all users, even those without games
         projectStage = {
           _id: 1,
           username: 1,
           avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$username'] },
-          score: { $multiply: [{ $ifNull: ['$totalScore', 0] }, 5] }, // 5 points per win
+          score: { $ifNull: ['$totalScore', 0] }, // Don't multiply by 5 here
           gamesPlayed: { $ifNull: ['$gamesPlayed', 0] },
-          gamesWon: { $ifNull: ['$gamesWon', 0] }
+          gamesWon: { $ifNull: ['$gamesWon', 0] },
+          winRate: {
+            $cond: [
+              { $gt: [{ $ifNull: ['$gamesPlayed', 0] }, 0] },
+              { $multiply: [{ $divide: [{ $ifNull: ['$gamesWon', 0] }, { $ifNull: ['$gamesPlayed', 1] }] }, 100] },
+              0
+            ]
+          }
         };
         
         sortStage = {
@@ -378,7 +385,7 @@ export class UserService {
       const pipeline: PipelineStage[] = [
         { $match: matchStage },
         { $project: projectStage },
-        { $match: { score: { $gt: 0 } } }, // Only users with score > 0
+        // Remove the score > 0 filter to show all users
         { $sort: sortStage },
         { $limit: limit }
       ];
@@ -955,6 +962,49 @@ export class UserService {
     } catch (error) {
       console.error('Error populating sample game data:', error);
       return false;
+    }
+  }
+
+  async syncAllUserStats() {
+    try {
+      console.log('Starting user stats synchronization...');
+      
+      // Get all users
+      const users = await this.userModel.find();
+      const results: Array<{
+        userId: string;
+        username: string;
+        totalScore: number;
+        gamesPlayed: number;
+        gamesWon: number;
+      }> = [];
+      
+      for (const user of users) {
+        // Calculate stats from game sessions
+        const gameStats = await this.getUserGameStats(user._id.toString());
+        
+        // Update user document with calculated stats
+        await this.userModel.findByIdAndUpdate(user._id, {
+          totalScore: gameStats.totalScore,
+          gamesPlayed: gameStats.totalGames,
+          gamesWon: gameStats.totalWins,
+          gameStats: gameStats.gameTypeStats
+        });
+        
+        results.push({
+          userId: user._id,
+          username: user.username,
+          totalScore: gameStats.totalScore,
+          gamesPlayed: gameStats.totalGames,
+          gamesWon: gameStats.totalWins
+        });
+      }
+      
+      console.log(`Synchronized stats for ${results.length} users`);
+      return results;
+    } catch (error) {
+      console.error('Error syncing user stats:', error);
+      throw error;
     }
   }
 }

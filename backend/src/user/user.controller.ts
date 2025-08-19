@@ -22,7 +22,7 @@ export class UserController {
     }
 
     return {
-      _id: user._id,
+      id: user._id,  // Changed from _id to id to match frontend expectations
       username: user.username,
       createdAt: user.createdAt,
     };
@@ -59,6 +59,62 @@ export class UserController {
       };
     } catch (error) {
       console.error('Populate sample data error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  @Post('sync-user-stats')
+  async syncUserStats() {
+    try {
+      console.log('Starting user stats synchronization...');
+      const result = await this.userService.syncAllUserStats();
+      return {
+        success: true,
+        message: 'User statistics synchronized successfully',
+        data: result
+      };
+    } catch (error) {
+      console.error('Sync user stats error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  @Post('bootstrap-test-data')
+  async bootstrapTestData() {
+    try {
+      console.log('Bootstrapping test data...');
+      
+      // First sync user stats from existing game sessions
+      await this.userService.syncAllUserStats();
+      
+      // If still no data, create some sample users with stats
+      const users = await this.userService.findAll();
+      if (users.length === 0) {
+        // Create sample users with game stats
+        const sampleUsers = [
+          { username: 'testuser1', totalScore: 150, gamesPlayed: 10, gamesWon: 6 },
+          { username: 'testuser2', totalScore: 120, gamesPlayed: 8, gamesWon: 4 },
+          { username: 'testuser3', totalScore: 90, gamesPlayed: 6, gamesWon: 3 },
+        ];
+        
+        for (const userData of sampleUsers) {
+          const user = await this.userService.create({ username: userData.username });
+          await this.userService.updateGameStats(user._id.toString(), 'trivia', userData.totalScore, true);
+        }
+      }
+      
+      return {
+        success: true,
+        message: 'Test data bootstrapped successfully'
+      };
+    } catch (error) {
+      console.error('Bootstrap test data error:', error);
       return {
         success: false,
         error: error.message
