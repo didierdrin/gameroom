@@ -1,455 +1,129 @@
 import React, { useState, useEffect } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
-import { TrophyIcon, BarChart3Icon, ClockIcon, StarIcon, EditIcon } from 'lucide-react';
+import { TrophyIcon, BarChart3Icon, ClockIcon, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+
+interface GameStat {
+  gameType: string;
+  count: number;
+  wins: number;
+  totalScore: number;
+  winRate: number;
+  lastPlayed: string;
+}
+
+interface RecentGame {
+  id: string;
+  name: string;
+  type: string;
+  date: string;
+  result: string;
+  score: number;
+  duration: number;
+  totalPlayers: number;
+  startedAt: string;
+  endedAt: string;
+}
+
+interface FavoriteGame {
+  gameType: string;
+  count: number;
+  wins: number;
+  winRate: number;
+  lastPlayed: string;
+}
+
+interface Badge {
+  id: number;
+  name: string;
+  icon: string;
+  description: string;
+  date: string;
+  category: string;
+}
+
+interface UserProfileData {
+  _id: string;
+  username: string;
+  createdAt: string;
+  updatedAt: string;
+  totalScore: number;
+  gamesPlayed: number;
+  gamesWon: number;
+  gameStats: GameStat[];
+  recentGames: RecentGame[];
+  favoriteGames: FavoriteGame[];
+  badges: Badge[];
+  globalRank: string;
+  winRate: number;
+}
 
 export const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('stats');
-  const { user: authUser, updateUser } = useAuth(); // Add updateUser here
+  const { user: authUser, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState({
-    username: '',
-    avatar: '',
-    joinDate: '',
-    totalScore: 0,
-    gamesPlayed: 0,
-    gamesWon: 0,
-    rank: '#0',
-    gameStats: {},
-    recentGames: [],
-    favoriteGames: [] as any, 
-    badges: [] as Array<{
-      id: number;
-      name: string; 
-      icon: string; 
-      description: string; 
-      date: string; 
-    }>
-  });
+  const [refreshing, setRefreshing] = useState(false);
+  const [userData, setUserData] = useState<UserProfileData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // ... existing code ...
-
-useEffect(() => {
-  const fetchUserData = async () => {
+  const fetchUserProfile = async (showLoading = true) => {
     if (!authUser) return;
     
+    if (showLoading) setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
+      console.log('Fetching profile for user ID:', authUser.id);
       
-      // Debug: Log the user ID being used
-      console.log('Fetching data for user ID:', authUser.id);
-      console.log('Auth user object:', authUser);
+      // Fetch comprehensive user profile data
+      const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}/profile`);
+      const result = await response.json();
       
-      // First, let's try to get the user profile
-      let profileResponse;
-      let profileResult;
+      console.log('Profile response:', result);
       
-      try {
-        profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}`);
-        console.log('Profile response status:', profileResponse.status);
-        profileResult = await profileResponse.json();
-        console.log('Profile result:', profileResult);
-      } catch (profileError) {
-        console.error('Profile fetch error:', profileError);
-        throw new Error('Failed to fetch profile');
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch profile');
       }
       
-             // Check if profile request was successful
-       if (!profileResult.success) {
-         // If user not found, try to re-authenticate
-         if (profileResult.error === 'User not found') {
-           console.log('User not found, attempting to re-authenticate...');
-           
-           try {
-             const loginResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/login-or-register', {
-               method: 'POST',
-               headers: {
-                 'Content-Type': 'application/json',
-               },
-               body: JSON.stringify({ username: authUser.username }),
-             });
-             
-             const loginResult = await loginResponse.json();
-             console.log('Re-authentication result:', loginResult);
-             
-             if (loginResult._id && loginResult._id !== authUser.id) {
-               console.log('Updating user ID from', authUser.id, 'to', loginResult._id);
-               // Update the auth context directly
-               updateUser({ id: loginResult._id });
-               // Retry the fetch with the new ID
-               const retryResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${loginResult._id}`);
-               const retryResult = await retryResponse.json();
-               
-               if (!retryResult.success) {
-                 console.warn('Retry failed, using fallback data');
-                 profileResult = {
-                   success: true,
-                   data: {
-                     username: authUser.username,
-                     createdAt: new Date().toISOString()
-                   }
-                 };
-               } else {
-                 profileResult = retryResult;
-               }
-             } else if (loginResult._id === authUser.id) {
-               console.log('User ID matches, but backend still can\'t find user. This suggests a backend issue.');
-               // Instead of throwing an error, try to create a new user profile or handle gracefully
-               console.warn('User profile not found in backend, creating fallback data');
-               // Set fallback data and continue instead of crashing
-               profileResult = {
-                 success: true,
-                 data: {
-                   username: authUser.username,
-                   createdAt: new Date().toISOString()
-                 }
-               };
-             } else {
-               console.log('Re-authentication failed or returned unexpected data:', loginResult);
-               // Instead of throwing an error, try to continue with fallback data
-               console.warn('Re-authentication failed, using fallback data');
-               profileResult = {
-                 success: true,
-                 data: {
-                   username: authUser.username,
-                   createdAt: new Date().toISOString()
-                 }
-               };
-             }
-           } catch (reAuthError) {
-             console.error('Re-authentication failed:', reAuthError);
-             console.warn('Using fallback data due to re-authentication failure');
-             // Instead of throwing an error, create fallback data
-             profileResult = {
-               success: true,
-                 data: {
-                   username: authUser.username,
-                   createdAt: new Date().toISOString()
-                 }
-               };
-           }
-         } else {
-           // For other errors, also use fallback data instead of throwing
-           console.warn('Profile fetch failed with error:', profileResult.error, 'Using fallback data');
-           profileResult = {
-             success: true,
-             data: {
-               username: authUser.username,
-               createdAt: new Date().toISOString()
-             }
-           };
-         }
-       }
-      
-             const profileData = profileResult.data || {
-         username: authUser.username,
-         createdAt: new Date().toISOString()
-       };
-       console.log('Profile data retrieved successfully:', profileData);
-      
-      // Now fetch stats
-      let statsData;
-      try {
-        const statsResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}/stats`);
-        const statsResult = await statsResponse.json();
-        
-        // Check if stats request was successful
-        if (!statsResult.success) {
-          console.error('Stats fetch failed:', statsResult);
-          console.warn('Using fallback stats data');
-          // Use fallback stats data instead of throwing an error
-          statsData = {
-            totalScore: 0,
-            gamesPlayed: 0,
-            gamesWon: 0,
-            gameStats: [],
-            gameHistory: []
-          };
-        } else {
-          statsData = statsResult.data;
-          console.log('Stats data retrieved successfully:', statsData);
-        }
-      } catch (statsError) {
-        console.error('Stats fetch error:', statsError);
-        console.warn('Using fallback stats data due to fetch error');
-        // Use fallback stats data
-        statsData = {
-          totalScore: 0,
-          gamesPlayed: 0,
-          gamesWon: 0,
-          gameStats: [],
-          gameHistory: []
-        };
-      }
-      
-             // Ensure we have valid profile data
-       if (!profileData || !profileData.username) {
-         console.warn('Invalid profile data, using fallback');
-         profileData.username = authUser.username;
-         profileData.createdAt = new Date().toISOString();
-       }
-       
-       // Format join date
-       const joinDate = profileData.createdAt 
-         ? new Date(profileData.createdAt).toLocaleDateString('en-US', {
-             month: 'long',
-             year: 'numeric'
-           })
-         : 'Unknown';
-
-      // Calculate rank (this would ideally come from the backend)
-      let rank = 'Unranked';
-      try {
-        const rankResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard');
-        const rankResult = await rankResponse.json();
-        
-        // Check if leaderboard request was successful
-        if (rankResult.success && rankResult.data) {
-          const rankData = rankResult.data;
-          const rankIndex = Array.isArray(rankData) ? rankData.findIndex((u:any) => u._id === authUser.id) : -1;
-          rank = rankIndex >= 0 ? `#${rankIndex + 1}` : 'Unranked';
-        } else {
-          console.warn('Leaderboard fetch failed, using default rank');
-        }
-      } catch (rankError) {
-        console.error('Leaderboard fetch error:', rankError);
-        console.warn('Using default rank due to fetch error');
-      }
-
-      // Format game stats - Add null check for gameStats
-      const gameStats = statsData.gameStats && Array.isArray(statsData.gameStats) 
-        ? statsData.gameStats.reduce((acc: any, stat: any) => {
-            acc[stat.gameType] = {
-              played: stat.count,
-              won: stat.wins,
-              winRate: Math.round((stat.wins / stat.count) * 100),
-              avgScore: Math.round(stat.score / stat.count)
-            };
-            return acc;
-          }, {})
-        : {};
-
-      // Get recent games from game history (last 5) - Add null check
-      const recentGames = statsData.gameHistory && Array.isArray(statsData.gameHistory)
-        ? statsData.gameHistory
-            .slice(0, 5)
-            .map((game:any) => ({
-              id: game.roomId,
-              name: `${game.gameType} Game`,
-              type: game.gameType,
-              date: new Date(game.date).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-              }),
-              result: game.won ? 'Won' : 'Lost',
-              score: game.score
-            }))
-        : [];
-
-      // Determine favorite games (top 3 by count) - Add null check
-      const favoriteGames = statsData.gameStats && Array.isArray(statsData.gameStats)
-        ? [...statsData.gameStats]
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 3)
-            .map(stat => stat.gameType)
-        : [];
-
-      // Generate badges based on achievements
-      const badges = [];
-      if (statsData.gamesWon >= 10) {
-        badges.push({
-          id: 1,
-          name: 'Game Master',
-          icon: '🏆',
-          description: 'Won 10 or more games',
-          date: new Date().toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          })
-        });
-      }
-      if (statsData.gameStats && Array.isArray(statsData.gameStats) && statsData.gameStats.some((stat:any) => stat.wins >= 5)) {
-        badges.push({
-          id: 2,
-          name: 'Multi-Game Champion',
-          icon: '🥇',
-          description: 'Won 5+ games in multiple categories',
-          date: new Date().toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          })
-        });
-      }
-      // Add more badge conditions as needed...
-
-      setUserData({
-        username: profileData.username || authUser.username || 'Unknown User',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileData.username || authUser.username || 'Unknown')}`,
-        joinDate,
-        totalScore: statsData.totalScore || 0,
-        gamesPlayed: statsData.gamesPlayed || 0,
-        gamesWon: statsData.gamesWon || 0,
-        rank,
-        gameStats,
-        recentGames,
-        favoriteGames,
-        badges
-      });
+      setUserData(result.data);
     } catch (error: any) {
-      console.error('Failed to fetch user data:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        authUserId: authUser?.id,
-        authUsername: authUser?.username
-      });
+      console.error('Failed to fetch user profile:', error);
+      setError(error.message || 'Failed to fetch profile data');
       
-      // Show user-friendly error message with fallback data
-      setUserData(prev => ({
-        ...prev,
-        username: authUser?.username || 'Unknown User',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(authUser?.username || 'Unknown')}`,
-        joinDate: 'Unknown',
+      // Set fallback data
+      setUserData({
+        _id: authUser.id,
+        username: authUser.username,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         totalScore: 0,
         gamesPlayed: 0,
         gamesWon: 0,
-        rank: 'Unranked',
-        gameStats: {},
+        gameStats: [],
         recentGames: [],
         favoriteGames: [],
-        badges: []
-      }));
+        badges: [],
+        globalRank: 'Unranked',
+        winRate: 0
+      });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  fetchUserData();
-}, [authUser, updateUser]);
+  useEffect(() => {
+    fetchUserProfile();
+  }, [authUser]);
 
-
-
-  // useEffect(() => {
-  //   const fetchUserData = async () => {
-  //     if (!authUser) return;
-      
-  //     try {
-  //       setLoading(true);
-  //       // Fetch user profile data
-  //       const profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}`);
-  //       const profileData = await profileResponse.json();
-  //       const statsResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}/stats`);
-  //       const statsData = await statsResponse.json();
-        
-  //       // Format join date
-  //       const joinDate = new Date(profileData.createdAt).toLocaleDateString('en-US', {
-  //         month: 'long',
-  //         year: 'numeric'
-  //       });
-
-     
-
-  //       // Calculate rank (this would ideally come from the backend)
-  //       const rankResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard');
-  //       const rankData = await rankResponse.json(); 
-  //       // Fix: rankData is already an array, no need for .data
-  //       const rankIndex = Array.isArray(rankData) ? rankData.findIndex((u:any) => u._id === authUser.id) : -1;
-
-  //       const rank = rankIndex >= 0 ? `#${rankIndex + 1}` : 'Unranked';
-
-  //       // Format game stats - Fix the reduce function destructuring
-  //       const gameStats = statsData.gameStats.reduce((acc: any, stat: any) => {
-  //         acc[stat.gameType] = {
-  //           played: stat.count,
-  //           won: stat.wins,
-  //           winRate: Math.round((stat.wins / stat.count) * 100),
-  //           avgScore: Math.round(stat.score / stat.count)
-  //         };
-  //         return acc;
-  //       }, {});
-
-
-
-  //       // Get recent games from game history (last 5)
-  //       const recentGames = statsData.gameHistory
-  //         .slice(0, 5)
-  //         .map((game:any) => ({
-  //           id: game.roomId,
-  //           name: `${game.gameType} Game`,
-  //           type: game.gameType,
-  //           date: new Date(game.date).toLocaleDateString('en-US', {
-  //             month: 'short',
-  //             day: 'numeric',
-  //             year: 'numeric'
-  //           }),
-  //           result: game.won ? 'Won' : 'Lost',
-  //           score: game.score
-  //         }));
-
-  //       // Determine favorite games (top 3 by count)
-  //       const favoriteGames = [...statsData.gameStats]
-  //         .sort((a, b) => b.count - a.count)
-  //         .slice(0, 3)
-  //         .map(stat => stat.gameType);
-
-  //       // Generate badges based on achievements
-  //       const badges = [];
-  //       if (statsData.gamesWon >= 10) {
-  //         badges.push({
-  //           id: 1,
-  //           name: 'Game Master',
-  //           icon: '🏆',
-  //           description: 'Won 10 or more games',
-  //           date: new Date().toLocaleDateString('en-US', {
-  //             month: 'short',
-  //             day: 'numeric',
-  //             year: 'numeric'
-  //           })
-  //         });
-  //       }
-  //       if (statsData.gameStats.some((stat:any) => stat.wins >= 5)) {
-  //         badges.push({
-  //           id: 2,
-  //           name: 'Multi-Game Champion',
-  //           icon: '🥇',
-  //           description: 'Won 5+ games in multiple categories',
-  //           date: new Date().toLocaleDateString('en-US', {
-  //             month: 'short',
-  //             day: 'numeric',
-  //             year: 'numeric'
-  //           })
-  //         });
-  //       }
-  //       // Add more badge conditions as needed...
-
-  //       setUserData({
-  //         username: profileData.username,
-  //         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileData.username)}`,
-  //         joinDate,
-  //         totalScore: statsData.totalScore,
-  //         gamesPlayed: statsData.gamesPlayed,
-  //         gamesWon: statsData.gamesWon,
-  //         rank,
-  //         gameStats,
-  //         recentGames,
-  //         favoriteGames,
-  //         badges
-  //       });
-  //     } catch (error) {
-  //       console.error('Failed to fetch user data:', error);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchUserData();
-  // }, [authUser]);
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchUserProfile(false);
+  };
 
   const renderStats = () => {
     if (loading) return <div className="text-center py-8">Loading stats...</div>;
+    if (!userData) return <div className="text-center py-8 text-red-400">No data available</div>;
     
     return (
       <div>
@@ -480,43 +154,41 @@ useEffect(() => {
             </div>
             <div>
               <div className="text-sm text-gray-400">Win Rate</div>
-              <div className="text-2xl font-bold">
-                {userData.gamesPlayed > 0 
-                  ? Math.round((userData.gamesWon / userData.gamesPlayed) * 100) 
-                  : 0}%
-              </div>
+              <div className="text-2xl font-bold">{userData.winRate}%</div>
             </div>
           </div>
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 flex items-center">
             <div className="w-12 h-12 rounded-full bg-red-900/30 flex items-center justify-center mr-4">
-              <ClockIcon size={24} className="text-red-400" />
+              <TrendingUpIcon size={24} className="text-red-400" />
             </div>
             <div>
               <div className="text-sm text-gray-400">Global Rank</div>
-              <div className="text-2xl font-bold">{userData.rank}</div>
+              <div className="text-2xl font-bold">{userData.globalRank}</div>
             </div>
           </div>
         </div>
+        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Game Specific Stats */}
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
             <h3 className="text-lg font-medium mb-4">Game Performance</h3>
-            {Object.keys(userData.gameStats).length > 0 ? (
+            {userData.gameStats.length > 0 ? (
               <div className="space-y-4">
-                {Object.entries(userData.gameStats).map(([game, stats]:any) => (
-                  <div key={game} className="flex items-center">
+                {userData.gameStats.map((stat) => (
+                  <div key={stat.gameType} className="flex items-center">
                     <div className="w-10 h-10 rounded-lg bg-gray-700/50 flex items-center justify-center text-xl mr-3">
-                      {game === 'trivia' ? '🎯' : 
-                       game === 'chess' ? '♟️' : 
-                       game === 'uno' ? '🃏' : 
-                       game === 'kahoot' ? '❓' : 
-                       game === 'pictionary' ? '🎨' : '🎮'}
+                      {stat.gameType === 'trivia' ? '🎯' : 
+                       stat.gameType === 'chess' ? '♟️' : 
+                       stat.gameType === 'uno' ? '🃏' : 
+                       stat.gameType === 'kahoot' ? '❓' : 
+                       stat.gameType === 'pictionary' ? '🎨' : 
+                       stat.gameType === 'ludo' ? '🎲' : '🎮'}
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between">
-                        <span className="font-medium capitalize">{game}</span>
+                        <span className="font-medium capitalize">{stat.gameType}</span>
                         <span className="text-sm text-gray-400">
-                          {stats.played} games
+                          {stat.count} games
                         </span>
                       </div>
                       <div className="mt-1 flex items-center">
@@ -524,35 +196,40 @@ useEffect(() => {
                           <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                             <div 
                               className="h-full bg-purple-600 rounded-full" 
-                              style={{ width: `${stats.winRate}%` }}
+                              style={{ width: `${stat.winRate}%` }}
                             ></div>
                           </div>
                         </div>
                         <span className="ml-2 text-sm">
-                          {stats.winRate}% win rate
+                          {stat.winRate}% win rate
                         </span>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        Last played: {stat.lastPlayed ? new Date(stat.lastPlayed).toLocaleDateString() : 'Never'}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-400">No game statistics available yet.</p>
+              <p className="text-gray-400">No game statistics available yet. Start playing to see your stats!</p>
             )}
           </div>
+          
           {/* Recent Games */}
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
             <h3 className="text-lg font-medium mb-4">Recent Games</h3>
             {userData.recentGames.length > 0 ? (
               <div className="space-y-3">
-                {userData.recentGames.map((game:any) => (
+                {userData.recentGames.map((game) => (
                   <div key={game.id} className="flex items-center p-2 hover:bg-gray-700/30 rounded-lg transition-colors">
                     <div className="w-10 h-10 rounded-lg bg-gray-700/50 flex items-center justify-center text-xl mr-3">
-                      {game.type === 'Trivia' ? '🎯' : 
-                       game.type === 'Chess' ? '♟️' : 
-                       game.type === 'UNO' ? '🃏' : 
-                       game.type === 'Kahoot' ? '❓' : 
-                       game.type === 'Pictionary' ? '🎨' : '🎮'}
+                      {game.type === 'trivia' ? '🎯' : 
+                       game.type === 'chess' ? '♟️' : 
+                       game.type === 'uno' ? '🃏' : 
+                       game.type === 'kahoot' ? '❓' : 
+                       game.type === 'pictionary' ? '🎨' : 
+                       game.type === 'ludo' ? '🎲' : '🎮'}
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between">
@@ -560,53 +237,170 @@ useEffect(() => {
                         <span className="text-sm text-gray-400">{game.date}</span>
                       </div>
                       <div className="flex justify-between mt-1">
-                        <span className="text-sm text-gray-400">{game.type}</span>
+                        <span className="text-sm text-gray-400 capitalize">{game.type}</span>
                         <span className={`text-sm ${
-                          game.result === 'Won' ? 'text-green-400' : 
-                          game.result === 'Lost' ? 'text-red-400' : 'text-yellow-400'
+                          game.result === 'Won' ? 'text-green-400' : 'text-red-400'
                         }`}>
                           {game.result} {game.score > 0 && `(${game.score} pts)`}
                         </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {game.totalPlayers} players • {game.duration > 0 ? `${Math.round(game.duration / 60)}m` : 'Quick game'}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-400">No recent games played.</p>
+              <p className="text-gray-400">No recent games played. Join a game to get started!</p>
             )}
           </div>
         </div>
+        
+        {/* Favorite Games */}
+        {userData.favoriteGames.length > 0 && (
+          <div className="mt-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
+            <h3 className="text-lg font-medium mb-4">Favorite Games</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {userData.favoriteGames.map((game) => (
+                <div key={game.gameType} className="bg-gray-700/30 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-gray-600/50 flex items-center justify-center text-lg mr-2">
+                      {game.gameType === 'trivia' ? '🎯' : 
+                       game.gameType === 'chess' ? '♟️' : 
+                       game.gameType === 'uno' ? '🃏' : 
+                       game.gameType === 'kahoot' ? '❓' : 
+                       game.gameType === 'pictionary' ? '🎨' : 
+                       game.gameType === 'ludo' ? '🎲' : '🎮'}
+                    </div>
+                    <span className="font-medium capitalize">{game.gameType}</span>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    <div>Games: {game.count}</div>
+                    <div>Wins: {game.wins}</div>
+                    <div>Win Rate: {game.winRate}%</div>
+                    <div className="text-xs mt-1">
+                      Last: {game.lastPlayed ? new Date(game.lastPlayed).toLocaleDateString() : 'Never'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
 
   const renderBadges = () => {
     if (loading) return <div className="text-center py-8">Loading badges...</div>;
+    if (!userData) return <div className="text-center py-8 text-red-400">No data available</div>;
     
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {userData.badges.length > 0 ? (
-          userData.badges.map((badge:any) => (
-            <div key={badge.id} className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 flex items-start">
-              <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-purple-600/30 to-pink-600/30 flex items-center justify-center text-3xl mr-4">
-                {badge.icon}
-              </div>
-              <div>
-                <h3 className="font-bold">{badge.name}</h3>
-                <p className="text-sm text-gray-400 mb-1">{badge.description}</p>
-                <p className="text-xs text-gray-500">Earned on {badge.date}</p>
-              </div>
+      <div>
+        <div className="mb-6">
+          <h3 className="text-lg font-medium mb-2">Achievement Summary</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-purple-400">{userData.badges.length}</div>
+              <div className="text-sm text-gray-400">Total Badges</div>
             </div>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-8 text-gray-400">
-            No badges earned yet. Keep playing to unlock achievements!
+            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-green-400">{userData.gamesWon}</div>
+              <div className="text-sm text-gray-400">Games Won</div>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-blue-400">{userData.winRate}%</div>
+              <div className="text-sm text-gray-400">Win Rate</div>
+            </div>
           </div>
-        )}
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {userData.badges.length > 0 ? (
+            userData.badges.map((badge) => (
+              <div key={badge.id} className={`bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 flex items-start ${
+                badge.category === 'achievement' ? 'border-yellow-500/50' :
+                badge.category === 'milestone' ? 'border-blue-500/50' :
+                badge.category === 'specialist' ? 'border-purple-500/50' : ''
+              }`}>
+                <div className={`w-14 h-14 rounded-lg flex items-center justify-center text-3xl mr-4 ${
+                  badge.category === 'achievement' ? 'bg-gradient-to-br from-yellow-600/30 to-orange-600/30' :
+                  badge.category === 'milestone' ? 'bg-gradient-to-br from-blue-600/30 to-cyan-600/30' :
+                  badge.category === 'specialist' ? 'bg-gradient-to-br from-purple-600/30 to-pink-600/30' :
+                  'bg-gradient-to-br from-gray-600/30 to-gray-700/30'
+                }`}>
+                  {badge.icon}
+                </div>
+                <div>
+                  <h3 className="font-bold">{badge.name}</h3>
+                  <p className="text-sm text-gray-400 mb-1">{badge.description}</p>
+                  <p className="text-xs text-gray-500">Earned on {badge.date}</p>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs mt-1 ${
+                    badge.category === 'achievement' ? 'bg-yellow-500/20 text-yellow-300' :
+                    badge.category === 'milestone' ? 'bg-blue-500/20 text-blue-300' :
+                    badge.category === 'specialist' ? 'bg-purple-500/20 text-purple-300' :
+                    'bg-gray-500/20 text-gray-300'
+                  }`}>
+                    {badge.category}
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8 text-gray-400">
+              <div className="text-4xl mb-4">🏆</div>
+              <p className="text-lg mb-2">No badges earned yet</p>
+              <p className="text-sm">Keep playing games to unlock achievements and earn badges!</p>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 overflow-y-auto h-screen pb-20">
+        <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-400">Loading profile...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !userData) {
+    return (
+      <div className="p-6 overflow-y-auto h-screen pb-20">
+        <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-red-400">
+            <div className="text-center">
+              <div className="text-lg mb-2">Error: {error}</div>
+              <button 
+                onClick={handleRefresh}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userData) {
+    return (
+      <div className="p-6 overflow-y-auto h-screen pb-20">
+        <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-400">No profile data available</div>
+        </div>
+      </div>
+    );
+  }
 
   // Format username to look like a name
   const formattedName = userData.username 
@@ -616,6 +410,13 @@ useEffect(() => {
         .join('')
     : 'Loading...';
 
+  const joinDate = userData.createdAt 
+    ? new Date(userData.createdAt).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric'
+      })
+    : 'Unknown';
+
   return (
     <div className="p-6 overflow-y-auto h-screen pb-20">
       <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
@@ -623,33 +424,48 @@ useEffect(() => {
       {/* Profile Header */}
       <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-6 mb-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=2070')] opacity-10 bg-cover bg-center mix-blend-overlay"></div>
-        <div className="relative z-10 flex flex-col md:flex-row items-center">
-          <div className="relative">
-            <img 
-              src={userData.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Anonymous'} 
-              alt={formattedName} 
-              className="w-24 h-24 rounded-full border-4 border-purple-500" 
-            />
-            <div className="absolute -bottom-2 -right-2 bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-gray-900 cursor-pointer">
-              <EditIcon size={16} />
-            </div>
-          </div>
-          <div className="md:ml-6 mt-4 md:mt-0 text-center md:text-left">
-            <h2 className="text-2xl font-bold">{formattedName}</h2>
-            <p className="text-gray-300">
-              {userData.joinDate ? `Member since ${userData.joinDate}` : 'Loading...'}
-            </p>
-            <div className="flex items-center mt-2 justify-center md:justify-start">
-              <div className="bg-purple-600/30 border border-purple-500 px-3 py-1 rounded-full text-sm">
-                Level {Math.floor(userData.gamesPlayed / 10) + 1} {/* Simple level calculation */}
-              </div>
-              <div className="mx-2 h-1 w-1 rounded-full bg-gray-500"></div>
-              <div className="text-sm text-gray-300">
-                Global Rank: {userData.rank}
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between">
+          <div className="flex flex-col md:flex-row items-center">
+            <div className="relative">
+              <img 
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userData.username)}`}
+                alt={formattedName} 
+                className="w-24 h-24 rounded-full border-4 border-purple-500" 
+              />
+              <div className="absolute -bottom-2 -right-2 bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-gray-900 cursor-pointer">
+                <EditIcon size={16} />
               </div>
             </div>
+            <div className="md:ml-6 mt-4 md:mt-0 text-center md:text-left">
+              <h2 className="text-2xl font-bold">{formattedName}</h2>
+              <p className="text-gray-300">
+                Member since {joinDate}
+              </p>
+              <div className="flex items-center mt-2 justify-center md:justify-start">
+                <div className="bg-purple-600/30 border border-purple-500 px-3 py-1 rounded-full text-sm">
+                  Level {Math.floor(userData.gamesPlayed / 10) + 1}
+                </div>
+                <div className="mx-2 h-1 w-1 rounded-full bg-gray-500"></div>
+                <div className="text-sm text-gray-300">
+                  Global Rank: {userData.globalRank}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex-1 flex justify-end mt-4 md:mt-0">
+          
+          <div className="flex items-center space-x-3 mt-4 md:mt-0">
+            <button 
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
+                refreshing 
+                  ? 'bg-gray-600 cursor-not-allowed' 
+                  : 'bg-purple-600 hover:bg-purple-700'
+              } text-white`}
+            >
+              <RefreshCwIcon size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
             <button className="px-4 py-2 bg-white text-purple-900 font-medium rounded-lg hover:bg-gray-100 transition-colors">
               Edit Profile
             </button>

@@ -2,7 +2,7 @@
 // src/user/user.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, PipelineStage } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import { GameRoom, GameRoomDocument } from '../game/schemas/game-room.schema';
 import { GameSessionEntity, GameSessionDocument } from '../game/schemas/game-session.schema';
@@ -106,7 +106,7 @@ export class UserService {
       // Start with game sessions to get player stats
       const matchStage = gameType && gameType !== 'all' ? { gameType } : {};
       
-      const pipeline: any[] = [
+      const pipeline: PipelineStage[] = [
         // Match completed game sessions
         { $match: { ...matchStage } },
         
@@ -204,7 +204,7 @@ export class UserService {
     try {
       const matchStage = gameType && gameType !== 'all' ? { gameType } : {};
       
-      const pipeline: any[] = [
+      const pipeline: PipelineStage[] = [
         // Match completed games only
         { $match: { ...matchStage, status: 'completed' } },
         
@@ -362,7 +362,7 @@ export class UserService {
         };
       }
 
-      const pipeline: any[] = [
+      const pipeline: PipelineStage[] = [
         { $match: matchStage },
         { $project: projectStage },
         { $match: { score: { $gt: 0 } } }, // Only users with score > 0
@@ -398,6 +398,438 @@ export class UserService {
       gameStats: user.gameStats,
       gameHistory: user.gameHistory.slice(-10) // Last 10 games
     };
+  }
+
+  async getUserProfile(userId: string) {
+    try {
+      // Get basic user info
+      const user = await this.userModel.findById(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Get comprehensive game statistics from game sessions
+      const gameStats = await this.getUserGameStats(userId);
+      
+      // Get recent game history
+      const recentGames = await this.getUserRecentGames(userId);
+      
+      // Get favorite games
+      const favoriteGames = await this.getUserFavoriteGames(userId);
+      
+      // Get achievements and badges
+      const badges = await this.getUserBadges(userId, gameStats);
+      
+      // Get global rank
+      const globalRank = await this.getUserGlobalRank(userId);
+
+      return {
+        success: true,
+        data: {
+          _id: user._id,
+          username: user.username,
+          createdAt: user.createdAt,
+          // updatedAt: user.updatedAt,
+          totalScore: gameStats.totalScore,
+          gamesPlayed: gameStats.totalGames,
+          gamesWon: gameStats.totalWins,
+          gameStats: gameStats.gameTypeStats,
+          recentGames,
+          favoriteGames,
+          badges,
+          globalRank,
+          winRate: gameStats.totalGames > 0 ? Math.round((gameStats.totalWins / gameStats.totalGames) * 100) : 0
+        }
+      };
+    } catch (error) {
+      console.error('Error in getUserProfile:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async getUserGameStats(userId: string) {
+    try {
+      const pipeline: PipelineStage[] = [
+        // Match sessions where user participated
+        { $match: { players: userId } },
+        
+        // Lookup game room to get game type and name
+        {
+          $lookup: {
+            from: 'gamerooms',
+            localField: 'roomId',
+            foreignField: 'roomId',
+            as: 'gameRoom'
+          }
+        },
+        
+        // Unwind game room
+        { $unwind: '$gameRoom' },
+        
+        // Group by game type to get stats per game
+        {
+          $group: {
+            _id: '$gameRoom.gameType',
+            count: { $sum: 1 },
+            wins: {
+              $sum: {
+                $cond: [
+                  { $eq: ['$winner', userId] },
+                  1,
+                  0
+                ]
+              }
+            },
+            totalScore: {
+              $sum: {
+                $cond: [
+                  { $eq: ['$winner', userId] },
+                  100, // 100 points per win
+                  0
+                ]
+              }
+            },
+            gameNames: { $addToSet: '$gameRoom.name' },
+            lastPlayed: { $max: '$endedAt' }
+          }
+        },
+        
+        // Project final format
+        {
+          $project: {
+            gameType: '$_id',
+            count: 1,
+            wins: 1,
+            totalScore: 1,
+            gameNames: 1,
+            lastPlayed: 1,
+            winRate: {
+              $multiply: [
+                { $divide: ['$wins', '$count'] },
+                100
+              ]
+            }
+          }
+        },
+        
+        // Sort by count descending
+        { $sort: { count: -1 } }
+      ];
+
+      const gameTypeStats = await this.gameSessionModel.aggregate(pipeline);
+      
+      // Calculate overall totals
+      const totalGames = gameTypeStats.reduce((sum, stat) => sum + stat.count, 0);
+      const totalWins = gameTypeStats.reduce((sum, stat) => sum + stat.wins, 0);
+      const totalScore = gameTypeStats.reduce((sum, stat) => sum + stat.totalScore, 0);
+
+      return {
+        totalGames,
+        totalWins,
+        totalScore,
+        gameTypeStats: gameTypeStats.map(stat => ({
+          gameType: stat.gameType,
+          count: stat.count,
+          wins: stat.wins,
+          totalScore: stat.totalScore,
+          winRate: Math.round(stat.winRate || 0),
+          lastPlayed: stat.lastPlayed
+        }))
+      };
+    } catch (error) {
+      console.error('Error in getUserGameStats:', error);
+      return {
+        totalGames: 0,
+        totalWins: 0,
+        totalScore: 0,
+        gameTypeStats: []
+      };
+    }
+  }
+
+  async getUserRecentGames(userId: string, limit = 10) {
+    try {
+      const pipeline: PipelineStage[] = [
+        // Match sessions where user participated
+        { $match: { players: userId } },
+        
+        // Lookup game room to get game type and name
+        {
+          $lookup: {
+            from: 'gamerooms',
+            localField: 'roomId',
+            foreignField: 'roomId',
+            as: 'gameRoom'
+          }
+        },
+        
+        // Unwind game room
+        { $unwind: '$gameRoom' },
+        
+        // Project game info
+        {
+          $project: {
+            roomId: 1,
+            gameType: '$gameRoom.gameType',
+            gameName: '$gameRoom.name',
+            won: { $eq: ['$winner', userId] },
+            score: {
+              $cond: [
+                { $eq: ['$winner', userId] },
+                100,
+                0
+              ]
+            },
+            startedAt: 1,
+            endedAt: 1,
+            duration: 1,
+            totalPlayers: { $size: '$players' }
+          }
+        },
+        
+        // Sort by most recent
+        { $sort: { endedAt: -1 } },
+        
+        // Limit results
+        { $limit: limit }
+      ];
+
+      const recentGames = await this.gameSessionModel.aggregate(pipeline);
+      
+      return recentGames.map(game => ({
+        id: game.roomId,
+        name: game.gameName || `${game.gameType} Game`,
+        type: game.gameType,
+        date: game.endedAt ? new Date(game.endedAt).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }) : 'Unknown',
+        result: game.won ? 'Won' : 'Lost',
+        score: game.score,
+        duration: game.duration,
+        totalPlayers: game.totalPlayers,
+        startedAt: game.startedAt,
+        endedAt: game.endedAt
+      }));
+    } catch (error) {
+      console.error('Error in getUserRecentGames:', error);
+      return [];
+    }
+  }
+
+  async getUserFavoriteGames(userId: string, limit = 5) {
+    try {
+      const pipeline: PipelineStage[] = [
+        // Match sessions where user participated
+        { $match: { players: userId } },
+        
+        // Lookup game room to get game type
+        {
+          $lookup: {
+            from: 'gamerooms',
+            localField: 'roomId',
+            foreignField: 'roomId',
+            as: 'gameRoom'
+          }
+        },
+        
+        // Unwind game room
+        { $unwind: '$gameRoom' },
+        
+        // Group by game type
+        {
+          $group: {
+            _id: '$gameRoom.gameType',
+            count: { $sum: 1 },
+            wins: {
+              $sum: {
+                $cond: [
+                  { $eq: ['$winner', userId] },
+                  1,
+                  0
+                ]
+              }
+            },
+            lastPlayed: { $max: '$endedAt' }
+          }
+        },
+        
+        // Sort by count descending
+        { $sort: { count: -1 } },
+        
+        // Limit results
+        { $limit: limit }
+      ];
+
+      const favoriteGames = await this.gameSessionModel.aggregate(pipeline);
+      
+      return favoriteGames.map(game => ({
+        gameType: game._id,
+        count: game.count,
+        wins: game.wins,
+        winRate: Math.round((game.wins / game.count) * 100),
+        lastPlayed: game.lastPlayed
+      }));
+    } catch (error) {
+      console.error('Error in getUserFavoriteGames:', error);
+      return [];
+    }
+  }
+
+  async getUserBadges(userId: string, gameStats: any) {
+    try {
+      const badges: Array<{
+        id: number;
+        name: string;
+        icon: string;
+        description: string;
+        date: string;
+        category: string;
+      }> = [];
+      
+      // Game Master badge - Win 10+ games
+      if (gameStats.totalWins >= 10) {
+        badges.push({
+          id: 1,
+          name: 'Game Master',
+          icon: '🏆',
+          description: `Won ${gameStats.totalWins} games`,
+          date: new Date().toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          }),
+          category: 'achievement'
+        });
+      }
+      
+      // Multi-Game Champion - Win 5+ games in multiple categories
+      const gameTypesWithWins = gameStats.gameTypeStats.filter((stat: any) => stat.wins >= 5);
+      if (gameTypesWithWins.length >= 2) {
+        badges.push({
+          id: 2,
+          name: 'Multi-Game Champion',
+          icon: '🥇',
+          description: `Won 5+ games in ${gameTypesWithWins.length} categories`,
+          date: new Date().toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          }),
+          category: 'achievement'
+        });
+      }
+      
+      // First Win badge
+      if (gameStats.totalWins >= 1) {
+        badges.push({
+          id: 3,
+          name: 'First Victory',
+          icon: '🎯',
+          description: 'Won your first game',
+          date: new Date().toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          }),
+          category: 'milestone'
+        });
+      }
+      
+      // Dedicated Player - Play 20+ games
+      if (gameStats.totalGames >= 20) {
+        badges.push({
+          id: 4,
+          name: 'Dedicated Player',
+          icon: '🎮',
+          description: `Played ${gameStats.totalGames} games`,
+          date: new Date().toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          }),
+          category: 'milestone'
+        });
+      }
+      
+      // High Win Rate - 80%+ win rate
+      if (gameStats.totalGames >= 5) {
+        const winRate = (gameStats.totalWins / gameStats.totalGames) * 100;
+        if (winRate >= 80) {
+          badges.push({
+            id: 5,
+            name: 'High Roller',
+            icon: '⭐',
+            description: `${Math.round(winRate)}% win rate`,
+            date: new Date().toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            }),
+            category: 'achievement'
+          });
+        }
+      }
+      
+      // Game Type Specialist badges
+      gameStats.gameTypeStats.forEach((stat: any) => {
+        if (stat.wins >= 10) {
+          badges.push({
+            id: 100 + badges.length,
+            name: `${stat.gameType.charAt(0).toUpperCase() + stat.gameType.slice(1)} Master`,
+            icon: this.getGameIcon(stat.gameType),
+            description: `Won ${stat.wins} ${stat.gameType} games`,
+            date: new Date().toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            }),
+            category: 'specialist'
+          });
+        }
+      });
+      
+      return badges;
+    } catch (error) {
+      console.error('Error in getUserBadges:', error);
+      return [];
+    }
+  }
+
+  private getGameIcon(gameType: string): string {
+    const icons: { [key: string]: string } = {
+      'trivia': '🎲',
+      'chess': '♟️',
+      'uno': '🃏',
+      'kahoot': '❓',
+      'pictionary': '🎨',
+      'ludo': '🎲',
+      'sudoku': '🧠'
+    };
+    return icons[gameType] || '🎮';
+  }
+
+  async getUserGlobalRank(userId: string) {
+    try {
+      // Get global leaderboard
+      const leaderboard = await this.getLeaderboard(1000); // Get all users
+      
+      // Find user's position
+      const userIndex = leaderboard.findIndex((user: any) => user._id === userId);
+      
+      if (userIndex >= 0) {
+        return `#${userIndex + 1}`;
+      } else {
+        return 'Unranked';
+      }
+    } catch (error) {
+      console.error('Error in getUserGlobalRank:', error);
+      return 'Unranked';
+    }
   }
 
   // Method to populate sample game data for testing

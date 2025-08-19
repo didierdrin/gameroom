@@ -77,6 +77,20 @@ export class UserController {
     }
   }
 
+  @Get(':id/profile')
+  async getUserProfile(@Param('id') id: string) {
+    try {
+      const profile = await this.userService.getUserProfile(id);
+      return profile;
+    } catch (error) {
+      console.error('Get user profile error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
   @Get(':id/stats')
   async getUserStats(@Param('id') id: string) {
     try {
