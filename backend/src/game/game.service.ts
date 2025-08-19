@@ -1479,6 +1479,92 @@ async getChatHistory(roomId: string) {
   }
 }
 
+async getAllGameRooms() {
+  try {
+    const rooms = await this.gameRoomModel
+      .find({})
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+
+    const gamesessions = await this.gameSessionModel
+      .find({})
+      .lean()
+      .exec();
+
+    const roomsWithPlayerData = await Promise.all(
+      rooms.map(async (room) => {
+        // Get corresponding game session for additional data
+        const gameSession = gamesessions.find(session => session.roomId === room.roomId);
+        
+        // Build players array with username and game data
+        const players = await Promise.all(
+          room.playerIds.map(async (playerId, index) => {
+            let username = playerId;
+            let score = 0;
+            let position = index + 1;
+            let isWinner = false;
+
+            try {
+              // Try to get the actual username from the user service
+              const user = await this.userService.findById(playerId);
+              if (user && user.username) {
+                username = user.username;
+              }
+            } catch (error) {
+              console.log(`Could not fetch username for player ${playerId}, using ID as fallback`);
+            }
+
+            // Get score and winner info from room scores or game session
+            if (room.scores && room.scores[playerId]) {
+              score = room.scores[playerId];
+            } else if (gameSession?.finalState?.scores?.[playerId]) {
+              score = gameSession.finalState.scores[playerId];
+            }
+
+            // Check if this player is the winner
+            if (room.winner === playerId || gameSession?.winner === playerId) {
+              isWinner = true;
+              position = 1;
+            }
+
+            return {
+              id: playerId,
+              username: username,
+              score: score,
+              position: position,
+              isWinner: isWinner
+            };
+          })
+        );
+
+        return {
+          _id: room._id.toString(),
+          roomName: room.name,
+          gameType: room.gameType,
+          creator: room.host,
+          players: players,
+          status: room.status,
+          createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
+          startedAt: gameSession?.startedAt ? new Date(gameSession.startedAt).toISOString() : undefined,
+          endedAt: gameSession?.endedAt ? new Date(gameSession.endedAt).toISOString() : undefined,
+          maxPlayers: room.maxPlayers,
+          currentPlayers: room.currentPlayers,
+          scores: room.scores ? room.scores : {},
+          winner: room.winner || gameSession?.winner
+        };
+      })
+    );
+
+    return {
+      success: true,
+      data: roomsWithPlayerData
+    };
+  } catch (error) {
+    console.error(`Error in getAllGameRooms:`, error);
+    throw error;
+  }
+}
 
 }
 

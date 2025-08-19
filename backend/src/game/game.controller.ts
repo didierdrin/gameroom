@@ -2,16 +2,22 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { GameService } from './game.service';
 
-@Controller('game')
+@Controller()
 export class GameController {
   constructor(private readonly gameService: GameService) {}
 
-  @Get(':roomId')
+  // Add this new endpoint
+  @Get('gamerooms')
+  async getAllGameRooms() {
+    return this.gameService.getAllGameRooms();
+  }
+
+  @Get('game/:roomId')
   async getGameRoom(@Param('roomId') roomId: string) {
     return this.gameService.getGameRoomById(roomId);
   }
 
-  @Get(':roomId/score')
+  @Get('game/:roomId/score')
   async getGameScores(@Param('roomId') roomId: string) {
     return this.gameService.getScores(roomId);
   }
