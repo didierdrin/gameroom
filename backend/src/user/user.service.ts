@@ -90,18 +90,18 @@ export class UserService {
     try {
       console.log('Getting leaderboard for gameType:', gameType);
       
-      // First try to get leaderboard from game sessions (most accurate)
-      const sessionLeaderboard = await this.getSessionBasedLeaderboard(limit, gameType);
-      if (sessionLeaderboard && sessionLeaderboard.length > 0) {
-        console.log('Using session-based leaderboard with', sessionLeaderboard.length, 'players');
-        return sessionLeaderboard;
-      }
-
-      // Fall back to game room based leaderboard
+      // Prioritize game room based leaderboard (uses gamerooms collection)
       const roomLeaderboard = await this.getRoomBasedLeaderboard(limit, gameType);
       if (roomLeaderboard && roomLeaderboard.length > 0) {
         console.log('Using room-based leaderboard with', roomLeaderboard.length, 'players');
         return roomLeaderboard;
+      }
+
+      // Fall back to game session based leaderboard
+      const sessionLeaderboard = await this.getSessionBasedLeaderboard(limit, gameType);
+      if (sessionLeaderboard && sessionLeaderboard.length > 0) {
+        console.log('Using session-based leaderboard with', sessionLeaderboard.length, 'players');
+        return sessionLeaderboard;
       }
 
       // Final fallback to user-based leaderboard
@@ -473,26 +473,18 @@ export class UserService {
   async getUserGameStats(userId: string) {
     try {
       const pipeline: PipelineStage[] = [
-        // Match sessions where user participated
-        { $match: { players: userId } },
-        
-        // Lookup game room to get game type and name
-        {
-          $lookup: {
-            from: 'gamerooms',
-            localField: 'roomId',
-            foreignField: 'roomId',
-            as: 'gameRoom'
-          }
+        // Match completed games where user participated
+        { 
+          $match: { 
+            playerIds: userId,
+            status: 'completed'
+          } 
         },
-        
-        // Unwind game room
-        { $unwind: '$gameRoom' },
         
         // Group by game type to get stats per game
         {
           $group: {
-            _id: '$gameRoom.gameType',
+            _id: '$gameType',
             count: { $sum: 1 },
             wins: {
               $sum: {
@@ -507,13 +499,13 @@ export class UserService {
               $sum: {
                 $cond: [
                   { $eq: ['$winner', userId] },
-                  100, // 100 points per win
+                  5, // 5 points per win (changed from 100)
                   0
                 ]
               }
             },
-            gameNames: { $addToSet: '$gameRoom.name' },
-            lastPlayed: { $max: '$endedAt' }
+            gameNames: { $addToSet: '$name' },
+            lastPlayed: { $max: '$updatedAt' }
           }
         },
         
@@ -539,7 +531,7 @@ export class UserService {
         { $sort: { count: -1 } }
       ];
 
-      const gameTypeStats = await this.gameSessionModel.aggregate(pipeline);
+      const gameTypeStats = await this.gameRoomModel.aggregate(pipeline); // Changed from gameSessionModel
       
       // Calculate overall totals
       const totalGames = gameTypeStats.reduce((sum, stat) => sum + stat.count, 0);
@@ -573,67 +565,64 @@ export class UserService {
   async getUserRecentGames(userId: string, limit = 10) {
     try {
       const pipeline: PipelineStage[] = [
-        // Match sessions where user participated
-        { $match: { players: userId } },
-        
-        // Lookup game room to get game type and name
-        {
-          $lookup: {
-            from: 'gamerooms',
-            localField: 'roomId',
-            foreignField: 'roomId',
-            as: 'gameRoom'
-          }
+        // Match completed games where user participated
+        { 
+          $match: { 
+            playerIds: userId,
+            status: 'completed'
+          } 
         },
-        
-        // Unwind game room
-        { $unwind: '$gameRoom' },
         
         // Project game info
         {
           $project: {
             roomId: 1,
-            gameType: '$gameRoom.gameType',
-            gameName: '$gameRoom.name',
+            gameType: 1,
+            gameName: '$name',
             won: { $eq: ['$winner', userId] },
             score: {
               $cond: [
                 { $eq: ['$winner', userId] },
-                100,
+                5, // 5 points per win (changed from 100)
                 0
               ]
             },
-            startedAt: 1,
-            endedAt: 1,
-            duration: 1,
-            totalPlayers: { $size: '$players' }
+            createdAt: 1,
+            updatedAt: 1,
+            duration: {
+              $divide: [
+                { $subtract: ['$updatedAt', '$createdAt'] },
+                60000 // Convert to minutes
+              ]
+            },
+            totalPlayers: { $size: '$playerIds' }
           }
         },
         
         // Sort by most recent
-        { $sort: { endedAt: -1 } },
+        { $sort: { updatedAt: -1 } },
         
         // Limit results
         { $limit: limit }
       ];
 
-      const recentGames = await this.gameSessionModel.aggregate(pipeline);
+      const recentGames = await this.gameRoomModel.aggregate(pipeline); // Changed from gameSessionModel
       
       return recentGames.map(game => ({
         id: game.roomId,
         name: game.gameName || `${game.gameType} Game`,
         type: game.gameType,
-        date: game.endedAt ? new Date(game.endedAt).toLocaleDateString('en-US', {
+        date: game.updatedAt ? new Date(game.updatedAt).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
           year: 'numeric'
         }) : 'Unknown',
         result: game.won ? 'Won' : 'Lost',
         score: game.score,
-        duration: game.duration,
+        duration: Math.round(game.duration || 0),
         totalPlayers: game.totalPlayers,
-        startedAt: game.startedAt,
-        endedAt: game.endedAt
+        startedAt: game.createdAt,
+        endedAt: game.updatedAt
       }));
     } catch (error) {
       console.error('Error in getUserRecentGames:', error);
@@ -644,26 +633,18 @@ export class UserService {
   async getUserFavoriteGames(userId: string, limit = 5) {
     try {
       const pipeline: PipelineStage[] = [
-        // Match sessions where user participated
-        { $match: { players: userId } },
-        
-        // Lookup game room to get game type
-        {
-          $lookup: {
-            from: 'gamerooms',
-            localField: 'roomId',
-            foreignField: 'roomId',
-            as: 'gameRoom'
-          }
+        // Match completed games where user participated
+        { 
+          $match: { 
+            playerIds: userId,
+            status: 'completed'
+          } 
         },
-        
-        // Unwind game room
-        { $unwind: '$gameRoom' },
         
         // Group by game type
         {
           $group: {
-            _id: '$gameRoom.gameType',
+            _id: '$gameType',
             count: { $sum: 1 },
             wins: {
               $sum: {
@@ -674,7 +655,7 @@ export class UserService {
                 ]
               }
             },
-            lastPlayed: { $max: '$endedAt' }
+            lastPlayed: { $max: '$updatedAt' }
           }
         },
         
@@ -685,7 +666,7 @@ export class UserService {
         { $limit: limit }
       ];
 
-      const favoriteGames = await this.gameSessionModel.aggregate(pipeline);
+      const favoriteGames = await this.gameRoomModel.aggregate(pipeline); // Changed from gameSessionModel
       
       return favoriteGames.map(game => ({
         gameType: game._id,
