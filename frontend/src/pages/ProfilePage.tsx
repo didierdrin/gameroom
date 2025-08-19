@@ -76,8 +76,9 @@ export const ProfilePage = () => {
       console.log('Fetching profile for user ID:', authUser.id);
       console.log('User object:', authUser);
       
-      // First try to fetch by user ID
-      let response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${authUser.id}/profile`, {
+      // First, always fetch the leaderboard to get the correct user ID
+      console.log('Fetching leaderboard to find correct user...');
+      const leaderboardResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -85,13 +86,62 @@ export const ProfilePage = () => {
         }
       });
       
-      console.log('Profile response status:', response.status);
+      if (!leaderboardResponse.ok) {
+        throw new Error(`Failed to fetch leaderboard: ${leaderboardResponse.status}`);
+      }
       
-      if (!response.ok) {
-        console.log('ID-based lookup failed, trying username-based lookup...');
-        
-        // If ID lookup fails, try to find user by username from leaderboard
-        const leaderboardResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard', {
+      const leaderboardData = await leaderboardResponse.json();
+      console.log('Leaderboard response:', leaderboardData);
+      
+      let users = [];
+      if (leaderboardData.success && leaderboardData.data) {
+        users = leaderboardData.data;
+      } else if (Array.isArray(leaderboardData)) {
+        users = leaderboardData;
+      }
+      
+      // Find current user in leaderboard by username first, then by ID
+      const currentUser = users.find((user: any) => {
+        const userIdString = user._id?.toString() || user._id;
+        return user.username === authUser.username || userIdString === authUser.id;
+      });
+      
+      console.log('Found user in leaderboard:', currentUser);
+      
+      if (!currentUser) {
+        // User not found in leaderboard, create a minimal profile
+        console.log('User not found in leaderboard, creating minimal profile');
+        setUserData({
+          _id: authUser.id,
+          username: authUser.username,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          totalScore: 0,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          gameStats: [],
+          recentGames: [],
+          favoriteGames: [],
+          badges: [],
+          globalRank: 'Unranked',
+          winRate: 0
+        });
+        return;
+      }
+      
+      // Convert ObjectId to string if needed
+      const correctUserId = currentUser._id?.toString() || currentUser._id;
+      
+      // Update auth context with correct ID if different
+      if (correctUserId !== authUser.id) {
+        console.log('Updating user ID in auth context from', authUser.id, 'to', correctUserId);
+        updateUser({ id: correctUserId });
+      }
+      
+      // Try to fetch full profile with correct ID
+      let profileResponse;
+      try {
+        profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${correctUserId}/profile`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -99,75 +149,44 @@ export const ProfilePage = () => {
           }
         });
         
-        if (leaderboardResponse.ok) {
-          const leaderboardData = await leaderboardResponse.json();
-          console.log('Leaderboard data:', leaderboardData);
+        console.log('Profile response status:', profileResponse.status);
+        
+        if (profileResponse.ok) {
+          const result = await profileResponse.json();
+          console.log('Profile response:', result);
           
-          let users = [];
-          if (leaderboardData.success && leaderboardData.data) {
-            users = leaderboardData.data;
-          } else if (Array.isArray(leaderboardData)) {
-            users = leaderboardData;
+          if (result.success && result.data) {
+            setUserData(result.data);
+            return;
           }
-          
-          // Find current user in leaderboard
-          const currentUser = users.find((user: any) => 
-            user.username === authUser.username || user._id === authUser.id
-          );
-          
-          if (currentUser) {
-            console.log('Found user in leaderboard:', currentUser);
-            
-            // Update the auth context with correct ID if needed
-            if (currentUser._id !== authUser.id) {
-              console.log('Updating user ID in auth context');
-              updateUser({ id: currentUser._id });
-            }
-            
-            // Try profile fetch again with correct ID
-            response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${currentUser._id}/profile`, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-              }
-            });
-            
-            if (!response.ok) {
-              // If still failing, create profile from leaderboard data
-              setUserData({
-                _id: currentUser._id,
-                username: currentUser.username,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                totalScore: currentUser.score || 0,
-                gamesPlayed: currentUser.gamesPlayed || 0,
-                gamesWon: currentUser.gamesWon || 0,
-                gameStats: [],
-                recentGames: [],
-                favoriteGames: [],
-                badges: [],
-                globalRank: users.findIndex((u: any) => u._id === currentUser._id) + 1,
-                winRate: currentUser.winRate || (currentUser.gamesPlayed > 0 ? Math.round((currentUser.gamesWon / currentUser.gamesPlayed) * 100) : 0)
-              });
-              return;
-            }
-          } else {
-            throw new Error('User not found in system');
-          }
-        } else {
-          throw new Error(`HTTP error! status: ${response.status}`);
         }
+      } catch (profileError) {
+        console.log('Profile fetch failed:', profileError);
       }
       
-      const result = await response.json();
-      console.log('Profile response:', result);
+      // If profile fetch fails, create profile from leaderboard data
+      console.log('Creating profile from leaderboard data');
+      const globalRank = users.findIndex((u: any) => {
+        const userIdString = u._id?.toString() || u._id;
+        return userIdString === correctUserId;
+      }) + 1;
       
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch profile');
-      }
+      setUserData({
+        _id: correctUserId,
+        username: currentUser.username,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        totalScore: currentUser.score || 0,
+        gamesPlayed: currentUser.gamesPlayed || 0,
+        gamesWon: currentUser.gamesWon || 0,
+        gameStats: [],
+        recentGames: [],
+        favoriteGames: [],
+        badges: [],
+        globalRank: globalRank > 0 ? `#${globalRank}` : 'Unranked',
+        winRate: currentUser.winRate || (currentUser.gamesPlayed > 0 ? Math.round((currentUser.gamesWon / currentUser.gamesPlayed) * 100) : 0)
+      });
       
-      setUserData(result.data);
     } catch (error: any) {
       console.error('Failed to fetch user profile:', error);
       setError(error.message || 'Failed to fetch profile data');
