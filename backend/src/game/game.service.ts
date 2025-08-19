@@ -1242,21 +1242,20 @@ export class GameService {
         isTournament: false
       };
 
-      // Update user stats for all players
+      // Update user stats for all players - Award 5 points for wins
       for (const player of gameState.players) {
         let score = 0;
         
-        // Calculate score based on game type
+        // Calculate score based on game type - Winner gets 5 points, others get 1 point
         if (gameState.gameType === 'ludo') {
-          // For Ludo: Winner gets 100 points, others get 10 points for participation
-          score = gameState.winner === player.id ? 100 : 10;
+          score = gameState.winner === player.id ? 5 : 1;
         } else if (gameState.kahootState?.scores?.[player.id] !== undefined) {
           score = gameState.kahootState.scores[player.id];
         } else if (gameState.triviaState?.scores?.[player.id] !== undefined) {
           score = gameState.triviaState.scores[player.id];
         } else {
-          // Default scoring for other games
-          score = gameState.winner === player.id ? 100 : (gameState.players.length > 1 ? 20 : 0);
+          // Default scoring for other games - Winner gets 5 points, others get 1 point
+          score = gameState.winner === player.id ? 5 : 1;
         }
         
         try {

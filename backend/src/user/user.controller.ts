@@ -32,7 +32,9 @@ export class UserController {
   @Get('leaderboard')
   async getLeaderboard(@Query('gameType') gameType?: string) {
     try {
+      console.log('Leaderboard request received for gameType:', gameType);
       const leaderboard = await this.userService.getLeaderboard(10, gameType);
+      console.log('Leaderboard result:', leaderboard);
       return {
         success: true,
         data: leaderboard

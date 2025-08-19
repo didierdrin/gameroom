@@ -33,44 +33,57 @@ export class UserService {
   }
 
   async updateGameStats(userId: string, gameType: string, score: number, won: boolean) {
-    const user = await this.userModel.findById(userId);
-    if (!user) return;
+    try {
+      const user = await this.userModel.findById(userId);
+      if (!user) {
+        console.log(`User ${userId} not found, creating new user stats`);
+        return;
+      }
 
-    // Update overall stats
-    user.totalScore += score;
-    user.gamesPlayed += 1;
-    if (won) user.gamesWon += 1;
+      // Initialize arrays if they don't exist
+      if (!user.gameStats) user.gameStats = [];
+      if (!user.gameTypesPlayed) user.gameTypesPlayed = [];
+      if (!user.gameHistory) user.gameHistory = [];
 
-    // Update game types played (unique list)
-    if (!user.gameTypesPlayed.includes(gameType)) {
-      user.gameTypesPlayed.push(gameType);
-    }
+      // Update overall stats
+      user.totalScore = (user.totalScore || 0) + score;
+      user.gamesPlayed = (user.gamesPlayed || 0) + 1;
+      if (won) user.gamesWon = (user.gamesWon || 0) + 1;
 
-    // Update specific game type stats
-    const gameStatIndex = user.gameStats.findIndex(stat => stat.gameType === gameType);
-    if (gameStatIndex >= 0) {
-      user.gameStats[gameStatIndex].count += 1;
-      user.gameStats[gameStatIndex].score += score;
-      if (won) user.gameStats[gameStatIndex].wins += 1;
-    } else {
-      user.gameStats.push({
+      // Update game types played (unique list)
+      if (!user.gameTypesPlayed.includes(gameType)) {
+        user.gameTypesPlayed.push(gameType);
+      }
+
+      // Update specific game type stats
+      const gameStatIndex = user.gameStats.findIndex(stat => stat.gameType === gameType);
+      if (gameStatIndex >= 0) {
+        user.gameStats[gameStatIndex].count += 1;
+        user.gameStats[gameStatIndex].score += score;
+        if (won) user.gameStats[gameStatIndex].wins += 1;
+      } else {
+        user.gameStats.push({
+          gameType,
+          count: 1,
+          wins: won ? 1 : 0,
+          score
+        });
+      }
+
+      // Add to game history
+      user.gameHistory.push({
+        roomId: '', // Will be set by game service
         gameType,
-        count: 1,
-        wins: won ? 1 : 0,
-        score
+        score,
+        won,
+        date: new Date()
       });
+
+      await user.save();
+      console.log(`Updated game stats for user ${userId}: score=${score}, won=${won}, gameType=${gameType}`);
+    } catch (error) {
+      console.error(`Error updating game stats for user ${userId}:`, error);
     }
-
-    // Add to game history
-    user.gameHistory.push({
-      roomId: '', // Will be set by game service
-      gameType,
-      score,
-      won,
-      date: new Date()
-    });
-
-    await user.save();
   }
 
   async getLeaderboard(limit = 10, gameType?: string) {
@@ -104,7 +117,7 @@ export class UserService {
   async getSessionBasedLeaderboard(limit = 10, gameType?: string) {
     try {
       // Start with game sessions to get player stats
-      const matchStage = gameType && gameType !== 'all' ? { gameType } : {};
+      const matchStage = gameType && gameType !== 'all' ? {} : {};
       
       const pipeline: PipelineStage[] = [
         // Match completed game sessions
@@ -160,13 +173,13 @@ export class UserService {
         // Unwind user info
         { $unwind: '$userInfo' },
         
-        // Project final format
+        // Project final format - 5 points per win
         {
           $project: {
             _id: 1,
             username: '$userInfo.username',
             avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$userInfo.username'] },
-            score: { $multiply: ['$totalWins', 100] }, // 100 points per win
+            score: { $multiply: ['$totalWins', 5] }, // 5 points per win
             gamesPlayed: '$totalGames',
             gamesWon: '$totalWins',
             winRate: {
@@ -242,13 +255,13 @@ export class UserService {
         // Unwind user info
         { $unwind: '$userInfo' },
         
-        // Project final format
+        // Project final format - 5 points per win
         {
           $project: {
             _id: 1,
             username: '$userInfo.username',
             avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$userInfo.username'] },
-            score: { $multiply: ['$totalWins', 100] }, // 100 points per win
+            score: { $multiply: ['$totalWins', 5] }, // 5 points per win
             gamesPlayed: '$totalGames',
             gamesWon: '$totalWins',
             winRate: {
@@ -308,7 +321,7 @@ export class UserService {
                   }
                 }
               },
-              in: { $sum: '$$gameStats.score' }
+              in: { $multiply: [{ $sum: '$$gameStats.score' }, 5] } // 5 points per win
             }
           },
           gamesPlayed: {
@@ -350,7 +363,7 @@ export class UserService {
           _id: 1,
           username: 1,
           avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$username'] },
-          score: { $ifNull: ['$totalScore', 0] },
+          score: { $multiply: [{ $ifNull: ['$totalScore', 0] }, 5] }, // 5 points per win
           gamesPlayed: { $ifNull: ['$gamesPlayed', 0] },
           gamesWon: { $ifNull: ['$gamesWon', 0] }
         };

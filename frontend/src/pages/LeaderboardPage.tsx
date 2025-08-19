@@ -86,6 +86,7 @@ export const LeaderboardPage = () => {
       // Sort by score descending
       formattedLeaderboard.sort((a, b) => b.score - a.score);
 
+      console.log('Formatted leaderboard:', formattedLeaderboard);
       setLeaderboardData(formattedLeaderboard);
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
