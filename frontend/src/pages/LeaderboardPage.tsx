@@ -1,6 +1,6 @@
 // frontend/LeaderboardPage.tsx
 import React, { useState, useEffect } from 'react';
-import { TrophyIcon, MedalIcon, AwardIcon, UsersIcon } from 'lucide-react';
+import { TrophyIcon, MedalIcon, AwardIcon, UsersIcon, RefreshCwIcon } from 'lucide-react';
 import { SectionTitle } from '../components/UI/SectionTitle';
 
 interface LeaderboardPlayer {
@@ -19,6 +19,7 @@ export const LeaderboardPage = () => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const gameTypes = [
     { id: 'all', name: 'All Games' },
@@ -30,74 +31,80 @@ export const LeaderboardPage = () => {
     { id: 'ludo', name: 'Ludo' }
   ];
 
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      setLoading(true);
-      setError(null);
+  const fetchLeaderboard = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    setError(null);
+    
+    try {
+      const gameTypeParam = gameFilter === 'all' ? '' : gameFilter;
+      const url = `https://alu-globe-gameroom.onrender.com/user/leaderboard${gameTypeParam ? `?gameType=${gameTypeParam}` : ''}`;
       
-      try {
-        const gameTypeParam = gameFilter === 'all' ? '' : gameFilter;
-        const url = `https://alu-globe-gameroom.onrender.com/user/leaderboard${gameTypeParam ? `?gameType=${gameTypeParam}` : ''}`;
-        
-        console.log('Fetching leaderboard from:', url);
-        
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        });
-
-        console.log('Response status:', response.status);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+      console.log('Fetching leaderboard from:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
+      });
 
-        const data = await response.json();
-        console.log('Leaderboard response:', data);
+      console.log('Response status:', response.status);
 
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch leaderboard');
-        }
-
-        let leaderboard: LeaderboardPlayer[];
-        
-        if (data.data && Array.isArray(data.data)) {
-          leaderboard = data.data;
-        } else if (Array.isArray(data)) {
-          leaderboard = data;
-        } else {
-          leaderboard = [];
-        }
-
-        // Ensure each player has required properties with defaults
-        const formattedLeaderboard = leaderboard.map((player: any) => ({
-          _id: player._id || '',
-          username: player.username || 'Unknown Player',
-          avatar: player.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username || 'default'}`,
-          score: Number(player.score) || 0,
-          gamesPlayed: Number(player.gamesPlayed) || 0,
-          gamesWon: Number(player.gamesWon) || 0,
-          winRate: player.winRate ? Number(player.winRate) : undefined
-        }));
-
-        // Sort by score descending
-        formattedLeaderboard.sort((a, b) => b.score - a.score);
-
-        setLeaderboardData(formattedLeaderboard);
-      } catch (error) {
-        console.error('Failed to fetch leaderboard:', error);
-        setError(error instanceof Error ? error.message : 'Unknown error occurred');
-        setLeaderboardData([]);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
 
+      const data = await response.json();
+      console.log('Leaderboard response:', data);
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch leaderboard');
+      }
+
+      let leaderboard: LeaderboardPlayer[];
+      
+      if (data.data && Array.isArray(data.data)) {
+        leaderboard = data.data;
+      } else if (Array.isArray(data)) {
+        leaderboard = data;
+      } else {
+        leaderboard = [];
+      }
+
+      // Ensure each player has required properties with defaults
+      const formattedLeaderboard = leaderboard.map((player: any) => ({
+        _id: player._id || '',
+        username: player.username || 'Unknown Player',
+        avatar: player.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username || 'default'}`,
+        score: Number(player.score) || 0,
+        gamesPlayed: Number(player.gamesPlayed) || 0,
+        gamesWon: Number(player.gamesWon) || 0,
+        winRate: player.winRate ? Number(player.winRate) : undefined
+      }));
+
+      // Sort by score descending
+      formattedLeaderboard.sort((a, b) => b.score - a.score);
+
+      setLeaderboardData(formattedLeaderboard);
+    } catch (error) {
+      console.error('Failed to fetch leaderboard:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error occurred');
+      setLeaderboardData([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchLeaderboard();
   }, [gameFilter]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchLeaderboard(false);
+  };
 
   const renderTopThree = () => {
     const topThree = leaderboardData.slice(0, 3);
@@ -200,7 +207,17 @@ export const LeaderboardPage = () => {
       <div className="p-6 overflow-y-auto h-screen pb-20">
         <SectionTitle title="Leaderboards" subtitle="See who's on top of the ALU Globe gaming world" />
         <div className="flex items-center justify-center h-64">
-          <div className="text-red-400">Error: {error}</div>
+          <div className="text-red-400">
+            <div className="text-center">
+              <div className="text-lg mb-2">Error: {error}</div>
+              <button 
+                onClick={handleRefresh}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -210,20 +227,35 @@ export const LeaderboardPage = () => {
     <div className="p-6 overflow-y-auto h-screen pb-20">
       <SectionTitle title="Leaderboards" subtitle="See who's on top of the ALU Globe gaming world" />
       
-      {/* Leaderboard Type Selector */}
-      <div className="flex mb-8 space-x-4">
+      {/* Header with refresh button */}
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex space-x-4">
+          <button 
+            onClick={() => setLeaderboardType('global')} 
+            className={`px-6 py-3 rounded-lg transition-colors ${leaderboardType === 'global' ? 'bg-purple-700/50 border-2 border-purple-500 text-white' : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'}`}
+          >
+            Global Leaderboard
+          </button>
+          <button 
+            onClick={() => setLeaderboardType('friends')} 
+            className={`px-6 py-3 rounded-lg transition-colors flex items-center ${leaderboardType === 'friends' ? 'bg-purple-700/50 border-2 border-purple-500 text-white' : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'}`}
+          >
+            <UsersIcon size={18} className="mr-2" />
+            Friends Leaderboard
+          </button>
+        </div>
+        
         <button 
-          onClick={() => setLeaderboardType('global')} 
-          className={`px-6 py-3 rounded-lg transition-colors ${leaderboardType === 'global' ? 'bg-purple-700/50 border-2 border-purple-500 text-white' : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'}`}
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
+            refreshing 
+              ? 'bg-gray-600 cursor-not-allowed' 
+              : 'bg-purple-600 hover:bg-purple-700'
+          } text-white`}
         >
-          Global Leaderboard
-        </button>
-        <button 
-          onClick={() => setLeaderboardType('friends')} 
-          className={`px-6 py-3 rounded-lg transition-colors flex items-center ${leaderboardType === 'friends' ? 'bg-purple-700/50 border-2 border-purple-500 text-white' : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'}`}
-        >
-          <UsersIcon size={18} className="mr-2" />
-          Friends Leaderboard
+          <RefreshCwIcon size={18} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
       
@@ -248,6 +280,12 @@ export const LeaderboardPage = () => {
         <div className="text-center text-gray-400 py-12">
           <p>No leaderboard data available for {gameFilter === 'all' ? 'any games' : gameTypes.find(g => g.id === gameFilter)?.name}.</p>
           <p className="text-sm mt-2">Players will appear here after playing games!</p>
+          <button 
+            onClick={handleRefresh}
+            className="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-white"
+          >
+            Refresh Data
+          </button>
         </div>
       )}
 

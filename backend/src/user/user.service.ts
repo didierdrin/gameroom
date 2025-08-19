@@ -77,56 +77,73 @@ export class UserService {
     try {
       console.log('Getting leaderboard for gameType:', gameType);
       
-      // Aggregate data from game rooms and sessions to calculate real-time stats
+      // First try to get leaderboard from game sessions (most accurate)
+      const sessionLeaderboard = await this.getSessionBasedLeaderboard(limit, gameType);
+      if (sessionLeaderboard && sessionLeaderboard.length > 0) {
+        console.log('Using session-based leaderboard with', sessionLeaderboard.length, 'players');
+        return sessionLeaderboard;
+      }
+
+      // Fall back to game room based leaderboard
+      const roomLeaderboard = await this.getRoomBasedLeaderboard(limit, gameType);
+      if (roomLeaderboard && roomLeaderboard.length > 0) {
+        console.log('Using room-based leaderboard with', roomLeaderboard.length, 'players');
+        return roomLeaderboard;
+      }
+
+      // Final fallback to user-based leaderboard
+      console.log('Falling back to user-based leaderboard');
+      return await this.getFallbackLeaderboard(limit, gameType);
+    } catch (error) {
+      console.error('Error in getLeaderboard:', error);
+      // Fall back to user-based leaderboard on error
+      return await this.getFallbackLeaderboard(limit, gameType);
+    }
+  }
+
+  async getSessionBasedLeaderboard(limit = 10, gameType?: string) {
+    try {
+      // Start with game sessions to get player stats
       const matchStage = gameType && gameType !== 'all' ? { gameType } : {};
       
       const pipeline: any[] = [
-        // Match completed games only
-        { $match: { ...matchStage, status: 'completed' } },
+        // Match completed game sessions
+        { $match: { ...matchStage } },
         
-        // Lookup game sessions for each room
+        // Lookup game rooms to get game type if not in session
         {
           $lookup: {
-            from: 'gamesessionentities',
+            from: 'gamerooms',
             localField: 'roomId',
             foreignField: 'roomId',
-            as: 'sessions'
+            as: 'gameRoom'
           }
         },
         
-        // Unwind sessions to process each one
-        { $unwind: '$sessions' },
+        // Unwind game room
+        { $unwind: '$gameRoom' },
         
-        // Group by player to aggregate their stats
+        // Filter by game type if specified
+        ...(gameType && gameType !== 'all' ? [{ $match: { 'gameRoom.gameType': gameType } }] : []),
+        
+        // Unwind players array to get individual player stats
+        { $unwind: '$players' },
+        
+        // Group by individual player
         {
           $group: {
-            _id: '$sessions.players',
+            _id: '$players',
             totalGames: { $sum: 1 },
             totalWins: {
               $sum: {
                 $cond: [
-                  { $in: ['$sessions.winner', '$sessions.players'] },
+                  { $eq: ['$winner', '$players'] },
                   1,
                   0
                 ]
               }
             },
-            gameType: { $first: '$gameType' },
-            roomIds: { $addToSet: '$roomId' }
-          }
-        },
-        
-        // Unwind players array to get individual player stats
-        { $unwind: '$_id' },
-        
-        // Group by individual player
-        {
-          $group: {
-            _id: '$_id',
-            totalGames: { $sum: '$totalGames' },
-            totalWins: { $sum: '$totalWins' },
-            gameTypes: { $addToSet: '$gameType' },
-            roomIds: { $addToSet: { $arrayElemAt: ['$roomIds', 0] } }
+            gameTypes: { $addToSet: '$gameRoom.gameType' }
           }
         },
         
@@ -149,7 +166,7 @@ export class UserService {
             _id: 1,
             username: '$userInfo.username',
             avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$userInfo.username'] },
-            score: { $multiply: ['$totalWins', 100] }, // Simple scoring: 100 points per win
+            score: { $multiply: ['$totalWins', 100] }, // 100 points per win
             gamesPlayed: '$totalGames',
             gamesWon: '$totalWins',
             winRate: {
@@ -171,22 +188,97 @@ export class UserService {
         { $limit: limit }
       ];
 
-      console.log('Leaderboard aggregation pipeline:', JSON.stringify(pipeline, null, 2));
+      console.log('Session-based leaderboard pipeline:', JSON.stringify(pipeline, null, 2));
       
-      const result = await this.gameRoomModel.aggregate(pipeline);
-      console.log('Leaderboard result:', result);
-      
-      // If no results from aggregation, fall back to user-based leaderboard
-      if (!result || result.length === 0) {
-        console.log('No results from game aggregation, falling back to user-based leaderboard');
-        return await this.getFallbackLeaderboard(limit, gameType);
-      }
+      const result = await this.gameSessionModel.aggregate(pipeline);
+      console.log('Session-based leaderboard result:', result);
       
       return result;
     } catch (error) {
-      console.error('Error in getLeaderboard:', error);
-      // Fall back to user-based leaderboard on error
-      return await this.getFallbackLeaderboard(limit, gameType);
+      console.error('Error in getSessionBasedLeaderboard:', error);
+      return [];
+    }
+  }
+
+  async getRoomBasedLeaderboard(limit = 10, gameType?: string) {
+    try {
+      const matchStage = gameType && gameType !== 'all' ? { gameType } : {};
+      
+      const pipeline: any[] = [
+        // Match completed games only
+        { $match: { ...matchStage, status: 'completed' } },
+        
+        // Unwind player IDs to get individual player stats
+        { $unwind: '$playerIds' },
+        
+        // Group by individual player
+        {
+          $group: {
+            _id: '$playerIds',
+            totalGames: { $sum: 1 },
+            totalWins: {
+              $sum: {
+                $cond: [
+                  { $eq: ['$winner', '$playerIds'] },
+                  1,
+                  0
+                ]
+              }
+            },
+            gameTypes: { $addToSet: '$gameType' }
+          }
+        },
+        
+        // Lookup user information
+        {
+          $lookup: {
+            from: 'users',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'userInfo'
+          }
+        },
+        
+        // Unwind user info
+        { $unwind: '$userInfo' },
+        
+        // Project final format
+        {
+          $project: {
+            _id: 1,
+            username: '$userInfo.username',
+            avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$userInfo.username'] },
+            score: { $multiply: ['$totalWins', 100] }, // 100 points per win
+            gamesPlayed: '$totalGames',
+            gamesWon: '$totalWins',
+            winRate: {
+              $multiply: [
+                { $divide: ['$totalWins', '$totalGames'] },
+                100
+              ]
+            }
+          }
+        },
+        
+        // Filter out users with no games
+        { $match: { gamesPlayed: { $gt: 0 } } },
+        
+        // Sort by score, then by win rate, then by games won
+        { $sort: { score: -1, winRate: -1, gamesWon: -1 } },
+        
+        // Limit results
+        { $limit: limit }
+      ];
+
+      console.log('Room-based leaderboard pipeline:', JSON.stringify(pipeline, null, 2));
+      
+      const result = await this.gameRoomModel.aggregate(pipeline);
+      console.log('Room-based leaderboard result:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('Error in getRoomBasedLeaderboard:', error);
+      return [];
     }
   }
 
@@ -385,7 +477,6 @@ export class UserService {
             coins: {},
             players: ['686a1b39a08ee864040b43b1', '686a1c5ba08ee864040b43ba'],
             scores: {
-              '686a1c5ba08ee864040b43b1': 200,
               '686a1c5ba08ee864040b43ba': 180
             }
           },
