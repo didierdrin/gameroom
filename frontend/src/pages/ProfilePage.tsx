@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
-import { TrophyIcon, BarChart3Icon, ClockIcon, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon } from 'lucide-react';
+import { TrophyIcon, BarChart3Icon, ClockIcon, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface GameStat {
@@ -98,6 +98,8 @@ export const ProfilePage = () => {
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  // New state for stable avatar browsing
+  const [avatarSeed, setAvatarSeed] = useState(0);
 
   // Avatar options for selection
   const avatarOptions = ['avataaars', 'micah', 'adventurer', 'fun-emoji'];
@@ -706,6 +708,8 @@ export const ProfilePage = () => {
         email: authUser?.email || '',
         selectedAvatar: 'avataaars'
       });
+      // Reset avatar seed when opening modal
+      setAvatarSeed(0);
     }
     setEditError(null);
     setShowEditModal(true);
@@ -778,32 +782,61 @@ export const ProfilePage = () => {
                 <p className="text-xs text-gray-400 mt-2">Current</p>
               </div>
               
-              {/* 4 Avatar Options in 2x2 Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                {avatarOptions.map((style) => (
-                  <div key={style} className="text-center">
+              {/* Avatar Navigation and Options */}
+              <div className="flex-1">
+                {/* Navigation Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-400">Browse Avatars</span>
+                  <div className="flex items-center space-x-2">
                     <button
                       type="button"
-                      onClick={() => setEditForm(prev => ({ ...prev, selectedAvatar: style }))}
-                      className={`w-16 h-16 rounded-full border-2 transition-all relative ${
-                        editForm.selectedAvatar === style
-                          ? 'border-purple-500 ring-2 ring-purple-300'
-                          : 'border-gray-600 hover:border-gray-500'
-                      }`}
+                      onClick={() => setAvatarSeed(prev => Math.max(0, prev - 1))}
+                      className="p-1 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
+                      disabled={avatarSeed === 0}
                     >
-                      <img
-                        src={`https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(editForm.username || 'user')}`}
-                        alt={`Style ${style}`}
-                        className="w-full h-full rounded-full"
-                      />
-                      {editForm.selectedAvatar === style && (
-                        <div className="absolute -top-1 -right-1 bg-purple-500 rounded-full p-1">
-                          <CheckIcon size={12} className="text-white" />
-                        </div>
-                      )}
+                      <ChevronLeftIcon size={16} className={avatarSeed === 0 ? 'text-gray-500' : 'text-white'} />
+                    </button>
+                    <span className="text-xs text-gray-400 min-w-[40px] text-center">
+                      {avatarSeed + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setAvatarSeed(prev => prev + 1)}
+                      className="p-1 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
+                    >
+                      <ChevronRightIcon size={16} className="text-white" />
                     </button>
                   </div>
-                ))}
+                </div>
+                
+                {/* 4 Avatar Options in 2x2 Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  {avatarOptions.map((style) => (
+                    <div key={style} className="text-center">
+                      <button
+                        type="button"
+                        onClick={() => setEditForm(prev => ({ ...prev, selectedAvatar: style }))}
+                        className={`w-16 h-16 rounded-full border-2 transition-all relative ${
+                          editForm.selectedAvatar === style
+                            ? 'border-purple-500 ring-2 ring-purple-300'
+                            : 'border-gray-600 hover:border-gray-500'
+                        }`}
+                      >
+                        <img
+                          src={`https://api.dicebear.com/7.x/${style}/svg?seed=avatar-${avatarSeed}-${style}`}
+                          alt={`Style ${style}`}
+                          className="w-full h-full rounded-full"
+                        />
+                        {editForm.selectedAvatar === style && (
+                          <div className="absolute -top-1 -right-1 bg-purple-500 rounded-full p-1">
+                            <CheckIcon size={12} className="text-white" />
+                          </div>
+                        )}
+                      </button>
+                      <p className="text-xs text-gray-400 mt-1 capitalize">{style}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -883,7 +916,10 @@ export const ProfilePage = () => {
                 alt={formattedName} 
                 className="w-24 h-24 rounded-full border-4 border-purple-500" 
               />
-              <div className="absolute -bottom-2 -right-2 bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-gray-900 cursor-pointer">
+              <div 
+                onClick={openEditModal}
+                className="absolute -bottom-2 -right-2 bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-gray-900 cursor-pointer hover:bg-purple-700 transition-colors"
+              >
                 <EditIcon size={16} />
               </div>
             </div>

@@ -67,29 +67,74 @@ export class GameGateway {
   @SubscribeMessage('joinGame')
   async handleJoinGame(@MessageBody() data: JoinGameDto, @ConnectedSocket() client: Socket) {
     try {
-      console.log('Joining game:', data);
-      const result = await this.gameService.joinGame(data);
+      console.log('Joining game as player:', data);
+      const result = await this.gameService.joinGame({ ...data, joinAsPlayer: true });
       client.join(data.roomId);
-      client.emit('playerJoined', { roomId: data.roomId, playerId: data.playerId, playerName: data.playerName, success: true });
-      if (result.isNewJoin) {
-        client.to(data.roomId).emit('playerConnected', { playerId: data.playerId, playerName: data.playerName, roomId: data.roomId, currentPlayers: result.game.currentPlayers });
-      }
-      const gameState = await this.gameService.getGameState(data.roomId);
-      console.log('Emitting updated game state after join:', {
-        roomId: data.roomId,
-        gameType: result.game.gameType,
-        currentTurn: gameState.currentTurn,
-        players: gameState.players.map((p: any) => ({ id: p.id, chessColor: p.chessColor }))
+      client.emit('playerJoined', { 
+        roomId: data.roomId, 
+        playerId: data.playerId, 
+        playerName: data.playerName, 
+        success: true,
+        role: 'player'
       });
+      
+      if (result.isNewJoin) {
+        client.to(data.roomId).emit('playerConnected', { 
+          playerId: data.playerId, 
+          playerName: data.playerName, 
+          roomId: data.roomId, 
+          currentPlayers: result.game.currentPlayers 
+        });
+      }
+      
+      const gameState = await this.gameService.getGameState(data.roomId);
       this.server.to(data.roomId).emit('gameState', {
         ...gameState,
         gameType: result.game.gameType,
         roomName: result.game.name,
       });
+      
       const rooms = await this.gameService.getActiveGameRooms();
       this.server.emit('gameRoomsList', { rooms });
     } catch (error) {
       console.error('Join game error:', error.message);
+      client.emit('error', { message: error.message, type: 'joinError' });
+    }
+  }
+
+  // Add new spectator join handler
+  @SubscribeMessage('joinAsSpectator')
+  async handleJoinAsSpectator(@MessageBody() data: JoinGameDto, @ConnectedSocket() client: Socket) {
+    try {
+      console.log('Joining game as spectator:', data);
+      const result = await this.gameService.joinAsSpectator(data);
+      client.join(data.roomId);
+      client.emit('spectatorJoined', { 
+        roomId: data.roomId, 
+        playerId: data.playerId, 
+        playerName: data.playerName, 
+        success: true,
+        role: 'spectator'
+      });
+      
+      // Notify other users about new spectator
+      client.to(data.roomId).emit('spectatorConnected', { 
+        playerId: data.playerId, 
+        playerName: data.playerName, 
+        roomId: data.roomId 
+      });
+      
+      // Send current game state to spectator
+      const gameState = await this.gameService.getGameState(data.roomId);
+      client.emit('gameState', {
+        ...gameState,
+        gameType: result.game.gameType,
+        roomName: result.game.name,
+        isSpectator: true
+      });
+      
+    } catch (error) {
+      console.error('Join as spectator error:', error.message);
       client.emit('error', { message: error.message, type: 'joinError' });
     }
   }

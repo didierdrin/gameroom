@@ -370,8 +370,13 @@ export class GameService {
     return { game: gameRoom, player: joinGameDto.playerId, isNewJoin };
   }
 
-
-
+  async joinAsSpectator(joinGameDto: JoinGameDto) {
+    const gameRoom = await this.gameRoomModel.findOne({ roomId: joinGameDto.roomId });
+    if (!gameRoom) throw new Error('Game room not found');
+    if (gameRoom.isPrivate && gameRoom.password !== joinGameDto.password) throw new Error('Invalid password');
+    
+    return { game: gameRoom, isNewJoin: true };
+  }
 
 
   async rollDice(rollDiceDto: RollDiceDto) {

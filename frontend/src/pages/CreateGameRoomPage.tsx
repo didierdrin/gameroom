@@ -37,6 +37,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [password, setPassword] = useState('');
+  const [generatedCode, setGeneratedCode] = useState(''); // Add this new state
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const socket = useSocket();
@@ -58,6 +59,28 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
       isMountedRef.current = false;
     };
   }, []);
+
+  // Add function to generate 6-character code
+  const generateRoomCode = () => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+  };
+
+  // Generate code when privacy is set to private
+  useEffect(() => {
+    if (privacy === 'private') {
+      const newCode = generateRoomCode();
+      setGeneratedCode(newCode);
+      setPassword(newCode);
+    } else {
+      setGeneratedCode('');
+      setPassword('');
+    }
+  }, [privacy]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -367,16 +390,49 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
                 </button>
               </div>
               {privacy === 'private' && (
-                <div className="mt-4">
-                  <label className="block text-gray-300 mb-2 text-sm">Password</label>
-                  <input
-                    type="password"
-                    placeholder="Enter password for private room"
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                <div className="mt-4 p-4 bg-gray-700/30 rounded-lg border border-gray-600/50">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-gray-300 text-sm font-medium">
+                      6-Character Room Code
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newCode = generateRoomCode();
+                        setGeneratedCode(newCode);
+                        setPassword(newCode);
+                      }}
+                      className="text-purple-400 hover:text-purple-300 text-sm underline transition-colors"
+                    >
+                      Generate New Code
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="Room code will be generated"
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-center font-mono text-lg tracking-widest uppercase"
+                        value={generatedCode}
+                        readOnly
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedCode);
+                        alert('Room code copied to clipboard!');
+                      }}
+                      className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  
+                  <p className="text-gray-500 text-xs mt-2">
+                    Share this code with players who want to join your private room
+                  </p>
                 </div>
               )}
             </div>

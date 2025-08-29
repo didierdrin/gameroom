@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SearchIcon, FilterIcon, ChevronDownIcon, CheckIcon } from "lucide-react";
 import io from "socket.io-client";
 import { GameRoomList } from "../components/GameRoom/GameRoomList";
+import { GameRoomJoinModal } from "../components/GameRoom/GameRoomJoinModal";
 import { SectionTitle } from "../components/UI/SectionTitle";
 import { useSocket } from "../SocketContext";
 import { useAuth } from "../context/AuthContext";
@@ -69,6 +70,10 @@ export const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  // Add modal state
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [selectedGameRoom, setSelectedGameRoom] = useState<GameRoom | null>(null);
+  
   const filterDropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [liveRooms, setLiveRooms] = useState<GameRoom[]>([]);
@@ -251,87 +256,98 @@ export const HomePage = () => {
   //   return localStorage.getItem("userId");
   // };
 
-  // FIXED: handleJoinRoom function
-  
-// Then update the handleJoinRoom function
-const handleJoinRoom = async (gameRoom: GameRoom) => {
-  const { id, isPrivate, isInviteOnly } = gameRoom;
-  
-  if (!user) {
-    alert("Please login to join a game room");
-    navigate('/login', { state: { from: `/game-room/${id}` } });
-    return;
-  }
-
-  if (!socket) {
-    alert("Connection error. Please refresh and try again.");
-    return;
-  }
-
-  console.log(`Attempting to join room ${id} as player ${user.id}`);
-  
-  try {
-    const payload = {
-      roomId: id,
-      playerId: user.id,
-      playerName: user.username,
-      password: undefined as string | undefined
-    };
-
-    if (isPrivate || isInviteOnly) {
-      const password = prompt("Enter room password:");
-      if (!password) return;
-      payload.password = password;
+  // Updated handleJoinRoom function to open modal
+  const handleJoinRoom = async (gameRoom: GameRoom) => {
+    if (!user) {
+      alert("Please login to join a game room");
+      navigate('/login', { state: { from: `/game-room/${gameRoom.id}` } });
+      return;
     }
 
-    // Create a promise with proper typing
-    const joinRoom = new Promise<JoinRoomResponse>((resolve, reject) => {
-      const handlePlayerJoined = (data: JoinRoomResponse) => {
-        cleanupListeners();
-        resolve(data);
-      };
+    if (!socket) {
+      alert("Connection error. Please refresh and try again.");
+      return;
+    }
 
-      const handleJoinError = (error: any) => {
-        cleanupListeners();
-        reject(error);
-      };
+    // Open modal instead of directly joining
+    setSelectedGameRoom(gameRoom);
+    setIsJoinModalOpen(true);
+  };
 
-      const cleanupListeners = () => {
-        socket.off("playerJoined", handlePlayerJoined);
-        socket.off("error", handleJoinError);
-      };
-
-      const timeout = setTimeout(() => {
-        cleanupListeners();
-        reject(new Error("Join operation timed out"));
-      }, 10000);
-
-      socket.on("playerJoined", (data: JoinRoomResponse) => {
-        clearTimeout(timeout);
-        handlePlayerJoined(data);
-      });
-
-      socket.on("error", (err:any) => {
-        clearTimeout(timeout);
-        handleJoinError(err);
-      });
-
-      socket.emit("joinGame", payload);
-    });
-
-    const result = await joinRoom;
-    console.log("Successfully joined room:", result);
+  // New function to handle actual joining with player/spectator option
+  const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, password?: string) => {
+    const { id } = gameRoom;
     
-    // Now TypeScript knows result has roomId property
-    const targetRoomId = result.roomId || id;
-    navigate(`/game-room/${targetRoomId}`);
+    console.log(`Attempting to join room ${id} as ${joinAsPlayer ? 'player' : 'spectator'} ${user?.id}`);
+    
+    try {
+      const payload = {
+        roomId: id,
+        playerId: user?.id,
+        playerName: user?.username,
+        joinAsPlayer,
+        password: password || undefined
+      };
 
-  } catch (error) {
-    console.error("Join error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Failed to join game room";
-    alert(errorMessage);
-  }
-};
+      // Create a promise with proper typing
+      const joinRoom = new Promise<JoinRoomResponse>((resolve, reject) => {
+        const handleJoinSuccess = (data: JoinRoomResponse) => {
+          cleanupListeners();
+          resolve(data);
+        };
+
+        const handleJoinError = (error: any) => {
+          cleanupListeners();
+          reject(error);
+        };
+
+        const cleanupListeners = () => {
+          socket?.off("playerJoined", handleJoinSuccess);
+          socket?.off("spectatorJoined", handleJoinSuccess);
+          socket?.off("error", handleJoinError);
+        };
+
+        const timeout = setTimeout(() => {
+          cleanupListeners();
+          reject(new Error("Join operation timed out"));
+        }, 10000);
+
+        // Listen for both player and spectator join events
+        socket?.on("playerJoined", (data: JoinRoomResponse) => {
+          clearTimeout(timeout);
+          handleJoinSuccess(data);
+        });
+
+        socket?.on("spectatorJoined", (data: JoinRoomResponse) => {
+          clearTimeout(timeout);
+          handleJoinSuccess(data);
+        });
+
+        socket?.on("error", (err: any) => {
+          clearTimeout(timeout);
+          handleJoinError(err);
+        });
+
+        // Emit appropriate event based on join type
+        socket?.emit(joinAsPlayer ? "joinGame" : "joinAsSpectator", payload);
+      });
+
+      const result = await joinRoom;
+      console.log("Successfully joined room:", result);
+      
+      // Close modal and navigate
+      setIsJoinModalOpen(false);
+      setSelectedGameRoom(null);
+      
+      const targetRoomId = result.roomId || id;
+      navigate(`/game-room/${targetRoomId}`);
+
+    } catch (error) {
+      console.error("Join error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to join game room";
+      alert(errorMessage);
+    }
+  };
   
 
   
@@ -609,6 +625,17 @@ const handleJoinRoom = async (gameRoom: GameRoom) => {
           ))}
         </div>
       </section> */}
+
+      {/* Add the GameRoomJoinModal at the end before closing div */}
+      <GameRoomJoinModal
+        isOpen={isJoinModalOpen}
+        onClose={() => {
+          setIsJoinModalOpen(false);
+          setSelectedGameRoom(null);
+        }}
+        gameRoom={selectedGameRoom}
+        onJoin={handleModalJoin}
+      />
     </div>
   );
 };

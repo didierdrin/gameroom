@@ -14,6 +14,7 @@ export class CreateGameDto {
     readonly playerName: string;
     readonly password?: string;
     readonly scheduledTime?: string;
+    readonly joinAsPlayer?: boolean; // Add this new field
   }
   
   export class RollDiceDto {
