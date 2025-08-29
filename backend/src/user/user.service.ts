@@ -973,7 +973,7 @@ export class UserService {
       
       for (const user of users) {
         // Calculate stats from game sessions
-        const gameStats = await this.getUserGameStats(user._id.toString());
+        const gameStats = await this.getUserGameStats(String(user._id));
         
         // Update user document with calculated stats
         await this.userModel.findByIdAndUpdate(user._id, {
@@ -984,7 +984,7 @@ export class UserService {
         });
         
         results.push({
-          userId: user._id,
+          userId: String(user._id),
           username: user.username,
           totalScore: gameStats.totalScore,
           gamesPlayed: gameStats.totalGames,

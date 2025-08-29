@@ -7,14 +7,11 @@ export class User {
   @Prop({ required: true, unique: true })
   username: string;
 
-  @Prop({ required: true, unique: true })
+  @Prop({ required: false, unique: true, sparse: true })
   email: string;
 
-  @Prop({ required: true })
+  @Prop({ required: false })
   password: string;
-
-  @Prop({ default: '' })
-  _id: string;
 
   @Prop({ default: Date.now })
    createdAt: Date;
