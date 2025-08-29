@@ -53,4 +53,5 @@ export interface Player {
     coins?: Record<string, number[]>;
     chessState?: ChessState;
     kahootState?: KahootState;
+    host?: string;
   }

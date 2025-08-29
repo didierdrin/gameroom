@@ -107,6 +107,7 @@ export const LiveGameRoomPage = () => {
   const remoteAudioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const [inAudioCall, setInAudioCall] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [isHost, setIsHost] = useState(false);
 
   // TURN/STUN config
   const rtcConfig: RTCConfiguration = React.useMemo(() => ({
@@ -613,6 +614,13 @@ const toggleAudioCall = async () => {
     }
   }, [socket, roomId]);
 
+  // Add this useEffect to check if current user is host
+  useEffect(() => {
+    if (user && gameState?.host) {
+      setIsHost(user.id === gameState.host);
+    }
+  }, [user, gameState?.host]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -665,6 +673,11 @@ const toggleAudioCall = async () => {
   };
 
   const handleStartGame = () => {
+    if (!isHost) {
+      alert('Only the host can start the game.');
+      return;
+    }
+    
     console.log("Starting game for room:", roomId);
     if (!socket || !socket.connected) {
       console.error("Socket not connected");
@@ -672,6 +685,24 @@ const toggleAudioCall = async () => {
     }
     if (socket && roomId) {
       socket.emit("startGame", { roomId });
+    }
+  };
+
+  const handleEndGame = () => {
+    if (!isHost || !socket || !roomId) return;
+    
+    const confirmEnd = window.confirm('Are you sure you want to end this game? This will delete the room and disconnect all players.');
+    if (confirmEnd) {
+      socket.emit('endGame', { roomId, hostId: user?.id });
+    }
+  };
+
+  const handleRestartGame = () => {
+    if (!isHost || !socket || !roomId) return;
+    
+    const confirmRestart = window.confirm('Are you sure you want to restart the game? This will start a new round.');
+    if (confirmRestart) {
+      socket.emit('restartGame', { roomId, hostId: user?.id });
     }
   };
 
@@ -703,92 +734,146 @@ const toggleAudioCall = async () => {
           {isSocketConnected && (
             <div className="text-green-400 mb-4">✅ Connected to room</div>
           )}
-          <button
-            onClick={handleStartGame}
-            className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            Start Game
-          </button>
+          
+          {/* Host Controls */}
+          {isHost ? (
+            <div className="flex flex-col items-center space-y-3">
+              <button
+                onClick={handleStartGame}
+                className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Start Game
+              </button>
+              <button
+                onClick={handleEndGame}
+                className="px-6 py-3 bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                End Game
+              </button>
+            </div>
+          ) : (
+            <p className="text-gray-400">Waiting for host to start the game...</p>
+          )}
         </div>
       );
     }
-    switch (lowerCaseGameType) {
-      case "ludo":
-        return (
-          <div>
-            <LudoGame
-              gameState={gameState}
-              currentPlayerId={user!.id}
-              onRollDice={handleRollDice}
-              onMoveCoin={handleMoveCoin}
-              onStartGame={handleStartGame}
+
+    // Game content remains the same but add host controls at the bottom
+    const gameContent = (() => {
+      switch (lowerCaseGameType) {
+        case "ludo":
+          return (
+            <div>
+              <LudoGame
+                gameState={gameState}
+                currentPlayerId={user!.id}
+                onRollDice={handleRollDice}
+                onMoveCoin={handleMoveCoin}
+                onStartGame={handleStartGame}
+                socket={socket}
+                roomId={roomId!}
+              />
+              {/* Only show dice when it's the current player's turn and they need to roll */}
+              {gameState.currentTurn === user?.id &&
+                !gameState.diceRolled &&
+                !gameState.gameOver && (
+                  <div className="absolute bottom-4 right-4">
+                    <Dice
+                      value={gameState.diceValue || 0}
+                      onRoll={handleRollDice}
+                      disabled={false}
+                    />
+                  </div>
+                )}
+            </div>
+          );
+
+        case "trivia":
+          return (
+            <TriviaGame
               socket={socket}
               roomId={roomId!}
+              currentPlayer={user!.id}
+              gameState={gameState}
             />
-            {/* Only show dice when it's the current player's turn and they need to roll */}
-            {gameState.currentTurn === user?.id &&
-              !gameState.diceRolled &&
-              !gameState.gameOver && (
-                <div className="absolute bottom-4 right-4">
-                  <Dice
-                    value={gameState.diceValue || 0}
-                    onRoll={handleRollDice}
-                    disabled={false}
-                  />
-                </div>
-              )}
-          </div>
-        );
+          );
+        case "chess":
+          return (
+            <ChessGame
+              socket={socket}
+              roomId={roomId!}
+              currentPlayer={user!.id}
+              gameState={gameState}
+              onChessMove={handleChessMoveAction}
+            />
+          );
+        case "uno":
+          return renderUnoGame({
+            socket,
+            roomId: roomId!,
+            currentPlayer: user!.id,
+            gameState,
+          });
+        case "kahoot":
+          return (
+            <KahootGame
+              socket={socket}
+              roomId={roomId!}
+              currentPlayer={user!.id}
+              gameState={gameState}
+            />
+          );
+        case "pictionary":
+          return renderPictionaryGame({
+            socket,
+            roomId: roomId!,
+            currentPlayer: user!.id,
+            gameState,
+          });
+        default:
+          return (
+            <div className="text-center text-gray-400">
+              Game "{gameType}" not implemented yet
+            </div>
+          );
+      }
+    })();
 
-      case "trivia":
-        return (
-          <TriviaGame
-            socket={socket}
-            roomId={roomId!}
-            currentPlayer={user!.id}
-            gameState={gameState}
-          />
-        );
-      case "chess":
-        return (
-          <ChessGame
-            socket={socket}
-            roomId={roomId!}
-            currentPlayer={user!.id}
-            gameState={gameState}
-            onChessMove={handleChessMoveAction}
-          />
-        );
-      case "uno":
-        return renderUnoGame({
-          socket,
-          roomId: roomId!,
-          currentPlayer: user!.id,
-          gameState,
-        });
-      case "kahoot":
-        return (
-          <KahootGame
-            socket={socket}
-            roomId={roomId!}
-            currentPlayer={user!.id}
-            gameState={gameState}
-          />
-        );
-      case "pictionary":
-        return renderPictionaryGame({
-          socket,
-          roomId: roomId!,
-          currentPlayer: user!.id,
-          gameState,
-        });
-      default:
-        return (
-          <div className="text-center text-gray-400">
-            Game "{gameType}" not implemented yet
+    return (
+      <div className="relative h-full">
+        {gameContent}
+        
+        {/* Host Game Controls - shown during active game */}
+        {isHost && gameState?.gameStarted && !gameState?.gameOver && (
+          <div className="absolute top-4 right-4 flex space-x-2">
+            <button
+              onClick={handleEndGame}
+              className="px-4 py-2 bg-red-600 rounded-lg hover:bg-red-700 transition-colors text-sm"
+            >
+              End Game
+            </button>
           </div>
-        );
-    }
+        )}
+        
+        {/* Host Controls - shown when game is over */}
+        {isHost && gameState?.gameOver && (
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-3">
+            <button
+              onClick={handleRestartGame}
+              className="px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Start New Round
+            </button>
+            <button
+              onClick={handleEndGame}
+              className="px-6 py-3 bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              End Game
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const toggleSidebar = (sidebar: string) => {

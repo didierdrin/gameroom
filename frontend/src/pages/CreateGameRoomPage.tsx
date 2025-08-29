@@ -340,6 +340,10 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
                   {playerLimit} players
                 </span>
               </label>
+              {/* Add explanation */}
+              <p className="text-xs text-gray-500 mb-3">
+                First {playerLimit} users to join will be players. Others will automatically become spectators.
+              </p>
               <div className="relative flex items-center">
                 <UsersIcon size={18} className="absolute left-3 text-gray-400" />
                 <input 

@@ -47,6 +47,10 @@ export class GameRoom {
   @Prop({ type: [String], default: [] })
   playerIds: string[];
 
+  // Add spectator tracking
+  @Prop({ type: [String], default: [] })
+  spectatorIds: string[];
+
   @Prop({ type: Date, default: Date.now })
   createdAt: Date;
 
