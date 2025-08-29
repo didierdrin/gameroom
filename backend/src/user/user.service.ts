@@ -15,9 +15,13 @@ export class UserService {
     @InjectModel(GameSessionEntity.name) private gameSessionModel: Model<GameSessionDocument>,
   ) {}
 
-  async create(userData: { username: string }): Promise<User> {
+  async create(userData: { username: string; email?: string; password?: string }): Promise<User> {
     const user = new this.userModel(userData);
     return user.save();
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userModel.findOne({ email }).exec();
   }
 
   async findByUsername(username: string): Promise<User | null> {
@@ -25,7 +29,7 @@ export class UserService {
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.userModel.findById(id).select('_id username').exec();
+    return this.userModel.findById(id).select('-password').exec(); // Exclude password from result
   }
 
   async findAll(): Promise<User[]> {
