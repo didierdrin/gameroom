@@ -1,10 +1,9 @@
 // src/components/GameRoom/PlayerList.tsx
 import React from 'react';
 import { UsersIcon } from 'lucide-react';
+import { Player as LudoPlayer } from '../Ludo/types/game';
 
-interface Player {
-  id: string;
-  name?: string;
+interface Player extends LudoPlayer {
   isOnline?: boolean;
 }
 
@@ -12,12 +11,18 @@ interface PlayerListProps {
   players: Player[];
   currentPlayerId: string;
   currentTurn?: string;
+  isHost?: boolean;
+  onPlayerClick?: (player: Player) => void;
+  mutedPlayers?: string[];
 }
 
 export const PlayerList: React.FC<PlayerListProps> = ({ 
   players = [], 
   currentPlayerId, 
-  currentTurn 
+  currentTurn,
+  isHost = false,
+  onPlayerClick,
+  mutedPlayers = []
 }) => {
   // Get current user's details from localStorage
   const currentUsername = localStorage.getItem('username');
@@ -63,11 +68,14 @@ export const PlayerList: React.FC<PlayerListProps> = ({
           return (
             <div 
               key={player.id}
-              className={`p-2 rounded-lg flex items-center ${
+              className={`p-2 rounded-lg flex items-center cursor-pointer ${
                 isYou ? 'bg-purple-900/30' : 'bg-gray-700/30'
               } ${
                 currentTurn === player.id ? 'border-l-4 border-purple-500' : ''
+              } ${
+                isHost && !isYou && !isAI ? 'hover:bg-gray-600/50' : ''
               }`}
+              onClick={() => isHost && !isYou && !isAI && onPlayerClick?.(player)}
             >
               <img 
                 src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
@@ -77,9 +85,10 @@ export const PlayerList: React.FC<PlayerListProps> = ({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{name}</p>
                 {isAI && <p className="text-xs text-gray-400">AI Player</p>}
+                {mutedPlayers.includes(player.id) && <p className="text-xs text-red-400">Muted</p>}
               </div>
               <div className="w-2 h-2 rounded-full ml-2" style={{
-                backgroundColor: player.isOnline !== false ? '#10B981' : '#EF4444'
+                backgroundColor: (player as any).isOnline !== false ? '#10B981' : '#EF4444'
               }} />
             </div>
           );

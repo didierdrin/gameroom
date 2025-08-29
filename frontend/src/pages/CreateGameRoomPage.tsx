@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
-import { CalendarIcon, ClockIcon, UsersIcon, LockIcon, EyeIcon, VideoIcon, MicIcon } from 'lucide-react';
+import { CalendarIcon, ClockIcon, UsersIcon, LockIcon, EyeIcon, VideoIcon, MicIcon, Copy, X, ExternalLink } from 'lucide-react';
 import { useSocket } from '../SocketContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -37,8 +37,14 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [password, setPassword] = useState('');
-  const [generatedCode, setGeneratedCode] = useState(''); // Add this new state
+  const [generatedCode, setGeneratedCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Add new state for invite modal
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState('');
+  const [createdGameData, setCreatedGameData] = useState<any>(null);
+  
   const navigate = useNavigate();
   const socket = useSocket();
   const { user } = useAuth(); 
@@ -46,7 +52,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
 
   const gameTypes = [
     // { id: 'kahoot', name: 'Kahoot', icon: '🎯' },
-    { id: 'ludo', name: 'Ludo', icon: '🎲' },
+    // { id: 'ludo', name: 'Ludo', icon: '🎲' },
     { id: 'chess', name: 'Chess', icon: '♟️' },
     // { id: 'uno', name: 'UNO', icon: '🃏' },
     { id: 'trivia', name: 'Trivia', icon: '❓' },
@@ -81,6 +87,37 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
       setPassword('');
     }
   }, [privacy]);
+
+  // Add function to copy URL to clipboard
+  const copyInviteUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      alert('Invite URL copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = inviteUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert('Invite URL copied to clipboard!');
+    }
+  };
+
+  // Add function to handle modal close and navigation
+  const handleInviteModalClose = () => {
+    setShowInviteModal(false);
+    if (createdGameData) {
+      if (gameMode === 'playNow' && createdGameData?.roomId) {
+        navigate(`/game-room/${createdGameData.roomId}`);
+      } else {
+        navigate('/my-game-rooms');
+      }
+    }
+    if (onGameCreated) onGameCreated();
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -158,15 +195,27 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
         clearTimeout(timeout);
         setIsLoading(false);
         
-        if (gameMode === 'playNow' && game?.roomId) {
-          navigate(`/game-room/${game.roomId}`);
-        } else {
-          navigate('/my-game-rooms');
-          //alert('Game scheduled successfully!');
-          console.log('Game scheduled successfully!');
-        }
+        // Store the created game data
+        setCreatedGameData(game);
         
-        if (onGameCreated) onGameCreated();
+        // Check if this is an invite-only room for playNow mode
+        if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
+          // Generate invite URL and show modal
+          const baseUrl = window.location.origin;
+          const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
+          setInviteUrl(gameUrl);
+          setShowInviteModal(true);
+        } else {
+          // Normal flow for other privacy settings
+          if (gameMode === 'playNow' && game?.roomId) {
+            navigate(`/game-room/${game.roomId}`);
+          } else {
+            navigate('/my-game-rooms');
+            console.log('Game scheduled successfully!');
+          }
+          
+          if (onGameCreated) onGameCreated();
+        }
       };
 
       const handleError = (error: any) => {
@@ -189,7 +238,6 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
       }
     }
   };
-
 
   return (
     <div className="p-6 overflow-y-auto h-screen pb-20">
@@ -340,7 +388,6 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
                   {playerLimit} players
                 </span>
               </label>
-              {/* Add explanation */}
               <p className="text-xs text-gray-500 mb-3">
                 First {playerLimit} users to join will be players. Others will automatically become spectators.
               </p>
@@ -439,28 +486,16 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
                   </p>
                 </div>
               )}
+              {privacy === 'inviteOnly' && (
+                <div className="mt-4 p-3 bg-yellow-700/10 rounded-lg border border-yellow-500/30">
+                  <p className="text-yellow-400 text-sm">
+                    📧 After creating the room, you'll get an invite URL to share with your friends
+                  </p>
+                </div>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            {/* <div className="flex items-center bg-gray-700/30 p-3 rounded-lg">
-              <div className="mr-3">
-                <VideoIcon size={20} className={enableVideoChat ? 'text-purple-400' : 'text-gray-500'} />
-              </div>
-              <div className="flex-1">
-                <label className="text-sm font-medium">Video Chat</label>
-              </div>
-              <div>
-                <label className="inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={enableVideoChat} 
-                    onChange={() => setEnableVideoChat(!enableVideoChat)} 
-                  />
-                  <div className="relative w-11 h-6 bg-gray-600 peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                </label>
-              </div>
-            </div> */}
             <div className="flex items-center bg-gray-700/30 p-3 rounded-lg">
               <div className="mr-3">
                 <MicIcon size={20} className={enableVoiceChat ? 'text-purple-400' : 'text-gray-500'} />
@@ -525,6 +560,69 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
           </button>
         </div>
       </form>
+
+      {/* Invite URL Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center">
+                  <ExternalLink size={20} className="text-yellow-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Invite Friends</h3>
+                  <p className="text-sm text-gray-400">Share this URL to invite players</p>
+                </div>
+              </div>
+              <button
+                onClick={handleInviteModalClose}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-gray-300 text-sm font-medium mb-3">
+                Game Room URL
+              </label>
+              <div className="flex items-center space-x-3">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={inviteUrl}
+                    readOnly
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm text-gray-200"
+                  />
+                </div>
+                <button
+                  onClick={copyInviteUrl}
+                  className="px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center space-x-2"
+                >
+                  <Copy size={16} />
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-yellow-600/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
+              <p className="text-yellow-400 text-sm">
+                💡 <strong>Tip:</strong> Share this URL with your friends so they can join your invite-only game room directly.
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={handleInviteModalClose}
+                className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium"
+              >
+                Continue to Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

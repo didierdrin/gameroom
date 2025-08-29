@@ -21,6 +21,10 @@ import {
   SettingsIcon,
   MaximizeIcon,
   MinimizeIcon,
+  UserX,
+  VolumeX,
+  Volume2,
+  AlertTriangle,
 } from "lucide-react";
 import { MediaControls } from "../components/GameRoom/MediaControls";
 import { VideoGrid } from "../components/GameRoom/VideoGrid";
@@ -44,6 +48,103 @@ interface MediaAvailability {
   video: boolean;
 }
 
+// Player management modal interface
+interface PlayerManagementModalProps {
+  isOpen: boolean;
+  player: Player | null;
+  onClose: () => void;
+  onRemovePlayer: (playerId: string) => void;
+  onMutePlayer: (playerId: string) => void;
+  onUnmutePlayer: (playerId: string) => void;
+  isMuted: boolean;
+}
+
+// Player Management Modal Component
+const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
+  isOpen,
+  player,
+  onClose,
+  onRemovePlayer,
+  onMutePlayer,
+  onUnmutePlayer,
+  isMuted
+}) => {
+  if (!isOpen || !player) return null;
+
+  const handleRemove = () => {
+    if (window.confirm(`Are you sure you want to remove ${player.name || player.id} from the game room?`)) {
+      onRemovePlayer(player.id);
+      onClose();
+    }
+  };
+
+  const handleMuteToggle = () => {
+    if (isMuted) {
+      onUnmutePlayer(player.id);
+    } else {
+      onMutePlayer(player.id);
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 rounded-xl border border-gray-700 max-w-sm w-full p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <img 
+              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
+              alt="Player avatar"
+              className="w-10 h-10 rounded-full border border-gray-600"
+            />
+            <div>
+              <h3 className="text-lg font-semibold text-white">{player.name || player.id}</h3>
+              <p className="text-sm text-gray-400">Player Management</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <XIcon size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <button
+            onClick={handleMuteToggle}
+            className={`w-full flex items-center justify-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+              isMuted 
+                ? 'bg-green-600/20 border border-green-500/30 text-green-400 hover:bg-green-600/30' 
+                : 'bg-yellow-600/20 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-600/30'
+            }`}
+          >
+            {isMuted ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            <span>{isMuted ? 'Unmute Player' : 'Mute Player'}</span>
+          </button>
+
+          <button
+            onClick={handleRemove}
+            className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
+          >
+            <UserX size={18} />
+            <span>Remove from Room</span>
+          </button>
+        </div>
+
+        <div className="mt-6 p-3 bg-gray-700/30 rounded-lg border border-gray-600/50">
+          <div className="flex items-start space-x-2">
+            <AlertTriangle size={16} className="text-yellow-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-gray-400">
+              These actions are permanent. Removed players will need to rejoin the room.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Jitsi API type declaration
 declare global {
   interface Window {
@@ -58,6 +159,7 @@ export const LiveGameRoomPage = () => {
   const socket = useSocket();
   const isSocketConnected = useSocketConnection();
 
+  // Existing state variables...
   const [gameState, setGameState] = useState<GameState>({
     roomId: roomId || "",
     players: [],
@@ -85,11 +187,17 @@ export const LiveGameRoomPage = () => {
   const [showPlayers, setShowPlayers] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(false);
-
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showVideoGrid, setShowVideoGrid] = useState(false);
   const [roomInfo, setRoomInfo] = useState<any>(null);
-  // Track if we've already joined this room to avoid duplicate joins
+  const [isHost, setIsHost] = useState(false);
+  
+  // New state for player management
+  const [showPlayerModal, setShowPlayerModal] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [mutedPlayers, setMutedPlayers] = useState<string[]>([]);
+
+  // All other existing state variables and refs...
   const hasJoinedRef = useRef(false);
   const playerNameMapRef = useRef<Record<string, string>>({});
   const [mediaAvailable, setMediaAvailable] = useState<MediaAvailability>({
@@ -101,13 +209,11 @@ export const LiveGameRoomPage = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const email = (user as any).email || `${user?.id}@game.local`;
   const gameType = gameState?.gameType || roomInfo?.gameType || "ludo";
-  // Add state and refs
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const [inAudioCall, setInAudioCall] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
-  const [isHost, setIsHost] = useState(false);
 
   // TURN/STUN config
   const rtcConfig: RTCConfiguration = React.useMemo(() => ({
@@ -123,144 +229,167 @@ export const LiveGameRoomPage = () => {
     ],
   }), []);
 
-
-
-
-
-
-// Add this function after the existing state declarations
-const checkMediaDevices = async () => {
-  try {
-    // Check if getUserMedia is supported
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      console.warn('getUserMedia not supported');
-      setMediaAvailable({ audio: false, video: false });
-      return;
+  // Player management functions
+  const handlePlayerClick = (player: Player) => {
+    if (isHost && player.id !== user?.id && !player.id.startsWith('ai-')) {
+      setSelectedPlayer(player);
+      setShowPlayerModal(true);
     }
+  };
 
-    // Check available devices
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const audioDevices = devices.filter(device => device.kind === 'audioinput');
-    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+  const handleRemovePlayer = (playerId: string) => {
+    if (socket && roomId && isHost) {
+      socket.emit('removePlayer', {
+        roomId,
+        hostId: user?.id,
+        playerIdToRemove: playerId
+      });
+      
+      // Update local state immediately for better UX
+      setPlayers(prev => prev.filter(p => p.id !== playerId));
+      setMutedPlayers(prev => prev.filter(id => id !== playerId));
+    }
+  };
 
-    setMediaAvailable({
-      audio: audioDevices.length > 0,
-      video: videoDevices.length > 0
-    });
+  const handleMutePlayer = (playerId: string) => {
+    if (socket && roomId && isHost) {
+      socket.emit('mutePlayer', {
+        roomId,
+        hostId: user?.id,
+        playerIdToMute: playerId
+      });
+      
+      setMutedPlayers(prev => [...prev, playerId]);
+    }
+  };
 
-    console.log('Available devices:', { audio: audioDevices.length, video: videoDevices.length });
-  } catch (error) {
-    console.error('Error checking media devices:', error);
-    setMediaAvailable({ audio: false, video: false });
-  }
-};
+  const handleUnmutePlayer = (playerId: string) => {
+    if (socket && roomId && isHost) {
+      socket.emit('unmutePlayer', {
+        roomId,
+        hostId: user?.id,
+        playerIdToUnmute: playerId
+      });
+      
+      setMutedPlayers(prev => prev.filter(id => id !== playerId));
+    }
+  };
 
-// Add this useEffect to check devices on mount
-useEffect(() => {
-  checkMediaDevices();
-}, []);
+  // All existing functions (checkMediaDevices, startAudioCall, etc.) remain the same...
+  const checkMediaDevices = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn('getUserMedia not supported');
+        setMediaAvailable({ audio: false, video: false });
+        return;
+      }
 
-// Update the startAudioCall function with better error handling
-const startAudioCall = async () => {
-  if (!socket) return;
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioDevices = devices.filter(device => device.kind === 'audioinput');
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
 
-  try {
-    setIsInitializingMedia(true);
-    
-    // Check if we have permission or need to request it
-    if (!mediaAvailable.audio) {
-      console.log('No audio device available, checking permissions...');
-      await checkMediaDevices();
+      setMediaAvailable({
+        audio: audioDevices.length > 0,
+        video: videoDevices.length > 0
+      });
+
+      console.log('Available devices:', { audio: audioDevices.length, video: videoDevices.length });
+    } catch (error) {
+      console.error('Error checking media devices:', error);
+      setMediaAvailable({ audio: false, video: false });
+    }
+  };
+
+  useEffect(() => {
+    checkMediaDevices();
+  }, []);
+
+  const startAudioCall = async () => {
+    if (!socket) return;
+
+    try {
+      setIsInitializingMedia(true);
       
       if (!mediaAvailable.audio) {
-        throw new Error('No audio device available. Please check your microphone permissions and ensure a microphone is connected.');
+        console.log('No audio device available, checking permissions...');
+        await checkMediaDevices();
+        
+        if (!mediaAvailable.audio) {
+          throw new Error('No audio device available. Please check your microphone permissions and ensure a microphone is connected.');
+        }
       }
-    }
 
-    // Request microphone access with fallback
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        },
-        video: false
-      });
-    } catch (mediaError: any) {
-      if (mediaError.name === 'NotAllowedError') {
-        throw new Error('Microphone access denied. Please allow microphone access in your browser settings.');
-      } else if (mediaError.name === 'NotFoundError') {
-        throw new Error('No microphone found. Please connect a microphone and try again.');
-      } else if (mediaError.name === 'NotReadableError') {
-        throw new Error('Microphone is in use by another application. Please close other apps using the microphone.');
-      } else {
-        throw new Error(`Microphone error: ${mediaError.message}`);
-      }
-    }
-
-    localStreamRef.current = stream;
-
-    // Create RTCPeerConnection with updated config
-    pcRef.current = new RTCPeerConnection(rtcConfig);
-
-    // Add local audio to connection
-    stream.getTracks().forEach((track) => {
-      pcRef.current?.addTrack(track, stream);
-    });
-
-    // Handle remote tracks
-    pcRef.current.ontrack = (event) => {
-      const [remoteStream] = event.streams;
-      const audioEl = document.createElement("audio");
-      audioEl.srcObject = remoteStream;
-      audioEl.autoplay = true;
-      audioEl.id = `remote-audio-${Date.now()}`;
-      document.body.appendChild(audioEl);
-      
-      // Store reference for cleanup
-      const audioId = audioEl.id;
-      remoteAudioRefs.current[audioId] = audioEl;
-    };
-
-    // ICE candidate handler
-    pcRef.current.onicecandidate = (event) => {
-      if (event.candidate && socket) {
-        socket.emit("webrtc-candidate", {
-          candidate: event.candidate,
-          roomId,
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          },
+          video: false
         });
+      } catch (mediaError: any) {
+        if (mediaError.name === 'NotAllowedError') {
+          throw new Error('Microphone access denied. Please allow microphone access in your browser settings.');
+        } else if (mediaError.name === 'NotFoundError') {
+          throw new Error('No microphone found. Please connect a microphone and try again.');
+        } else if (mediaError.name === 'NotReadableError') {
+          throw new Error('Microphone is in use by another application. Please close other apps using the microphone.');
+        } else {
+          throw new Error(`Microphone error: ${mediaError.message}`);
+        }
       }
-    };
 
-    // Create offer
-    const offer = await pcRef.current.createOffer();
-    await pcRef.current.setLocalDescription(offer);
+      localStreamRef.current = stream;
+      pcRef.current = new RTCPeerConnection(rtcConfig);
 
-    socket.emit("webrtc-offer", { sdp: offer, roomId });
+      stream.getTracks().forEach((track) => {
+        pcRef.current?.addTrack(track, stream);
+      });
 
-    setInAudioCall(true);
-    console.log('Audio call started successfully');
-  } catch (err: any) {
-    console.error("Error starting audio call:", err);
-    
-    // Show user-friendly error message
-    const errorMessage = err.message || 'Failed to start audio call';
-    alert(`Audio Call Error: ${errorMessage}`);
-    
-    // Reset state
-    setIsInitializingMedia(false);
-    setInAudioCall(false);
-  } finally {
-    setIsInitializingMedia(false);
-  }
-};
+      pcRef.current.ontrack = (event) => {
+        const [remoteStream] = event.streams;
+        const audioEl = document.createElement("audio");
+        audioEl.srcObject = remoteStream;
+        audioEl.autoplay = true;
+        audioEl.id = `remote-audio-${Date.now()}`;
+        document.body.appendChild(audioEl);
+        
+        const audioId = audioEl.id;
+        remoteAudioRefs.current[audioId] = audioEl;
+      };
 
+      pcRef.current.onicecandidate = (event) => {
+        if (event.candidate && socket) {
+          socket.emit("webrtc-candidate", {
+            candidate: event.candidate,
+            roomId,
+          });
+        }
+      };
 
-  
+      const offer = await pcRef.current.createOffer();
+      await pcRef.current.setLocalDescription(offer);
 
-  // Listen for offer
+      socket.emit("webrtc-offer", { sdp: offer, roomId });
+
+      setInAudioCall(true);
+      console.log('Audio call started successfully');
+    } catch (err: any) {
+      console.error("Error starting audio call:", err);
+      
+      const errorMessage = err.message || 'Failed to start audio call';
+      alert(`Audio Call Error: ${errorMessage}`);
+      
+      setIsInitializingMedia(false);
+      setInAudioCall(false);
+    } finally {
+      setIsInitializingMedia(false);
+    }
+  };
+
+  // All other existing useEffects and functions remain the same...
   useEffect(() => {
     if (!socket) return;
 
@@ -335,12 +464,10 @@ const startAudioCall = async () => {
     };
   }, [socket, roomId, rtcConfig]);
 
-  // Keep a ref of the latest playerIdToUsername mapping for stable handlers
   useEffect(() => {
     playerNameMapRef.current = playerIdToUsername;
   }, [playerIdToUsername]);
 
-  // Leave audio call
   const leaveAudioCall = () => {
     pcRef.current?.close();
     pcRef.current = null;
@@ -348,7 +475,6 @@ const startAudioCall = async () => {
     setInAudioCall(false);
   };
 
-  // Toggle mute
   const toggleMute = () => {
     if (localStreamRef.current) {
       const enabled = !audioEnabled;
@@ -359,16 +485,13 @@ const startAudioCall = async () => {
     }
   };
 
-  // Media control functions
- // Update the toggleAudioCall function
-const toggleAudioCall = async () => {
-  if (inAudioCall) {
-    leaveAudioCall();
-  } else {
-    await startAudioCall();
-  }
-};
-
+  const toggleAudioCall = async () => {
+    if (inAudioCall) {
+      leaveAudioCall();
+    } else {
+      await startAudioCall();
+    }
+  };
 
   const toggleVideo = async () => {
     try {
@@ -376,10 +499,8 @@ const toggleAudioCall = async () => {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
-        // Handle video stream logic here
         setVideoEnabled(true);
       } else {
-        // Stop video tracks
         setVideoEnabled(false);
       }
     } catch (err) {
@@ -393,10 +514,8 @@ const toggleAudioCall = async () => {
         const stream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
         });
-        // Handle screen share logic here
         setIsScreenSharing(true);
       } else {
-        // Stop screen sharing
         setIsScreenSharing(false);
       }
     } catch (err) {
@@ -406,18 +525,16 @@ const toggleAudioCall = async () => {
 
   const toggleDeafen = () => {
     setIsDeafened(!isDeafened);
-    // Implement deafen logic - mute all remote audio
     Object.values(remoteAudioRefs.current).forEach((audioEl) => {
       audioEl.muted = !isDeafened;
     });
   };
 
   const handleCameraSwitch = async () => {
-    // Jitsi doesn't expose camera switching directly, users can do it through the UI
     console.log("Camera switching should be done through Jitsi UI");
   };
 
-  // Game logic: join once and attach listeners once
+  // Game logic and socket handlers remain the same...
   useEffect(() => {
     if (!user) {
       navigate("/login");
@@ -425,7 +542,6 @@ const toggleAudioCall = async () => {
     }
     if (!socket || !roomId) return;
 
-    // Join only once per mount/room
     if (!hasJoinedRef.current && isSocketConnected) {
       console.log("Socket connected, joining room:", roomId);
       hasJoinedRef.current = true;
@@ -504,6 +620,45 @@ const toggleAudioCall = async () => {
       );
     };
 
+    // Add new socket handlers for player management
+    const handlePlayerRemoved = (data: any) => {
+      console.log("Player removed:", data);
+      setPlayers(prev => prev.filter(p => p.id !== data.playerId));
+      setMutedPlayers(prev => prev.filter(id => id !== data.playerId));
+      
+      if (data.playerId === user?.id) {
+        alert("You have been removed from the game room by the host.");
+        navigate("/");
+      }
+    };
+
+    const handlePlayerMuted = (data: any) => {
+      console.log("Player muted:", data);
+      setMutedPlayers(prev => [...prev.filter(id => id !== data.playerId), data.playerId]);
+      
+      if (data.playerId === user?.id) {
+        // Mute the current user's audio
+        if (localStreamRef.current) {
+          localStreamRef.current.getAudioTracks().forEach(track => track.enabled = false);
+          setAudioEnabled(false);
+        }
+      }
+    };
+
+    const handlePlayerUnmuted = (data: any) => {
+      console.log("Player unmuted:", data);
+      setMutedPlayers(prev => prev.filter(id => id !== data.playerId));
+      
+      if (data.playerId === user?.id) {
+        // Unmute the current user's audio
+        if (localStreamRef.current) {
+          localStreamRef.current.getAudioTracks().forEach(track => track.enabled = true);
+          setAudioEnabled(true);
+        }
+      }
+    };
+
+    // ... all other existing socket handlers remain the same
     const handleChatMessage = (data: any) => {
       console.log("Chat message received:", data);
       setMessages((prev) => [...prev, data]);
@@ -584,6 +739,9 @@ const toggleAudioCall = async () => {
     socket.on("playerJoined", handlePlayerJoined);
     socket.on("playerConnected", handlePlayerConnected);
     socket.on("playerDisconnected", handlePlayerDisconnected);
+    socket.on("playerRemoved", handlePlayerRemoved);
+    socket.on("playerMuted", handlePlayerMuted);
+    socket.on("playerUnmuted", handlePlayerUnmuted);
     socket.on("chatMessage", handleChatMessage);
     socket.on("diceRolled", handleDiceRolled);
     socket.on("coinMoved", handleCoinMoved);
@@ -597,6 +755,9 @@ const toggleAudioCall = async () => {
       socket.off("playerJoined", handlePlayerJoined);
       socket.off("playerConnected", handlePlayerConnected);
       socket.off("playerDisconnected", handlePlayerDisconnected);
+      socket.off("playerRemoved", handlePlayerRemoved);
+      socket.off("playerMuted", handlePlayerMuted);
+      socket.off("playerUnmuted", handlePlayerUnmuted);
       socket.off("chatMessage", handleChatMessage);
       socket.off("diceRolled", handleDiceRolled);
       socket.off("coinMoved", handleCoinMoved);
@@ -614,27 +775,24 @@ const toggleAudioCall = async () => {
     }
   }, [socket, roomId]);
 
-  // Add this useEffect to check if current user is host
   useEffect(() => {
     if (user && gameState?.host) {
       setIsHost(user.id === gameState.host);
     }
   }, [user, gameState?.host]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      // Clean up WebRTC connections
       pcRef.current?.close();
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
 
-      // Clean up remote audio elements
       Object.values(remoteAudioRefs.current).forEach((audioEl) => {
         audioEl.remove();
       });
     };
   }, []);
 
+  // All game action handlers remain the same...
   const handleRollDice = () => {
     if (
       socket &&
@@ -720,6 +878,7 @@ const toggleAudioCall = async () => {
     }
   };
 
+  // renderGameContent function remains the same...
   const renderGameContent = () => {
     if (!socket) return null;
 
@@ -735,7 +894,6 @@ const toggleAudioCall = async () => {
             <div className="text-green-400 mb-4">✅ Connected to room</div>
           )}
           
-          {/* Host Controls */}
           {isHost ? (
             <div className="flex flex-col items-center space-y-3">
               <button
@@ -758,7 +916,6 @@ const toggleAudioCall = async () => {
       );
     }
 
-    // Game content remains the same but add host controls at the bottom
     const gameContent = (() => {
       switch (lowerCaseGameType) {
         case "ludo":
@@ -773,7 +930,6 @@ const toggleAudioCall = async () => {
                 socket={socket}
                 roomId={roomId!}
               />
-              {/* Only show dice when it's the current player's turn and they need to roll */}
               {gameState.currentTurn === user?.id &&
                 !gameState.diceRolled &&
                 !gameState.gameOver && (
@@ -843,7 +999,6 @@ const toggleAudioCall = async () => {
       <div className="relative h-full">
         {gameContent}
         
-        {/* Host Game Controls - shown during active game */}
         {isHost && gameState?.gameStarted && !gameState?.gameOver && (
           <div className="absolute top-4 right-4 flex space-x-2">
             <button
@@ -855,7 +1010,6 @@ const toggleAudioCall = async () => {
           </div>
         )}
         
-        {/* Host Controls - shown when game is over */}
         {isHost && gameState?.gameOver && (
           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-3">
             <button
@@ -887,7 +1041,6 @@ const toggleAudioCall = async () => {
   };
 
   const handleExit = () => {
-    // Clean up before leaving
     leaveAudioCall();
 
     if (socket) {
@@ -967,13 +1120,14 @@ const toggleAudioCall = async () => {
       </div>
       <div className="flex flex-1 overflow-hidden">
         {showPlayers && (
-          <div className="w-full sm:w-64 border-r border-gray-700 bg-gray-800 overflow-y-auto fixed sm:relative inset-y-0 left-0 z-30">
-            <PlayerList
-              players={players}
-              currentPlayerId={user!.id}
-              currentTurn={gameState?.currentTurn}
-            />
-          </div>
+          <PlayerList
+            players={players}
+            currentPlayerId={user!.id}
+            currentTurn={gameState?.currentTurn}
+            isHost={isHost}
+            onPlayerClick={handlePlayerClick}
+            mutedPlayers={mutedPlayers}
+          />
         )}
         <div className="flex-1 bg-gray-850">
           <div className="h-full p-2 sm:p-4">{renderGameContent()}</div>
@@ -996,7 +1150,6 @@ const toggleAudioCall = async () => {
         )}
       </div>
 
-      {/* Custom Video Grid Overlay when Jitsi is not in full view */}
       {showVideoGrid && !inAudioCall && (
         <div className="fixed inset-0 bg-gray-900 z-40 p-4 overflow-auto">
           <div className="flex justify-between items-center mb-4">
@@ -1012,7 +1165,6 @@ const toggleAudioCall = async () => {
         </div>
       )}
 
-      {/* Media Controls */}
       <MediaControls
         videoEnabled={videoEnabled && mediaAvailable.video}
         audioEnabled={audioEnabled && mediaAvailable.audio}
@@ -1032,7 +1184,20 @@ const toggleAudioCall = async () => {
         isInitializingMedia={isInitializingMedia}
       />
 
-      {/* Overlay for mobile sidebars */}
+      {/* Player Management Modal */}
+      <PlayerManagementModal
+        isOpen={showPlayerModal}
+        player={selectedPlayer}
+        onClose={() => {
+          setShowPlayerModal(false);
+          setSelectedPlayer(null);
+        }}
+        onRemovePlayer={handleRemovePlayer}
+        onMutePlayer={handleMutePlayer}
+        onUnmutePlayer={handleUnmutePlayer}
+        isMuted={selectedPlayer ? mutedPlayers.includes(selectedPlayer.id) : false}
+      />
+
       {(showPlayers || showChat) && (
         <div
           className="fixed inset-0 bg-black/50 z-20 sm:hidden"
