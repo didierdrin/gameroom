@@ -21,6 +21,7 @@ export const UsernameLoginPage: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { user, login } = useAuth();
 
@@ -33,6 +34,10 @@ export const UsernameLoginPage: React.FC = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     setError(''); // Clear error when user types
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   const handleSignup = async () => {
@@ -100,7 +105,7 @@ export const UsernameLoginPage: React.FC = () => {
       <Helmet>
         <title>Alu Globe Gameroom - Authentication</title>
       </Helmet>
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
         {/* Background decorative elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-10 -left-10 w-72 h-72 bg-green-400 rounded-full opacity-20 blur-3xl"></div>
@@ -111,7 +116,7 @@ export const UsernameLoginPage: React.FC = () => {
           {/* Left side - Welcome message */}
           <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12">
             <div className="text-white">
-              <h1 className="text-4xl font-bold mb-6">ALU Globe</h1>
+              <h1 className="text-4xl font-bold mb-6">ALU Globe Game Room</h1>
               <p className="text-xl text-gray-300 mb-8">
                 Your Digital campus awaits! Explore the ALU community in an immersive digital environment.
               </p>
@@ -155,7 +160,7 @@ export const UsernameLoginPage: React.FC = () => {
             <div className="bg-white/10 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/20">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-white mb-2">Welcome Back</h2>
-                <p className="text-gray-300">Connect, Find, Play – Start Your ALU Globe Journey Now!</p>
+                <p className="text-gray-300">Connect, Find, Play – Start Your ALU Globe Game Room Journey Now!</p>
               </div>
 
               {/* Tab switcher */}
@@ -195,15 +200,33 @@ export const UsernameLoginPage: React.FC = () => {
                     onKeyPress={handleKeyPress}
                     autoFocus
                   />
-                  <input
-                    type="password"
-                    name="password"
-                    className="w-full p-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    onKeyPress={handleKeyPress}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      className="w-full p-3 pr-12 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      onKeyPress={handleKeyPress}
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      onClick={togglePasswordVisibility}
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.05 8.05m1.828 1.828l-.94-.94M9.878 9.878l4.242 4.242m0 0L16.15 16.15M14.12 14.12l1.828 1.828" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -229,15 +252,33 @@ export const UsernameLoginPage: React.FC = () => {
                     onChange={handleInputChange}
                     onKeyPress={handleKeyPress}
                   />
-                  <input
-                    type="password"
-                    name="password"
-                    className="w-full p-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Password (min 6 characters)"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    onKeyPress={handleKeyPress}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      className="w-full p-3 pr-12 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Password (min 6 characters)"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      onKeyPress={handleKeyPress}
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      onClick={togglePasswordVisibility}
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.05 8.05m1.828 1.828l-.94-.94M9.878 9.878l4.242 4.242m0 0L16.15 16.15M14.12 14.12l1.828 1.828" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 
