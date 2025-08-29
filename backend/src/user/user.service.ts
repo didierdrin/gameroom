@@ -999,6 +999,60 @@ export class UserService {
       throw error;
     }
   }
+
+  async updateProfile(userId: string, updateData: { username?: string; email?: string }) {
+    try {
+      const user = await this.userModel.findById(userId);
+      if (!user) {
+        return { success: false, error: 'User not found' };
+      }
+
+      // Check if username already exists (if being updated)
+      if (updateData.username && updateData.username !== user.username) {
+        const existingUser = await this.userModel.findOne({ 
+          username: updateData.username,
+          _id: { $ne: userId }
+        });
+        if (existingUser) {
+          return { success: false, error: 'Username already taken' };
+        }
+      }
+
+      // Check if email already exists (if being updated)
+      if (updateData.email && updateData.email !== user.email) {
+        const existingUser = await this.userModel.findOne({ 
+          email: updateData.email,
+          _id: { $ne: userId }
+        });
+        if (existingUser) {
+          return { success: false, error: 'Email already taken' };
+        }
+      }
+
+      // Update user
+      const updatedUser = await this.userModel.findByIdAndUpdate(
+        userId,
+        updateData,
+        { new: true }
+      );
+
+      if (!updatedUser) {
+        return { success: false, error: 'Failed to update user' };
+      }
+
+      return {
+        success: true,
+        data: {
+          id: updatedUser._id,
+          username: updatedUser.username,
+          email: updatedUser.email
+        }
+      };
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 

@@ -1,5 +1,5 @@
 // src/user/user.controller.ts
-import { Controller, Post, Body, Get, Param, Query } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Query, Put } from '@nestjs/common';
 import { UserService } from './user.service';
 
 @Controller('user')
@@ -158,6 +158,21 @@ export class UserController {
         data: stats
       };
     } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  @Put(':id/profile')
+  async updateUserProfile(@Param('id') id: string, @Body() body: { username?: string; email?: string }) {
+    try {
+      const { username, email } = body;
+      const result = await this.userService.updateProfile(id, { username, email });
+      return result;
+    } catch (error) {
+      console.error('Update user profile error:', error);
       return {
         success: false,
         error: error.message
