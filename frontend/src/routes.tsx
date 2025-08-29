@@ -10,6 +10,7 @@ import { TournamentsPage } from './pages/TournamentsPage';
 import { LiveGameRoomPage } from './pages/LiveGameRoomPage';
 import { UsernameLoginPage } from './pages/UsernameLoginPage';
 import { ErrorBoundary } from './components/UI/ErrorBoundary';
+import { NotFoundPage } from './components/UI/NotFoundPage';
 import { MainLayout } from './components/Layout/MainLayout';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 
@@ -17,7 +18,7 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <UsernameLoginPage />,
-    errorElement: <ErrorBoundary><div>Page not found</div></ErrorBoundary>,
+    errorElement: <ErrorBoundary><NotFoundPage /></ErrorBoundary>,
   },
   {
     element: (
@@ -25,7 +26,7 @@ export const router = createBrowserRouter([
         <MainLayout />
       </ProtectedRoute>
     ),
-    errorElement: <ErrorBoundary><div>Page not found</div></ErrorBoundary>,
+    errorElement: <ErrorBoundary><NotFoundPage /></ErrorBoundary>,
     children: [
       {
         // path: '/',
@@ -57,5 +58,10 @@ export const router = createBrowserRouter([
         element: <LiveGameRoomPage />,
       },
     ],
+  },
+  // Catch-all route for 404 pages
+  {
+    path: '*',
+    element: <NotFoundPage />,
   },
 ]);
