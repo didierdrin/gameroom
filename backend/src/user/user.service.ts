@@ -6,6 +6,7 @@ import { Model, PipelineStage } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import { GameRoom, GameRoomDocument } from '../game/schemas/game-room.schema';
 import { GameSessionEntity, GameSessionDocument } from '../game/schemas/game-session.schema';
+import { Counter, CounterDocument } from './schemas/counter.schema';
 
 @Injectable()
 export class UserService {
@@ -13,11 +14,30 @@ export class UserService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoomDocument>,
     @InjectModel(GameSessionEntity.name) private gameSessionModel: Model<GameSessionDocument>,
+    @InjectModel(Counter.name) private counterModel: Model<CounterDocument>,
   ) {}
 
+  private async getNextUserId(): Promise<number> {
+    const counter = await this.counterModel.findOneAndUpdate(
+      { name: 'userId' },
+      { $inc: { value: 1 } },
+      { new: true, upsert: true }
+    );
+    return counter.value;
+  }
+
   async create(userData: { username: string; email?: string; password?: string }): Promise<User> {
-    const user = new this.userModel(userData);
-    return user.save();
+    const userId = await this.getNextUserId();
+    console.log('Creating user with ID:', userId); // Debug log
+    
+    const user = new this.userModel({
+      _id: userId,
+      ...userData
+    });
+    
+    const savedUser = await user.save();
+    console.log('Saved user:', savedUser); // Debug log
+    return savedUser;
   }
 
   async findByEmail(email: string): Promise<User | null> {

@@ -2,10 +2,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, _id: false }) // Disable auto _id generation
 export class User {
-  @Prop({ default: '' })
-  _id: string;
+  @Prop({ type: Number, required: true, unique: true })
+  _id: number;
 
   @Prop({ required: true, unique: true })
   username: string;
@@ -16,8 +16,11 @@ export class User {
   @Prop({ required: false })
   password: string;
 
-  @Prop({ default: Date.now })
-   createdAt: Date;
+  @Prop({ type: Date, default: Date.now })
+  createdAt: Date;
+
+  @Prop({ type: Date, default: Date.now })
+  updatedAt: Date;
 
   @Prop({ default: 0 })
   totalScore: number;
@@ -63,22 +66,7 @@ export class User {
 export type UserDocument = User & Document;
 export const UserSchema = SchemaFactory.createForClass(User);
 
-// // src/user/user.schema.ts
-// import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-// import { Document } from 'mongoose';
-
-// export type UserDocument = User & Document;
-
-// @Schema({ timestamps: true })
-// export class User extends Document {
-//     @Prop({ required: true, unique: true })
-//     username: string;
-  
-//     @Prop({ default: Date.now })
-//     createdAt: Date;
-//   }
-
-
-// export const UserSchema = SchemaFactory.createForClass(User);
+// Ensure _id is not auto-generated
+UserSchema.set('_id', false);
 
 
