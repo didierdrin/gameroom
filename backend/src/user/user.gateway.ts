@@ -92,6 +92,52 @@ import {
       }
     }
   
+    @SubscribeMessage('user:updateAvatar')
+    async handleUpdateAvatar(
+      @MessageBody() data: { userId: string; avatar: string },
+      @ConnectedSocket() client: Socket,
+    ) {
+      try {
+        const result = await this.userService.updateAvatar(data.userId, data.avatar);
+        
+        if (result.success) {
+          client.emit('user:avatarUpdated', { success: true, user: result.user });
+          
+          // Optionally notify all connected clients about the avatar change
+          // this.server.emit('user:avatarChanged', { 
+          //   userId: data.userId, 
+          //   avatar: data.avatar 
+          // });
+        } else {
+          client.emit('user:avatarUpdated', { success: false, error: result.error });
+        }
+      } catch (error) {
+        client.emit('user:avatarUpdated', { success: false, error: error.message });
+      }
+    }
+  
+    @SubscribeMessage('user:updateProfile')
+    async handleUpdateProfile(
+      @MessageBody() data: { userId: string; username?: string; email?: string; avatar?: string },
+      @ConnectedSocket() client: Socket,
+    ) {
+      try {
+        const result = await this.userService.updateProfile(data.userId, {
+          username: data.username,
+          email: data.email,
+          avatar: data.avatar
+        });
+        
+        if (result.success) {
+          client.emit('user:profileUpdated', { success: true, user: result.user });
+        } else {
+          client.emit('user:profileUpdated', { success: false, error: result.error });
+        }
+      } catch (error) {
+        client.emit('user:profileUpdated', { success: false, error: error.message });
+      }
+    }
+  
     // Method to notify all clients about leaderboard updates
     async notifyLeaderboardUpdate(gameType?: string) {
       try {

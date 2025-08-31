@@ -16,6 +16,9 @@ export class User {
   @Prop({ required: false })
   password: string;
 
+  @Prop({ required: false })
+  avatar: string; // Add this line for avatar
+
   @Prop({ type: Date, default: Date.now })
   createdAt: Date;
 

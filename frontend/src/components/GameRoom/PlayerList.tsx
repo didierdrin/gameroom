@@ -73,9 +73,10 @@ export const PlayerList: React.FC<PlayerListProps> = ({
               } ${
                 currentTurn === player.id ? 'border-l-4 border-purple-500' : ''
               } ${
-                isHost && !isYou && !isAI ? 'hover:bg-gray-600/50' : ''
+                // Allow clicks for host on any non-AI player (including themselves)
+                isHost && !isAI ? 'hover:bg-gray-600/50' : ''
               }`}
-              onClick={() => isHost && !isYou && !isAI && onPlayerClick?.(player)}
+              onClick={() => isHost && !isAI && onPlayerClick?.(player)}
             >
               <img 
                 src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 

@@ -72,6 +72,7 @@ interface GameState {
   winner: string | null;
   roomName: string;
   gameType: string;
+  host?: string; // Add this line
   // Ludo-specific
   diceValue?: number;
   diceRolled?: boolean;
@@ -1086,6 +1087,7 @@ export class GameService {
             roomId,
             gameType: 'chess',
             roomName: room.name,
+            host: room.host, // Add this line
             gameStarted: false,
             gameOver: false,
             currentPlayer: 0,
@@ -1110,6 +1112,7 @@ export class GameService {
             roomId,
             gameType: room.gameType,
             roomName: room.name,
+            host: room.host, // Add this line
             gameStarted: false,
             gameOver: false,
             currentPlayer: 0,
@@ -1144,6 +1147,7 @@ export class GameService {
             roomId,
             gameType: room.gameType,
             roomName: room.name,
+            host: room.host, // Add this line
             gameStarted: false,
             gameOver: false,
             currentPlayer: 0,

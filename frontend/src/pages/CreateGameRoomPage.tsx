@@ -88,6 +88,13 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
     }
   }, [privacy]);
 
+  // Set player limit to 2 for chess games
+  useEffect(() => {
+    if (gameType === 'chess') {
+      setPlayerLimit(2);
+    }
+  }, [gameType]);
+
   // Add function to copy URL to clipboard
   const copyInviteUrl = async () => {
     try {
@@ -389,7 +396,10 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
                 </span>
               </label>
               <p className="text-xs text-gray-500 mb-3">
-                First {playerLimit} users to join will be players. Others will automatically become spectators.
+                {gameType === 'chess' 
+                  ? 'Chess is a 2-player game only.'
+                  : `First ${playerLimit} users to join will be players. Others will automatically become spectators.`
+                }
               </p>
               <div className="relative flex items-center">
                 <UsersIcon size={18} className="absolute left-3 text-gray-400" />
@@ -397,9 +407,12 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
                   type="range" 
                   min="2" 
                   max="50" 
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 ml-10" 
+                  className={`w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 ml-10 ${
+                    gameType === 'chess' ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                   value={playerLimit} 
-                  onChange={e => setPlayerLimit(parseInt(e.target.value))} 
+                  onChange={e => setPlayerLimit(parseInt(e.target.value))}
+                  disabled={gameType === 'chess'}
                 />
               </div>
             </div>

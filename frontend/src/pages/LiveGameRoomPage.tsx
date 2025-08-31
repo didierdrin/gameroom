@@ -25,6 +25,7 @@ import {
   VolumeX,
   Volume2,
   AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { MediaControls } from "../components/GameRoom/MediaControls";
 import { VideoGrid } from "../components/GameRoom/VideoGrid";
@@ -57,6 +58,8 @@ interface PlayerManagementModalProps {
   onMutePlayer: (playerId: string) => void;
   onUnmutePlayer: (playerId: string) => void;
   isMuted: boolean;
+  isHostSelf?: boolean;
+  onRestartGame?: () => void;
 }
 
 // Player Management Modal Component
@@ -67,7 +70,9 @@ const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
   onRemovePlayer,
   onMutePlayer,
   onUnmutePlayer,
-  isMuted
+  isMuted,
+  isHostSelf = false,
+  onRestartGame
 }) => {
   if (!isOpen || !player) return null;
 
@@ -87,6 +92,13 @@ const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
     onClose();
   };
 
+  const handleRestartGame = () => {
+    if (onRestartGame) {
+      onRestartGame();
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-xl border border-gray-700 max-w-sm w-full p-6 shadow-2xl">
@@ -99,7 +111,9 @@ const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
             />
             <div>
               <h3 className="text-lg font-semibold text-white">{player.name || player.id}</h3>
-              <p className="text-sm text-gray-400">Player Management</p>
+              <p className="text-sm text-gray-400">
+                {isHostSelf ? 'Host Management' : 'Player Management'}
+              </p>
             </div>
           </div>
           <button
@@ -111,32 +125,49 @@ const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
         </div>
 
         <div className="space-y-3">
-          <button
-            onClick={handleMuteToggle}
-            className={`w-full flex items-center justify-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-              isMuted 
-                ? 'bg-green-600/20 border border-green-500/30 text-green-400 hover:bg-green-600/30' 
-                : 'bg-yellow-600/20 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-600/30'
-            }`}
-          >
-            {isMuted ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            <span>{isMuted ? 'Unmute Player' : 'Mute Player'}</span>
-          </button>
+          {isHostSelf ? (
+            // Host self-management options
+            <button
+              onClick={handleRestartGame}
+              className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-lg hover:bg-purple-600/30 transition-colors"
+            >
+              <RotateCcw size={18} />
+              <span>Restart Game</span>
+            </button>
+          ) : (
+            // Regular player management options
+            <>
+              <button
+                onClick={handleMuteToggle}
+                className={`w-full flex items-center justify-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                  isMuted 
+                    ? 'bg-green-600/20 border border-green-500/30 text-green-400 hover:bg-green-600/30' 
+                    : 'bg-yellow-600/20 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-600/30'
+                }`}
+              >
+                {isMuted ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                <span>{isMuted ? 'Unmute Player' : 'Mute Player'}</span>
+              </button>
 
-          <button
-            onClick={handleRemove}
-            className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
-          >
-            <UserX size={18} />
-            <span>Remove from Room</span>
-          </button>
+              <button
+                onClick={handleRemove}
+                className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
+              >
+                <UserX size={18} />
+                <span>Remove from Room</span>
+              </button>
+            </>
+          )}
         </div>
 
         <div className="mt-6 p-3 bg-gray-700/30 rounded-lg border border-gray-600/50">
           <div className="flex items-start space-x-2">
             <AlertTriangle size={16} className="text-yellow-400 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-gray-400">
-              These actions are permanent. Removed players will need to rejoin the room.
+              {isHostSelf 
+                ? "Restarting the game will start a new round with the same players and spectators."
+                : "These actions are permanent. Removed players will need to rejoin the room."
+              }
             </p>
           </div>
         </div>
@@ -231,9 +262,12 @@ export const LiveGameRoomPage = () => {
 
   // Player management functions
   const handlePlayerClick = (player: Player) => {
-    if (isHost && player.id !== user?.id && !player.id.startsWith('ai-')) {
-      setSelectedPlayer(player);
-      setShowPlayerModal(true);
+    if (isHost) {
+      // Allow host to click on themselves or other non-AI players
+      if (player.id === user?.id || (player.id !== user?.id && !player.id.startsWith('ai-'))) {
+        setSelectedPlayer(player);
+        setShowPlayerModal(true);
+      }
     }
   };
 
@@ -565,7 +599,7 @@ export const LiveGameRoomPage = () => {
       });
       const updatedPlayers = newGameState.players.map((p) => ({
         ...p,
-        name: playerNameMapRef.current[p.id] || p.name || p.id,
+        name: playerIdToUsername[p.id] || p.name || p.id, // Use playerIdToUsername instead of playerNameMapRef.current
       }));
       setGameState((prev) => ({
         ...prev,
@@ -1196,6 +1230,8 @@ export const LiveGameRoomPage = () => {
         onMutePlayer={handleMutePlayer}
         onUnmutePlayer={handleUnmutePlayer}
         isMuted={selectedPlayer ? mutedPlayers.includes(selectedPlayer.id) : false}
+        isHostSelf={isHost && selectedPlayer?.id === user?.id}
+        onRestartGame={handleRestartGame}
       />
 
       {(showPlayers || showChat) && (

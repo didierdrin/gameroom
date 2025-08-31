@@ -1020,30 +1020,26 @@ export class UserService {
     }
   }
 
-  async updateProfile(userId: string, updateData: { username?: string; email?: string }) {
+  async updateProfile(userId: string, updateData: { username?: string; email?: string; avatar?: string }) {
     try {
       const user = await this.userModel.findById(userId);
       if (!user) {
         return { success: false, error: 'User not found' };
       }
 
-      // Check if username already exists (if being updated)
+      
+
+      // Check if username is being updated and if it's already taken
       if (updateData.username && updateData.username !== user.username) {
-        const existingUser = await this.userModel.findOne({ 
-          username: updateData.username,
-          _id: { $ne: userId }
-        });
+        const existingUser = await this.userModel.findOne({ username: updateData.username });
         if (existingUser) {
           return { success: false, error: 'Username already taken' };
         }
       }
 
-      // Check if email already exists (if being updated)
+      // Check if email is being updated and if it's already taken
       if (updateData.email && updateData.email !== user.email) {
-        const existingUser = await this.userModel.findOne({ 
-          email: updateData.email,
-          _id: { $ne: userId }
-        });
+        const existingUser = await this.userModel.findOne({ email: updateData.email });
         if (existingUser) {
           return { success: false, error: 'Email already taken' };
         }
@@ -1057,20 +1053,64 @@ export class UserService {
       );
 
       if (!updatedUser) {
-        return { success: false, error: 'Failed to update user' };
+        console.log("Not found");
+        return { success: false, error: 'User not found' };
       }
 
-      return {
-        success: true,
-        data: {
-          id: updatedUser._id,
+      return { 
+        success: true, 
+        user: {
+          _id: updatedUser._id,
           username: updatedUser.username,
-          email: updatedUser.email
+          email: updatedUser.email,
+          avatar: updatedUser.avatar,
+          totalScore: updatedUser.totalScore,
+          gamesPlayed: updatedUser.gamesPlayed,
+          gamesWon: updatedUser.gamesWon,
+          gameTypesPlayed: updatedUser.gameTypesPlayed,
+          gameStats: updatedUser.gameStats,
+          createdAt: updatedUser.createdAt,
+          updatedAt: updatedUser.updatedAt
         }
       };
     } catch (error) {
       console.error('Error updating user profile:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Failed to update profile' };
+    }
+  }
+
+  // Add a specific avatar update method
+  async updateAvatar(userId: string, avatar: string) {
+    try {
+      const updatedUser = await this.userModel.findByIdAndUpdate(
+        userId,
+        { avatar },
+        { new: true }
+      );
+
+      if (!updatedUser) {
+        return { success: false, error: 'User not found' };
+      }
+
+      return { 
+        success: true, 
+        user: {
+          _id: updatedUser._id,
+          username: updatedUser.username,
+          email: updatedUser.email,
+          avatar: updatedUser.avatar,
+          totalScore: updatedUser.totalScore,
+          gamesPlayed: updatedUser.gamesPlayed,
+          gamesWon: updatedUser.gamesWon,
+          gameTypesPlayed: updatedUser.gameTypesPlayed,
+          gameStats: updatedUser.gameStats,
+          createdAt: updatedUser.createdAt,
+          updatedAt: updatedUser.updatedAt
+        }
+      };
+    } catch (error) {
+      console.error('Error updating user avatar:', error);
+      return { success: false, error: 'Failed to update avatar' };
     }
   }
 }
