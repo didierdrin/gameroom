@@ -113,50 +113,10 @@ export const UsernameLoginPage: React.FC = () => {
         </div>
 
         <div className="relative z-10 flex max-w-6xl w-full mx-4">
-          {/* Left side - Welcome message */}
-          <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12">
-            <div className="text-white">
-              <h1 className="text-4xl font-bold mb-6">ALU Globe Game Room</h1>
-              <p className="text-xl text-gray-300 mb-8">
-                Your Digital campus awaits! Explore the ALU community in an immersive digital environment.
-              </p>
-              
-              <div className="space-y-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-2xl">🌍</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Global Connection</h3>
-                    <p className="text-gray-300">Connect with ALU students across Africa</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-2xl">🎮</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Immersive Experience</h3>
-                    <p className="text-gray-300">Link up. Level up. Lead!</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
-                    <span className="text-2xl">👥</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Find Your People.</h3>
-                    <p className="text-gray-300">More than Friends - future co-founders!</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          
 
-          {/* Right side - Auth form */}
-          <div className="w-full lg:w-1/2 flex items-center justify-center">
+              {/* Left side - Auth form */}
+              <div className="w-full lg:w-1/2 flex items-center justify-center">
             <div className="bg-white/10 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/20">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-white mb-2">Welcome Back</h2>
@@ -309,6 +269,51 @@ export const UsernameLoginPage: React.FC = () => {
               </div>
             </div>
           </div>
+          
+          
+          {/* Right side - Welcome message */}
+          <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12">
+            <div className="text-white">
+              <h1 className="text-4xl font-bold mb-6">ALU Globe Game Room</h1>
+              <p className="text-xl text-gray-300 mb-8">
+                Your Digital campus awaits! Explore the ALU community in an immersive digital environment.
+              </p>
+              
+              <div className="space-y-6">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">🌍</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Global Connection</h3>
+                    <p className="text-gray-300">Connect with ALU students across Africa</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">🎮</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Immersive Experience</h3>
+                    <p className="text-gray-300">Link up. Level up. Lead!</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">👥</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Find Your People.</h3>
+                    <p className="text-gray-300">More than Friends - future co-founders!</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+      
         </div>
       </div>
     </>
