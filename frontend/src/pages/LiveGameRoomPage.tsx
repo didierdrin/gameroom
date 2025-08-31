@@ -811,7 +811,7 @@ export const LiveGameRoomPage = () => {
 
   useEffect(() => {
     if (user && gameState?.host) {
-      setIsHost(user.id === gameState.host);
+      setIsHost(String(user.id) === String(gameState.host));
     }
   }, [user, gameState?.host]);
 
@@ -1161,6 +1161,7 @@ export const LiveGameRoomPage = () => {
             isHost={isHost}
             onPlayerClick={handlePlayerClick}
             mutedPlayers={mutedPlayers}
+            playerIdToUsername={playerIdToUsername}
           />
         )}
         <div className="flex-1 bg-gray-850">

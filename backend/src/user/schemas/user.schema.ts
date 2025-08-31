@@ -4,9 +4,6 @@ import { Document } from 'mongoose';
 
 @Schema({ timestamps: true, _id: false }) // Disable auto _id generation
 export class User {
-  @Prop({ type: Number, required: true, unique: true })
-  _id: number;
-
   @Prop({ required: true, unique: true })
   username: string;
 
