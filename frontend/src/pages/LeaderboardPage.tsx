@@ -25,10 +25,10 @@ export const LeaderboardPage = () => {
     { id: 'all', name: 'All Games' },
     { id: 'trivia', name: 'Trivia' },
     { id: 'chess', name: 'Chess' },
-    { id: 'uno', name: 'UNO' },
-    { id: 'kahoot', name: 'Kahoot' },
-    { id: 'pictionary', name: 'Pictionary' },
-    { id: 'ludo', name: 'Ludo' }
+    // { id: 'uno', name: 'UNO' },
+    // { id: 'kahoot', name: 'Kahoot' },
+    // { id: 'pictionary', name: 'Pictionary' },
+    // { id: 'ludo', name: 'Ludo' }
   ];
 
   const fetchLeaderboard = async (showLoading = true) => {
