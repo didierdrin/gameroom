@@ -2,7 +2,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ timestamps: true, _id: false }) // Disable auto _id generation
+@Schema({ timestamps: true }) // Remove _id: false
 export class User {
   @Prop({ required: true, unique: true })
   username: string;
@@ -66,7 +66,7 @@ export class User {
 export type UserDocument = User & Document;
 export const UserSchema = SchemaFactory.createForClass(User);
 
-// Ensure _id is not auto-generated
-UserSchema.set('_id', false);
+// Remove this line that disables _id
+// UserSchema.set('_id', false);
 
 
