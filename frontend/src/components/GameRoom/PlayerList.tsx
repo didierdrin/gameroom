@@ -34,52 +34,41 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
       const displayName = isLoading ? 'Loading...' : (username || player.id);
       return {
         name: `${displayName} (You)`,
-        isYou: true,
-        isAI: false
+        isYou: true
       };
     }
     
-    // For AI players
-    if (player.id.startsWith('ai-')) {
-      return {
-        name: `AI ${player.id.split('-')[1]}`,
-        isYou: false,
-        isAI: true
-      };
-    }
-    
-    // For other human players
+    // For other human players (remove AI logic completely)
     const displayName = isLoading ? 'Loading...' : (username || player.id);
     return {
       name: displayName,
-      isYou: false,
-      isAI: false
+      isYou: false
     };
   };
 
-  const { name, isYou, isAI } = getPlayerDisplay();
+  const { name, isYou } = getPlayerDisplay(); // Remove isAI from destructuring
 
   return (
     <div 
       key={player.id}
-      className={`p-2 rounded-lg flex items-center cursor-pointer ${
-        isYou ? 'bg-purple-900/30' : 'bg-gray-700/30'
+      className={`flex items-center space-x-3 p-3 rounded-lg bg-gray-700/50 ${
+        isYou ? 'ring-2 ring-purple-500' : ''
       } ${
         currentTurn === player.id ? 'border-l-4 border-purple-500' : ''
       } ${
-        // Allow clicks for host on any non-AI player (including themselves)
-        isHost && !isAI ? 'hover:bg-gray-600/50' : ''
+        // Remove AI check from hover logic
+        isHost ? 'hover:bg-gray-600/50' : ''
       }`}
-      onClick={() => isHost && !isAI && onPlayerClick?.(player)}
+      onClick={() => isHost && onPlayerClick?.(player)} // Remove AI check
     >
       <img 
         src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
-        alt="Player avatar"
-        className="w-8 h-8 rounded-full border border-gray-600 mr-2"
+        alt={name}
+        className="w-8 h-8 rounded-full"
       />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{name}</p>
-        {isAI && <p className="text-xs text-gray-400">AI Player</p>}
+        {/* Remove AI Player indicator */}
         {mutedPlayers.includes(player.id) && <p className="text-xs text-red-400">Muted</p>}
       </div>
       <div className="w-2 h-2 rounded-full ml-2" style={{

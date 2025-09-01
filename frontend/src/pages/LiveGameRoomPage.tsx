@@ -263,8 +263,8 @@ export const LiveGameRoomPage = () => {
   // Player management functions
   const handlePlayerClick = (player: Player) => {
     if (isHost) {
-      // Allow host to click on themselves or other non-AI players
-      if (player.id === user?.id || (player.id !== user?.id && !player.id.startsWith('ai-'))) {
+      // Allow host to click on any player (remove AI check)
+      if (player.id === user?.id || player.id !== user?.id) {
         setSelectedPlayer(player);
         setShowPlayerModal(true);
       }
@@ -901,8 +901,7 @@ export const LiveGameRoomPage = () => {
     if (
       socket &&
       gameState?.currentTurn === user?.id &&
-      gameState.diceValue === 0 &&
-      !gameState.currentTurn.startsWith("ai-")
+      gameState.diceValue === 0
     ) {
       socket.emit("rollDice", { roomId, playerId: user!.id });
     }
