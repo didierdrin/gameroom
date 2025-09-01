@@ -22,7 +22,7 @@ export class UserController {
     }
 
     return {
-      id: user._id,  // Changed from _id to id to match frontend expectations
+      id: (user as any).id, // Cast to access Mongoose virtuals
       username: user.username,
       createdAt: user.createdAt,
     };
@@ -105,7 +105,7 @@ export class UserController {
         
         for (const userData of sampleUsers) {
           const user = await this.userService.create({ username: userData.username });
-          await this.userService.updateGameStats(user._id.toString(), 'trivia', userData.totalScore, true);
+          await this.userService.updateGameStats((user as any).id, 'trivia', userData.totalScore, true);
         }
       }
       

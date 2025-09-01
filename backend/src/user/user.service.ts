@@ -17,21 +17,9 @@ export class UserService {
     @InjectModel(Counter.name) private counterModel: Model<CounterDocument>,
   ) {}
 
-  private async getNextUserId(): Promise<number> {
-    const counter = await this.counterModel.findOneAndUpdate(
-      { name: 'userId' },
-      { $inc: { value: 1 } },
-      { new: true, upsert: true }
-    );
-    return counter.value;
-  }
-
   async create(userData: { username: string; email?: string; password?: string }): Promise<User> {
-    const userId = await this.getNextUserId();
-    console.log('Creating user with ID:', userId); // Debug log
-    
+    // Remove manual _id assignment - let MongoDB generate ObjectId automatically
     const user = new this.userModel({
-      _id: userId,
       ...userData
     });
     

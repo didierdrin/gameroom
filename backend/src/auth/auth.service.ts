@@ -44,11 +44,11 @@ export class AuthService {
         username,
         email,
         password: hashedPassword,
-      });
+      }) as any; // Quick fix
       console.log('User created successfully:', user._id);
 
       // Generate JWT token
-      const payload = { sub: user._id, username: user.username, email: user.email };
+      const payload = { sub: user.id, username: user.username, email: user.email };
       const token = this.jwtService.sign(payload);
       console.log('JWT token generated successfully');
 

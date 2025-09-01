@@ -5,8 +5,8 @@ import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class User {
-  // Explicitly define _id property for TypeScript
-  _id: Types.ObjectId;
+  // Remove explicit _id property - let Mongoose handle it
+  // _id: Types.ObjectId;
 
   @Prop({ required: true, unique: true })
   username: string;
