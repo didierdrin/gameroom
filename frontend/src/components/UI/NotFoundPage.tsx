@@ -4,7 +4,7 @@ import { Home, ArrowLeft, GamepadIcon } from 'lucide-react';
 
 export const NotFoundPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 flex items-center justify-center px-4">
+    <div className="min-h-screen w-full bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
         {/* Animated 404 */}
         <div className="mb-8">

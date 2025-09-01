@@ -52,8 +52,9 @@ class UsernameResolver {
       const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userId}`);
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.data?.username) {
-          return data.data.username;
+        // Fix: Change from data.data?.username to data.username
+        if (data.success && data.username) {
+          return data.username;
         }
       }
       throw new Error('Failed to fetch username');
