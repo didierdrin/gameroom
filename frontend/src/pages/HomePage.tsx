@@ -269,7 +269,17 @@ export const HomePage = () => {
       return;
     }
 
-    // Open modal instead of directly joining
+    // Check if current user is the host of this room
+    const isCurrentUserHost = String(user.id) === String(gameRoom.host);
+    
+    if (isCurrentUserHost) {
+      // Host should directly navigate to their room
+      console.log(`Host ${user.username} joining their own room ${gameRoom.id}`);
+      navigate(`/game-room/${gameRoom.id}`);
+      return;
+    }
+
+    // For non-hosts, open modal to choose player/spectator
     setSelectedGameRoom(gameRoom);
     setIsJoinModalOpen(true);
   };

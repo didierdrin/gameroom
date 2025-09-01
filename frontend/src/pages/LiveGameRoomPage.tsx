@@ -587,7 +587,7 @@ export const LiveGameRoomPage = () => {
       });
       setPlayerIdToUsername((prev) => ({
         ...prev,
-        [user.id]: user.username,
+        [String(user.id)]: user.username,
       }));
     }
 
@@ -596,6 +596,7 @@ export const LiveGameRoomPage = () => {
         players: newGameState.players.map((p) => ({ id: p.id, name: p.name })),
         currentPlayer: newGameState.currentPlayer,
         currentTurn: newGameState.currentTurn,
+        host: newGameState.host, // Add this log
       });
       const updatedPlayers = newGameState.players.map((p) => ({
         ...p,
@@ -606,6 +607,7 @@ export const LiveGameRoomPage = () => {
         ...newGameState,
         coins: newGameState.coins || prev.coins,
         players: updatedPlayers,
+        host: newGameState.host || prev.host, // Preserve host if not in new state
       }));
       setPlayers(updatedPlayers);
     };
@@ -810,10 +812,15 @@ export const LiveGameRoomPage = () => {
   }, [socket, roomId]);
 
   useEffect(() => {
-    if (user && gameState?.host) {
+    if (user?.id && gameState?.host) {
       setIsHost(String(user.id) === String(gameState.host));
+    } else if (user?.id && !gameState?.host) {
+      // If gameState.host is not available, check if user is host from roomInfo
+      if (roomInfo?.host) {
+        setIsHost(String(user.id) === String(roomInfo.host));
+      }
     }
-  }, [user, gameState?.host]);
+  }, [user?.id, gameState?.host, roomInfo?.host]);
 
   useEffect(() => {
     return () => {
@@ -855,7 +862,7 @@ export const LiveGameRoomPage = () => {
   };
 
   const handleKahootAnswerAction = (answerIndex: number) => {
-    if (socket && gameState?.kahootState?.answers[user!.id] === null) {
+    if (socket && gameState?.kahootState?.answers[String(user!.id)] === null) {
       socket.emit("submitKahootAnswer", {
         roomId,
         playerId: user!.id,
@@ -957,7 +964,7 @@ export const LiveGameRoomPage = () => {
             <div>
               <LudoGame
                 gameState={gameState}
-                currentPlayerId={user!.id}
+                currentPlayerId={String(user!.id)}
                 onRollDice={handleRollDice}
                 onMoveCoin={handleMoveCoin}
                 onStartGame={handleStartGame}
@@ -983,7 +990,7 @@ export const LiveGameRoomPage = () => {
             <TriviaGame
               socket={socket}
               roomId={roomId!}
-              currentPlayer={user!.id}
+              currentPlayer={String(user!.id)}
               gameState={gameState}
             />
           );
@@ -992,7 +999,7 @@ export const LiveGameRoomPage = () => {
             <ChessGame
               socket={socket}
               roomId={roomId!}
-              currentPlayer={user!.id}
+              currentPlayer={String(user!.id)}
               gameState={gameState}
               onChessMove={handleChessMoveAction}
             />
@@ -1001,7 +1008,7 @@ export const LiveGameRoomPage = () => {
           return renderUnoGame({
             socket,
             roomId: roomId!,
-            currentPlayer: user!.id,
+            currentPlayer: String(user!.id),
             gameState,
           });
         case "kahoot":
@@ -1009,7 +1016,7 @@ export const LiveGameRoomPage = () => {
             <KahootGame
               socket={socket}
               roomId={roomId!}
-              currentPlayer={user!.id}
+              currentPlayer={String(user!.id)}
               gameState={gameState}
             />
           );
@@ -1017,7 +1024,7 @@ export const LiveGameRoomPage = () => {
           return renderPictionaryGame({
             socket,
             roomId: roomId!,
-            currentPlayer: user!.id,
+            currentPlayer: String(user!.id),
             gameState,
           });
         default:
@@ -1156,7 +1163,7 @@ export const LiveGameRoomPage = () => {
         {showPlayers && (
           <PlayerList
             players={players}
-            currentPlayerId={user!.id}
+            currentPlayerId={String(user!.id)}
             currentTurn={gameState?.currentTurn}
             isHost={isHost}
             onPlayerClick={handlePlayerClick}
@@ -1172,7 +1179,7 @@ export const LiveGameRoomPage = () => {
             <Chat
               messages={messages}
               onSendMessage={sendMessage}
-              currentPlayerId={user!.id}
+              currentPlayerId={String(user!.id)}
               playerIdToUsername={playerIdToUsername}
             />
             <button
