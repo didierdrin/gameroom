@@ -596,20 +596,39 @@ export const LiveGameRoomPage = () => {
         players: newGameState.players.map((p) => ({ id: p.id, name: p.name })),
         currentPlayer: newGameState.currentPlayer,
         currentTurn: newGameState.currentTurn,
-        host: newGameState.host, // Add this log
+        host: newGameState.host,
       });
+      
       const updatedPlayers = newGameState.players.map((p) => ({
         ...p,
-        name: playerIdToUsername[p.id] || p.name || p.id, // Use playerIdToUsername instead of playerNameMapRef.current
+        name: playerIdToUsername[p.id] || p.name || p.id,
       }));
+      
       setGameState((prev) => ({
         ...prev,
         ...newGameState,
         coins: newGameState.coins || prev.coins,
         players: updatedPlayers,
-        host: newGameState.host || prev.host, // Preserve host if not in new state
+        host: newGameState.host || prev.host,
       }));
-      setPlayers(updatedPlayers);
+      
+      // Fix: Merge players instead of completely replacing them
+      setPlayers((prevPlayers) => {
+        // Create a map of existing players
+        const existingPlayersMap = new Map(prevPlayers.map(p => [p.id, p]));
+        
+        // Update existing players or add new ones from game state
+        updatedPlayers.forEach(player => {
+          existingPlayersMap.set(player.id, {
+            ...existingPlayersMap.get(player.id),
+            ...player,
+            name: playerIdToUsername[player.id] || player.name || player.id,
+          });
+        });
+        
+        // Convert back to array
+        return Array.from(existingPlayersMap.values());
+      });
     };
 
     const handlePlayerJoined = (data: any) => {

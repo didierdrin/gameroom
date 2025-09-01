@@ -174,7 +174,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
       isPrivate: privacy === 'private' || privacy === 'inviteOnly',
       // isInviteOnly: privacy === 'inviteOnly',
       password: privacy === 'private' ? password : undefined,
-      hostId: user.id, 
+      hostId: String(user.id), 
       hostName: user.username,
       scheduledTimeCombined,
       description: description.trim() || undefined,

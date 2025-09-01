@@ -278,7 +278,7 @@ export const ProfilePage = () => {
         // User not found in leaderboard, create a minimal profile
         console.log('User not found in leaderboard, creating minimal profile');
         setUserData({
-          _id: authUser.id,
+          _id: String(authUser.id),
           username: authUser.username,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -376,7 +376,7 @@ export const ProfilePage = () => {
       
       // Set fallback data
       setUserData({
-        _id: authUser.id,
+        _id: String(authUser.id),
         username: authUser.username,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

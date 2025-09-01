@@ -3,6 +3,7 @@ import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, Conne
 import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
+import { UserService } from '../user/user.service';
 
 // @WebSocketGateway({ cors: { origin: 'https://alu-globe-gameroom.onrender.com', credentials: true } })
 @WebSocketGateway({ 
@@ -22,7 +23,10 @@ import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game
 export class GameGateway {
   @WebSocketServer() server: Server;
   private connectedSockets = new Map<string, Socket>();
-  constructor(private readonly gameService: GameService) {}
+  constructor(
+    private readonly gameService: GameService,
+    private readonly userService: UserService
+  ) {}
 
   afterInit() {
     this.gameService.setServer(this.server);
@@ -538,6 +542,50 @@ async handleRestartGame(@MessageBody() data: { roomId: string; hostId: string },
   } catch (error) {
     console.error('Restart game error:', error.message);
     client.emit('error', { message: error.message, type: 'restartGameError' });
+  }
+}
+
+@SubscribeMessage('getRoomInfo')
+async handleGetRoomInfo(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
+  try {
+    const room = await this.gameService.getGameRoomById(data.roomId);
+    if (!room) {
+      client.emit('error', { message: 'Room not found', type: 'roomInfoError' });
+      return;
+    }
+
+    // Get host username
+    let hostName = room.host;
+    try {
+      const hostUser = await this.userService.findById(room.host);
+      if (hostUser && hostUser.username) {
+        hostName = hostUser.username;
+      }
+    } catch (error) {
+      console.log(`Could not fetch host username for ${room.host}`);
+    }
+
+    const roomInfo = {
+      id: room.roomId,
+      roomId: room.roomId,
+      name: room.name,
+      host: room.host,
+      hostName: hostName,
+      gameType: room.gameType,
+      maxPlayers: room.maxPlayers,
+      currentPlayers: room.currentPlayers,
+      isPrivate: room.isPrivate,
+      status: room.status,
+      playerIds: room.playerIds,
+      spectatorIds: room.spectatorIds,
+      createdAt: room.createdAt
+    };
+
+    console.log("Sending room info:", roomInfo);
+    client.emit('roomInfo', roomInfo);
+  } catch (error) {
+    console.error('Get room info error:', error.message);
+    client.emit('error', { message: error.message, type: 'roomInfoError' });
   }
 }
 
