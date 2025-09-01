@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 interface AuthUser {
-  id: string;
+  id?: string | number; // Add id field to match backend response
   username: string;
   email: string;
 }

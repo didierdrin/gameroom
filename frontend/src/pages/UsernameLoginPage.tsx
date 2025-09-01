@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 
 // Add this import to get the AuthUser type
 interface AuthUser {
-  id: string;
+  id?: string | number; // Add id field
   username: string;
   email: string;
 }
@@ -63,7 +63,7 @@ export const UsernameLoginPage: React.FC = () => {
       login(userData, token);
       navigate('/', { replace: true });
     } catch (err: any) {
-      console.error(err);
+      console.error('Signup error:', err);
       setError(err.response?.data?.message || 'Failed to create account. Try again.');
     } finally {
       setLoading(false);
