@@ -830,13 +830,57 @@ export const LiveGameRoomPage = () => {
     }
   }, [socket, roomId]);
 
+  // Add this useEffect to request room info via socket
   useEffect(() => {
-    if (user?.id && gameState?.host) {
-      setIsHost(String(user.id) === String(gameState.host));
-    } else if (user?.id && !gameState?.host) {
-      // If gameState.host is not available, check if user is host from roomInfo
+    if (socket && roomId && user?.id) {
+      // Request room information from the server
+      socket.emit('getRoomInfo', { roomId });
+      
+      // Handle room info response
+      const handleRoomInfo = (roomData: any) => {
+        console.log('Room info received:', roomData);
+        setRoomInfo(roomData);
+        
+        // Set isHost based on the room data
+        const userIsHost = String(user.id) === String(roomData.host);
+        setIsHost(userIsHost);
+        console.log('User is host check:', { 
+          userId: user.id, 
+          hostId: roomData.host, 
+          isHost: userIsHost 
+        });
+      };
+      
+      socket.on('roomInfo', handleRoomInfo);
+      
+      return () => {
+        socket.off('roomInfo', handleRoomInfo);
+      };
+    }
+  }, [socket, roomId, user?.id]);
+
+  // Update the existing isHost useEffect (around line 833-842)
+  useEffect(() => {
+    if (user?.id) {
+      // Priority 1: use roomInfo.host if available (most reliable)
       if (roomInfo?.host) {
-        setIsHost(String(user.id) === String(roomInfo.host));
+        const userIsHost = String(user.id) === String(roomInfo.host);
+        setIsHost(userIsHost);
+        console.log('Setting isHost from roomInfo:', { 
+          userId: user.id, 
+          hostId: roomInfo.host, 
+          isHost: userIsHost 
+        });
+      }
+      // Priority 2: use gameState.host as fallback
+      else if (gameState?.host) {
+        const userIsHost = String(user.id) === String(gameState.host);
+        setIsHost(userIsHost);
+        console.log('Setting isHost from gameState:', { 
+          userId: user.id, 
+          hostId: gameState.host, 
+          isHost: userIsHost 
+        });
       }
     }
   }, [user?.id, gameState?.host, roomInfo?.host]);
