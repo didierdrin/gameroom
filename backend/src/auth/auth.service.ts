@@ -16,42 +16,54 @@ export class AuthService {
   ) {}
 
   async signup(signupDto: SignupDto) {
-    const { username, email, password } = signupDto;
+    try {
+      const { username, email, password } = signupDto;
 
-    // Check if user already exists
-    const existingUserByUsername = await this.userService.findByUsername(username);
-    if (existingUserByUsername) {
-      throw new ConflictException('Username already exists');
+      console.log('Signup attempt for:', { username, email });
+
+      // Check if user already exists
+      const existingUserByUsername = await this.userService.findByUsername(username);
+      if (existingUserByUsername) {
+        console.log('Username already exists:', username);
+        throw new ConflictException('Username already exists');
+      }
+
+      const existingUserByEmail = await this.userService.findByEmail(email);
+      if (existingUserByEmail) {
+        console.log('Email already exists:', email);
+        throw new ConflictException('Email already exists');
+      }
+
+      // Hash password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+      console.log('Password hashed successfully');
+
+      // Create user
+      const user = await this.userService.create({
+        username,
+        email,
+        password: hashedPassword,
+      });
+      console.log('User created successfully:', user._id);
+
+      // Generate JWT token
+      const payload = { sub: user._id, username: user.username, email: user.email };
+      const token = this.jwtService.sign(payload);
+      console.log('JWT token generated successfully');
+
+      return {
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+        },
+        token,
+      };
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
     }
-
-    const existingUserByEmail = await this.userService.findByEmail(email);
-    if (existingUserByEmail) {
-      throw new ConflictException('Email already exists');
-    }
-
-    // Hash password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Create user
-    const user = await this.userService.create({
-      username,
-      email,
-      password: hashedPassword,
-    });
-
-    // Generate JWT token
-    const payload = { sub: user._id, username: user.username, email: user.email };
-    const token = this.jwtService.sign(payload);
-
-    return {
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-      },
-      token,
-    };
   }
 
   async login(loginDto: LoginDto) {
