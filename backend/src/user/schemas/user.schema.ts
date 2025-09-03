@@ -19,6 +19,7 @@ export class User {
 
   @Prop({ required: false })
   avatar: string;
+  
 
   @Prop({ type: Date, default: Date.now })
   createdAt: Date;

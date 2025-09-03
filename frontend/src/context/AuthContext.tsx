@@ -4,6 +4,7 @@ interface AuthUser {
   id?: string | number; // Add id field to match backend response
   username: string;
   email: string;
+  avatar?: string; 
 }
 
 interface AuthContextType {

@@ -721,14 +721,57 @@ export const ProfilePage = () => {
     setEditError(null);
   };
 
+  // const handleEditSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!userData) return;
+
+  //   setEditLoading(true);
+  //   setEditError(null);
+
+  //   try {
+  //     const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userData._id}/profile`, {
+  //       method: 'PUT',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         username: editForm.username,
+  //         email: editForm.email,
+  //         avatar: editForm.selectedAvatar
+  //       })
+  //     });
+
+  //     const result = await response.json();
+
+  //     if (result.success) {
+  //       setUserData(prev => prev ? { ...prev, username: editForm.username, avatar: editForm.selectedAvatar } : null);
+  //       updateUser({ username: editForm.username, email: editForm.email });
+  //       closeEditModal();
+  //       fetchUserProfile(false);
+  //     } else {
+  //       setEditError(result.error || 'Failed to update profile');
+  //     }
+  //   } catch (error: any) {
+  //     setEditError(error.message || 'Failed to update profile');
+  //   } finally {
+  //     setEditLoading(false);
+  //   }
+  // };
+
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userData) return;
-
+  
     setEditLoading(true);
     setEditError(null);
-
+  
     try {
+      console.log('Submitting edit form:', {
+        username: editForm.username,
+        email: editForm.email,
+        avatar: editForm.selectedAvatar
+      });
+  
       const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userData._id}/profile`, {
         method: 'PUT',
         headers: {
@@ -740,18 +783,33 @@ export const ProfilePage = () => {
           avatar: editForm.selectedAvatar
         })
       });
-
+  
       const result = await response.json();
-
+      console.log('Update profile response:', result);
+  
       if (result.success) {
-        setUserData(prev => prev ? { ...prev, username: editForm.username, avatar: editForm.selectedAvatar } : null);
-        updateUser({ username: editForm.username, email: editForm.email });
+        // Update local state with ALL the changes, including avatar
+        setUserData(prev => prev ? { 
+          ...prev, 
+          username: editForm.username, 
+          avatar: editForm.selectedAvatar  // Make sure avatar is updated in local state
+        } : null);
+        
+        // Update auth context
+        updateUser({ 
+          username: editForm.username, 
+          email: editForm.email,
+          avatar: editForm.selectedAvatar  // Include avatar in auth context update
+        });
+        
         closeEditModal();
+        // Refresh profile to ensure consistency
         fetchUserProfile(false);
       } else {
         setEditError(result.error || 'Failed to update profile');
       }
     } catch (error: any) {
+      console.error('Error updating profile:', error);
       setEditError(error.message || 'Failed to update profile');
     } finally {
       setEditLoading(false);

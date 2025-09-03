@@ -262,6 +262,18 @@ export const LiveGameRoomPage = () => {
     ],
   }), []);
 
+  // Helper function to check if current user is a playing participant (not host spectator)
+  const isActivePlayer = () => {
+    const actualGamePlayers = gameState.players.filter(p => p.id !== roomInfo?.host);
+    return actualGamePlayers.some(p => p.id === user?.id);
+  };
+
+  // Helper function to get actual game players (excluding host if they're spectating)
+  const getActiveGamePlayers = () => {
+    if (!roomInfo?.host) return gameState.players;
+    return gameState.players.filter(p => p.id !== roomInfo.host);
+  };
+
   // Player management functions
   const handlePlayerClick = (player: Player) => {
     if (isHost) {
@@ -917,7 +929,8 @@ export const LiveGameRoomPage = () => {
     if (
       socket &&
       gameState?.currentTurn === user?.id &&
-      gameState.diceValue === 0
+      gameState.diceValue === 0 &&
+      isActivePlayer()
     ) {
       socket.emit("rollDice", { roomId, playerId: user!.id });
     }
@@ -927,20 +940,22 @@ export const LiveGameRoomPage = () => {
     if (
       socket &&
       gameState?.currentTurn === user?.id &&
-      gameState.diceValue! > 0
+      gameState.diceValue! > 0 &&
+      isActivePlayer()
     ) {
       socket.emit("moveCoin", { roomId, playerId: user!.id, coinId });
     }
   };
 
   const handleChessMoveAction = (move: string) => {
-    if (socket && gameState?.currentTurn === user?.id) {
+    // Only allow chess move if user is an active playing participant (not host spectator)
+    if (socket && gameState?.currentTurn === user?.id && isActivePlayer()) {
       socket.emit("makeChessMove", { roomId, playerId: user!.id, move });
     }
   };
 
   const handleKahootAnswerAction = (answerIndex: number) => {
-    if (socket && gameState?.kahootState?.answers[String(user!.id)] === null) {
+    if (socket && gameState?.kahootState?.answers[String(user!.id)] === null && isActivePlayer()) {
       socket.emit("submitKahootAnswer", {
         roomId,
         playerId: user!.id,
@@ -1020,11 +1035,17 @@ export const LiveGameRoomPage = () => {
     }
 
     if (!gameState?.gameStarted) {
+      const activeGamePlayers = getActiveGamePlayers();
       return (
         <div className="flex flex-col items-center justify-center h-full">
           <h2 className="text-2xl mb-4">Waiting for players...</h2>
           <p className="text-gray-400 mb-4">
-            Players in room: {players.length}
+            Active players in room: {activeGamePlayers.length}
+            {isHost && !isActivePlayer() && (
+              <span className="block text-sm text-purple-400 mt-1">
+                (You are spectating as host)
+              </span>
+            )}
           </p>
           {isSocketConnected && (
             <div className="text-green-400 mb-4">✅ Connected to room</div>
@@ -1068,7 +1089,8 @@ export const LiveGameRoomPage = () => {
               />
               {gameState.currentTurn === user?.id &&
                 !gameState.diceRolled &&
-                !gameState.gameOver && (
+                !gameState.gameOver &&
+                isActivePlayer() && (
                   <div className="absolute bottom-4 right-4">
                     <Dice
                       value={gameState.diceValue || 0}
@@ -1077,51 +1099,125 @@ export const LiveGameRoomPage = () => {
                     />
                   </div>
                 )}
+              
+              {/* Show spectator message for host */}
+              {isHost && !isActivePlayer() && (
+                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <SettingsIcon size={16} className="text-purple-400" />
+                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                  </div>
+                </div>
+              )}
             </div>
           );
 
         case "trivia":
           return (
-            <TriviaGame
-              socket={socket}
-              roomId={roomId!}
-              currentPlayer={String(user!.id)}
-              gameState={gameState}
-            />
+            <div className="relative">
+              <TriviaGame
+                socket={socket}
+                roomId={roomId!}
+                currentPlayer={String(user!.id)}
+                gameState={gameState}
+              />
+              
+              {/* Show spectator message for host */}
+              {isHost && !isActivePlayer() && (
+                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <SettingsIcon size={16} className="text-purple-400" />
+                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                  </div>
+                </div>
+              )}
+            </div>
           );
         case "chess":
           return (
-            <ChessGame
-              socket={socket}
-              roomId={roomId!}
-              currentPlayer={String(user!.id)}
-              gameState={gameState}
-              onChessMove={handleChessMoveAction}
-            />
+            <div className="relative">
+              <ChessGame
+                socket={socket}
+                roomId={roomId!}
+                currentPlayer={String(user!.id)}
+                gameState={gameState}
+                onChessMove={handleChessMoveAction}
+              />
+              
+              {/* Show spectator message for host */}
+              {isHost && !isActivePlayer() && (
+                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <SettingsIcon size={16} className="text-purple-400" />
+                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                  </div>
+                </div>
+              )}
+            </div>
           );
         case "uno":
-          return renderUnoGame({
-            socket,
-            roomId: roomId!,
-            currentPlayer: String(user!.id),
-            gameState,
-          });
+          return (
+            <div className="relative">
+              {renderUnoGame({
+                socket,
+                roomId: roomId!,
+                currentPlayer: String(user!.id),
+                gameState,
+              })}
+              
+              {/* Show spectator message for host */}
+              {isHost && !isActivePlayer() && (
+                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <SettingsIcon size={16} className="text-purple-400" />
+                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
         case "kahoot":
           return (
-            <KahootGame
-              socket={socket}
-              roomId={roomId!}
-              currentPlayer={String(user!.id)}
-              gameState={gameState}
-            />
+            <div className="relative">
+              <KahootGame
+                socket={socket}
+                roomId={roomId!}
+                currentPlayer={String(user!.id)}
+                gameState={gameState}
+              />
+              
+              {/* Show spectator message for host */}
+              {isHost && !isActivePlayer() && (
+                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <SettingsIcon size={16} className="text-purple-400" />
+                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                  </div>
+                </div>
+              )}
+            </div>
           );
         case "pictionary":
-          return renderPictionaryGame({
-            socket,
-            roomId: roomId!,
-            currentPlayer: String(user!.id),
-            gameState,
-          });
+          return (
+            <div className="relative">
+              {renderPictionaryGame({
+                socket,
+                roomId: roomId!,
+                currentPlayer: String(user!.id),
+                gameState,
+              })}
+              
+              {/* Show spectator message for host */}
+              {isHost && !isActivePlayer() && (
+                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <SettingsIcon size={16} className="text-purple-400" />
+                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
         default:
           return (
             <div className="text-center text-gray-400">
