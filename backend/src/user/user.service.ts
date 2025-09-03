@@ -467,6 +467,7 @@ export class UserService {
         data: {
           _id: user._id,
           username: user.username,
+          avatar: user.avatar,
           createdAt: user.createdAt,
           // updatedAt: user.updatedAt,
           totalScore: gameStats.totalScore,
