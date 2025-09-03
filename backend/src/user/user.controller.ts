@@ -165,11 +165,12 @@ export class UserController {
     }
   }
 
+
   @Put(':id/profile')
-  async updateUserProfile(@Param('id') id: string, @Body() body: { username?: string; email?: string }) {
+  async updateUserProfile(@Param('id') id: string, @Body() body: { username?: string; email?: string; avatar?: string }) {
     try {
-      const { username, email } = body;
-      const result = await this.userService.updateProfile(id, { username, email });
+      const { username, email, avatar } = body;
+      const result = await this.userService.updateProfile(id, { username, email, avatar });
       return result;
     } catch (error) {
       console.error('Update user profile error:', error);
@@ -179,4 +180,6 @@ export class UserController {
       };
     }
   }
+
+
 }

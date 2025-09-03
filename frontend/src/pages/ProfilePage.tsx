@@ -56,6 +56,7 @@ interface UserProfileData {
   badges: Badge[];
   globalRank: string;
   winRate: number;
+  avatar?: string;
 }
 
 // Interface for gamerooms data structure
@@ -735,14 +736,15 @@ export const ProfilePage = () => {
         },
         body: JSON.stringify({
           username: editForm.username,
-          email: editForm.email
+          email: editForm.email,
+          avatar: editForm.selectedAvatar
         })
       });
 
       const result = await response.json();
 
       if (result.success) {
-        setUserData(prev => prev ? { ...prev, username: editForm.username } : null);
+        setUserData(prev => prev ? { ...prev, username: editForm.username, avatar: editForm.selectedAvatar } : null);
         updateUser({ username: editForm.username, email: editForm.email });
         closeEditModal();
         fetchUserProfile(false);
@@ -774,8 +776,9 @@ export const ProfilePage = () => {
             <div className="flex items-center space-x-6">
               {/* Current Avatar */}
               <div className="text-center">
+               
                 <img
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userData?.username || '')}`}
+                  src={`https://api.dicebear.com/7.x/${userData?.avatar || 'avataaars'}/svg?seed=${encodeURIComponent(userData?.username || '')}`}
                   alt="Current"
                   className="w-20 h-20 rounded-full border-2 border-purple-500"
                 />

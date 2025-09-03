@@ -245,6 +245,8 @@ export const LiveGameRoomPage = () => {
   const remoteAudioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const [inAudioCall, setInAudioCall] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [gameEnded, setGameEnded] = useState(false);
+  const [gameEndedMessage, setGameEndedMessage] = useState("");
 
   // TURN/STUN config
   const rtcConfig: RTCConfiguration = React.useMemo(() => ({
@@ -713,6 +715,18 @@ export const LiveGameRoomPage = () => {
       }
     };
 
+
+  const handleGameEnded = (data: any) => {
+    console.log("Game ended:", data);
+    setGameEnded(true);
+    setGameEndedMessage(data.message || 'The game has ended');
+    setGameState(prev => ({
+      ...prev,
+      gameStarted: false,
+      gameOver: true
+    }));
+  };
+
     // ... all other existing socket handlers remain the same
     const handleChatMessage = (data: any) => {
       console.log("Chat message received:", data);
@@ -804,6 +818,7 @@ export const LiveGameRoomPage = () => {
     socket.on("kahootAnswer", handleKahootAnswer);
     socket.on("gameOver", handleGameOver);
     socket.on("error", handleError);
+    socket.on("gameEnded", handleGameEnded);
 
     return () => {
       socket.off("gameState", handleGameState);
@@ -821,6 +836,7 @@ export const LiveGameRoomPage = () => {
       socket.off("gameOver", handleGameOver);
       socket.off("error", handleError);
       socket.off("chatHistory", handleChatHistory);
+      socket.off("gameEnded", handleGameEnded);
     };
   }, [socket, roomId, user, navigate, isSocketConnected]);
 
@@ -986,6 +1002,23 @@ export const LiveGameRoomPage = () => {
     if (!socket) return null;
 
     const lowerCaseGameType = gameType.toLowerCase();
+    
+    // Handle game ended state
+    if (gameEnded) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="text-center max-w-md mx-auto p-6 bg-gray-800 rounded-xl border border-gray-700">
+            <div className="mb-4">
+              <AlertTriangle size={48} className="text-red-400 mx-auto mb-3" />
+              <h2 className="text-2xl font-bold text-white mb-2">Game Ended</h2>
+              <p className="text-gray-300 mb-4">{gameEndedMessage}</p>
+            </div>
+            
+          </div>
+        </div>
+      );
+    }
+
     if (!gameState?.gameStarted) {
       return (
         <div className="flex flex-col items-center justify-center h-full">
