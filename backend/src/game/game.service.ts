@@ -187,6 +187,7 @@ export class GameService {
           winner: null,
           roomName,
           gameType: gameType.toLowerCase(),
+          host: hostId,
           triviaState: {
             currentQuestionIndex: 0,
             questions: triviaQuestions,
@@ -208,6 +209,7 @@ export class GameService {
           winner: null,
           roomName,
           gameType: gameType.toLowerCase(),
+          host: hostId,
           kahootState: {
             currentQuestionIndex: 0,
             questions,
@@ -228,6 +230,7 @@ export class GameService {
           winner: null,
           roomName,
           gameType: 'chess',
+          host: hostId,
           chessState: {
             board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', // Initial FEN
             moves: [],
@@ -263,6 +266,7 @@ export class GameService {
           winner: null,
           roomName,
           gameType: gameType.toLowerCase(),
+          host: hostId,
         };
         console.log('Ludo game initialized:', {
           roomId,
@@ -307,11 +311,47 @@ export class GameService {
         const playerIndex = gameState.players.length;
         
         if (gameRoom.gameType === 'chess') {
-          // ... existing chess logic ...
+          // Ensure game state has correct players for chess (max 2)
+          if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
+            const currentCount = gameState.players.length;
+            if (currentCount >= 2) {
+              // Should not happen because maxPlayers gate, but guard anyway
+              throw new Error('Chess game already has two players');
+            }
+            gameState.players.push({ id: joinGameDto.playerId, name: joinGameDto.playerName || joinGameDto.playerId, chessColor: currentCount === 0 ? 'white' : 'black' });
+          }
+          // Ensure currentTurn starts with white
+          const whitePlayer = gameState.players.find(p => p.chessColor === 'white');
+          if (whitePlayer) {
+            gameState.currentTurn = whitePlayer.id;
+            gameState.currentPlayer = gameState.players.findIndex(p => p.id === gameState.currentTurn);
+          }
+          await this.updateGameState(joinGameDto.roomId, gameState);
         } else if (gameRoom.gameType === 'ludo') {
-          // ... existing ludo logic ...
-        } else if (gameRoom.gameType === 'trivia') {
-          // ... existing trivia logic ...
+          // Assign next color and initialize coins
+          const nextColor = colors[playerIndex % colors.length];
+          if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
+            gameState.players.push({ id: joinGameDto.playerId, name: joinGameDto.playerName || joinGameDto.playerId, color: nextColor, coins: [0, 0, 0, 0] });
+          }
+          if (!gameState.coins) gameState.coins = {};
+          if (!gameState.coins[joinGameDto.playerId]) {
+            gameState.coins[joinGameDto.playerId] = [0, 0, 0, 0];
+          }
+          await this.updateGameState(joinGameDto.roomId, gameState);
+        } else if (gameRoom.gameType === 'trivia' || gameRoom.gameType === 'kahoot') {
+          // Add player with score and ensure answer maps include them
+          if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
+            gameState.players.push({ id: joinGameDto.playerId, name: joinGameDto.playerName || joinGameDto.playerId, score: 0 });
+          }
+          if (gameRoom.gameType === 'trivia' && gameState.triviaState) {
+            gameState.triviaState.scores[joinGameDto.playerId] = 0;
+            gameState.triviaState.answers[joinGameDto.playerId] = null;
+          }
+          if (gameRoom.gameType === 'kahoot' && gameState.kahootState) {
+            gameState.kahootState.scores[joinGameDto.playerId] = 0;
+            gameState.kahootState.answers[joinGameDto.playerId] = null;
+          }
+          await this.updateGameState(joinGameDto.roomId, gameState);
         }
         
       } else {
@@ -592,10 +632,19 @@ export class GameService {
     gameState.diceRolled = false;
     gameState.consecutiveSixes = 0;
     
-    // Move to next player
+    // Move to next eligible player (must be in room.playerIds)
+    const room = await this.getGameRoomById(roomId);
+    const eligibleIds = new Set(room?.playerIds || []);
     const previousPlayer = gameState.currentPlayer;
-    gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-    gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+    if (gameState.players.length > 0) {
+      let attempts = 0;
+      do {
+        gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+        attempts++;
+        if (attempts > gameState.players.length) break; // safety
+      } while (!eligibleIds.has(gameState.players[gameState.currentPlayer].id));
+      gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+    }
     
     console.log(`Turn passed from player ${previousPlayer} to player ${gameState.currentPlayer} (${gameState.currentTurn})`);
     
@@ -774,6 +823,17 @@ export class GameService {
             chessColor: p.chessColor 
           }))
         });
+      } else {
+        // Ensure starting turn is an eligible player present in room.playerIds
+        const roomEntity = await this.getGameRoomById(roomId);
+        const eligible = new Set(roomEntity?.playerIds || []);
+        if (!eligible.has(gameState.currentTurn) && gameState.players.length > 0) {
+          const nextIndex = gameState.players.findIndex(p => eligible.has(p.id));
+          if (nextIndex !== -1) {
+            gameState.currentPlayer = nextIndex;
+            gameState.currentTurn = gameState.players[nextIndex].id;
+          }
+        }
       }
   
       await this.updateGameState(roomId, gameState);

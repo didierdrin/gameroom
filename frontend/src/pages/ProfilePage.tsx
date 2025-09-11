@@ -772,6 +772,9 @@ export const ProfilePage = () => {
         avatar: editForm.selectedAvatar
       });
   
+      // Build a persistent avatar URL instead of passing the style name
+      const avatarUrl = `https://api.dicebear.com/7.x/${editForm.selectedAvatar}/svg?seed=${encodeURIComponent(editForm.username || '')}`;
+
       const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userData._id}/profile`, {
         method: 'PUT',
         headers: {
@@ -780,7 +783,7 @@ export const ProfilePage = () => {
         body: JSON.stringify({
           username: editForm.username,
           email: editForm.email,
-          avatar: editForm.selectedAvatar
+          avatar: avatarUrl
         })
       });
   
@@ -792,14 +795,14 @@ export const ProfilePage = () => {
         setUserData(prev => prev ? { 
           ...prev, 
           username: editForm.username, 
-          avatar: editForm.selectedAvatar  // Make sure avatar is updated in local state
+          avatar: avatarUrl
         } : null);
         
         // Update auth context
         updateUser({ 
           username: editForm.username, 
           email: editForm.email,
-          avatar: editForm.selectedAvatar  // Include avatar in auth context update
+          avatar: avatarUrl
         });
         
         closeEditModal();
@@ -836,7 +839,7 @@ export const ProfilePage = () => {
               <div className="text-center">
                
                 <img
-                  src={`https://api.dicebear.com/7.x/${userData?.avatar || 'avataaars'}/svg?seed=${encodeURIComponent(userData?.username || '')}`}
+                  src={userData?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userData?.username || '')}`}
                   alt="Current"
                   className="w-20 h-20 rounded-full border-2 border-purple-500"
                 />
@@ -973,7 +976,7 @@ export const ProfilePage = () => {
           <div className="flex flex-col md:flex-row items-center">
             <div className="relative">
               <img 
-                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userData.username)}`}
+                src={userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userData.username)}`}
                 alt={formattedName} 
                 className="w-24 h-24 rounded-full border-4 border-purple-500" 
               />
