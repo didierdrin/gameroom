@@ -24,7 +24,7 @@ interface GameRoom {
 export const MyGameRoomsPage: React.FC<{ onJoinRoom: (roomId: string) => void }> = ({ onJoinRoom }) => {
   const { user } = useAuth();
   const socket = useSocket();
-  const [activeTab, setActiveTab] = useState<'joined' | 'hosted' | 'past'>('joined');
+  const [activeTab, setActiveTab] = useState<'joined' | 'hosted'>('joined');
   const [hostedRooms, setHostedRooms] = useState<GameRoom[]>([]);
   const [joinedRooms, setJoinedRooms] = useState<GameRoom[]>([]);
   const [playerIdToUsername, setPlayerIdToUsername] = useState<Record<string, string>>({});
@@ -93,10 +93,10 @@ export const MyGameRoomsPage: React.FC<{ onJoinRoom: (roomId: string) => void }>
 
       {/* Tabs */}
       <div className="flex mb-6 border-b border-gray-700">
-        {['joined', 'hosted', 'past'].map((tab) => (
+        {['joined', 'hosted'].map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab as 'joined' | 'hosted' | 'past')}
+            onClick={() => setActiveTab(tab as 'joined' | 'hosted')}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === tab ? 'text-purple-400 border-b-2 border-purple-500' : 'text-gray-400 hover:text-gray-300'
             }`}
