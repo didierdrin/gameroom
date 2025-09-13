@@ -9,6 +9,7 @@ interface AuthUser {
   id?: string | number; // Add id field
   username: string;
   email: string;
+  avatar?: string;
 }
 
 export const UsernameLoginPage: React.FC = () => {

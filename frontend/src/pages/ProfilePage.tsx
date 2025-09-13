@@ -281,6 +281,7 @@ export const ProfilePage = () => {
         setUserData({
           _id: String(authUser.id),
           username: authUser.username,
+          avatar: authUser.avatar, // Include avatar from auth context
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           totalScore: 0,
@@ -352,6 +353,7 @@ export const ProfilePage = () => {
       setUserData({
         _id: correctUserId,
         username: currentUser.username,
+        avatar: profileData?.avatar || currentUser.avatar, // Use avatar from profile data or leaderboard data
         createdAt: profileData?.createdAt || new Date().toISOString(),
         updatedAt: profileData?.updatedAt || new Date().toISOString(),
         totalScore: currentUser.score || 0,
@@ -379,6 +381,7 @@ export const ProfilePage = () => {
       setUserData({
         _id: String(authUser.id),
         username: authUser.username,
+        avatar: authUser.avatar, // Include avatar from auth context
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         totalScore: 0,
@@ -720,43 +723,6 @@ export const ProfilePage = () => {
     setShowEditModal(false);
     setEditError(null);
   };
-
-  // const handleEditSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!userData) return;
-
-  //   setEditLoading(true);
-  //   setEditError(null);
-
-  //   try {
-  //     const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userData._id}/profile`, {
-  //       method: 'PUT',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify({
-  //         username: editForm.username,
-  //         email: editForm.email,
-  //         avatar: editForm.selectedAvatar
-  //       })
-  //     });
-
-  //     const result = await response.json();
-
-  //     if (result.success) {
-  //       setUserData(prev => prev ? { ...prev, username: editForm.username, avatar: editForm.selectedAvatar } : null);
-  //       updateUser({ username: editForm.username, email: editForm.email });
-  //       closeEditModal();
-  //       fetchUserProfile(false);
-  //     } else {
-  //       setEditError(result.error || 'Failed to update profile');
-  //     }
-  //   } catch (error: any) {
-  //     setEditError(error.message || 'Failed to update profile');
-  //   } finally {
-  //     setEditLoading(false);
-  //   }
-  // };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

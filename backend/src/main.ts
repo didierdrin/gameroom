@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { CustomIoAdapter } from './custom-adapter';
+import * as http from 'http';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -31,39 +32,37 @@ async function bootstrap() {
   console.log(`🚀 Application is running on: http://0.0.0.0:${port}`);
   console.log(`🔌 WebSocket server is ready`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  // Keep-alive function to prevent Render.com from sleeping
+  const keepAlive = () => {
+    // Ping the server every 5 minutes to keep it active
+    setInterval(() => {
+      const options = {
+        hostname: 'localhost',
+        port: port,
+        path: '/',
+        method: 'GET'
+      };
+
+      const req = http.request(options, (res) => {
+        console.log(`Keep-alive ping successful: ${res.statusCode}`);
+      });
+
+      req.on('error', (err) => {
+        console.log('Keep-alive ping failed:', err.message);
+      });
+
+      req.end();
+    }, 5 * 60 * 1000); // Every 5 minutes
+
+    console.log('Keep-alive function started - pinging every 5 minutes');
+  };
+
+  // Start keep-alive function
+  keepAlive();
 }
 
 bootstrap().catch((error) => {
   console.error('❌ Failed to start the application:', error);
   process.exit(1);
 });
-
-// // src/main.ts
-// import { NestFactory } from '@nestjs/core';
-// import { AppModule } from './app.module';
-// import { IoAdapter } from '@nestjs/platform-socket.io';
-
-// async function bootstrap() {
-//   const app = await NestFactory.create(AppModule);
-
-//   app.enableCors({
-//     // origin: '*',
-//     origin: [
-//       'http://localhost:5173',          // Vite dev server
-//       'https://alu-globe-gameroom-frontend.vercel.app', // Production frontend
-//       'https://alu-globe-gameroom.onrender.com' // Render.com backend (for Socket.IO)
-//     ],
-//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//     allowedHeaders: ['Content-Type', 'Authorization'],
-//     credentials: true,
-//   });
-
-//   // Enable WebSocket support
-//   app.useWebSocketAdapter(new IoAdapter(app));
-
-//   const port = process.env.PORT || 3000;
-//   await app.listen(port, '0.0.0.0');
-//   console.log(`Application is running on port ${port}`);
-// }
-// bootstrap();
-

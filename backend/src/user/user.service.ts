@@ -190,7 +190,13 @@ export class UserService {
           $project: {
             _id: 1,
             username: '$userInfo.username',
-            avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$userInfo.username'] },
+            avatar: {
+              $cond: [
+                { $ne: ['$userInfo.avatar', null] },
+                '$userInfo.avatar',
+                { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$userInfo.username'] }
+              ]
+            },
             score: { $multiply: ['$totalWins', 5] }, // 5 points per win
             gamesPlayed: '$totalGames',
             gamesWon: '$totalWins',
@@ -279,7 +285,13 @@ export class UserService {
           $project: {
             _id: '$userObjectId',
             username: '$userInfo.username',
-            avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$userInfo.username'] },
+            avatar: {
+              $cond: [
+                { $ne: ['$userInfo.avatar', null] },
+                '$userInfo.avatar',
+                { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$userInfo.username'] }
+              ]
+            },
             score: { $multiply: ['$totalWins', 5] }, // 5 points per win
             gamesPlayed: '$totalGames',
             gamesWon: '$totalWins',
@@ -329,7 +341,13 @@ export class UserService {
         projectStage = {
           _id: 1,
           username: 1,
-          avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$username'] },
+          avatar: {
+            $cond: [
+              { $ne: ['$avatar', null] },
+              '$avatar',
+              { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$username'] }
+            ]
+          },
           score: {
             $let: {
               vars: {
@@ -381,7 +399,13 @@ export class UserService {
         projectStage = {
           _id: 1,
           username: 1,
-          avatar: { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$username'] },
+          avatar: {
+            $cond: [
+              { $ne: ['$avatar', null] },
+              '$avatar',
+              { $concat: ['https://api.dicebear.com/7.x/avataaars/svg?seed=', '$username'] }
+            ]
+          },
           score: { $ifNull: ['$totalScore', 0] }, // Don't multiply by 5 here
           gamesPlayed: { $ifNull: ['$gamesPlayed', 0] },
           gamesWon: { $ifNull: ['$gamesWon', 0] },

@@ -57,6 +57,7 @@ export class AuthService {
           id: user._id,
           username: user.username,
           email: user.email,
+          avatar: user.avatar,
         },
         token,
       };
@@ -96,6 +97,7 @@ export class AuthService {
         id: user._id,
         username: user.username,
         email: user.email,
+        avatar: user.avatar,
       },
       token,
     };
