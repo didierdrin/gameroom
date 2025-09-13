@@ -6,6 +6,7 @@ export interface Player {
   coins?: number[];
   score?: number;
   chessColor?: 'white' | 'black';
+  isSpectator?: boolean;
 }
   
   export interface ChessState {
@@ -52,6 +53,7 @@ export interface Player {
     consecutiveSixes?: number;
     coins?: Record<string, number[]>;
     chessState?: ChessState;
+    chessPlayers?: { player1Id: string; player2Id: string };
     kahootState?: KahootState;
     host?: string;
   }

@@ -4,6 +4,7 @@ import { Player, GameState } from "../components/Ludo/types/game";
 import { LudoGame } from "../components/Ludo/LudoGame";
 import { TriviaGame } from "../components/Trivia/TriviaGame";
 import { ChessGame } from "../components/Chess/ChessGame";
+import { ChessPlayerSelectionModal } from "../components/Chess/ChessPlayerSelectionModal";
 import { renderUnoGame } from "../components/Uno/UnoGame";
 import KahootGame from "../components/Kahoot/KahootGame";
 import { renderPictionaryGame } from "../components/Pictionary/PictionaryGame";
@@ -227,6 +228,9 @@ export const LiveGameRoomPage = () => {
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [mutedPlayers, setMutedPlayers] = useState<string[]>([]);
+  
+  // Chess player selection modal state
+  const [showChessPlayerModal, setShowChessPlayerModal] = useState(false);
 
   // All other existing state variables and refs...
   const hasJoinedRef = useRef(false);
@@ -779,6 +783,16 @@ export const LiveGameRoomPage = () => {
       }));
     };
 
+    const handleChessPlayersSelected = (data: any) => {
+      console.log("Chess players selected:", data);
+      setGameState((prev) => ({
+        ...prev,
+        chessPlayers: data.chessPlayers,
+        currentTurn: data.currentTurn,
+        players: data.gameState.players,
+      }));
+    };
+
     const handleKahootAnswer = (data: any) => {
       console.log("Kahoot answer:", data);
       setGameState((prev: any) => ({
@@ -827,6 +841,7 @@ export const LiveGameRoomPage = () => {
     socket.on("diceRolled", handleDiceRolled);
     socket.on("coinMoved", handleCoinMoved);
     socket.on("chessMove", handleChessMove);
+    socket.on("chessPlayersSelected", handleChessPlayersSelected);
     socket.on("kahootAnswer", handleKahootAnswer);
     socket.on("gameOver", handleGameOver);
     socket.on("error", handleError);
@@ -844,6 +859,7 @@ export const LiveGameRoomPage = () => {
       socket.off("diceRolled", handleDiceRolled);
       socket.off("coinMoved", handleCoinMoved);
       socket.off("chessMove", handleChessMove);
+      socket.off("chessPlayersSelected", handleChessPlayersSelected);
       socket.off("kahootAnswer", handleKahootAnswer);
       socket.off("gameOver", handleGameOver);
       socket.off("error", handleError);
@@ -975,9 +991,31 @@ export const LiveGameRoomPage = () => {
       console.error("Socket not connected");
       return;
     }
+    
+    // For chess games, show player selection modal first
+    if (gameType === 'chess') {
+      setShowChessPlayerModal(true);
+      return;
+    }
+    
     if (socket && roomId) {
       socket.emit("startGame", { roomId });
     }
+  };
+
+  const handleChessPlayerSelection = (player1Id: string, player2Id: string) => {
+    if (!socket || !roomId || !user?.id) return;
+    
+    console.log("Selecting chess players:", { player1Id, player2Id });
+    socket.emit("selectChessPlayers", {
+      roomId,
+      hostId: user.id,
+      player1Id,
+      player2Id
+    });
+    
+    // Start the game after selecting players
+    socket.emit("startGame", { roomId });
   };
 
   const handleEndGame = () => {
@@ -1314,14 +1352,14 @@ export const LiveGameRoomPage = () => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <button
+          {/* <button
             onClick={() => setShowVideoGrid(!showVideoGrid)}
             className={`p-2 rounded-lg ${
               showVideoGrid ? "bg-purple-600" : "hover:bg-gray-700"
             }`}
           >
             <VideoIcon size={20} />
-          </button>
+          </button> */}
           <button
             onClick={() => toggleSidebar("players")}
             className={`p-2 rounded-lg ${
@@ -1431,6 +1469,19 @@ export const LiveGameRoomPage = () => {
         isMuted={selectedPlayer ? mutedPlayers.includes(selectedPlayer.id) : false}
         isHostSelf={isHost && selectedPlayer?.id === user?.id}
         onRestartGame={handleRestartGame}
+      />
+
+      {/* Chess Player Selection Modal */}
+      <ChessPlayerSelectionModal
+        isOpen={showChessPlayerModal}
+        onClose={() => setShowChessPlayerModal(false)}
+        onConfirm={handleChessPlayerSelection}
+        players={players.map(p => ({
+          id: p.id,
+          name: p.name || playerIdToUsername[p.id] || p.id,
+          isSpectator: p.isSpectator
+        }))}
+        hostId={user?.id?.toString() || ''}
       />
 
       {(showPlayers || showChat) && (

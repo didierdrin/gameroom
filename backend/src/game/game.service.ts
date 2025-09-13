@@ -38,6 +38,7 @@ interface Player {
   coins?: number[]; // Ludo-specific
   score?: number; // Trivia, Kahoot-specific
   chessColor?: 'white' | 'black'; // Chess-specific
+  isSpectator?: boolean; // Chess-specific spectator flag
 }
 
 interface ChessState {
@@ -80,6 +81,7 @@ interface GameState {
   coins?: Record<string, number[]>;
   // Chess-specific
   chessState?: ChessState;
+  chessPlayers?: { player1Id: string; player2Id: string }; // Track selected chess players
   // Kahoot-specific
   kahootState?: KahootState;
   triviaState?: TriviaState; 
@@ -869,6 +871,71 @@ export class GameService {
   }
 
 
+  async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
+    const gameState = await this.getGameState(data.roomId);
+    const room = await this.getGameRoomById(data.roomId);
+    
+    // Validate host
+    if (room?.host !== data.hostId) {
+      throw new Error('Only the host can select chess players');
+    }
+    
+    // Validate game type
+    if (gameState.gameType !== 'chess') {
+      throw new Error('This is not a chess game');
+    }
+    
+    // Validate players exist and are not spectators
+    const player1 = gameState.players.find(p => p.id === data.player1Id);
+    const player2 = gameState.players.find(p => p.id === data.player2Id);
+    
+    if (!player1 || !player2) {
+      throw new Error('One or both selected players not found');
+    }
+    
+    if (data.player1Id === data.player2Id) {
+      throw new Error('Cannot select the same player for both sides');
+    }
+    
+    // Update game state with selected chess players
+    gameState.chessPlayers = {
+      player1Id: data.player1Id,
+      player2Id: data.player2Id
+    };
+    
+    // Update player colors
+    gameState.players.forEach(player => {
+      if (player.id === data.player1Id) {
+        player.chessColor = 'white';
+      } else if (player.id === data.player2Id) {
+        player.chessColor = 'black';
+      } else {
+        // Mark other players as spectators
+        player.isSpectator = true;
+      }
+    });
+    
+    // Set initial turn to white (player1)
+    gameState.currentTurn = data.player1Id;
+    gameState.currentPlayer = gameState.players.findIndex(p => p.id === data.player1Id);
+    
+    await this.updateGameState(data.roomId, gameState);
+    
+    console.log('Chess players selected:', {
+      roomId: data.roomId,
+      player1: { id: data.player1Id, color: 'white' },
+      player2: { id: data.player2Id, color: 'black' },
+      currentTurn: gameState.currentTurn
+    });
+    
+    return { 
+      roomId: data.roomId, 
+      chessPlayers: gameState.chessPlayers,
+      currentTurn: gameState.currentTurn,
+      gameState 
+    };
+  }
+
   async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     const gameState = await this.getGameState(data.roomId);
     
@@ -877,12 +944,19 @@ export class GameService {
       currentTurn: gameState.currentTurn,
       move: data.move,
       gameStarted: gameState.gameStarted,
-      gameOver: gameState.gameOver
+      gameOver: gameState.gameOver,
+      chessPlayers: gameState.chessPlayers
     });
     
     // Validate it's the player's turn
     if (gameState.currentTurn !== data.playerId) {
       throw new Error('Not your turn');
+    }
+    
+    // Validate player is a chess player (not spectator)
+    if (!gameState.chessPlayers || 
+        (gameState.chessPlayers.player1Id !== data.playerId && gameState.chessPlayers.player2Id !== data.playerId)) {
+      throw new Error('Only selected chess players can make moves');
     }
   
     try {
@@ -912,10 +986,14 @@ export class GameService {
         await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
         await this.saveGameSession(data.roomId, gameState);
       } else {
-        // Switch turns only if game isn't over
-        const currentPlayerIndex = gameState.players.findIndex(p => p.id === data.playerId);
-        gameState.currentPlayer = (currentPlayerIndex + 1) % gameState.players.length;
-        gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+        // Switch turns only between the two chess players
+        if (gameState.chessPlayers) {
+          const nextPlayerId = gameState.chessPlayers.player1Id === data.playerId 
+            ? gameState.chessPlayers.player2Id 
+            : gameState.chessPlayers.player1Id;
+          gameState.currentTurn = nextPlayerId;
+          gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayerId);
+        }
       }
   
       await this.updateGameState(data.roomId, gameState);
@@ -925,10 +1003,7 @@ export class GameService {
         newTurn: gameState.currentTurn,
         gameOver: gameState.gameOver,
         winner: gameState.winner,
-        players: gameState.players.map((p: any) => ({ 
-          id: p.id, 
-          chessColor: p.chessColor 
-        }))
+        chessPlayers: gameState.chessPlayers
       });
       
       return { roomId: data.roomId, move: move.san, gameState };

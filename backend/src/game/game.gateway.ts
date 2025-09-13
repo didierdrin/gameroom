@@ -271,6 +271,24 @@ export class GameGateway {
     }
   }
 
+  @SubscribeMessage('selectChessPlayers')
+  async handleSelectChessPlayers(@MessageBody() data: { roomId: string; hostId: string; player1Id: string; player2Id: string }, @ConnectedSocket() client: Socket) {
+    try {
+      console.log('Selecting chess players:', data);
+      const result = await this.gameService.selectChessPlayers(data);
+      this.server.to(data.roomId).emit('chessPlayersSelected', result);
+      const gameState = await this.gameService.getGameState(data.roomId);
+      this.server.to(data.roomId).emit('gameState', gameState);
+      console.log('Chess players selected, new game state:', {
+        chessPlayers: result.chessPlayers,
+        currentTurn: gameState.currentTurn
+      });
+    } catch (error) {
+      console.error('Select chess players error:', error.message);
+      client.emit('error', { message: error.message, type: 'selectChessPlayersError' });
+    }
+  }
+
   @SubscribeMessage('makeChessMove')
   async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; move: string }, @ConnectedSocket() client: Socket) {
     try {
