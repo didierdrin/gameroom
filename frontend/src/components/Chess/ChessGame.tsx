@@ -106,80 +106,79 @@ useEffect(() => {
   }
 }, [gameState.chessState?.board, gameState.currentTurn]);
 
-  // // Update your handleMove to use localGameState
-  const handleMove = ({ sourceSquare, targetSquare }: { 
-    sourceSquare: string; 
-    targetSquare: string 
-  }) => {
-    try {
-      // Check if it's the player's turn
-      if (gameState.currentTurn !== currentPlayer) {
-        console.log("Not your turn");
-        return null;
-      }
-  
-      // Check if the game is over
-      if (gameState.gameOver) {
-        console.log("Game is over");
-        return null;
-      }
-  
-      // Check if player is a selected chess player
-      if (gameState.chessPlayers) {
-        const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
-                             gameState.chessPlayers.player2Id === currentPlayer;
-        if (!isChessPlayer) {
-          console.log("Only selected chess players can make moves");
-          return null;
-        }
-      }
-  
-      const player = gameState.players.find((p: any) => p.id === currentPlayer);
-      
-      // IMPORTANT: Load the current board state from gameState before making the move
-      // This ensures the local chess.js instance matches the server state
-      if (gameState?.chessState?.board) {
-        try {
-          game.load(gameState.chessState.board);
-        } catch (e) {
-          console.error('Failed to load chess position:', e);
-          return null;
-        }
-      }
-  
-      const moveColor = game.turn();
-      
-      // Validate player color matches current turn
-      if ((moveColor === 'w' && player?.chessColor !== 'white') || 
-          (moveColor === 'b' && player?.chessColor !== 'black')) {
-        console.log("Not your color's turn");
-        console.log("Current chess.js turn:", moveColor);
-        console.log("Player color:", player?.chessColor);
-        return null;
-      }
-  
-      // Try to make the move
-      const move = game.move({
-        from: sourceSquare,
-        to: targetSquare,
-        promotion: 'q',
-      });
-  
-      if (move) {
-        // Update local state immediately for responsive UI
-        setFen(game.fen());
-        
-        // Send move to server
-        onChessMove(`${sourceSquare}${targetSquare}`);
-        
-        return move;
-      }
-    } catch (e) {
-      console.error('Invalid move:', e);
+
+const handleMove = ({ sourceSquare, targetSquare }: { 
+  sourceSquare: string; 
+  targetSquare: string 
+}) => {
+  try {
+    // Check if it's the player's turn
+    if (gameState.currentTurn !== currentPlayer) {
+      console.log("Not your turn");
       return null;
     }
+
+    // Check if the game is over
+    if (gameState.gameOver) {
+      console.log("Game is over");
+      return null;
+    }
+
+    // Check if player is a selected chess player
+    if (gameState.chessPlayers) {
+      const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
+                           gameState.chessPlayers.player2Id === currentPlayer;
+      if (!isChessPlayer) {
+        console.log("Only selected chess players can make moves");
+        return null;
+      }
+    }
+
+    const player = gameState.players.find((p: any) => p.id === currentPlayer);
+    
+    // IMPORTANT: Load the current board state from gameState before making the move
+    if (gameState?.chessState?.board) {
+      try {
+        game.load(gameState.chessState.board);
+      } catch (e) {
+        console.error('Failed to load chess position:', e);
+        return null;
+      }
+    }
+
+    const moveColor = game.turn();
+    
+    // Validate player color matches current turn
+    if ((moveColor === 'w' && player?.chessColor !== 'white') || 
+        (moveColor === 'b' && player?.chessColor !== 'black')) {
+      console.log("Not your color's turn");
+      console.log("Current chess.js turn:", moveColor);
+      console.log("Player color:", player?.chessColor);
+      return null;
+    }
+
+    // Try to make the move
+    const move = game.move({
+      from: sourceSquare,
+      to: targetSquare,
+      promotion: 'q',
+    });
+
+    if (move) {
+      // Update local state immediately for responsive UI
+      setFen(game.fen());
+      
+      // Send move to server
+      onChessMove(`${sourceSquare}${targetSquare}`);
+      
+      return move;
+    }
+  } catch (e) {
+    console.error('Invalid move:', e);
     return null;
-  };
+  }
+  return null;
+};
 
 
   // const handleMove = ({ sourceSquare, targetSquare }: { 

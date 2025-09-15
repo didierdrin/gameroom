@@ -1481,7 +1481,8 @@ export const LiveGameRoomPage = () => {
           name: p.name || playerIdToUsername[p.id] || p.id,
           isSpectator: p.isSpectator
         }))}
-        hostId={user?.id?.toString() || ''}
+        hostId={user?.id?.toString() || ''}  
+        playerIdToUsername={playerIdToUsername}
       />
 
       {(showPlayers || showChat) && (
