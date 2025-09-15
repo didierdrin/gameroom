@@ -115,79 +115,68 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     }
   }, [gameState.gameOver, showFireworks]);
 
-  // Debug logging
-  useEffect(() => {
-    const isMyTurn = gameState.currentTurn === currentPlayer;
-    const canIDrag = isMyTurn && 
-                    !gameState.gameOver &&
-                    (!gameState.chessPlayers || 
-                     gameState.chessPlayers.player1Id === currentPlayer || 
-                     gameState.chessPlayers.player2Id === currentPlayer);
+  // Helper function to get player's assigned color
+  const getPlayerColor = (): 'w' | 'b' | null => {
+    if (!gameState?.chessPlayers) return null;
     
-    console.log('ChessGame Debug:', {
-      currentTurn: gameState.currentTurn,
-      currentPlayer,
-      gameOver: gameState.gameOver,
-      playerColor,
-      isMyTurn,
-      draggable: canIDrag,
-      chessPlayers: gameState.chessPlayers,
-      players: gameState.players.map((p: any) => ({ id: p.id, chessColor: p.chessColor }))
-    });
-  }, [gameState.currentTurn, currentPlayer, gameState.gameOver, playerColor, gameState.players, gameState.chessPlayers]);
+    if (gameState.chessPlayers.player1Id === currentPlayer) return 'w';
+    if (gameState.chessPlayers.player2Id === currentPlayer) return 'b';
+    return null;
+  };
 
-  // Add this useEffect to debug turn changes
-  useEffect(() => {
-    console.log('Turn changed:', {
-      currentTurn: gameState.currentTurn,
-      currentPlayer: currentPlayer,
-      isMyTurn: gameState.currentTurn === currentPlayer,
-      chessPlayers: gameState.chessPlayers
-    });
-  }, [gameState.currentTurn, currentPlayer, gameState.chessPlayers]);
+  // Comprehensive move validation function
+  const canMakeMove = (sourceSquare: string, targetSquare: string): boolean => {
+    // Check if game has started
+    if (!gameState.gameStarted) {
+      console.log('Game has not started yet');
+      return false;
+    }
+
+    // Check if game is over
+    if (gameState.gameOver) {
+      console.log('Game is over');
+      return false;
+    }
+
+    // Check if player is a selected chess player
+    if (gameState.chessPlayers) {
+      const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
+                           gameState.chessPlayers.player2Id === currentPlayer;
+      if (!isChessPlayer) {
+        console.log('Only selected chess players can make moves');
+        return false;
+      }
+    }
+
+    // Get the current chess.js turn and player's color
+    const chessJSTurn = game.turn(); // 'w' or 'b'
+    const playerChessColor = getPlayerColor();
+    
+    // Check if it's actually the player's turn according to chess.js
+    if (playerChessColor !== chessJSTurn) {
+      console.log(`Not your turn according to chess position! Chess.js turn: ${chessJSTurn}, Your color: ${playerChessColor}`);
+      return false;
+    }
+
+    // Additional backend turn validation (though this should match chess.js after the fix)
+    if (gameState.currentTurn !== currentPlayer) {
+      console.log('Not your turn according to backend:', {
+        currentTurn: gameState.currentTurn,
+        currentPlayer: currentPlayer
+      });
+      return false;
+    }
+
+    return true;
+  };
 
   const handleMove = ({ sourceSquare, targetSquare }: { 
     sourceSquare: string; 
     targetSquare: string 
   }) => {
     try {
-      // Check if it's the player's turn
-      if (gameState.currentTurn !== currentPlayer) {
-        console.log("Not your turn - currentTurn:", gameState.currentTurn, "currentPlayer:", currentPlayer);
-        return null;
-      }
-
-      // Check if the game is over
-      if (gameState.gameOver) {
-        console.log("Game is over");
-        return null;
-      }
-
-      // Check if player is a selected chess player
-      if (gameState.chessPlayers) {
-        const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
-                             gameState.chessPlayers.player2Id === currentPlayer;
-        if (!isChessPlayer) {
-          console.log("Only selected chess players can make moves");
-          return null;
-        }
-        
-        // Additional validation: check if the player's assigned color matches the current chess turn
-        const chessJSTurn = game.turn(); // 'w' or 'b'
-        const expectedColor = chessJSTurn === 'w' ? 'white' : 'black';
-        const isPlayer1 = gameState.chessPlayers.player1Id === currentPlayer;
-        const isPlayer2 = gameState.chessPlayers.player2Id === currentPlayer;
-        
-        if (isPlayer1 && expectedColor !== 'white') {
-          console.log("Player 1 (white) trying to move on black's turn");
-          return null;
-        }
-        if (isPlayer2 && expectedColor !== 'black') {
-          console.log("Player 2 (black) trying to move on white's turn");
-          return null;
-        }
-      }
-
+      console.log(`Attempting move: ${sourceSquare} -> ${targetSquare}`);
+      
       // IMPORTANT: Load the current board state from gameState before making the move
       if (gameState?.chessState?.board) {
         try {
@@ -197,6 +186,11 @@ export const ChessGame: React.FC<GameRenderProps> = ({
           console.error('Failed to load chess position before move:', e);
           return null;
         }
+      }
+
+      // Use the comprehensive validation function
+      if (!canMakeMove(sourceSquare, targetSquare)) {
+        return null;
       }
 
       // Try to make the move
@@ -238,13 +232,44 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       return 'You are spectating this chess game';
     }
     
-    if (gameState.currentTurn === currentPlayer) {
+    // Use chess.js turn state as the source of truth
+    const chessJSTurn = game.turn();
+    const playerChessColor = getPlayerColor();
+    
+    if (playerChessColor === chessJSTurn) {
       return 'Your turn';
     } else {
-      // Find the name of the current turn player
-      const currentTurnPlayer = gameState.players.find((p: any) => p.id === gameState.currentTurn);
-      return `${currentTurnPlayer?.name || 'Opponent'}'s turn`;
+      // Find the opponent
+      let opponentId = '';
+      if (gameState.chessPlayers) {
+        if (currentPlayer === gameState.chessPlayers.player1Id) {
+          opponentId = gameState.chessPlayers.player2Id;
+        } else {
+          opponentId = gameState.chessPlayers.player1Id;
+        }
+      }
+      
+      const opponentPlayer = gameState.players.find((p: any) => p.id === opponentId);
+      return `${opponentPlayer?.name || 'Opponent'}'s turn`;
     }
+  };
+
+  // Determine if the board should be draggable
+  const isDraggable = (): boolean => {
+    if (!gameState.gameStarted || gameState.gameOver) return false;
+    
+    // Check if player is a chess player
+    if (gameState.chessPlayers) {
+      const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
+                           gameState.chessPlayers.player2Id === currentPlayer;
+      if (!isChessPlayer) return false;
+    }
+    
+    // Check if it's the player's turn according to chess.js
+    const chessJSTurn = game.turn();
+    const playerChessColor = getPlayerColor();
+    
+    return playerChessColor === chessJSTurn;
   };
 
   return (
@@ -258,13 +283,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
           position={fen}
           onDrop={handleMove}
           orientation={playerColor}
-          draggable={
-            gameState.currentTurn === currentPlayer && 
-            !gameState.gameOver &&
-            (!gameState.chessPlayers || 
-             gameState.chessPlayers.player1Id === currentPlayer || 
-             gameState.chessPlayers.player2Id === currentPlayer)
-          }
+          draggable={isDraggable()}
           boardStyle={{
             borderRadius: '8px',
             boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)',
@@ -291,9 +310,10 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         )}
         {/* Debug info - remove in production */}
         <div className="text-xs text-gray-600 mt-2 space-y-1">
-          <p>Current Turn: {gameState.currentTurn}</p>
-          <p>Current Player: {currentPlayer}</p>
-          <p>Chess.js Turn: {game.turn()}</p>
+          <p>Backend Turn: {gameState.currentTurn}</p>
+          <p>Chess.js Turn: {game.turn()} ({game.turn() === 'w' ? 'White' : 'Black'})</p>
+          <p>Your Color: {getPlayerColor() === 'w' ? 'White' : getPlayerColor() === 'b' ? 'Black' : 'Spectator'}</p>
+          <p>Can Move: {isDraggable() ? 'Yes' : 'No'}</p>
           {gameState.chessPlayers && (
             <>
               <p>Player 1 (White): {gameState.chessPlayers.player1Id}</p>
@@ -326,7 +346,6 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 //   gameState, 
 //   onChessMove 
 // }) => {
-//   // const [game, setGame] = useState(new Chess());
 //   const [game] = useState(() => new Chess());
 //   const [fen, setFen] = useState('start');
 //   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
@@ -344,9 +363,18 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 //       }
 //     }
 
-//     // Set player color
-//     const player = gameState.players.find((p: any) => p.id === currentPlayer);
-//     setPlayerColor(player?.chessColor || 'white');
+//     // Set player color based on chess player assignments
+//     if (gameState?.chessPlayers) {
+//       if (gameState.chessPlayers.player1Id === currentPlayer) {
+//         setPlayerColor('white');
+//       } else if (gameState.chessPlayers.player2Id === currentPlayer) {
+//         setPlayerColor('black');
+//       }
+//     } else {
+//       // Fallback to player object color if available
+//       const player = gameState.players.find((p: any) => p.id === currentPlayer);
+//       setPlayerColor(player?.chessColor || 'white');
+//     }
     
 //     // Update local game state
 //     setLocalGameState(gameState);
@@ -356,10 +384,10 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 //       currentTurn: gameState.currentTurn,
 //       currentPlayer,
 //       gameStarted: gameState.gameStarted,
-//       gameOver: gameState.gameOver
+//       gameOver: gameState.gameOver,
+//       chessPlayers: gameState.chessPlayers
 //     });
 //   }, [gameState, currentPlayer]);
-
 
 //   useEffect(() => {
 //     // Sync the local chess.js game with the server state
@@ -369,20 +397,44 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 //         setFen(game.fen());
         
 //         // Debug: Check if the turn is synchronized
-//         const moveColor = game.turn();
-//         const currentPlayerObj = gameState.players.find((p: any) => p.id === gameState.currentTurn);
+//         const chessJSTurn = game.turn(); // 'w' or 'b'
+//         const currentTurnPlayer = gameState.currentTurn;
+        
+//         // Determine what color should be playing based on chess.js
+//         const expectedColor = chessJSTurn === 'w' ? 'white' : 'black';
+        
+//         // Find which player should be playing this color
+//         let expectedPlayerId = null;
+//         if (gameState?.chessPlayers) {
+//           if (expectedColor === 'white') {
+//             expectedPlayerId = gameState.chessPlayers.player1Id;
+//           } else {
+//             expectedPlayerId = gameState.chessPlayers.player2Id;
+//           }
+//         }
+        
 //         console.log('Turn synchronization:', {
-//           chessJSTurn: moveColor,
-//           currentPlayer: currentPlayerObj?.id,
-//           currentPlayerColor: currentPlayerObj?.chessColor,
-//           shouldMatch: (moveColor === 'w' && currentPlayerObj?.chessColor === 'white') || 
-//                       (moveColor === 'b' && currentPlayerObj?.chessColor === 'black')
+//           chessJSTurn,
+//           expectedColor,
+//           expectedPlayerId,
+//           currentTurnPlayer,
+//           isSync: expectedPlayerId === currentTurnPlayer,
+//           chessPlayers: gameState.chessPlayers
 //         });
+        
+//         // If turns are out of sync, this indicates a server-side issue
+//         if (expectedPlayerId && expectedPlayerId !== currentTurnPlayer) {
+//           console.warn('Turn desynchronization detected!', {
+//             expected: expectedPlayerId,
+//             actual: currentTurnPlayer
+//           });
+//         }
+        
 //       } catch (e) {
 //         console.error('Failed to sync chess position:', e);
 //       }
 //     }
-//   }, [gameState.chessState?.board, gameState.currentTurn]);
+//   }, [gameState.chessState?.board, gameState.currentTurn, gameState.chessPlayers]);
 
 //   // Show fireworks when game ends
 //   useEffect(() => {
@@ -393,168 +445,153 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 
 //   // Debug logging
 //   useEffect(() => {
+//     const isMyTurn = gameState.currentTurn === currentPlayer;
+//     const canIDrag = isMyTurn && 
+//                     !gameState.gameOver &&
+//                     (!gameState.chessPlayers || 
+//                      gameState.chessPlayers.player1Id === currentPlayer || 
+//                      gameState.chessPlayers.player2Id === currentPlayer);
+    
 //     console.log('ChessGame Debug:', {
 //       currentTurn: gameState.currentTurn,
 //       currentPlayer,
 //       gameOver: gameState.gameOver,
 //       playerColor,
-//       draggable: gameState.currentTurn === currentPlayer && !gameState.gameOver,
+//       isMyTurn,
+//       draggable: canIDrag,
+//       chessPlayers: gameState.chessPlayers,
 //       players: gameState.players.map((p: any) => ({ id: p.id, chessColor: p.chessColor }))
 //     });
-//   }, [gameState.currentTurn, currentPlayer, gameState.gameOver, playerColor, gameState.players]);
-
+//   }, [gameState.currentTurn, currentPlayer, gameState.gameOver, playerColor, gameState.players, gameState.chessPlayers]);
 
 //   // Add this useEffect to debug turn changes
-// useEffect(() => {
-//   console.log('Turn changed:', {
-//     currentTurn: gameState.currentTurn,
-//     currentPlayer: currentPlayer,
-//     isMyTurn: gameState.currentTurn === currentPlayer,
-//     chessPlayers: gameState.chessPlayers
-//   });
-// }, [gameState.currentTurn, currentPlayer, gameState.chessPlayers]);
-
-
-// useEffect(() => {
-//   // Sync the local chess.js game with the server state
-//   if (gameState?.chessState?.board) {
-//     try {
-//       game.load(gameState.chessState.board);
-//       setFen(game.fen());
-      
-//       // Debug: Check if the turn is synchronized
-//       const moveColor = game.turn();
-//       const currentPlayerObj = gameState.players.find((p: any) => p.id === gameState.currentTurn);
-//       console.log('Turn synchronization:', {
-//         chessJSTurn: moveColor,
-//         currentPlayer: currentPlayerObj?.id,
-//         currentPlayerColor: currentPlayerObj?.chessColor,
-//         shouldMatch: (moveColor === 'w' && currentPlayerObj?.chessColor === 'white') || 
-//                     (moveColor === 'b' && currentPlayerObj?.chessColor === 'black')
-//       });
-//     } catch (e) {
-//       console.error('Failed to sync chess position:', e);
-//     }
-//   }
-// }, [gameState.chessState?.board, gameState.currentTurn]);
-
-// const handleMove = ({ sourceSquare, targetSquare }: { 
-//   sourceSquare: string; 
-//   targetSquare: string 
-// }) => {
-//   try {
-//     // Check if it's the player's turn
-//     if (gameState.currentTurn !== currentPlayer) {
-//       console.log("Not your turn");
-//       return null;
-//     }
-
-//     // Check if the game is over
-//     if (gameState.gameOver) {
-//       console.log("Game is over");
-//       return null;
-//     }
-
-//     // Check if player is a selected chess player
-//     if (gameState.chessPlayers) {
-//       const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
-//                            gameState.chessPlayers.player2Id === currentPlayer;
-//       if (!isChessPlayer) {
-//         console.log("Only selected chess players can make moves");
-//         return null;
-//       }
-//     }
-
-//     // IMPORTANT: Load the current board state from gameState before making the move
-//     if (gameState?.chessState?.board) {
-//       try {
-//         game.load(gameState.chessState.board);
-//         setFen(game.fen());
-//       } catch (e) {
-//         console.error('Failed to load chess position:', e);
-//         return null;
-//       }
-//     }
-
-//     // Try to make the move
-//     const move = game.move({
-//       from: sourceSquare,
-//       to: targetSquare,
-//       promotion: 'q',
+//   useEffect(() => {
+//     console.log('Turn changed:', {
+//       currentTurn: gameState.currentTurn,
+//       currentPlayer: currentPlayer,
+//       isMyTurn: gameState.currentTurn === currentPlayer,
+//       chessPlayers: gameState.chessPlayers
 //     });
+//   }, [gameState.currentTurn, currentPlayer, gameState.chessPlayers]);
 
-//     if (move) {
-//       // Update local state immediately for responsive UI
-//       setFen(game.fen());
-      
-//       // Send move to server
-//       onChessMove(`${sourceSquare}${targetSquare}`);
-      
-//       return move;
-//     }
-//   } catch (e) {
-//     console.error('Invalid move:', e);
-//     return null;
+
+//   // In your frontend chess component
+// const canMakeMove = (sourceSquare, targetSquare) => {
+//   // Check if it's actually the player's turn according to chess.js
+//   const currentTurnColor = game.turn();
+//   const playerColor = getPlayerColor(currentUserId);
+  
+//   if (currentTurnColor !== playerColor.charAt(0)) {
+//     console.log(`Not your turn! Chess.js turn: ${currentTurnColor}, Your color: ${playerColor}`);
+//     return false;
 //   }
-//   return null;
+  
+//   return true;
 // };
 
-//   // const handleMove = ({ sourceSquare, targetSquare }: { 
-//   //   sourceSquare: string; 
-//   //   targetSquare: string 
-//   // }) => {
-//   //   try {
-//   //     // Check if it's the player's turn
-//   //     if (gameState.currentTurn !== currentPlayer) {
-//   //       console.log("Not your turn");
-//   //       return null;
-//   //     }
-  
-//   //     // Check if the game is over
-//   //     if (gameState.gameOver) {
-//   //       console.log("Game is over");
-//   //       return null;
-//   //     }
 
-//   //     // Check if player is a selected chess player
-//   //     if (gameState.chessPlayers) {
-//   //       const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
-//   //                            gameState.chessPlayers.player2Id === currentPlayer;
-//   //       if (!isChessPlayer) {
-//   //         console.log("Only selected chess players can make moves");
-//   //         return null;
-//   //       }
-//   //     }
-  
-//   //     const player = gameState.players.find((p: any) => p.id === currentPlayer);
-//   //     const moveColor = game.turn();
-      
-//   //     // Validate player color matches current turn
-//   //     if ((moveColor === 'w' && player?.chessColor !== 'white') || 
-//   //         (moveColor === 'b' && player?.chessColor !== 'black')) {
-//   //       console.log("Not your color's turn");
-//   //       return null;
-//   //     }
-  
-//   //     // Try to make the move
-//   //     const move = game.move({
-//   //       from: sourceSquare,
-//   //       to: targetSquare,
-//   //       promotion: 'q',
-//   //     });
-  
-//   //     if (move) {
-//   //       // Update local state immediately for responsive UI
-//   //       setFen(game.fen());
+//   const handleMove = ({ sourceSquare, targetSquare }: { 
+//     sourceSquare: string; 
+//     targetSquare: string 
+//   }) => {
+//     try {
+//       // Check if it's the player's turn
+//       if (gameState.currentTurn !== currentPlayer) {
+//         console.log("Not your turn - currentTurn:", gameState.currentTurn, "currentPlayer:", currentPlayer);
+//         return null;
+//       }
+
+//       // Check if the game is over
+//       if (gameState.gameOver) {
+//         console.log("Game is over");
+//         return null;
+//       }
+
+//       // Check if player is a selected chess player
+//       if (gameState.chessPlayers) {
+//         const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
+//                              gameState.chessPlayers.player2Id === currentPlayer;
+//         if (!isChessPlayer) {
+//           console.log("Only selected chess players can make moves");
+//           return null;
+//         }
         
-//   //       // Send move to server
-//   //       onChessMove(`${sourceSquare}${targetSquare}`);
-//   //     }
-//   //   } catch (e) {
-//   //     console.error('Invalid move:', e);
-//   //     return null;
-//   //   }
-//   // };
+//         // Additional validation: check if the player's assigned color matches the current chess turn
+//         const chessJSTurn = game.turn(); // 'w' or 'b'
+//         const expectedColor = chessJSTurn === 'w' ? 'white' : 'black';
+//         const isPlayer1 = gameState.chessPlayers.player1Id === currentPlayer;
+//         const isPlayer2 = gameState.chessPlayers.player2Id === currentPlayer;
+        
+//         if (isPlayer1 && expectedColor !== 'white') {
+//           console.log("Player 1 (white) trying to move on black's turn");
+//           return null;
+//         }
+//         if (isPlayer2 && expectedColor !== 'black') {
+//           console.log("Player 2 (black) trying to move on white's turn");
+//           return null;
+//         }
+//       }
+
+//       // IMPORTANT: Load the current board state from gameState before making the move
+//       if (gameState?.chessState?.board) {
+//         try {
+//           game.load(gameState.chessState.board);
+//           setFen(game.fen());
+//         } catch (e) {
+//           console.error('Failed to load chess position before move:', e);
+//           return null;
+//         }
+//       }
+
+//       // Try to make the move
+//       const move = game.move({
+//         from: sourceSquare,
+//         to: targetSquare,
+//         promotion: 'q',
+//       });
+
+//       if (move) {
+//         console.log('Valid move made:', move);
+        
+//         // Update local state immediately for responsive UI
+//         setFen(game.fen());
+        
+//         // Send move to server
+//         onChessMove(`${sourceSquare}${targetSquare}`);
+        
+//         return move;
+//       } else {
+//         console.log('Invalid move attempted:', sourceSquare, 'to', targetSquare);
+//       }
+//     } catch (e) {
+//       console.error('Error making move:', e);
+//       return null;
+//     }
+//     return null;
+//   };
+
+//   // Helper function to determine whose turn it is for display
+//   const getCurrentTurnDisplay = () => {
+//     if (gameState.gameOver) {
+//       return `Game Over! Winner: ${gameState.winner}`;
+//     }
+    
+//     if (gameState.chessPlayers && 
+//         gameState.chessPlayers.player1Id !== currentPlayer && 
+//         gameState.chessPlayers.player2Id !== currentPlayer) {
+//       return 'You are spectating this chess game';
+//     }
+    
+//     if (gameState.currentTurn === currentPlayer) {
+//       return 'Your turn';
+//     } else {
+//       // Find the name of the current turn player
+//       const currentTurnPlayer = gameState.players.find((p: any) => p.id === gameState.currentTurn);
+//       return `${currentTurnPlayer?.name || 'Opponent'}'s turn`;
+//     }
+//   };
+
+
 
 //   return (
 //     <div className="flex flex-col items-center justify-center h-full">
@@ -584,15 +621,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 //       </div>
 //       <div className="text-center">
 //         <p className="text-gray-400">
-//           {gameState.gameOver 
-//             ? `Game Over! Winner: ${gameState.winner}`
-//             : gameState.chessPlayers && 
-//               gameState.chessPlayers.player1Id !== currentPlayer && 
-//               gameState.chessPlayers.player2Id !== currentPlayer
-//             ? 'You are spectating this chess game'
-//             : `Current Turn: ${gameState.currentTurn === currentPlayer 
-//                 ? 'Your turn' 
-//                 : 'Opponent\'s turn'}`}
+//           {getCurrentTurnDisplay()}
 //         </p>
 //         {gameState.chessPlayers && 
 //          (gameState.chessPlayers.player1Id === currentPlayer || 
@@ -606,8 +635,19 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 //             Last move: {gameState.chessState.moves.slice(-1)[0]}
 //           </p>
 //         )}
+//         {/* Debug info - remove in production */}
+//         <div className="text-xs text-gray-600 mt-2 space-y-1">
+//           <p>Current Turn: {gameState.currentTurn}</p>
+//           <p>Current Player: {currentPlayer}</p>
+//           <p>Chess.js Turn: {game.turn()}</p>
+//           {gameState.chessPlayers && (
+//             <>
+//               <p>Player 1 (White): {gameState.chessPlayers.player1Id}</p>
+//               <p>Player 2 (Black): {gameState.chessPlayers.player2Id}</p>
+//             </>
+//           )}
+//         </div>
 //       </div>
 //     </div>
 //   );
 // };
-
