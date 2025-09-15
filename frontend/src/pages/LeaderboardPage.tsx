@@ -197,7 +197,7 @@ export const LeaderboardPage = () => {
       <div className="p-6 overflow-y-auto h-screen pb-20">
         <SectionTitle title="Leaderboards" subtitle="See who's on top of the ALU Globe gaming world" />
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-400">Loading leaderboard...</div>
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       </div>
     );

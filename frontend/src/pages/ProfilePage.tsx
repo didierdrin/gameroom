@@ -95,7 +95,8 @@ export const ProfilePage = () => {
   const [editForm, setEditForm] = useState({
     username: '',
     email: '',
-    selectedAvatar: 'avataaars'
+    selectedAvatarStyle: 'avataaars',
+    selectedAvatarSeed: ''
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -652,7 +653,7 @@ export const ProfilePage = () => {
       <div className="p-6 overflow-y-auto h-screen pb-20">
         <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-400">Loading profile...</div>
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       </div>
     );
@@ -707,10 +708,27 @@ export const ProfilePage = () => {
 
   const openEditModal = () => {
     if (userData) {
+      // Try to parse style and seed from existing avatar URL
+      let parsedStyle = 'avataaars';
+      let parsedSeed = '';
+      if (userData.avatar) {
+        try {
+          const url = new URL(userData.avatar);
+          const pathParts = url.pathname.split('/');
+          // e.g. /7.x/{style}/svg
+          if (pathParts.length >= 3) {
+            parsedStyle = pathParts[2] || parsedStyle;
+          }
+          const seedParam = url.searchParams.get('seed');
+          if (seedParam) parsedSeed = seedParam;
+        } catch {}
+      }
+
       setEditForm({
         username: userData.username,
         email: authUser?.email || '',
-        selectedAvatar: 'avataaars'
+        selectedAvatarStyle: parsedStyle,
+        selectedAvatarSeed: parsedSeed
       });
       // Reset avatar seed when opening modal
       setAvatarSeed(0);
@@ -735,11 +753,13 @@ export const ProfilePage = () => {
       console.log('Submitting edit form:', {
         username: editForm.username,
         email: editForm.email,
-        avatar: editForm.selectedAvatar
+        style: editForm.selectedAvatarStyle,
+        seed: editForm.selectedAvatarSeed
       });
   
-      // Build a persistent avatar URL instead of passing the style name
-      const avatarUrl = `https://api.dicebear.com/7.x/${editForm.selectedAvatar}/svg?seed=${encodeURIComponent(editForm.username || '')}`;
+      // Build a persistent avatar URL using the exact selected style and seed
+      const effectiveSeed = editForm.selectedAvatarSeed || (editForm.username || '');
+      const avatarUrl = `https://api.dicebear.com/7.x/${editForm.selectedAvatarStyle}/svg?seed=${encodeURIComponent(effectiveSeed)}`;
 
       const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userData._id}/profile`, {
         method: 'PUT',
@@ -786,6 +806,7 @@ export const ProfilePage = () => {
   };
 
   // Edit Profile Modal Component
+  // Edit Profile Modal Component - FIXED VERSION
   const EditProfileModal = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-900 rounded-2xl border border-gray-700 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -800,10 +821,9 @@ export const ProfilePage = () => {
           {/* Avatar Selection Row */}
           <div>
             <label className="block text-sm font-medium mb-3">Avatar</label>
-            <div className="flex items-center space-x-6">
+          <div className="flex items-start space-x-6">
               {/* Current Avatar */}
-              <div className="text-center">
-               
+            <div className="text-center flex-shrink-0">
                 <img
                   src={userData?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userData?.username || '')}`}
                   alt="Current"
@@ -813,7 +833,7 @@ export const ProfilePage = () => {
               </div>
               
               {/* Avatar Navigation and Options */}
-              <div className="flex-1">
+            <div className="flex-1 min-w-0">
                 {/* Navigation Header */}
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm text-gray-400">Browse Avatars</span>
@@ -821,7 +841,7 @@ export const ProfilePage = () => {
                     <button
                       type="button"
                       onClick={() => setAvatarSeed(prev => Math.max(0, prev - 1))}
-                      className="p-1 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
+                    className="p-1 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={avatarSeed === 0}
                     >
                       <ChevronLeftIcon size={16} className={avatarSeed === 0 ? 'text-gray-500' : 'text-white'} />
@@ -845,9 +865,9 @@ export const ProfilePage = () => {
                     <div key={style} className="text-center">
                       <button
                         type="button"
-                        onClick={() => setEditForm(prev => ({ ...prev, selectedAvatar: style }))}
-                        className={`w-16 h-16 rounded-full border-2 transition-all relative ${
-                          editForm.selectedAvatar === style
+                      onClick={() => setEditForm(prev => ({ ...prev, selectedAvatarStyle: style }))}
+                      className={`w-16 h-16 rounded-full border-2 transition-all relative overflow-hidden ${
+                        editForm.selectedAvatarStyle === style
                             ? 'border-purple-500 ring-2 ring-purple-300'
                             : 'border-gray-600 hover:border-gray-500'
                         }`}
@@ -855,56 +875,91 @@ export const ProfilePage = () => {
                         <img
                           src={`https://api.dicebear.com/7.x/${style}/svg?seed=avatar-${avatarSeed}-${style}`}
                           alt={`Style ${style}`}
-                          className="w-full h-full rounded-full"
+                        className="w-full h-full rounded-full object-cover"
+                        loading="lazy"
                         />
-                        {editForm.selectedAvatar === style && (
+                      {editForm.selectedAvatarStyle === style && (
                           <div className="absolute -top-1 -right-1 bg-purple-500 rounded-full p-1">
                             <CheckIcon size={12} className="text-white" />
                           </div>
                         )}
                       </button>
-                      <p className="text-xs text-gray-400 mt-1 capitalize">{style}</p>
+                    <p className="text-xs text-gray-400 mt-1 capitalize truncate">{style}</p>
                     </div>
                   ))}
                 </div>
+              
+              {/* Preview of selected avatar */}
+              <div className="mt-4 text-center">
+                <div className="text-xs text-gray-500 mb-2">Preview:</div>
+                <img
+                  src={`https://api.dicebear.com/7.x/${editForm.selectedAvatarStyle}/svg?seed=${encodeURIComponent(editForm.selectedAvatarSeed || editForm.username || `avatar-${avatarSeed}`)}`}
+                  alt="Preview"
+                  className="w-12 h-12 rounded-full border border-gray-600 mx-auto"
+                  loading="lazy"
+                />
+              </div>
               </div>
             </div>
           </div>
 
           {/* Username Field */}
           <div>
-            <label htmlFor="username" className="block text-sm font-medium mb-2">
+          <label htmlFor="edit-username" className="block text-sm font-medium mb-2">
               Username
             </label>
             <input
-              id="username"
+            id="edit-username"
               type="text"
               value={editForm.username}
               onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
               className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
               required
-            />
+            minLength={2}
+            maxLength={30}
+            pattern="[a-zA-Z0-9_-]+"
+            title="Username can only contain letters, numbers, underscore, and dash"
+          />
+          <p className="text-xs text-gray-500 mt-1">2-30 characters, letters, numbers, underscore, dash only</p>
+        </div>
+
+        {/* Avatar Seed Field */}
+        <div>
+          <label htmlFor="edit-avatar-seed" className="block text-sm font-medium mb-2">
+            Avatar Seed
+          </label>
+          <input
+            id="edit-avatar-seed"
+            type="text"
+            placeholder="Leave blank to use username"
+            value={editForm.selectedAvatarSeed}
+            onChange={(e) => setEditForm(prev => ({ ...prev, selectedAvatarSeed: e.target.value }))}
+            className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+            maxLength={50}
+          />
+          <p className="text-xs text-gray-500 mt-1">Controls the exact avatar variant. Same seed = same avatar.</p>
           </div>
 
           {/* Email Field */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-2">
+          <label htmlFor="edit-email" className="block text-sm font-medium mb-2">
               Email
             </label>
             <input
-              id="email"
+            id="edit-email"
               type="email"
               value={editForm.email}
               onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
               className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
               required
             />
+          <p className="text-xs text-gray-500 mt-1">Used for account recovery and notifications</p>
           </div>
 
           {/* Error Message */}
           {editError && (
             <div className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg p-3">
-              {editError}
+            <strong>Error:</strong> {editError}
             </div>
           )}
 
@@ -913,17 +968,24 @@ export const ProfilePage = () => {
             <button
               type="button"
               onClick={closeEditModal}
-              className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+            className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={editLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={editLoading}
+            disabled={editLoading || !editForm.username.trim() || !editForm.email.trim()}
               className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
             >
-              {editLoading ? 'Saving...' : 'Save Changes'}
+            {editLoading ? (
+              <span className="flex items-center justify-center">
+                <RefreshCwIcon size={16} className="animate-spin mr-2" />
+                Saving...
+              </span>
+            ) : (
+              'Save Changes'
+            )}
             </button>
           </div>
         </form>
@@ -1049,3 +1111,167 @@ export const ProfilePage = () => {
   );
 };
 
+
+
+
+
+  // const EditProfileModal = () => (
+  //   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  //     <div className="bg-gray-900 rounded-2xl border border-gray-700 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+  //       <div className="flex justify-between items-center mb-6">
+  //         <h2 className="text-xl font-bold">Edit Profile</h2>
+  //         <button onClick={closeEditModal} className="text-gray-400 hover:text-white transition-colors">
+  //           <XIcon size={24} />
+  //         </button>
+  //       </div>
+
+  //       <form onSubmit={handleEditSubmit} className="space-y-6">
+  //         {/* Avatar Selection Row */}
+  //         <div>
+  //           <label className="block text-sm font-medium mb-3">Avatar</label>
+  //           <div className="flex items-center space-x-6">
+  //             {/* Current Avatar */}
+  //             <div className="text-center">
+               
+  //               <img
+  //                 src={userData?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userData?.username || '')}`}
+  //                 alt="Current"
+  //                 className="w-20 h-20 rounded-full border-2 border-purple-500"
+  //               />
+  //               <p className="text-xs text-gray-400 mt-2">Current</p>
+  //             </div>
+              
+  //             {/* Avatar Navigation and Options */}
+  //             <div className="flex-1">
+  //               {/* Navigation Header */}
+  //               <div className="flex items-center justify-between mb-3">
+  //                 <span className="text-sm text-gray-400">Browse Avatars</span>
+  //                 <div className="flex items-center space-x-2">
+  //                   <button
+  //                     type="button"
+  //                     onClick={() => setAvatarSeed(prev => Math.max(0, prev - 1))}
+  //                     className="p-1 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
+  //                     disabled={avatarSeed === 0}
+  //                   >
+  //                     <ChevronLeftIcon size={16} className={avatarSeed === 0 ? 'text-gray-500' : 'text-white'} />
+  //                   </button>
+  //                   <span className="text-xs text-gray-400 min-w-[40px] text-center">
+  //                     {avatarSeed + 1}
+  //                   </span>
+  //                   <button
+  //                     type="button"
+  //                     onClick={() => setAvatarSeed(prev => prev + 1)}
+  //                     className="p-1 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
+  //                   >
+  //                     <ChevronRightIcon size={16} className="text-white" />
+  //                   </button>
+  //                 </div>
+  //               </div>
+                
+  //               {/* 4 Avatar Options in 2x2 Grid */}
+  //               <div className="grid grid-cols-2 gap-3">
+  //                 {avatarOptions.map((style) => (
+  //                   <div key={style} className="text-center">
+  //                     <button
+  //                       type="button"
+  //                       onClick={() => setEditForm(prev => ({ ...prev, selectedAvatarStyle: style }))}
+  //                       className={`w-16 h-16 rounded-full border-2 transition-all relative ${
+  //                         editForm.selectedAvatarStyle === style
+  //                           ? 'border-purple-500 ring-2 ring-purple-300'
+  //                           : 'border-gray-600 hover:border-gray-500'
+  //                       }`}
+  //                     >
+  //                       <img
+  //                         src={`https://api.dicebear.com/7.x/${style}/svg?seed=avatar-${avatarSeed}-${style}`}
+  //                         alt={`Style ${style}`}
+  //                         className="w-full h-full rounded-full"
+  //                       />
+  //                       {editForm.selectedAvatarStyle === style && (
+  //                         <div className="absolute -top-1 -right-1 bg-purple-500 rounded-full p-1">
+  //                           <CheckIcon size={12} className="text-white" />
+  //                         </div>
+  //                       )}
+  //                     </button>
+  //                     <p className="text-xs text-gray-400 mt-1 capitalize">{style}</p>
+  //                   </div>
+  //                 ))}
+  //               </div>
+  //             </div>
+  //           </div>
+  //         </div>
+
+  //         {/* Username Field */}
+  //         <div>
+  //           <label htmlFor="username" className="block text-sm font-medium mb-2">
+  //             Username
+  //           </label>
+  //           <input
+  //             id="username"
+  //             type="text"
+  //             value={editForm.username}
+  //             onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+  //             className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+  //             required
+  //           />
+  //         </div>
+
+  //         {/* Avatar Seed Field */}
+  //         <div>
+  //           <label htmlFor="avatar-seed" className="block text-sm font-medium mb-2">
+  //             Avatar Seed
+  //           </label>
+  //           <input
+  //             id="avatar-seed"
+  //             type="text"
+  //             placeholder="Leave blank to use username"
+  //             value={editForm.selectedAvatarSeed}
+  //             onChange={(e) => setEditForm(prev => ({ ...prev, selectedAvatarSeed: e.target.value }))}
+  //             className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+  //           />
+  //           <p className="text-xs text-gray-500 mt-1">Controls the exact avatar variant. Same seed = same avatar.</p>
+  //         </div>
+
+  //         {/* Email Field */}
+  //         <div>
+  //           <label htmlFor="email" className="block text-sm font-medium mb-2">
+  //             Email
+  //           </label>
+  //           <input
+  //             id="email"
+  //             type="email"
+  //             value={editForm.email}
+  //             onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+  //             className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+  //             required
+  //           />
+  //         </div>
+
+  //         {/* Error Message */}
+  //         {editError && (
+  //           <div className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg p-3">
+  //             {editError}
+  //           </div>
+  //         )}
+
+  //         {/* Buttons */}
+  //         <div className="flex space-x-3 pt-4">
+  //           <button
+  //             type="button"
+  //             onClick={closeEditModal}
+  //             className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+  //             disabled={editLoading}
+  //           >
+  //             Cancel
+  //           </button>
+  //           <button
+  //             type="submit"
+  //             disabled={editLoading}
+  //             className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+  //           >
+  //             {editLoading ? 'Saving...' : 'Save Changes'}
+  //           </button>
+  //         </div>
+  //       </form>
+  //     </div>
+  //   </div>
+  // );

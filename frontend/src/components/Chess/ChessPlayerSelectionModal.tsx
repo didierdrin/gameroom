@@ -27,10 +27,8 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
 
   if (!isOpen) return null;
 
-  // Filter out spectators and the host (if they're spectating)
-  const availablePlayers = players.filter(player => 
-    !player.isSpectator && player.id !== hostId
-  );
+  // Show all players including spectators and host - they can all play chess
+  const availablePlayers = players;
 
   const handleConfirm = () => {
     if (selectedPlayer1 && selectedPlayer2 && selectedPlayer1 !== selectedPlayer2) {
@@ -70,7 +68,7 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
             </div>
             <div>
               <h3 className="text-xl font-semibold text-white">Select Chess Players</h3>
-              <p className="text-sm text-gray-400">Choose 2 players to play chess</p>
+              <p className="text-sm text-gray-400">Choose 2 players to play chess (anyone can play)</p>
             </div>
           </div>
           <button
@@ -91,7 +89,7 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
               You need at least 2 players to start a chess game. Currently available: {availablePlayers.length}
             </p>
             <p className="text-sm text-gray-500">
-              Players who are spectating or the host cannot be selected as chess players.
+              Anyone in the room can play chess, including spectators and the host.
             </p>
           </div>
         ) : (
@@ -102,31 +100,55 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
                 Player 1 (White Pieces)
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {availablePlayers.map((player) => (
-                  <button
-                    key={`player1-${player.id}`}
-                    onClick={() => handlePlayerSelect(player.id, true)}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      selectedPlayer1 === player.id
-                        ? 'border-purple-500 bg-purple-500/20 text-purple-400'
-                        : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500 hover:bg-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <img 
-                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
-                          alt="Player avatar"
-                          className="w-8 h-8 rounded-full"
-                        />
-                        <span className="font-medium">{player.name}</span>
+                {availablePlayers.map((player) => {
+                  const isHost = player.id === hostId;
+                  const isSpectator = player.isSpectator;
+                  
+                  return (
+                    <button
+                      key={`player1-${player.id}`}
+                      onClick={() => handlePlayerSelect(player.id, true)}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        selectedPlayer1 === player.id
+                          ? 'border-purple-500 bg-purple-500/20 text-purple-400'
+                          : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500 hover:bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <img 
+                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
+                            alt="Player avatar"
+                            className="w-8 h-8 rounded-full"
+                          />
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{player.name}</span>
+                            <div className="flex items-center space-x-2">
+                              {isHost && (
+                                <span className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded-full border border-yellow-600/30">
+                                  Host
+                                </span>
+                              )}
+                              {isSpectator && (
+                                <span className="text-xs bg-blue-600/20 text-blue-400 px-2 py-1 rounded-full border border-blue-600/30">
+                                  Spectator
+                                </span>
+                              )}
+                              {!isHost && !isSpectator && (
+                                <span className="text-xs bg-green-600/20 text-green-400 px-2 py-1 rounded-full border border-green-600/30">
+                                  Player
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {selectedPlayer1 === player.id && (
+                          <CheckIcon size={20} className="text-purple-400" />
+                        )}
                       </div>
-                      {selectedPlayer1 === player.id && (
-                        <CheckIcon size={20} className="text-purple-400" />
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -136,34 +158,58 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
                 Player 2 (Black Pieces)
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {availablePlayers.map((player) => (
-                  <button
-                    key={`player2-${player.id}`}
-                    onClick={() => handlePlayerSelect(player.id, false)}
-                    disabled={selectedPlayer1 === player.id}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      selectedPlayer1 === player.id
-                        ? 'border-gray-700 bg-gray-800/50 text-gray-500 cursor-not-allowed'
-                        : selectedPlayer2 === player.id
-                        ? 'border-purple-500 bg-purple-500/20 text-purple-400'
-                        : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500 hover:bg-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <img 
-                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
-                          alt="Player avatar"
-                          className="w-8 h-8 rounded-full"
-                        />
-                        <span className="font-medium">{player.name}</span>
+                {availablePlayers.map((player) => {
+                  const isHost = player.id === hostId;
+                  const isSpectator = player.isSpectator;
+                  
+                  return (
+                    <button
+                      key={`player2-${player.id}`}
+                      onClick={() => handlePlayerSelect(player.id, false)}
+                      disabled={selectedPlayer1 === player.id}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        selectedPlayer1 === player.id
+                          ? 'border-gray-700 bg-gray-800/50 text-gray-500 cursor-not-allowed'
+                          : selectedPlayer2 === player.id
+                          ? 'border-purple-500 bg-purple-500/20 text-purple-400'
+                          : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500 hover:bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <img 
+                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
+                            alt="Player avatar"
+                            className="w-8 h-8 rounded-full"
+                          />
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{player.name}</span>
+                            <div className="flex items-center space-x-2">
+                              {isHost && (
+                                <span className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded-full border border-yellow-600/30">
+                                  Host
+                                </span>
+                              )}
+                              {isSpectator && (
+                                <span className="text-xs bg-blue-600/20 text-blue-400 px-2 py-1 rounded-full border border-blue-600/30">
+                                  Spectator
+                                </span>
+                              )}
+                              {!isHost && !isSpectator && (
+                                <span className="text-xs bg-green-600/20 text-green-400 px-2 py-1 rounded-full border border-green-600/30">
+                                  Player
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {selectedPlayer2 === player.id && (
+                          <CheckIcon size={20} className="text-purple-400" />
+                        )}
                       </div>
-                      {selectedPlayer2 === player.id && (
-                        <CheckIcon size={20} className="text-purple-400" />
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
