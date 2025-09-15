@@ -224,8 +224,13 @@ export class GameService {
       case 'chess':
         initialGameState = {
           roomId,
-          players: [{ id: hostId, name: hostId, chessColor: 'white', isSpectator: false }],
-          currentTurn: hostId,
+          players: [{ 
+            id: hostId, 
+            name: hostId, 
+            chessColor: 'white',
+            isSpectator: false 
+          }],
+          currentTurn: hostId, // White starts
           currentPlayer: 0,
           gameStarted: false,
           gameOver: false,
@@ -238,10 +243,11 @@ export class GameService {
             moves: [],
           },
           chessPlayers: {
-            player1Id: hostId, 
-            player2Id: ''
+            player1Id: hostId,
+            player2Id: '' // Will be set when second player joins
           }
         };
+        
         console.log('Chess game initialized:', {
           roomId,
           hostId,
@@ -252,6 +258,7 @@ export class GameService {
           }))
         });
         break;
+
       default: // ludo, uno, pictionary, sudoku
         initialGameState = {
           roomId,
@@ -316,40 +323,41 @@ export class GameService {
         const colors = ['red', 'blue', 'green', 'yellow'];
         const playerIndex = gameState.players.length;
         
-        if (gameRoom.gameType === 'chess') {
-          const gameState = await this.getGameState(joinGameDto.roomId);
-          
-          if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
-            const currentCount = gameState.players.length;
-            if (currentCount >= 2) {
-              throw new Error('Chess game already has two players');
-            }
-            
-            // Add new player
-            const newPlayer = { 
-              id: joinGameDto.playerId, 
-              name: joinGameDto.playerName || joinGameDto.playerId, 
-              chessColor: currentCount === 0 ? 'white' : 'black',
-              isSpectator: false
-            };
-            gameState.players.push(newPlayer as any);
-            
-            // Update chess players tracking
-            if (currentCount === 1) {
-              // Second player joining
-              gameState.chessPlayers!.player2Id = joinGameDto.playerId;
-            }
-          }
-          
-          // Ensure white player has the first turn
-          const whitePlayer = gameState.players.find(p => p.chessColor === 'white');
-          if (whitePlayer) {
-            gameState.currentTurn = whitePlayer.id;
-            gameState.currentPlayer = gameState.players.findIndex(p => p.id === whitePlayer.id);
-          }
-          
-          await this.updateGameState(joinGameDto.roomId, gameState);
-        } else if (gameRoom.gameType === 'ludo') {
+        // In the chess section of joinGame, replace with:
+if (gameRoom.gameType === 'chess') {
+  const gameState = await this.getGameState(joinGameDto.roomId);
+  
+  if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
+    const currentCount = gameState.players.length;
+    if (currentCount >= 2) {
+      throw new Error('Chess game already has two players');
+    }
+    
+    // Add new player
+    const newPlayer = { 
+      id: joinGameDto.playerId, 
+      name: joinGameDto.playerName || joinGameDto.playerId, 
+      chessColor: currentCount === 0 ? 'white' : 'black',
+      isSpectator: false
+    };
+    gameState.players.push(newPlayer as any);
+    
+    // Update chess players tracking
+    if (currentCount === 1) {
+      // Second player joining
+      gameState.chessPlayers!.player2Id = joinGameDto.playerId;
+    }
+  }
+  
+  // Ensure white player has the first turn
+  const whitePlayer = gameState.players.find(p => p.chessColor === 'white');
+  if (whitePlayer) {
+    gameState.currentTurn = whitePlayer.id;
+    gameState.currentPlayer = gameState.players.findIndex(p => p.id === whitePlayer.id);
+  }
+  
+  await this.updateGameState(joinGameDto.roomId, gameState);
+}   else if (gameRoom.gameType === 'ludo') {
           // Assign next color and initialize coins
           const nextColor = colors[playerIndex % colors.length];
           if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
@@ -891,7 +899,8 @@ export class GameService {
   }
 
 
-  // 2. Fix the selectChessPlayers method to properly set initial turns
+ 
+// 2. Fix the selectChessPlayers method to properly set initial turns
 async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
   const gameState = await this.getGameState(data.roomId);
   const room = await this.getGameRoomById(data.roomId);
@@ -961,7 +970,8 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
   };
 }
 
-  // 1. Fix the makeChessMove method - the main issue is here
+  
+// 1. Fix the makeChessMove method - the main issue is here
 async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
   const gameState = await this.getGameState(data.roomId);
   
@@ -1018,15 +1028,30 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
       await this.saveGameSession(data.roomId, gameState);
     } else {
-      // FIXED: Switch turns between only the two chess players
-      const activePlayers = gameState.players.filter(p => !p.isSpectator);
-      if (activePlayers.length === 2) {
-        const nextPlayer = activePlayers.find(p => p.id !== data.playerId);
-        if (nextPlayer) {
-          gameState.currentTurn = nextPlayer.id;
-          // Update currentPlayer index to match the players array
-          gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
+      // CRITICAL FIX: Switch turns based on Chess.js board state
+      const currentTurnColor = chess.turn(); // 'w' for white, 'b' for black
+      
+      // Find the player who should move next based on the chess position
+      const nextPlayer = gameState.players.find(p => {
+        if (currentTurnColor === 'w') {
+          return p.chessColor === 'white';
+        } else {
+          return p.chessColor === 'black';
         }
+      });
+      
+      if (nextPlayer) {
+        gameState.currentTurn = nextPlayer.id;
+        gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
+        
+        console.log('Turn updated based on chess position:', {
+          chessJsTurn: currentTurnColor,
+          nextPlayerColor: nextPlayer.chessColor,
+          nextPlayerId: nextPlayer.id,
+          currentPlayerIndex: gameState.currentPlayer
+        });
+      } else {
+        console.error('Could not find next player for turn:', currentTurnColor);
       }
     }
 
