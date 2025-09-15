@@ -224,7 +224,7 @@ export class GameService {
       case 'chess':
         initialGameState = {
           roomId,
-          players: [{ id: hostId, name: hostId, chessColor: 'white' }],
+          players: [{ id: hostId, name: hostId, chessColor: 'white', isSpectator: false }],
           currentTurn: hostId,
           currentPlayer: 0,
           gameStarted: false,
@@ -237,6 +237,10 @@ export class GameService {
             board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', // Initial FEN
             moves: [],
           },
+          chessPlayers: {
+            player1Id: hostId, 
+            player2Id: ''
+          }
         };
         console.log('Chess game initialized:', {
           roomId,
@@ -313,21 +317,37 @@ export class GameService {
         const playerIndex = gameState.players.length;
         
         if (gameRoom.gameType === 'chess') {
-          // Ensure game state has correct players for chess (max 2)
+          const gameState = await this.getGameState(joinGameDto.roomId);
+          
           if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
             const currentCount = gameState.players.length;
             if (currentCount >= 2) {
-              // Should not happen because maxPlayers gate, but guard anyway
               throw new Error('Chess game already has two players');
             }
-            gameState.players.push({ id: joinGameDto.playerId, name: joinGameDto.playerName || joinGameDto.playerId, chessColor: currentCount === 0 ? 'white' : 'black' });
+            
+            // Add new player
+            const newPlayer = { 
+              id: joinGameDto.playerId, 
+              name: joinGameDto.playerName || joinGameDto.playerId, 
+              chessColor: currentCount === 0 ? 'white' : 'black',
+              isSpectator: false
+            };
+            gameState.players.push(newPlayer as any);
+            
+            // Update chess players tracking
+            if (currentCount === 1) {
+              // Second player joining
+              gameState.chessPlayers!.player2Id = joinGameDto.playerId;
+            }
           }
-          // Ensure currentTurn starts with white
+          
+          // Ensure white player has the first turn
           const whitePlayer = gameState.players.find(p => p.chessColor === 'white');
           if (whitePlayer) {
             gameState.currentTurn = whitePlayer.id;
-            gameState.currentPlayer = gameState.players.findIndex(p => p.id === gameState.currentTurn);
+            gameState.currentPlayer = gameState.players.findIndex(p => p.id === whitePlayer.id);
           }
+          
           await this.updateGameState(joinGameDto.roomId, gameState);
         } else if (gameRoom.gameType === 'ludo') {
           // Assign next color and initialize coins
@@ -871,60 +891,57 @@ export class GameService {
   }
 
 
-  async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
-    const gameState = await this.getGameState(data.roomId);
-    const room = await this.getGameRoomById(data.roomId);
-    
-    // Validate host
-    if (room?.host !== data.hostId) {
-      throw new Error('Only the host can select chess players');
-    }
-    
-    // Validate game type
-    if (gameState.gameType !== 'chess') {
-      throw new Error('This is not a chess game');
-    }
-    
-    // Validate players exist and are not spectators
-    const player1 = gameState.players.find(p => p.id === data.player1Id);
-    const player2 = gameState.players.find(p => p.id === data.player2Id);
-    
-    if (!player1 || !player2) {
-      throw new Error('One or both selected players not found');
-    }
-    
-    if (data.player1Id === data.player2Id) {
-      throw new Error('Cannot select the same player for both sides');
-    }
-    
-    
+  // 2. Fix the selectChessPlayers method to properly set initial turns
+async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
+  const gameState = await this.getGameState(data.roomId);
+  const room = await this.getGameRoomById(data.roomId);
+  
+  // Validate host
+  if (room?.host !== data.hostId) {
+    throw new Error('Only the host can select chess players');
+  }
+  
+  // Validate game type
+  if (gameState.gameType !== 'chess') {
+    throw new Error('This is not a chess game');
+  }
+  
+  // Validate players exist
+  const player1 = gameState.players.find(p => p.id === data.player1Id);
+  const player2 = gameState.players.find(p => p.id === data.player2Id);
+  
+  if (!player1 || !player2) {
+    throw new Error('One or both selected players not found');
+  }
+  
+  if (data.player1Id === data.player2Id) {
+    throw new Error('Cannot select the same player for both sides');
+  }
+  
   // Update game state with selected chess players
   gameState.chessPlayers = {
     player1Id: data.player1Id,
     player2Id: data.player2Id
   };
   
-  // Update player colors
+  // Update player colors and spectator status
   gameState.players.forEach(player => {
     if (player.id === data.player1Id) {
       player.chessColor = 'white';
+      player.isSpectator = false;
     } else if (player.id === data.player2Id) {
       player.chessColor = 'black';
+      player.isSpectator = false;
     } else {
       // Mark other players as spectators
       player.isSpectator = true;
+      delete player.chessColor; // Remove chess color from spectators
     }
   });
   
-  // Set initial turn to white (player1)
+  // FIXED: Set initial turn to white player (player1) and correct index
   gameState.currentTurn = data.player1Id;
-  const whitePlayerIndex = gameState.players.findIndex(p => p.id === data.player1Id);
-  if (whitePlayerIndex !== -1) {
-    gameState.currentPlayer = whitePlayerIndex;
-  } else {
-    console.error(`White player ${data.player1Id} not found in players array`);
-    gameState.currentPlayer = 0;
-  }
+  gameState.currentPlayer = gameState.players.findIndex(p => p.id === data.player1Id);
   
   await this.updateGameState(data.roomId, gameState);
   
@@ -942,104 +959,93 @@ export class GameService {
     currentTurn: gameState.currentTurn,
     gameState 
   };
+}
+
+  // 1. Fix the makeChessMove method - the main issue is here
+async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
+  const gameState = await this.getGameState(data.roomId);
+  
+  console.log('Chess move attempt:', {
+    playerId: data.playerId,
+    currentTurn: gameState.currentTurn,
+    move: data.move,
+    gameStarted: gameState.gameStarted,
+    gameOver: gameState.gameOver,
+    chessPlayers: gameState.chessPlayers
+  });
+  
+  // Validate it's the player's turn
+  if (gameState.currentTurn !== data.playerId) {
+    console.log(`Not your turn! Current turn: ${gameState.currentTurn}, Your ID: ${data.playerId}`);
+    throw new Error('Not your turn');
+  }
+  
+  // Check if game has started
+  if (!gameState.gameStarted) {
+    throw new Error('Game has not started yet');
+  }
+  
+  // Validate player is a chess player (not spectator)
+  const currentPlayer = gameState.players.find(p => p.id === data.playerId);
+  if (!currentPlayer || currentPlayer.isSpectator) {
+    throw new Error('Only chess players can make moves');
   }
 
-  async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
-    const gameState = await this.getGameState(data.roomId);
-    
-    console.log('Chess move attempt:', {
-      playerId: data.playerId,
-      currentTurn: gameState.currentTurn,
-      move: data.move,
-      gameStarted: gameState.gameStarted,
-      gameOver: gameState.gameOver,
-      chessPlayers: gameState.chessPlayers
+  try {
+    const chess = new Chess(gameState.chessState!.board);
+    const move = chess.move({
+      from: data.move.substring(0, 2),
+      to: data.move.substring(2, 4),
+      promotion: data.move.length > 4 ? data.move.charAt(4) : 'q'
     });
-    
-    // Validate it's the player's turn
-    if (gameState.currentTurn !== data.playerId) {
-      console.log(`Not your turn! Current turn: ${gameState.currentTurn}, Your ID: ${data.playerId}`);
-      throw new Error('Not your turn');
-    }
-    
-    // Validate player is a chess player (not spectator)
-    if (!gameState.chessPlayers || 
-        (gameState.chessPlayers.player1Id !== data.playerId && gameState.chessPlayers.player2Id !== data.playerId)) {
-      console.log('Only selected chess players can make moves');
-      throw new Error('Only selected chess players can make moves');
-    }
-  
-    try {
-      const chess = new Chess(gameState.chessState!.board);
-      const move = chess.move({
-        from: data.move.substring(0, 2),
-        to: data.move.substring(2, 4),
-        promotion: 'q'
-      });
-  
-      if (!move) throw new Error('Invalid move');
-  
-      // Update game state
-      gameState.chessState = {
-        board: chess.fen(),
-        moves: [...gameState.chessState!.moves, move.san]
-      };
-  
-      // Check if game is over
-      if (chess.isGameOver()) {
-        gameState.gameOver = true;
-        if (chess.isCheckmate()) {
-          gameState.winner = data.playerId;
-        } else if (chess.isDraw()) {
-          gameState.winner = 'draw';
-        }
-        await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
-        await this.saveGameSession(data.roomId, gameState);
-      } else {
-        // Switch turns only between the two chess players
-        if (gameState.chessPlayers) {
-          const nextPlayerId = gameState.chessPlayers.player1Id === data.playerId 
-            ? gameState.chessPlayers.player2Id 
-            : gameState.chessPlayers.player1Id;
-          
-          gameState.currentTurn = nextPlayerId;
-          
-          // Find the correct player index in the players array
-          const nextPlayerIndex = gameState.players.findIndex(p => p.id === nextPlayerId);
-          if (nextPlayerIndex !== -1) {
-            gameState.currentPlayer = nextPlayerIndex;
-          } else {
-            console.error(`Next player ${nextPlayerId} not found in players array`);
-            // Fallback to simple alternation
-            gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-            gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
-          }
-          
-          console.log('Turn switched:', {
-            fromPlayer: data.playerId,
-            toPlayer: nextPlayerId,
-            currentPlayerIndex: gameState.currentPlayer
-          });
+
+    if (!move) throw new Error('Invalid move');
+
+    // Update game state
+    gameState.chessState = {
+      board: chess.fen(),
+      moves: [...gameState.chessState!.moves, move.san]
+    };
+
+    // Check if game is over
+    if (chess.isGameOver()) {
+      gameState.gameOver = true;
+      if (chess.isCheckmate()) {
+        gameState.winner = data.playerId;
+      } else if (chess.isDraw()) {
+        gameState.winner = 'draw';
+      }
+      await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
+      await this.saveGameSession(data.roomId, gameState);
+    } else {
+      // FIXED: Switch turns between only the two chess players
+      const activePlayers = gameState.players.filter(p => !p.isSpectator);
+      if (activePlayers.length === 2) {
+        const nextPlayer = activePlayers.find(p => p.id !== data.playerId);
+        if (nextPlayer) {
+          gameState.currentTurn = nextPlayer.id;
+          // Update currentPlayer index to match the players array
+          gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
         }
       }
-  
-      await this.updateGameState(data.roomId, gameState);
-      
-      console.log('Chess move completed:', {
-        move: move.san,
-        newTurn: gameState.currentTurn,
-        newPlayerIndex: gameState.currentPlayer,
-        gameOver: gameState.gameOver,
-        winner: gameState.winner,
-        chessPlayers: gameState.chessPlayers
-      });
-      
-      return { roomId: data.roomId, move: move.san, gameState };
-    } catch (error) {
-      console.error('Chess move error:', error);
-      throw error;
     }
+
+    await this.updateGameState(data.roomId, gameState);
+    
+    console.log('Chess move completed:', {
+      move: move.san,
+      newTurn: gameState.currentTurn,
+      newPlayerIndex: gameState.currentPlayer,
+      gameOver: gameState.gameOver,
+      winner: gameState.winner
+    });
+    
+    return { roomId: data.roomId, move: move.san, gameState };
+  } catch (error) {
+    console.error('Chess move error:', error);
+    throw error;
   }
+}
   
   private updateChessBoard(currentFen: string, move: string): string {
     try {
