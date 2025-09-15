@@ -1027,12 +1027,14 @@ export class GameService {
     
     // Validate it's the player's turn
     if (gameState.currentTurn !== data.playerId) {
+      console.log(`Not your turn! Current turn: ${gameState.currentTurn}, Your ID: ${data.playerId}`);
       throw new Error('Not your turn');
     }
     
     // Validate player is a chess player (not spectator)
     if (!gameState.chessPlayers || 
         (gameState.chessPlayers.player1Id !== data.playerId && gameState.chessPlayers.player2Id !== data.playerId)) {
+      console.log('Only selected chess players can make moves');
       throw new Error('Only selected chess players can make moves');
     }
   
@@ -1068,6 +1070,7 @@ export class GameService {
           const nextPlayerId = gameState.chessPlayers.player1Id === data.playerId 
             ? gameState.chessPlayers.player2Id 
             : gameState.chessPlayers.player1Id;
+          
           gameState.currentTurn = nextPlayerId;
           
           // Find the correct player index in the players array
@@ -1076,9 +1079,16 @@ export class GameService {
             gameState.currentPlayer = nextPlayerIndex;
           } else {
             console.error(`Next player ${nextPlayerId} not found in players array`);
-            // Fallback: just increment and wrap around
+            // Fallback to simple alternation
             gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+            gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
           }
+          
+          console.log('Turn switched:', {
+            fromPlayer: data.playerId,
+            toPlayer: nextPlayerId,
+            currentPlayerIndex: gameState.currentPlayer
+          });
         }
       }
   
