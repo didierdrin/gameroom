@@ -936,6 +936,83 @@ export class GameService {
     };
   }
 
+  // async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
+  //   const gameState = await this.getGameState(data.roomId);
+    
+  //   console.log('Chess move attempt:', {
+  //     playerId: data.playerId,
+  //     currentTurn: gameState.currentTurn,
+  //     move: data.move,
+  //     gameStarted: gameState.gameStarted,
+  //     gameOver: gameState.gameOver,
+  //     chessPlayers: gameState.chessPlayers
+  //   });
+    
+  //   // Validate it's the player's turn
+  //   if (gameState.currentTurn !== data.playerId) {
+  //     throw new Error('Not your turn');
+  //   }
+    
+  //   // Validate player is a chess player (not spectator)
+  //   if (!gameState.chessPlayers || 
+  //       (gameState.chessPlayers.player1Id !== data.playerId && gameState.chessPlayers.player2Id !== data.playerId)) {
+  //     throw new Error('Only selected chess players can make moves');
+  //   }
+  
+  //   try {
+  //     const chess = new Chess(gameState.chessState!.board);
+  //     const move = chess.move({
+  //       from: data.move.substring(0, 2),
+  //       to: data.move.substring(2, 4),
+  //       promotion: 'q'
+  //     });
+  
+  //     if (!move) throw new Error('Invalid move');
+  
+  //     // Update game state
+  //     gameState.chessState = {
+  //       board: chess.fen(),
+  //       moves: [...gameState.chessState!.moves, move.san]
+  //     };
+  
+  //     // Check if game is over
+  //     if (chess.isGameOver()) {
+  //       gameState.gameOver = true;
+  //       if (chess.isCheckmate()) {
+  //         gameState.winner = data.playerId;
+  //       } else if (chess.isDraw()) {
+  //         gameState.winner = 'draw';
+  //       }
+  //       await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
+  //       await this.saveGameSession(data.roomId, gameState);
+  //     } else {
+  //       // Switch turns only between the two chess players
+  //       if (gameState.chessPlayers) {
+  //         const nextPlayerId = gameState.chessPlayers.player1Id === data.playerId 
+  //           ? gameState.chessPlayers.player2Id 
+  //           : gameState.chessPlayers.player1Id;
+  //         gameState.currentTurn = nextPlayerId;
+  //         gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayerId);
+  //       }
+  //     }
+  
+  //     await this.updateGameState(data.roomId, gameState);
+      
+  //     console.log('Chess move completed:', {
+  //       move: move.san,
+  //       newTurn: gameState.currentTurn,
+  //       gameOver: gameState.gameOver,
+  //       winner: gameState.winner,
+  //       chessPlayers: gameState.chessPlayers
+  //     });
+      
+  //     return { roomId: data.roomId, move: move.san, gameState };
+  //   } catch (error) {
+  //     console.error('Chess move error:', error);
+  //     throw error;
+  //   }
+  // }
+
   async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     const gameState = await this.getGameState(data.roomId);
     
@@ -992,7 +1069,16 @@ export class GameService {
             ? gameState.chessPlayers.player2Id 
             : gameState.chessPlayers.player1Id;
           gameState.currentTurn = nextPlayerId;
-          gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayerId);
+          
+          // Find the correct player index in the players array
+          const nextPlayerIndex = gameState.players.findIndex(p => p.id === nextPlayerId);
+          if (nextPlayerIndex !== -1) {
+            gameState.currentPlayer = nextPlayerIndex;
+          } else {
+            console.error(`Next player ${nextPlayerId} not found in players array`);
+            // Fallback: just increment and wrap around
+            gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+          }
         }
       }
   
@@ -1001,6 +1087,7 @@ export class GameService {
       console.log('Chess move completed:', {
         move: move.san,
         newTurn: gameState.currentTurn,
+        newPlayerIndex: gameState.currentPlayer,
         gameOver: gameState.gameOver,
         winner: gameState.winner,
         chessPlayers: gameState.chessPlayers
