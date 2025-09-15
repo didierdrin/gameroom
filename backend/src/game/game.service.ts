@@ -897,43 +897,51 @@ export class GameService {
       throw new Error('Cannot select the same player for both sides');
     }
     
-    // Update game state with selected chess players
-    gameState.chessPlayers = {
-      player1Id: data.player1Id,
-      player2Id: data.player2Id
-    };
     
-    // Update player colors
-    gameState.players.forEach(player => {
-      if (player.id === data.player1Id) {
-        player.chessColor = 'white';
-      } else if (player.id === data.player2Id) {
-        player.chessColor = 'black';
-      } else {
-        // Mark other players as spectators
-        player.isSpectator = true;
-      }
-    });
-    
-    // Set initial turn to white (player1)
-    gameState.currentTurn = data.player1Id;
-    gameState.currentPlayer = gameState.players.findIndex(p => p.id === data.player1Id);
-    
-    await this.updateGameState(data.roomId, gameState);
-    
-    console.log('Chess players selected:', {
-      roomId: data.roomId,
-      player1: { id: data.player1Id, color: 'white' },
-      player2: { id: data.player2Id, color: 'black' },
-      currentTurn: gameState.currentTurn
-    });
-    
-    return { 
-      roomId: data.roomId, 
-      chessPlayers: gameState.chessPlayers,
-      currentTurn: gameState.currentTurn,
-      gameState 
-    };
+  // Update game state with selected chess players
+  gameState.chessPlayers = {
+    player1Id: data.player1Id,
+    player2Id: data.player2Id
+  };
+  
+  // Update player colors
+  gameState.players.forEach(player => {
+    if (player.id === data.player1Id) {
+      player.chessColor = 'white';
+    } else if (player.id === data.player2Id) {
+      player.chessColor = 'black';
+    } else {
+      // Mark other players as spectators
+      player.isSpectator = true;
+    }
+  });
+  
+  // Set initial turn to white (player1)
+  gameState.currentTurn = data.player1Id;
+  const whitePlayerIndex = gameState.players.findIndex(p => p.id === data.player1Id);
+  if (whitePlayerIndex !== -1) {
+    gameState.currentPlayer = whitePlayerIndex;
+  } else {
+    console.error(`White player ${data.player1Id} not found in players array`);
+    gameState.currentPlayer = 0;
+  }
+  
+  await this.updateGameState(data.roomId, gameState);
+  
+  console.log('Chess players selected:', {
+    roomId: data.roomId,
+    player1: { id: data.player1Id, color: 'white' },
+    player2: { id: data.player2Id, color: 'black' },
+    currentTurn: gameState.currentTurn,
+    currentPlayerIndex: gameState.currentPlayer
+  });
+  
+  return { 
+    roomId: data.roomId, 
+    chessPlayers: gameState.chessPlayers,
+    currentTurn: gameState.currentTurn,
+    gameState 
+  };
   }
 
   // async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
