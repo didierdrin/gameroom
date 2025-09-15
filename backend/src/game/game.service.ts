@@ -227,11 +227,10 @@ export class GameService {
           players: [{ 
             id: hostId, 
             name: hostId, 
-            chessColor: 'white',
-            isSpectator: false 
+            isSpectator: true // Initially everyone is a spectator until players are selected
           }],
-          currentTurn: hostId, // White starts
-          currentPlayer: 0,
+          currentTurn: '', // No turn until players are selected
+          currentPlayer: -1, // No current player until game starts
           gameStarted: false,
           gameOver: false,
           winner: null,
@@ -243,8 +242,8 @@ export class GameService {
             moves: [],
           },
           chessPlayers: {
-            player1Id: hostId,
-            player2Id: '' // Will be set when second player joins
+            player1Id: '', // Will be set when host selects players
+            player2Id: '' // Will be set when host selects players
           }
         };
         
@@ -324,40 +323,23 @@ export class GameService {
         const playerIndex = gameState.players.length;
         
         // In the chess section of joinGame, replace with:
-if (gameRoom.gameType === 'chess') {
-  const gameState = await this.getGameState(joinGameDto.roomId);
-  
-  if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
-    const currentCount = gameState.players.length;
-    if (currentCount >= 2) {
-      throw new Error('Chess game already has two players');
-    }
-    
-    // Add new player
-    const newPlayer = { 
-      id: joinGameDto.playerId, 
-      name: joinGameDto.playerName || joinGameDto.playerId, 
-      chessColor: currentCount === 0 ? 'white' : 'black',
-      isSpectator: false
-    };
-    gameState.players.push(newPlayer as any);
-    
-    // Update chess players tracking
-    if (currentCount === 1) {
-      // Second player joining
-      gameState.chessPlayers!.player2Id = joinGameDto.playerId;
-    }
-  }
-  
-  // Ensure white player has the first turn
-  const whitePlayer = gameState.players.find(p => p.chessColor === 'white');
-  if (whitePlayer) {
-    gameState.currentTurn = whitePlayer.id;
-    gameState.currentPlayer = gameState.players.findIndex(p => p.id === whitePlayer.id);
-  }
-  
-  await this.updateGameState(joinGameDto.roomId, gameState);
-}   else if (gameRoom.gameType === 'ludo') {
+        if (gameRoom.gameType === 'chess') {
+          const gameState = await this.getGameState(joinGameDto.roomId);
+          
+          // For chess, new players start as spectators
+          if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
+            const newPlayer = { 
+              id: joinGameDto.playerId, 
+              name: joinGameDto.playerName || joinGameDto.playerId, 
+              isSpectator: true // All players are spectators until selected by host
+            };
+            gameState.players.push(newPlayer);
+          }
+          
+          // Don't set turns or colors until players are selected
+          await this.updateGameState(joinGameDto.roomId, gameState);
+        
+        } else if (gameRoom.gameType === 'ludo') {
           // Assign next color and initialize coins
           const nextColor = colors[playerIndex % colors.length];
           if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
@@ -808,99 +790,112 @@ if (gameRoom.gameType === 'chess') {
   }
 
 
-  async startGame(roomId: string) {
-    try {
-      if (!this.server) {
-        throw new Error('Server instance not available');
+  // Update startGame method to ensure chess games can only start after player selection:
+async startGame(roomId: string) {
+  try {
+    if (!this.server) {
+      throw new Error('Server instance not available');
+    }
+
+    const gameState = await this.getGameState(roomId);
+    if (gameState.gameStarted) throw new Error('Game already started');
+    
+    const room = await this.getGameRoomById(roomId);
+    if (!room) throw new Error('Room not found');
+    
+    // Special validation for chess games
+    if (room.gameType === 'chess') {
+      // Ensure chess players have been selected
+      if (!gameState.chessPlayers?.player1Id || !gameState.chessPlayers?.player2Id) {
+        throw new Error('Chess players must be selected before starting the game');
       }
-  
-      const gameState = await this.getGameState(roomId);
-      if (gameState.gameStarted) throw new Error('Game already started');
       
-      const room = await this.getGameRoomById(roomId);
-      if (!room) throw new Error('Room not found');
+      // Ensure both selected players are still in the room
+      const player1InRoom = room.playerIds.includes(gameState.chessPlayers.player1Id);
+      const player2InRoom = room.playerIds.includes(gameState.chessPlayers.player2Id);
       
-      // Check minimum players
+      if (!player1InRoom || !player2InRoom) {
+        throw new Error('One or both selected chess players have left the room');
+      }
+      
+      // Ensure currentTurn is set to white player
+      gameState.currentTurn = gameState.chessPlayers.player1Id;
+      gameState.currentPlayer = gameState.players.findIndex(p => p.id === gameState.chessPlayers?.player1Id);
+      
+      console.log('Chess game starting with selected players:', {
+        player1White: gameState.chessPlayers.player1Id,
+        player2Black: gameState.chessPlayers.player2Id,
+        initialTurn: gameState.currentTurn,
+        host: room.host
+      });
+    } else {
+      // Check minimum players for other games
       const minPlayers = room.gameType === 'chess' ? 2 : 1;
       if (room.playerIds.length < minPlayers) {
         throw new Error(`At least ${minPlayers} players required`);
       }
-  
-      gameState.gameStarted = true;
-      
-      // Initialize game-specific state
-      if (room.gameType === 'kahoot' && gameState.kahootState) {
-        gameState.kahootState.currentQuestionIndex = 0;
-        gameState.kahootState.questionTimer = 20;
-        gameState.players.forEach(player => {
-          gameState.kahootState!.answers[player.id] = null;
-        });
-        setTimeout(() => this.handleKahootQuestionTimeout(roomId), 20000);
-      } else if (room.gameType === 'trivia' && gameState.triviaState) {
-        gameState.triviaState.currentQuestionIndex = 0;
-        gameState.triviaState.questionTimer = 30;
-        gameState.players.forEach(player => {
-          gameState.triviaState!.answers[player.id] = null;
-        });
-      } else if (room.gameType === 'chess') {
-        // Ensure chess game starts with white's turn
-        gameState.currentTurn = gameState.players[0]?.id || '';
-        gameState.currentPlayer = 0;
-        console.log('Chess game started:', {
-          currentTurn: gameState.currentTurn,
-          players: gameState.players.map((p: any) => ({ 
-            id: p.id, 
-            chessColor: p.chessColor 
-          }))
-        });
-      } else {
-        // Ensure starting turn is an eligible player present in room.playerIds
-        const roomEntity = await this.getGameRoomById(roomId);
-        const eligible = new Set(roomEntity?.playerIds || []);
-        if (!eligible.has(gameState.currentTurn) && gameState.players.length > 0) {
-          const nextIndex = gameState.players.findIndex(p => eligible.has(p.id));
-          if (nextIndex !== -1) {
-            gameState.currentPlayer = nextIndex;
-            gameState.currentTurn = gameState.players[nextIndex].id;
-          }
+    }
+
+    gameState.gameStarted = true;
+    
+    // Initialize other game-specific state (kahoot, trivia, etc.)
+    if (room.gameType === 'kahoot' && gameState.kahootState) {
+      gameState.kahootState.currentQuestionIndex = 0;
+      gameState.kahootState.questionTimer = 20;
+      gameState.players.forEach(player => {
+        gameState.kahootState!.answers[player.id] = null;
+      });
+      setTimeout(() => this.handleKahootQuestionTimeout(roomId), 20000);
+    } else if (room.gameType === 'trivia' && gameState.triviaState) {
+      gameState.triviaState.currentQuestionIndex = 0;
+      gameState.triviaState.questionTimer = 30;
+      gameState.players.forEach(player => {
+        gameState.triviaState!.answers[player.id] = null;
+      });
+    } else if (room.gameType !== 'chess') {
+      // For non-chess games, ensure starting turn is an eligible player
+      const roomEntity = await this.getGameRoomById(roomId);
+      const eligible = new Set(roomEntity?.playerIds || []);
+      if (!eligible.has(gameState.currentTurn) && gameState.players.length > 0) {
+        const nextIndex = gameState.players.findIndex(p => eligible.has(p.id));
+        if (nextIndex !== -1) {
+          gameState.currentPlayer = nextIndex;
+          gameState.currentTurn = gameState.players[nextIndex].id;
         }
       }
-  
-      await this.updateGameState(roomId, gameState);
-      
-              console.log('Game started, state updated:', {
-          roomId,
-          gameType: gameState.gameType,
-          currentTurn: gameState.currentTurn,
-          gameStarted: gameState.gameStarted,
-          players: gameState.players.map((p: any) => ({ 
-            id: p.id, 
-            chessColor: p.chessColor,
-            color: p.color,
-            score: p.score
-          }))
-        });
-      
-      // Emit to room only if server is available
-      if (this.server) {
-        this.server.to(roomId).emit('gameState', gameState);
-      }
-      
-      await this.gameRoomModel.findOneAndUpdate(
-        { roomId }, 
-        { status: 'in-progress' }, 
-        { new: true }
-      );
-      return gameState;
-    } catch (error) {
-      console.error(`Error in startGame for room ${roomId}:`, error);
-      throw error;
     }
+
+    await this.updateGameState(roomId, gameState);
+    
+    console.log('Game started successfully:', {
+      roomId,
+      gameType: gameState.gameType,
+      currentTurn: gameState.currentTurn,
+      gameStarted: gameState.gameStarted,
+      isChess: room.gameType === 'chess',
+      chessPlayers: gameState.chessPlayers
+    });
+    
+    // Emit to room
+    if (this.server) {
+      this.server.to(roomId).emit('gameState', gameState);
+    }
+    
+    await this.gameRoomModel.findOneAndUpdate(
+      { roomId }, 
+      { status: 'in-progress' }, 
+      { new: true }
+    );
+    return gameState;
+  } catch (error) {
+    console.error(`Error in startGame for room ${roomId}:`, error);
+    throw error;
   }
+}
 
 
  
-// 2. Fix the selectChessPlayers method to properly set initial turns
+// Update the selectChessPlayers method to properly initialize the game:
 async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
   const gameState = await this.getGameState(data.roomId);
   const room = await this.getGameRoomById(data.roomId);
@@ -927,13 +922,13 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
     throw new Error('Cannot select the same player for both sides');
   }
   
-  // Update game state with selected chess players
+  // Update chess players tracking
   gameState.chessPlayers = {
     player1Id: data.player1Id,
     player2Id: data.player2Id
   };
   
-  // Update player colors and spectator status
+  // Update all players: set colors for chess players, mark others as spectators
   gameState.players.forEach(player => {
     if (player.id === data.player1Id) {
       player.chessColor = 'white';
@@ -942,23 +937,24 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
       player.chessColor = 'black';
       player.isSpectator = false;
     } else {
-      // Mark other players as spectators
+      // Mark other players (including host if not selected) as spectators
       player.isSpectator = true;
       delete player.chessColor; // Remove chess color from spectators
     }
   });
   
-  // FIXED: Set initial turn to white player (player1) and correct index
-  gameState.currentTurn = data.player1Id;
+  // IMPORTANT: Set initial turn to white player (player1), not host
+  gameState.currentTurn = data.player1Id; // White always starts
   gameState.currentPlayer = gameState.players.findIndex(p => p.id === data.player1Id);
   
   await this.updateGameState(data.roomId, gameState);
   
   console.log('Chess players selected:', {
     roomId: data.roomId,
+    host: data.hostId,
     player1: { id: data.player1Id, color: 'white' },
     player2: { id: data.player2Id, color: 'black' },
-    currentTurn: gameState.currentTurn,
+    initialTurn: gameState.currentTurn, // Should be player1Id, not hostId
     currentPlayerIndex: gameState.currentPlayer
   });
   
@@ -971,7 +967,8 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
 }
 
   
-// 1. Fix the makeChessMove method - the main issue is here
+// Replace your makeChessMove method in game.service.ts with this:
+
 async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
   const gameState = await this.getGameState(data.roomId);
   
@@ -1003,6 +1000,16 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
 
   try {
     const chess = new Chess(gameState.chessState!.board);
+    
+    // Additional validation: make sure the player's color matches chess.js turn
+    const chessJSTurn = chess.turn(); // 'w' or 'b'
+    const expectedColor = chessJSTurn === 'w' ? 'white' : 'black';
+    
+    if (currentPlayer.chessColor !== expectedColor) {
+      console.log(`Color mismatch! Chess.js expects ${expectedColor}, player is ${currentPlayer.chessColor}`);
+      throw new Error('Not your turn according to chess position');
+    }
+    
     const move = chess.move({
       from: data.move.substring(0, 2),
       to: data.move.substring(2, 4),
@@ -1011,11 +1018,17 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
 
     if (!move) throw new Error('Invalid move');
 
-    // Update game state
+    // Update game state with new position
     gameState.chessState = {
       board: chess.fen(),
       moves: [...gameState.chessState!.moves, move.san]
     };
+
+    console.log('Move processed:', {
+      move: move.san,
+      newFEN: chess.fen(),
+      newTurn: chess.turn()
+    });
 
     // Check if game is over
     if (chess.isGameOver()) {
@@ -1028,42 +1041,45 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
       await this.saveGameSession(data.roomId, gameState);
     } else {
-      // CRITICAL FIX: Switch turns based on Chess.js board state
-      const currentTurnColor = chess.turn(); // 'w' for white, 'b' for black
+      // CRITICAL FIX: Update backend turn to match chess.js position
+      const newChessTurn = chess.turn(); // 'w' or 'b' after the move
+      const newExpectedColor = newChessTurn === 'w' ? 'white' : 'black';
       
       // Find the player who should move next based on the chess position
-      const nextPlayer = gameState.players.find(p => {
-        if (currentTurnColor === 'w') {
-          return p.chessColor === 'white';
-        } else {
-          return p.chessColor === 'black';
-        }
-      });
+      const nextPlayer = gameState.players.find(p => 
+        p.chessColor === newExpectedColor && !p.isSpectator
+      );
       
       if (nextPlayer) {
         gameState.currentTurn = nextPlayer.id;
         gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
         
-        console.log('Turn updated based on chess position:', {
-          chessJsTurn: currentTurnColor,
-          nextPlayerColor: nextPlayer.chessColor,
+        console.log('Backend turn updated to match chess position:', {
+          chessJsTurn: newChessTurn,
+          expectedColor: newExpectedColor,
           nextPlayerId: nextPlayer.id,
-          currentPlayerIndex: gameState.currentPlayer
+          nextPlayerIndex: gameState.currentPlayer
         });
       } else {
-        console.error('Could not find next player for turn:', currentTurnColor);
+        console.error('Could not find next player for chess turn:', newExpectedColor);
+        throw new Error('Could not determine next player');
       }
     }
 
     await this.updateGameState(data.roomId, gameState);
     
-    console.log('Chess move completed:', {
+    console.log('Chess move completed successfully:', {
       move: move.san,
       newTurn: gameState.currentTurn,
       newPlayerIndex: gameState.currentPlayer,
       gameOver: gameState.gameOver,
       winner: gameState.winner
     });
+    
+    // Emit the updated game state to all clients
+    if (this.server) {
+      this.server.to(data.roomId).emit('gameState', gameState);
+    }
     
     return { roomId: data.roomId, move: move.san, gameState };
   } catch (error) {
