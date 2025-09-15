@@ -1100,7 +1100,6 @@ export class GameService {
     }
   }
   
-  
   private updateChessBoard(currentFen: string, move: string): string {
     try {
       const chess = new Chess(currentFen);

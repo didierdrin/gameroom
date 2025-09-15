@@ -52,6 +52,30 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     });
   }, [gameState, currentPlayer]);
 
+
+  useEffect(() => {
+    // Sync the local chess.js game with the server state
+    if (gameState?.chessState?.board) {
+      try {
+        game.load(gameState.chessState.board);
+        setFen(game.fen());
+        
+        // Debug: Check if the turn is synchronized
+        const moveColor = game.turn();
+        const currentPlayerObj = gameState.players.find((p: any) => p.id === gameState.currentTurn);
+        console.log('Turn synchronization:', {
+          chessJSTurn: moveColor,
+          currentPlayer: currentPlayerObj?.id,
+          currentPlayerColor: currentPlayerObj?.chessColor,
+          shouldMatch: (moveColor === 'w' && currentPlayerObj?.chessColor === 'white') || 
+                      (moveColor === 'b' && currentPlayerObj?.chessColor === 'black')
+        });
+      } catch (e) {
+        console.error('Failed to sync chess position:', e);
+      }
+    }
+  }, [gameState.chessState?.board, gameState.currentTurn]);
+
   // Show fireworks when game ends
   useEffect(() => {
     if (gameState.gameOver && !showFireworks) {
@@ -106,7 +130,6 @@ useEffect(() => {
   }
 }, [gameState.chessState?.board, gameState.currentTurn]);
 
-
 const handleMove = ({ sourceSquare, targetSquare }: { 
   sourceSquare: string; 
   targetSquare: string 
@@ -134,27 +157,15 @@ const handleMove = ({ sourceSquare, targetSquare }: {
       }
     }
 
-    const player = gameState.players.find((p: any) => p.id === currentPlayer);
-    
     // IMPORTANT: Load the current board state from gameState before making the move
     if (gameState?.chessState?.board) {
       try {
         game.load(gameState.chessState.board);
+        setFen(game.fen());
       } catch (e) {
         console.error('Failed to load chess position:', e);
         return null;
       }
-    }
-
-    const moveColor = game.turn();
-    
-    // Validate player color matches current turn
-    if ((moveColor === 'w' && player?.chessColor !== 'white') || 
-        (moveColor === 'b' && player?.chessColor !== 'black')) {
-      console.log("Not your color's turn");
-      console.log("Current chess.js turn:", moveColor);
-      console.log("Player color:", player?.chessColor);
-      return null;
     }
 
     // Try to make the move
@@ -179,7 +190,6 @@ const handleMove = ({ sourceSquare, targetSquare }: {
   }
   return null;
 };
-
 
   // const handleMove = ({ sourceSquare, targetSquare }: { 
   //   sourceSquare: string; 
