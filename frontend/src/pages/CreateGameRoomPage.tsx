@@ -397,7 +397,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
               </label>
               <p className="text-xs text-gray-500 mb-3">
                 {gameType === 'chess' 
-                  ? 'Chess is a 2-player game only.'
+                  ? 'Chess is a 2-player game.'
                   : `First ${playerLimit} users to join will be players. Others will automatically become spectators.`
                 }
               </p>
