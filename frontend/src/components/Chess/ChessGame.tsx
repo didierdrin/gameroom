@@ -171,7 +171,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     let promotionChar = '';
     const currentFen = getCurrentFen();
     const tempChess = new Chess(currentFen);
-    const piece = tempChess.get(sourceSquare);
+    const piece = tempChess.get(sourceSquare as any);
     
     if (piece && piece.type === 'p') {
       const isPromotion = (piece.color === 'w' && targetSquare[1] === '8') || 
