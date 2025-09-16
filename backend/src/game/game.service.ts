@@ -968,8 +968,6 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
 
   
 // Replace your makeChessMove method in game.service.ts with this:
-// Replace your makeChessMove method in game.service.ts with this fixed version:
-
 async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
   const gameState = await this.getGameState(data.roomId);
   

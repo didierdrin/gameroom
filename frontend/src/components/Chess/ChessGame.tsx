@@ -77,33 +77,32 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     return null;
   };
 
-  // FIXED: Better turn validation
   const canMakeMove = (): boolean => {
     // Check if game has started
     if (!gameState.gameStarted) {
       console.log('Game has not started yet');
       return false;
     }
-
+  
     // Check if game is over
     if (gameState.gameOver) {
       console.log('Game is over');
       return false;
     }
-
+  
     // Check if player is a selected chess player
     if (!gameState.chessPlayers) {
       console.log('No chess players selected');
       return false;
     }
-
+  
     const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
                          gameState.chessPlayers.player2Id === currentPlayer;
     if (!isChessPlayer) {
       console.log('Only selected chess players can make moves');
       return false;
     }
-
+  
     // CRITICAL: Use chess.js as source of truth for whose turn it is
     const chessJSTurn = game.turn(); // 'w' or 'b'
     const playerChessColor = getPlayerColor();
@@ -113,7 +112,13 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       console.log(`Not your turn according to chess position! Chess.js turn: ${chessJSTurn}, Your color: ${playerChessColor}`);
       return false;
     }
-
+  
+    // Additional check: verify backend state matches chess.js state
+    if (gameState.currentTurn !== currentPlayer) {
+      console.log(`Not your turn according to backend! Backend turn: ${gameState.currentTurn}, Your ID: ${currentPlayer}`);
+      return false;
+    }
+  
     return true;
   };
 
@@ -124,21 +129,21 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     try {
       console.log(`Attempting move: ${sourceSquare} -> ${targetSquare}`);
       
-      // Create a fresh chess instance to test the move
-      const testGame = new Chess(game.fen());
-
-      // Validate move using canMakeMove
+      // Validate move using canMakeMove first
       if (!canMakeMove()) {
         console.log('Move blocked by canMakeMove validation');
         return null;
       }
-
+  
+      // Create a fresh chess instance to test the move
+      const testGame = new Chess(game.fen());
+  
       // Try to make the move without promotion first
       let move = testGame.move({
         from: sourceSquare,
         to: targetSquare,
       });
-
+  
       let promotionChar = '';
       if (!move) {
         // If failed, try with promotion
@@ -149,7 +154,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         });
         promotionChar = 'q';
       }
-
+  
       if (move) {
         console.log('Valid move made locally:', move);
         
@@ -171,7 +176,6 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     return null;
   };
 
-  // FIXED: Better turn display logic
   const getCurrentTurnDisplay = () => {
     if (gameState.gameOver) {
       if (gameState.winner === 'draw') {
@@ -204,7 +208,10 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     const chessJSTurn = game.turn(); // 'w' or 'b'
     const playerChessColor = getPlayerColor();
     
-    if (playerChessColor === chessJSTurn) {
+    // Also check backend state for consistency
+    const isBackendTurn = gameState.currentTurn === currentPlayer;
+    
+    if (playerChessColor === chessJSTurn && isBackendTurn) {
       return 'Your turn to move';
     } else {
       // Determine opponent

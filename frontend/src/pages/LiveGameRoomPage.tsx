@@ -1044,7 +1044,8 @@ useEffect(() => {
     // Wait a moment for the server to process player selection
     setTimeout(() => {
       socket.emit("startGame", { roomId });
-    }, 300);
+      setShowChessPlayerModal(false);
+    }, 500); // Increased delay to ensure state is updated
   };
 
   const handleEndGame = () => {
