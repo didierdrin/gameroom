@@ -61,15 +61,10 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       gameOver: gameState.gameOver,
       chessPlayers: gameState.chessPlayers
     });
-  }, [gameState, currentPlayer]);
 
-  useEffect(() => {
-    // Sync the local chess.js game with the server state
+    // Sync check
     if (gameState?.chessState?.board) {
       try {
-        game.load(gameState.chessState.board);
-        setFen(game.fen());
-        
         // Debug: Check if the turn is synchronized
         const chessJSTurn = game.turn(); // 'w' or 'b'
         const currentTurnPlayer = gameState.currentTurn;
@@ -103,12 +98,11 @@ export const ChessGame: React.FC<GameRenderProps> = ({
             actual: currentTurnPlayer
           });
         }
-        
       } catch (e) {
-        console.error('Failed to sync chess position:', e);
+        console.error('Failed to check turn sync:', e);
       }
     }
-  }, [gameState.chessState?.board, gameState.currentTurn, gameState.chessPlayers]);
+  }, [gameState, currentPlayer]);
 
   // Show fireworks when game ends
   useEffect(() => {
@@ -195,12 +189,22 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         return null;
       }
 
-      // Try to make the move
-      const move = game.move({
+      // Try to make the move without promotion first
+      let move = game.move({
         from: sourceSquare,
         to: targetSquare,
-        promotion: 'q',
       });
+
+      let promotionChar = '';
+      if (!move) {
+        // If failed, try with promotion
+        move = game.move({
+          from: sourceSquare,
+          to: targetSquare,
+          promotion: 'q',
+        });
+        promotionChar = 'q';
+      }
 
       if (move) {
         console.log('Valid move made:', move);
@@ -208,8 +212,8 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         // Update local state immediately for responsive UI
         setFen(game.fen());
         
-        // Send move to server
-        onChessMove(`${sourceSquare}${targetSquare}`);
+        // Send move to server, appending promotion if used
+        onChessMove(`${sourceSquare}${targetSquare}${promotionChar}`);
         
         return move;
       } else {

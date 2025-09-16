@@ -968,7 +968,6 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
 
   
 // Replace your makeChessMove method in game.service.ts with this:
-
 async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
   const gameState = await this.getGameState(data.roomId);
   
@@ -1011,10 +1010,14 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       throw new Error('Not your turn according to chess position');
     }
     
+    const from = data.move.substring(0, 2);
+    const to = data.move.substring(2, 4);
+    const promotion = data.move.length > 4 ? data.move.charAt(4) : undefined;
+
     const move = chess.move({
-      from: data.move.substring(0, 2),
-      to: data.move.substring(2, 4),
-      promotion: data.move.length > 4 ? data.move.charAt(4) : 'q'
+      from,
+      to,
+      promotion,
     });
 
     if (!move) throw new Error('Invalid move');
@@ -1044,17 +1047,17 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     } else {
       // CRITICAL FIX: Update backend turn to match chess.js position
       const newChessTurn = chess.turn(); // 'w' or 'b' after the move
-    const newExpectedColor = newChessTurn === 'w' ? 'white' : 'black';
-    
-    // Find the player who should move next
-    const nextPlayer = gameState.players.find(p => 
-      p.chessColor === newExpectedColor && !p.isSpectator
-    );
+      const newExpectedColor = newChessTurn === 'w' ? 'white' : 'black';
       
+      // Find the player who should move next
+      const nextPlayer = gameState.players.find(p => 
+        p.chessColor === newExpectedColor && !p.isSpectator
+      );
+        
       if (nextPlayer) {
         gameState.currentTurn = nextPlayer.id;
-      gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
-        
+        gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
+          
         console.log('Backend turn updated to match chess position:', {
           chessJsTurn: newChessTurn,
           expectedColor: newExpectedColor,
@@ -1088,6 +1091,7 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     throw error;
   }
 }
+
   
   private updateChessBoard(currentFen: string, move: string): string {
     try {
