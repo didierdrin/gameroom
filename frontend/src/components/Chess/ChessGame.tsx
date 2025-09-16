@@ -68,56 +68,55 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   }, [gameState.gameOver, showFireworks]);
 
   // Helper function to get player's assigned color
-  const getPlayerColor = (): 'w' | 'b' | null => {
-    if (!gameState?.chessPlayers) return null;
-    
-    if (gameState.chessPlayers.player1Id === currentPlayer) return 'w';
-    if (gameState.chessPlayers.player2Id === currentPlayer) return 'b';
-    return null;
-  };
+const getPlayerColor = (): 'w' | 'b' | null => {
+  if (!gameState?.chessPlayers) return null;
+  
+  if (gameState.chessPlayers.player1Id === currentPlayer) return 'w';
+  if (gameState.chessPlayers.player2Id === currentPlayer) return 'b';
+  return null;
+};
 
-  const canMakeMove = (): boolean => {
-    // Check if game has started
-    if (!gameState.gameStarted) {
-      console.log('Game has not started yet');
-      return false;
-    }
+ 
+
+const canMakeMove = (): boolean => {
+  // Check if game has started
+  if (!gameState.gameStarted) {
+    console.log('Game has not started yet');
+    return false;
+  }
+
+  // Check if game is over
+  if (gameState.gameOver) {
+    console.log('Game is over');
+    return false;
+  }
+
+  // Check if player is a selected chess player
+  if (!gameState.chessPlayers) {
+    console.log('No chess players selected');
+    return false;
+  }
+
+  const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
+                       gameState.chessPlayers.player2Id === currentPlayer;
+  if (!isChessPlayer) {
+    console.log('Only selected chess players can make moves');
+    return false;
+  }
+
+  // FIXED: Use chess.js as the ONLY source of truth for turn validation
+  const chessJSTurn = game.turn(); // 'w' or 'b'
+  const playerChessColor = getPlayerColor();
   
-    // Check if game is over
-    if (gameState.gameOver) {
-      console.log('Game is over');
-      return false;
-    }
-  
-    // Check if player is a selected chess player
-    if (!gameState.chessPlayers) {
-      console.log('No chess players selected');
-      return false;
-    }
-  
-    const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
-                         gameState.chessPlayers.player2Id === currentPlayer;
-    if (!isChessPlayer) {
-      console.log('Only selected chess players can make moves');
-      return false;
-    }
-  
-    // FIXED: Use chess.js as the ONLY source of truth for turn validation
-    const chessJSTurn = game.turn(); // 'w' or 'b'
-    const playerChessColor = getPlayerColor();
-    
-    // The core fix: Only check if it's the player's turn according to the chess position
-    if (playerChessColor !== chessJSTurn) {
-      console.log(`Not your turn according to chess position! Chess.js turn: ${chessJSTurn}, Your color: ${playerChessColor}`);
-      return false;
-    }
-  
-    // REMOVED: The conflicting backend currentTurn check that was causing the issue
-    // The backend currentTurn system doesn't properly sync with chess moves
-    
-    console.log(`Move allowed - Chess turn: ${chessJSTurn}, Player color: ${playerChessColor}`);
-    return true;
-  };
+  // The core fix: Only check if it's the player's turn according to the chess position
+  if (playerChessColor !== chessJSTurn) {
+    console.log(`Not your turn according to chess position! Chess.js turn: ${chessJSTurn}, Your color: ${playerChessColor}`);
+    return false;
+  }
+
+  console.log(`Move allowed - Chess turn: ${chessJSTurn}, Player color: ${playerChessColor}`);
+  return true;
+};
 
   const handleMove = ({ sourceSquare, targetSquare }: { 
     sourceSquare: string; 
