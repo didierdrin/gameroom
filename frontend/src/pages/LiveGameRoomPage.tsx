@@ -1209,6 +1209,7 @@ useEffect(() => {
                 currentPlayer={String(user!.id)}
                 gameState={gameState}
                 onChessMove={handleChessMoveAction}
+                playerIdToUsername={playerIdToUsername}
               />
               
               {/* Show spectator message for host */}
