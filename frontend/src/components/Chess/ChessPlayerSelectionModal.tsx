@@ -42,13 +42,11 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
   const handlePlayerSelect = (playerId: string, isPlayer1: boolean) => {
     if (isPlayer1) {
       setSelectedPlayer1(playerId);
-      // If the same player is selected for both, clear player2
       if (selectedPlayer2 === playerId) {
         setSelectedPlayer2('');
       }
     } else {
       setSelectedPlayer2(playerId);
-      // If the same player is selected for both, clear player1
       if (selectedPlayer1 === playerId) {
         setSelectedPlayer1('');
       }
@@ -57,12 +55,8 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
 
   const getPlayerName = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
-    // Fixed: Show ID instead of name for host
-    if (playerId === hostId) {
-      return playerId; // Show host ID instead of name
-    }
-    // For other players, try to get name from player object, then from playerIdToUsername mapping, then fall back to playerId
-    return player?.name || playerIdToUsername[playerId] || playerId;
+    // Use playerIdToUsername mapping first, then player.name, then fall back to playerId
+    return playerIdToUsername[playerId] || player?.name || playerId;
   };
 
   return (
@@ -269,6 +263,7 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
   );
 };
 
+
 // import React, { useState } from 'react';
 // import { XIcon, UsersIcon, CheckIcon } from 'lucide-react';
 
@@ -284,7 +279,7 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
 //   onConfirm: (player1Id: string, player2Id: string) => void;
 //   players: Player[];
 //   hostId: string;
-//   playerIdToUsername?: Record<string, string>; // Add this prop
+//   playerIdToUsername?: Record<string, string>;
 // }
 
 // export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps> = ({
@@ -293,7 +288,7 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
 //   onConfirm,
 //   players,
 //   hostId,
-//   playerIdToUsername = {} // Default to empty object
+//   playerIdToUsername = {}
 // }) => {
 //   const [selectedPlayer1, setSelectedPlayer1] = useState<string>('');
 //   const [selectedPlayer2, setSelectedPlayer2] = useState<string>('');
@@ -328,7 +323,11 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
 
 //   const getPlayerName = (playerId: string) => {
 //     const player = players.find(p => p.id === playerId);
-//     // First try to get name from player object, then from playerIdToUsername mapping, then fall back to playerId
+//     // Fixed: Show ID instead of name for host
+//     if (playerId === hostId) {
+//       return playerId; // Show host ID instead of name
+//     }
+//     // For other players, try to get name from player object, then from playerIdToUsername mapping, then fall back to playerId
 //     return player?.name || playerIdToUsername[playerId] || playerId;
 //   };
 
