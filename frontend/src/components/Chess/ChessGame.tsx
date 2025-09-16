@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import Chessboard from 'chessboardjsx';
 import { Chess } from 'chess.js';
 
@@ -19,34 +19,16 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   onChessMove,
   playerIdToUsername
 }) => {
-  // Use a ref for the game instance to ensure it's the same reference
-  const gameRef = useRef(new Chess());
-  const [fen, setFen] = useState('start');
+  // REMOVED: Local chess game instance and fen state
+  // We now rely entirely on server state
+  
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
   const [showFireworks, setShowFireworks] = useState(false);
-  const [lastMoveTime, setLastMoveTime] = useState(0); // Track when we last made a move
+  const [pendingMove, setPendingMove] = useState<string | null>(null);
+  const [moveInProgress, setMoveInProgress] = useState(false);
 
-  // Initialize chess game and set player color
+  // Set player color based on chess player assignments
   useEffect(() => {
-    if (gameState?.chessState?.board) {
-      // Don't overwrite recent moves with stale server state
-      const timeSinceLastMove = Date.now() - lastMoveTime;
-      const shouldUpdate = timeSinceLastMove > 2000 || lastMoveTime === 0; // 2 second buffer
-      
-      if (shouldUpdate) {
-        try {
-          console.log('Loading board from server:', gameState.chessState.board);
-          gameRef.current.load(gameState.chessState.board);
-          setFen(gameState.chessState.board);
-        } catch (e) {
-          console.error('Failed to load chess position:', e);
-        }
-      } else {
-        console.log('Ignoring server board update - recent move detected');
-      }
-    }
-
-    // Set player color based on chess player assignments
     if (gameState?.chessPlayers) {
       if (gameState.chessPlayers.player1Id === currentPlayer) {
         setPlayerColor('white');
@@ -54,9 +36,9 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         setPlayerColor('black');
       }
     }
-  }, [gameState?.chessState?.board, gameState?.chessPlayers, currentPlayer, lastMoveTime]);
+  }, [gameState?.chessPlayers, currentPlayer]);
 
-  // Listen for board updates from the server
+  // Listen for server updates
   useEffect(() => {
     if (!socket) return;
 
@@ -68,65 +50,41 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       console.log('Received chessBoardUpdate from server:', {
         newBoard: data.board,
         move: data.move,
-        currentBoardState: gameRef.current.fen()
+        serverCurrentTurn: data.gameState.currentTurn
       });
       
-      try {
-        // Update the local chess instance with the new board state
-        gameRef.current.load(data.board);
-        setFen(data.board);
-        
-        // Reset move timing since we got server confirmation
-        setLastMoveTime(0);
-        
-        console.log('Board successfully updated to:', data.board);
-        
-        // Handle game over states
-        if (data.gameState.gameOver) {
-          setShowFireworks(true);
-        }
-        
-      } catch (error) {
-        console.error('Error handling board update:', error);
+      // Clear pending move state since server confirmed the move
+      setPendingMove(null);
+      setMoveInProgress(false);
+      
+      // Handle game over states
+      if (data.gameState.gameOver) {
+        setShowFireworks(true);
       }
     };
 
     const handleGameState = (gameState: any) => {
       console.log('Received gameState update:', {
         gameType: gameState.gameType,
-        chessBoard: gameState.chessState?.board,
-        currentBoardState: gameRef.current.fen()
+        currentTurn: gameState.currentTurn,
+        gameStarted: gameState.gameStarted,
+        chessBoard: gameState.chessState?.board
       });
       
-      // Only update if it's a chess game and has board state
-      if (gameState.gameType === 'chess' && gameState.chessState?.board) {
-        const timeSinceLastMove = Date.now() - lastMoveTime;
-        const shouldUpdate = timeSinceLastMove > 2000 || lastMoveTime === 0;
-        
-        if (shouldUpdate) {
-          try {
-            gameRef.current.load(gameState.chessState.board);
-            setFen(gameState.chessState.board);
-            setLastMoveTime(0);
-            console.log('Board updated from gameState:', gameState.chessState.board);
-          } catch (error) {
-            console.error('Error updating board from gameState:', error);
-          }
-        } else {
-          console.log('Ignoring gameState board update - recent move detected');
-        }
+      // Clear move progress state when game state updates
+      if (!moveInProgress) {
+        setPendingMove(null);
       }
     };
 
     socket.on('chessBoardUpdate', handleChessBoardUpdate);
     socket.on('gameState', handleGameState);
 
-    // Cleanup function
     return () => {
       socket.off('chessBoardUpdate', handleChessBoardUpdate);
       socket.off('gameState', handleGameState);
     };
-  }, [socket, lastMoveTime]);
+  }, [socket, moveInProgress]);
 
   // Show fireworks when game ends
   useEffect(() => {
@@ -135,7 +93,12 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     }
   }, [gameState.gameOver, showFireworks]);
 
-  // Helper function to get player's assigned color
+  // Get current board state from server (or fallback to initial position)
+  const getCurrentFen = (): string => {
+    return gameState?.chessState?.board || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  };
+
+  // Helper function to get player's assigned color from server
   const getPlayerColor = (): 'w' | 'b' | null => {
     if (!gameState?.chessPlayers) return null;
     
@@ -149,96 +112,92 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     if (!gameState.gameStarted) return false;
     if (gameState.gameOver) return false;
     if (!gameState.chessPlayers) return false;
+    if (moveInProgress) return false; // Prevent moves while one is being processed
 
     // Player role checks
     const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
                          gameState.chessPlayers.player2Id === currentPlayer;
     if (!isChessPlayer) return false;
 
-    // Turn validation using chess.js turn state
-    const chessJSTurn = gameRef.current.turn(); // 'w' or 'b'
-    const playerChessColor = getPlayerColor();
+    // Turn validation using SERVER state, not local chess.js
+    // The server's currentTurn field should match the chess player whose turn it is
+    const isMyTurn = gameState.currentTurn === currentPlayer;
     
-    const isMyTurn = playerChessColor === chessJSTurn;
     console.log('Turn check:', {
-      chessJSTurn,
-      playerChessColor,
-      currentPlayer,
-      isMyTurn,
-      boardFen: gameRef.current.fen()
+      serverCurrentTurn: gameState.currentTurn,
+      currentPlayer: currentPlayer,
+      isMyTurn: isMyTurn,
+      boardFen: getCurrentFen()
     });
     
     return isMyTurn;
+  };
+
+  const isValidMove = (from: string, to: string): boolean => {
+    try {
+      // Use chess.js only for move validation, not state management
+      const tempChess = new Chess(getCurrentFen());
+      const move = tempChess.move({ from, to });
+      return move !== null;
+    } catch (error) {
+      console.error('Error validating move:', error);
+      return false;
+    }
   };
 
   const handleMove = ({ sourceSquare, targetSquare }: { 
     sourceSquare: string; 
     targetSquare: string 
   }) => {
-    // Early validation - prevent even trying invalid moves
+    // Early validation
     if (!canMakeMove()) {
-      console.log('Move blocked: not player turn');
+      console.log('Move blocked: not player turn or game conditions not met');
       return null;
     }
     
-    try {
-      console.log(`Attempting move: ${sourceSquare} -> ${targetSquare}`);
-      
-      // Create a backup of the current position
-      const currentFen = gameRef.current.fen();
-      
-      // Create a move structure for both regular and promotion attempts
-      const moveAttempt = {
-        from: sourceSquare,
-        to: targetSquare,
-      };
-      
-      // Try regular move first
-      let move = gameRef.current.move(moveAttempt);
-      let promotionChar = '';
-      
-      // If failed, try with queen promotion (common case)
-      if (!move) {
-        const promotionMove = {
-          ...moveAttempt,
-          promotion: 'q'
-        };
-        
-        move = gameRef.current.move(promotionMove);
-        if (move) promotionChar = 'q';
-      }
-      
-      if (move) {
-        const newFen = gameRef.current.fen();
-        
-        console.log('Move successful:', {
-          move: move.san,
-          newFen: newFen,
-          previousFen: currentFen
-        });
-        
-        // Update the display immediately for better UX
-        setFen(newFen);
-        
-        // Track when we made this move to prevent server overwrites
-        setLastMoveTime(Date.now());
-        
-        // Send move to server
-        onChessMove(`${sourceSquare}${targetSquare}${promotionChar}`);
-        
-        return move;
-      } else {
-        // Restore original position if move failed
-        gameRef.current.load(currentFen);
-        console.log('Invalid move, position restored');
-      }
-    } catch (e) {
-      console.error('Error making move:', e);
-      // Restore original position on error
-      const currentFen = gameRef.current.fen();
-      gameRef.current.load(currentFen);
+    // Additional validation to prevent invalid moves from being sent
+    if (!isValidMove(sourceSquare, targetSquare)) {
+      console.log('Invalid move blocked:', sourceSquare, '->', targetSquare);
+      return null;
     }
-    return null;
+    
+    console.log(`Attempting move: ${sourceSquare} -> ${targetSquare}`);
+    
+    // Set move in progress to prevent multiple moves
+    setMoveInProgress(true);
+    setPendingMove(`${sourceSquare}${targetSquare}`);
+    
+    // Check if it's a promotion move (pawn reaching end rank)
+    let promotionChar = '';
+    const currentFen = getCurrentFen();
+    const tempChess = new Chess(currentFen);
+    const piece = tempChess.get(sourceSquare);
+    
+    if (piece && piece.type === 'p') {
+      const isPromotion = (piece.color === 'w' && targetSquare[1] === '8') || 
+                         (piece.color === 'b' && targetSquare[1] === '1');
+      if (isPromotion) {
+        promotionChar = 'q'; // Always promote to queen for simplicity
+      }
+    }
+    
+    // Send move to server and wait for confirmation
+    const moveString = `${sourceSquare}${targetSquare}${promotionChar}`;
+    onChessMove(moveString);
+    
+    // Don't update local state - wait for server response
+    console.log('Move sent to server:', moveString);
+    
+    // Set a timeout to clear the move progress state if no response
+    setTimeout(() => {
+      if (pendingMove === moveString) {
+        console.log('Move timeout - clearing progress state');
+        setMoveInProgress(false);
+        setPendingMove(null);
+      }
+    }, 5000);
+    
+    return true;
   };
 
   const getCurrentTurnDisplay = () => {
@@ -268,25 +227,30 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       return 'You are spectating this chess game';
     }
     
-    // Use chess.js turn state for display
-    const chessJSTurn = gameRef.current.turn();
-    const playerChessColor = getPlayerColor();
+    if (moveInProgress) {
+      return 'Processing move...';
+    }
     
-    if (playerChessColor === chessJSTurn) {
+    // Use SERVER turn state
+    if (gameState.currentTurn === currentPlayer) {
       return 'Your turn to move';
     } else {
       const opponentId = isPlayer1 ? gameState.chessPlayers.player2Id : gameState.chessPlayers.player1Id;
       const opponentName = playerIdToUsername[opponentId] || 
                           gameState.players.find((p: any) => p.id === opponentId)?.name || 
                           'Opponent';
-      const opponentColor = chessJSTurn === 'w' ? 'White' : 'Black';
-      return `${opponentName}'s turn (${opponentColor})`;
+      
+      // Determine color from server state
+      const currentFen = getCurrentFen();
+      const tempChess = new Chess(currentFen);
+      const currentTurnColor = tempChess.turn() === 'w' ? 'White' : 'Black';
+      
+      return `${opponentName}'s turn (${currentTurnColor})`;
     }
   };
 
-  // Simplified draggable function
   const isDraggable = (): boolean => {
-    return canMakeMove();
+    return canMakeMove() && !moveInProgress;
   };
 
   const getPlayerNames = () => {
@@ -302,7 +266,27 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     return { white: whiteName, black: blackName };
   };
 
+  const getGameStatusInfo = () => {
+    const currentFen = getCurrentFen();
+    if (currentFen === 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1') {
+      return null; // Initial position, don't show info
+    }
+    
+    try {
+      const tempChess = new Chess(currentFen);
+      return {
+        inCheck: tempChess.inCheck(),
+        moveNumber: tempChess.moveNumber(),
+        currentTurn: tempChess.turn() === 'w' ? 'White' : 'Black'
+      };
+    } catch (error) {
+      console.error('Error getting game status:', error);
+      return null;
+    }
+  };
+
   const playerNames = getPlayerNames();
+  const gameStatus = getGameStatusInfo();
 
   return (
     <div className="flex flex-col items-center justify-center h-full">
@@ -327,7 +311,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       
       <div className="w-full max-w-lg mb-4">
         <Chessboard
-          position={fen}
+          position={getCurrentFen()}
           onDrop={handleMove}
           orientation={playerColor}
           draggable={isDraggable()}
@@ -345,6 +329,12 @@ export const ChessGame: React.FC<GameRenderProps> = ({
           {getCurrentTurnDisplay()}
         </p>
         
+        {pendingMove && (
+          <p className="text-sm text-yellow-500">
+            Move pending: {pendingMove}
+          </p>
+        )}
+        
         {gameState.chessPlayers && 
          (gameState.chessPlayers.player1Id === currentPlayer || 
           gameState.chessPlayers.player2Id === currentPlayer) && (
@@ -359,21 +349,30 @@ export const ChessGame: React.FC<GameRenderProps> = ({
           </p>
         )}
         
-        {/* Game status indicators */}
-        {gameRef.current && gameRef.current.fen() !== 'start' && (
+        {/* Game status indicators based on server state */}
+        {gameStatus && (
           <div className="text-xs text-gray-600 space-y-1">
-            {gameRef.current.inCheck() && (
+            {gameStatus.inCheck && (
               <p className="text-yellow-500">Check!</p>
             )}
-            <p>Move #{gameRef.current.moveNumber()}</p>
-            <p>Turn: {gameRef.current.turn() === 'w' ? 'White' : 'Black'}</p>
+            <p>Move #{gameStatus.moveNumber}</p>
+            <p>Turn: {gameStatus.currentTurn}</p>
+          </div>
+        )}
+        
+        {/* Debug info (remove in production) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="text-xs text-gray-700 mt-4 p-2 bg-gray-800 rounded">
+            <p>Server Turn: {gameState.currentTurn}</p>
+            <p>Current Player: {currentPlayer}</p>
+            <p>Can Move: {canMakeMove().toString()}</p>
+            <p>Move In Progress: {moveInProgress.toString()}</p>
           </div>
         )}
       </div>
     </div>
   );
 };
-
 
 // import React, { useEffect, useState, useRef } from 'react';
 // import Chessboard from 'chessboardjsx';

@@ -1164,6 +1164,8 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
   }
 }
 
+
+
 // async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
 //   try {
 //     console.log('Processing chess move:', { 
