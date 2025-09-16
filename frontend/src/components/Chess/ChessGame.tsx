@@ -38,7 +38,6 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     }
   }, [gameState?.chessPlayers, currentPlayer]);
 
-  // Listen for server updates
   useEffect(() => {
     if (!socket) return;
 
@@ -47,35 +46,17 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       move: string;
       gameState: any;
     }) => {
-      console.log('Received chessBoardUpdate from server:', {
-        newBoard: data.board,
-        move: data.move,
-        serverCurrentTurn: data.gameState.currentTurn,
-        pendingMove: pendingMove
-      });
-      
-      // Always clear pending move state when we get server confirmation
+      console.log('Received chessBoardUpdate from server:', (data));
       console.log('Clearing pending move state due to server update');
       setPendingMove(null);
       setMoveInProgress(false);
-      
-      // Handle game over states
       if (data.gameState.gameOver) {
         setShowFireworks(true);
       }
     };
 
     const handleGameState = (gameStateUpdate: any) => {
-      console.log('Received gameState update:', {
-        gameType: gameStateUpdate.gameType,
-        currentTurn: gameStateUpdate.currentTurn,
-        gameStarted: gameStateUpdate.gameStarted,
-        chessBoard: gameStateUpdate.chessState?.board,
-        pendingMove: pendingMove,
-        moveInProgress: moveInProgress
-      });
-      
-      // If this is a chess game and we have a board update, clear pending state
+      console.log('Received gameState update:', (gameStateUpdate));
       if (gameStateUpdate.gameType === 'chess' && gameStateUpdate.chessState?.board) {
         console.log('Clearing pending move state due to gameState update with board');
         setPendingMove(null);
@@ -83,27 +64,38 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       }
     };
 
-    // Also listen for move confirmation directly
     const handleMoveResponse = (response: any) => {
       console.log('Received move response:', response);
       if (response.success) {
         setPendingMove(null);
         setMoveInProgress(false);
       } else {
-        console.error('Move failed:', response.error);
         setPendingMove(null);
         setMoveInProgress(false);
+      }
+    };
+
+    // NEW: Handle server errors to clear pending state
+    const handleError = (err: { message: string; type?: string }) => {
+      console.log('Received error from server:', err);
+      if (err.type === 'chessMoveError') {
+        setPendingMove(null);
+        setMoveInProgress(false);
+        // Optional: Show error to user (replace with your toast/alert system)
+        alert(`Move failed: ${err.message}`);
       }
     };
 
     socket.on('chessBoardUpdate', handleChessBoardUpdate);
     socket.on('gameState', handleGameState);
     socket.on('chessMove', handleMoveResponse);
+    socket.on('error', handleError);  // NEW listener
 
     return () => {
       socket.off('chessBoardUpdate', handleChessBoardUpdate);
       socket.off('gameState', handleGameState);
       socket.off('chessMove', handleMoveResponse);
+      socket.off('error', handleError);  // NEW cleanup
     };
   }, [socket, pendingMove, moveInProgress]);
 
