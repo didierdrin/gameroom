@@ -1066,6 +1066,9 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       ? gameState.chessPlayers.player1Id 
       : gameState.chessPlayers.player2Id;
 
+    // Update currentPlayer index for consistency
+    gameState.currentPlayer = gameState.players.findIndex(p => p.id === gameState.currentTurn);
+
     console.log('Chess move processed:', {
       move: move.san,
       from,
@@ -1073,6 +1076,7 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       promotion,
       nextTurn: nextChessTurn,
       nextPlayerId: gameState.currentTurn,
+      nextPlayerIndex: gameState.currentPlayer,
       newFen: chessGame.fen()
     });
 
