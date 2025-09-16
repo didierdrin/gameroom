@@ -976,15 +976,23 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
 
   
 // In your GameService class, replace the existing makeChessMove method with this:
+// Replace the existing makeChessMove method in GameService with this simplified version
+
 async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
   try {
+    console.log('Processing chess move:', { 
+      roomId: data.roomId, 
+      playerId: data.playerId, 
+      move: data.move 
+    });
+
     // Get game state from Redis
     const gameState = await this.getGameState(data.roomId);
     if (!gameState) {
       throw new Error('Game room not found');
     }
 
-    // Validate that the game has started and chess players are selected
+    // Basic validation - game must be started
     if (!gameState.gameStarted) {
       throw new Error('Game has not started yet');
     }
@@ -1013,20 +1021,12 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       chessGame.load(gameState.chessState.board);
     }
 
-    // Validate it's the player's turn according to the chess position
-    const currentChessTurn = chessGame.turn(); // 'w' or 'b'
-    const playerColor = isPlayer1 ? 'w' : 'b';
-    
-    if (currentChessTurn !== playerColor) {
-      throw new Error(`Not your turn. Current turn: ${currentChessTurn === 'w' ? 'White' : 'Black'}`);
-    }
-
     // Parse the move (format: "e2e4" or "e2e4q" for promotion)
     const from = data.move.substring(0, 2);
     const to = data.move.substring(2, 4);
     const promotion = data.move.length > 4 ? data.move.substring(4, 5) : undefined;
 
-    // Attempt to make the move
+    // Attempt to make the move (this validates the move)
     const moveOptions: any = { from, to };
     if (promotion) {
       moveOptions.promotion = promotion;
@@ -1038,18 +1038,19 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       throw new Error('Invalid chess move');
     }
 
-    // Update the game state with the new board position
+    // Update the game state with the new board position - ONLY SAVE, DON'T MANAGE TURNS
     if (!gameState.chessState) {
       gameState.chessState = {
         board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
         moves: [],
         history: [],
       };
-    } else {
-      gameState.chessState.board = chessGame.fen();
-      gameState.chessState.moves = gameState.chessState.moves || [];
-      gameState.chessState.history = gameState.chessState.history || [];
     }
+    
+    // Update board state
+    gameState.chessState.board = chessGame.fen();
+    gameState.chessState.moves = gameState.chessState.moves || [];
+    gameState.chessState.history = gameState.chessState.history || [];
     
     // Add move to history
     gameState.chessState.moves.push(move.san);
@@ -1060,24 +1061,10 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       timestamp: new Date()
     });
 
-    // CRITICAL FIX: Synchronize currentTurn with chess position
-    const nextChessTurn = chessGame.turn(); // 'w' or 'b' after the move
-    gameState.currentTurn = nextChessTurn === 'w' 
-      ? gameState.chessPlayers.player1Id 
-      : gameState.chessPlayers.player2Id;
-
-    // Update currentPlayer index for consistency
-    gameState.currentPlayer = gameState.players.findIndex(p => p.id === gameState.currentTurn);
-
-    console.log('Chess move processed:', {
+    console.log('Chess move saved:', {
       move: move.san,
-      from,
-      to,
-      promotion,
-      nextTurn: nextChessTurn,
-      nextPlayerId: gameState.currentTurn,
-      nextPlayerIndex: gameState.currentPlayer,
-      newFen: chessGame.fen()
+      newFen: chessGame.fen(),
+      moveCount: gameState.chessState.moves.length
     });
 
     // Check for game ending conditions
@@ -1087,7 +1074,7 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       if (chessGame.isCheckmate()) {
         // The player who just moved wins (since the other player is in checkmate)
         gameState.winner = data.playerId;
-        gameState.winCondition = 'checkmate'; // Ensure winCondition can accept string values
+        gameState.winCondition = 'checkmate';
       } else if (chessGame.isDraw()) {
         gameState.winner = 'draw';
         if (chessGame.isStalemate()) {
@@ -1105,10 +1092,33 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
         winner: gameState.winner,
         condition: gameState.winCondition
       });
+      
+      // Save game session when game ends
+      await this.gameRoomModel.updateOne(
+        { roomId: data.roomId }, 
+        { status: 'completed', winner: gameState.winner }
+      );
+      await this.saveGameSession(data.roomId, gameState);
     }
 
     // Save updated game state to Redis
     await this.updateGameState(data.roomId, gameState);
+
+    // Emit updated board state to all players in the room
+    if (this.server) {
+      this.server.to(data.roomId).emit('chessBoardUpdate', {
+        board: chessGame.fen(),
+        move: move.san,
+        gameState: {
+          chessState: gameState.chessState,
+          gameOver: gameState.gameOver,
+          winner: gameState.winner,
+          winCondition: gameState.winCondition,
+          players: gameState.players,
+          chessPlayers: gameState.chessPlayers
+        }
+      });
+    }
 
     // Return the move result
     return {
@@ -1124,8 +1134,6 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       },
       gameState: {
         chessState: gameState.chessState,
-        currentTurn: gameState.currentTurn,
-        currentPlayer: gameState.currentPlayer,
         gameOver: gameState.gameOver,
         winner: gameState.winner,
         winCondition: gameState.winCondition,
@@ -1144,6 +1152,176 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     throw error;
   }
 }
+
+
+// async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
+//   try {
+//     // Get game state from Redis
+//     const gameState = await this.getGameState(data.roomId);
+//     if (!gameState) {
+//       throw new Error('Game room not found');
+//     }
+
+//     // Validate that the game has started and chess players are selected
+//     if (!gameState.gameStarted) {
+//       throw new Error('Game has not started yet');
+//     }
+
+//     if (!gameState.chessPlayers) {
+//       throw new Error('Chess players not selected');
+//     }
+
+//     if (gameState.gameOver) {
+//       throw new Error('Game is already over');
+//     }
+
+//     // Validate that the player is one of the selected chess players
+//     const isPlayer1 = gameState.chessPlayers.player1Id === data.playerId;
+//     const isPlayer2 = gameState.chessPlayers.player2Id === data.playerId;
+    
+//     if (!isPlayer1 && !isPlayer2) {
+//       throw new Error('Only selected chess players can make moves');
+//     }
+
+//     // Initialize chess.js instance with current board state
+//     const { Chess } = require('chess.js');
+//     const chessGame = new Chess();
+    
+//     if (gameState.chessState?.board) {
+//       chessGame.load(gameState.chessState.board);
+//     }
+
+//     // Validate it's the player's turn according to the chess position
+//     const currentChessTurn = chessGame.turn(); // 'w' or 'b'
+//     const playerColor = isPlayer1 ? 'w' : 'b';
+    
+//     if (currentChessTurn !== playerColor) {
+//       throw new Error(`Not your turn. Current turn: ${currentChessTurn === 'w' ? 'White' : 'Black'}`);
+//     }
+
+//     // Parse the move (format: "e2e4" or "e2e4q" for promotion)
+//     const from = data.move.substring(0, 2);
+//     const to = data.move.substring(2, 4);
+//     const promotion = data.move.length > 4 ? data.move.substring(4, 5) : undefined;
+
+//     // Attempt to make the move
+//     const moveOptions: any = { from, to };
+//     if (promotion) {
+//       moveOptions.promotion = promotion;
+//     }
+
+//     const move = chessGame.move(moveOptions);
+    
+//     if (!move) {
+//       throw new Error('Invalid chess move');
+//     }
+
+//     // Update the game state with the new board position
+//     if (!gameState.chessState) {
+//       gameState.chessState = {
+//         board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+//         moves: [],
+//         history: [],
+//       };
+//     } else {
+//       gameState.chessState.board = chessGame.fen();
+//       gameState.chessState.moves = gameState.chessState.moves || [];
+//       gameState.chessState.history = gameState.chessState.history || [];
+//     }
+    
+//     // Add move to history
+//     gameState.chessState.moves.push(move.san);
+//     gameState.chessState.history.push({
+//       move: move.san,
+//       fen: chessGame.fen(),
+//       player: data.playerId,
+//       timestamp: new Date()
+//     });
+
+//     // CRITICAL FIX: Synchronize currentTurn with chess position
+//     const nextChessTurn = chessGame.turn(); // 'w' or 'b' after the move
+//     gameState.currentTurn = nextChessTurn === 'w' 
+//       ? gameState.chessPlayers.player1Id 
+//       : gameState.chessPlayers.player2Id;
+
+//     // Update currentPlayer index for consistency
+//     gameState.currentPlayer = gameState.players.findIndex(p => p.id === gameState.currentTurn);
+
+//     console.log('Chess move processed:', {
+//       move: move.san,
+//       from,
+//       to,
+//       promotion,
+//       nextTurn: nextChessTurn,
+//       nextPlayerId: gameState.currentTurn,
+//       nextPlayerIndex: gameState.currentPlayer,
+//       newFen: chessGame.fen()
+//     });
+
+//     // Check for game ending conditions
+//     if (chessGame.isGameOver()) {
+//       gameState.gameOver = true;
+      
+//       if (chessGame.isCheckmate()) {
+//         // The player who just moved wins (since the other player is in checkmate)
+//         gameState.winner = data.playerId;
+//         gameState.winCondition = 'checkmate'; // Ensure winCondition can accept string values
+//       } else if (chessGame.isDraw()) {
+//         gameState.winner = 'draw';
+//         if (chessGame.isStalemate()) {
+//           gameState.winCondition = 'stalemate';
+//         } else if (chessGame.isInsufficientMaterial()) {
+//           gameState.winCondition = 'insufficient_material';
+//         } else if (chessGame.isThreefoldRepetition()) {
+//           gameState.winCondition = 'threefold_repetition';
+//         } else {
+//           gameState.winCondition = 'draw';
+//         }
+//       }
+      
+//       console.log('Chess game ended:', {
+//         winner: gameState.winner,
+//         condition: gameState.winCondition
+//       });
+//     }
+
+//     // Save updated game state to Redis
+//     await this.updateGameState(data.roomId, gameState);
+
+//     // Return the move result
+//     return {
+//       success: true,
+//       move: {
+//         san: move.san,
+//         from: move.from,
+//         to: move.to,
+//         piece: move.piece,
+//         captured: move.captured,
+//         promotion: move.promotion,
+//         flags: move.flags
+//       },
+//       gameState: {
+//         chessState: gameState.chessState,
+//         currentTurn: gameState.currentTurn,
+//         currentPlayer: gameState.currentPlayer,
+//         gameOver: gameState.gameOver,
+//         winner: gameState.winner,
+//         winCondition: gameState.winCondition,
+//         players: gameState.players,
+//         chessPlayers: gameState.chessPlayers
+//       },
+//       board: chessGame.fen(),
+//       isGameOver: chessGame.isGameOver(),
+//       isCheck: chessGame.inCheck(),
+//       isCheckmate: chessGame.isCheckmate(),
+//       isDraw: chessGame.isDraw()
+//     };
+
+//   } catch (error) {
+//     console.error('Chess move error:', error);
+//     throw error;
+//   }
+// }
 
   
   private updateChessBoard(currentFen: string, move: string): string {
