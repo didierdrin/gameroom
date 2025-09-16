@@ -968,6 +968,8 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
 
   
 // Replace your makeChessMove method in game.service.ts with this:
+// Replace your makeChessMove method in game.service.ts with this fixed version:
+
 async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
   const gameState = await this.getGameState(data.roomId);
   
@@ -980,15 +982,14 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     chessPlayers: gameState.chessPlayers
   });
   
-  // Validate it's the player's turn
-  if (gameState.currentTurn !== data.playerId) {
-    console.log(`Not your turn! Current turn: ${gameState.currentTurn}, Your ID: ${data.playerId}`);
-    throw new Error('Not your turn');
-  }
-  
   // Check if game has started
   if (!gameState.gameStarted) {
     throw new Error('Game has not started yet');
+  }
+  
+  // Check if game is over
+  if (gameState.gameOver) {
+    throw new Error('Game is already over');
   }
   
   // Validate player is a chess player (not spectator)
@@ -998,22 +999,41 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
   }
 
   try {
+    // Create fresh chess instance and load current position
     const chess = new Chess(gameState.chessState!.board);
     
-    // Additional validation: make sure the player's color matches chess.js turn
+    console.log('Chess position before move:', {
+      fen: chess.fen(),
+      turn: chess.turn(),
+      moveNumber: chess.moveNumber()
+    });
+    
+    // CRITICAL: Validate turn based on chess position, not backend state
     const chessJSTurn = chess.turn(); // 'w' or 'b'
     const expectedColor = chessJSTurn === 'w' ? 'white' : 'black';
-    const currentPlayer = gameState.players.find(p => p.id === data.playerId);
     
-    if (currentPlayer?.chessColor !== expectedColor) {
-      console.log(`Color mismatch! Chess.js expects ${expectedColor}, player is ${currentPlayer?.chessColor}`);
+    // Find which player should be moving based on chess position
+    let expectedPlayerId = '';
+    if (gameState.chessPlayers) {
+      if (expectedColor === 'white') {
+        expectedPlayerId = gameState.chessPlayers.player1Id;
+      } else {
+        expectedPlayerId = gameState.chessPlayers.player2Id;
+      }
+    }
+    
+    // Validate it's the correct player's turn according to chess position
+    if (data.playerId !== expectedPlayerId) {
+      console.log(`Turn validation failed! Expected: ${expectedPlayerId} (${expectedColor}), Got: ${data.playerId}`);
       throw new Error('Not your turn according to chess position');
     }
     
+    // Parse move
     const from = data.move.substring(0, 2);
     const to = data.move.substring(2, 4);
     const promotion = data.move.length > 4 ? data.move.charAt(4) : undefined;
 
+    // Attempt the move
     const move = chess.move({
       from,
       to,
@@ -1022,17 +1042,19 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
 
     if (!move) throw new Error('Invalid move');
 
+    console.log('Move executed successfully:', {
+      move: move.san,
+      from: move.from,
+      to: move.to,
+      newFEN: chess.fen(),
+      newTurn: chess.turn()
+    });
+
     // Update game state with new position
     gameState.chessState = {
       board: chess.fen(),
       moves: [...gameState.chessState!.moves, move.san]
     };
-
-    console.log('Move processed:', {
-      move: move.san,
-      newFEN: chess.fen(),
-      newTurn: chess.turn()
-    });
 
     // Check if game is over
     if (chess.isGameOver()) {
@@ -1045,27 +1067,32 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
       await this.saveGameSession(data.roomId, gameState);
     } else {
-      // CRITICAL FIX: Update backend turn to match chess.js position
+      // FIXED: Update backend turn to match new chess position
       const newChessTurn = chess.turn(); // 'w' or 'b' after the move
       const newExpectedColor = newChessTurn === 'w' ? 'white' : 'black';
       
       // Find the player who should move next
-      const nextPlayer = gameState.players.find(p => 
-        p.chessColor === newExpectedColor && !p.isSpectator
-      );
+      let nextPlayerId = '';
+      if (gameState.chessPlayers) {
+        if (newExpectedColor === 'white') {
+          nextPlayerId = gameState.chessPlayers.player1Id;
+        } else {
+          nextPlayerId = gameState.chessPlayers.player2Id;
+        }
+      }
         
-      if (nextPlayer) {
-        gameState.currentTurn = nextPlayer.id;
-        gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
+      if (nextPlayerId) {
+        gameState.currentTurn = nextPlayerId;
+        gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayerId);
           
         console.log('Backend turn updated to match chess position:', {
           chessJsTurn: newChessTurn,
           expectedColor: newExpectedColor,
-          nextPlayerId: nextPlayer.id,
+          nextPlayerId: nextPlayerId,
           nextPlayerIndex: gameState.currentPlayer
         });
       } else {
-        console.error('Could not find next player for chess turn:', newExpectedColor);
+        console.error('Could not determine next player for chess turn:', newExpectedColor);
         throw new Error('Could not determine next player');
       }
     }
