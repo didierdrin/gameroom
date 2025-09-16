@@ -289,27 +289,58 @@ export class GameGateway {
     }
   }
 
+  // @SubscribeMessage('makeChessMove')
+  // async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; move: string }, @ConnectedSocket() client: Socket) {
+  //   try {
+  //     console.log('Chess move:', data);
+  //     const result = await this.gameService.makeChessMove(data);
+  //     this.server.to(data.roomId).emit('chessMove', result);
+  //     const gameState = await this.gameService.getGameState(data.roomId);
+  //     this.server.to(data.roomId).emit('gameState', gameState);
+  //     if (gameState.gameOver) {
+  //       this.server.to(data.roomId).emit('gameOver', { winner: gameState.winner });
+  //     }
+  //     console.log('Chess move processed, new game state:', {
+  //       currentTurn: gameState.currentTurn,
+  //       gameOver: gameState.gameOver,
+  //       winner: gameState.winner
+  //     });
+  //   } catch (error) {
+  //     console.error('Chess move error:', error.message);
+  //     client.emit('error', { message: error.message, type: 'chessMoveError' });
+  //   }
+  // }
+
   @SubscribeMessage('makeChessMove')
-  async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; move: string }, @ConnectedSocket() client: Socket) {
-    try {
-      console.log('Chess move:', data);
-      const result = await this.gameService.makeChessMove(data);
-      this.server.to(data.roomId).emit('chessMove', result);
-      const gameState = await this.gameService.getGameState(data.roomId);
-      this.server.to(data.roomId).emit('gameState', gameState);
-      if (gameState.gameOver) {
-        this.server.to(data.roomId).emit('gameOver', { winner: gameState.winner });
-      }
-      console.log('Chess move processed, new game state:', {
-        currentTurn: gameState.currentTurn,
-        gameOver: gameState.gameOver,
-        winner: gameState.winner
+async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; move: string }, @ConnectedSocket() client: Socket) {
+  try {
+    console.log('Chess move:', data);
+    const result = await this.gameService.makeChessMove(data);
+    
+    // Emit the move result to all clients
+    this.server.to(data.roomId).emit('chessMove', result);
+    
+    // Get and emit the updated game state
+    const gameState = await this.gameService.getGameState(data.roomId);
+    this.server.to(data.roomId).emit('gameState', gameState);
+    
+    if (gameState.gameOver) {
+      this.server.to(data.roomId).emit('gameOver', { 
+        winner: gameState.winner,
+        winCondition: gameState.winCondition
       });
-    } catch (error) {
-      console.error('Chess move error:', error.message);
-      client.emit('error', { message: error.message, type: 'chessMoveError' });
     }
+    
+    console.log('Chess move processed, new game state:', {
+      currentTurn: gameState.currentTurn,
+      gameOver: gameState.gameOver,
+      winner: gameState.winner
+    });
+  } catch (error) {
+    console.error('Chess move error:', error.message);
+    client.emit('error', { message: error.message, type: 'chessMoveError' });
   }
+}
 
   @SubscribeMessage('submitKahootAnswer')
   async handleKahootAnswer(@MessageBody() data: { roomId: string; playerId: string; answerIndex: number }, @ConnectedSocket() client: Socket) {
