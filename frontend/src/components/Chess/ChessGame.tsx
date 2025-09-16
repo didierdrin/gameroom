@@ -50,10 +50,12 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       console.log('Received chessBoardUpdate from server:', {
         newBoard: data.board,
         move: data.move,
-        serverCurrentTurn: data.gameState.currentTurn
+        serverCurrentTurn: data.gameState.currentTurn,
+        pendingMove: pendingMove
       });
       
-      // Clear pending move state since server confirmed the move
+      // Always clear pending move state when we get server confirmation
+      console.log('Clearing pending move state due to server update');
       setPendingMove(null);
       setMoveInProgress(false);
       
@@ -63,28 +65,47 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       }
     };
 
-    const handleGameState = (gameState: any) => {
+    const handleGameState = (gameStateUpdate: any) => {
       console.log('Received gameState update:', {
-        gameType: gameState.gameType,
-        currentTurn: gameState.currentTurn,
-        gameStarted: gameState.gameStarted,
-        chessBoard: gameState.chessState?.board
+        gameType: gameStateUpdate.gameType,
+        currentTurn: gameStateUpdate.currentTurn,
+        gameStarted: gameStateUpdate.gameStarted,
+        chessBoard: gameStateUpdate.chessState?.board,
+        pendingMove: pendingMove,
+        moveInProgress: moveInProgress
       });
       
-      // Clear move progress state when game state updates
-      if (!moveInProgress) {
+      // If this is a chess game and we have a board update, clear pending state
+      if (gameStateUpdate.gameType === 'chess' && gameStateUpdate.chessState?.board) {
+        console.log('Clearing pending move state due to gameState update with board');
         setPendingMove(null);
+        setMoveInProgress(false);
+      }
+    };
+
+    // Also listen for move confirmation directly
+    const handleMoveResponse = (response: any) => {
+      console.log('Received move response:', response);
+      if (response.success) {
+        setPendingMove(null);
+        setMoveInProgress(false);
+      } else {
+        console.error('Move failed:', response.error);
+        setPendingMove(null);
+        setMoveInProgress(false);
       }
     };
 
     socket.on('chessBoardUpdate', handleChessBoardUpdate);
     socket.on('gameState', handleGameState);
+    socket.on('chessMove', handleMoveResponse);
 
     return () => {
       socket.off('chessBoardUpdate', handleChessBoardUpdate);
       socket.off('gameState', handleGameState);
+      socket.off('chessMove', handleMoveResponse);
     };
-  }, [socket, moveInProgress]);
+  }, [socket, pendingMove, moveInProgress]);
 
   // Show fireworks when game ends
   useEffect(() => {
@@ -163,10 +184,6 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     
     console.log(`Attempting move: ${sourceSquare} -> ${targetSquare}`);
     
-    // Set move in progress to prevent multiple moves
-    setMoveInProgress(true);
-    setPendingMove(`${sourceSquare}${targetSquare}`);
-    
     // Check if it's a promotion move (pawn reaching end rank)
     let promotionChar = '';
     const currentFen = getCurrentFen();
@@ -181,21 +198,21 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       }
     }
     
-    // Send move to server and wait for confirmation
+    // Set move in progress to prevent multiple moves
     const moveString = `${sourceSquare}${targetSquare}${promotionChar}`;
+    setMoveInProgress(true);
+    setPendingMove(moveString);
+    
+    // Send move to server
+    console.log('Move sent to server:', moveString);
     onChessMove(moveString);
     
-    // Don't update local state - wait for server response
-    console.log('Move sent to server:', moveString);
-    
-    // Set a timeout to clear the move progress state if no response
+    // Backup timeout to clear pending state if something goes wrong
     setTimeout(() => {
-      if (pendingMove === moveString) {
-        console.log('Move timeout - clearing progress state');
-        setMoveInProgress(false);
-        setPendingMove(null);
-      }
-    }, 5000);
+      console.log('Move timeout check - clearing if still pending:', moveString);
+      setPendingMove(prev => prev === moveString ? null : prev);
+      setMoveInProgress(prev => prev ? false : false);
+    }, 3000); // Reduced to 3 seconds for better UX
     
     return true;
   };
@@ -373,6 +390,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     </div>
   );
 };
+
 
 // import React, { useEffect, useState, useRef } from 'react';
 // import Chessboard from 'chessboardjsx';

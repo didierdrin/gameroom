@@ -1127,6 +1127,19 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
           currentPlayer: gameState.currentPlayer // Include updated player index
         }
       });
+
+      // Find the socket for the player who made the move
+  const playerSocket = Array.from(this.server.sockets.sockets.values())
+  .find(s => s.handshake.auth?.userId === data.playerId);
+
+if (playerSocket) {
+  playerSocket.emit('chessMove', {
+    success: true,
+    roomId: data.roomId,
+    move: data.move
+  });
+}
+
     }
 
     // Return the move result
