@@ -266,6 +266,31 @@ export const LiveGameRoomPage = () => {
     ],
   }), []);
 
+
+  // Add this useEffect to update player names when game state changes
+useEffect(() => {
+  if (gameState?.players) {
+    // Update player name mapping
+    const newMapping = { ...playerIdToUsername };
+    gameState.players.forEach(player => {
+      if (player.name && player.name !== player.id) {
+        newMapping[player.id] = player.name;
+      } else if (!newMapping[player.id]) {
+        // Try to get username from user service if not already mapped
+        // You might need to implement this API call
+        newMapping[player.id] = player.id; // Fallback to ID
+      }
+    });
+    setPlayerIdToUsername(newMapping);
+    
+    // Update players list with proper names
+    setPlayers(gameState.players.map(p => ({
+      ...p,
+      name: newMapping[p.id] || p.id
+    })));
+  }
+}, [gameState?.players]);
+
   // Helper function to check if current user is a playing participant (not host spectator)
   const isActivePlayer = () => {
     const actualGamePlayers = gameState.players.filter(p => p.id !== roomInfo?.host);
@@ -1003,10 +1028,12 @@ export const LiveGameRoomPage = () => {
     }
   };
 
-  const handleChessPlayerSelection = (player1Id: string, player2Id: string) => {
+  const handleChessPlayerSelection = async (player1Id: string, player2Id: string) => {
     if (!socket || !roomId || !user?.id) return;
     
     console.log("Selecting chess players:", { player1Id, player2Id });
+    
+    // First select players, then start game after a brief delay
     socket.emit("selectChessPlayers", {
       roomId,
       hostId: user.id,
@@ -1014,8 +1041,10 @@ export const LiveGameRoomPage = () => {
       player2Id
     });
     
-    // Start the game after selecting players
-    socket.emit("startGame", { roomId });
+    // Wait a moment for the server to process player selection
+    setTimeout(() => {
+      socket.emit("startGame", { roomId });
+    }, 300);
   };
 
   const handleEndGame = () => {

@@ -805,7 +805,7 @@ async startGame(roomId: string) {
     
     // Special validation for chess games
     if (room.gameType === 'chess') {
-      // Ensure chess players have been selected
+      const gameState = await this.getGameState(roomId); // Get latest state
       if (!gameState.chessPlayers?.player1Id || !gameState.chessPlayers?.player2Id) {
         throw new Error('Chess players must be selected before starting the game');
       }
@@ -1004,9 +1004,10 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     // Additional validation: make sure the player's color matches chess.js turn
     const chessJSTurn = chess.turn(); // 'w' or 'b'
     const expectedColor = chessJSTurn === 'w' ? 'white' : 'black';
+    const currentPlayer = gameState.players.find(p => p.id === data.playerId);
     
-    if (currentPlayer.chessColor !== expectedColor) {
-      console.log(`Color mismatch! Chess.js expects ${expectedColor}, player is ${currentPlayer.chessColor}`);
+    if (currentPlayer?.chessColor !== expectedColor) {
+      console.log(`Color mismatch! Chess.js expects ${expectedColor}, player is ${currentPlayer?.chessColor}`);
       throw new Error('Not your turn according to chess position');
     }
     
@@ -1043,16 +1044,16 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     } else {
       // CRITICAL FIX: Update backend turn to match chess.js position
       const newChessTurn = chess.turn(); // 'w' or 'b' after the move
-      const newExpectedColor = newChessTurn === 'w' ? 'white' : 'black';
-      
-      // Find the player who should move next based on the chess position
-      const nextPlayer = gameState.players.find(p => 
-        p.chessColor === newExpectedColor && !p.isSpectator
-      );
+    const newExpectedColor = newChessTurn === 'w' ? 'white' : 'black';
+    
+    // Find the player who should move next
+    const nextPlayer = gameState.players.find(p => 
+      p.chessColor === newExpectedColor && !p.isSpectator
+    );
       
       if (nextPlayer) {
         gameState.currentTurn = nextPlayer.id;
-        gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
+      gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
         
         console.log('Backend turn updated to match chess position:', {
           chessJsTurn: newChessTurn,
@@ -1809,82 +1810,3 @@ private async getPlayerName(playerId: string): Promise<string> {
 
 }
 
-
-
-
-  // async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
-  //   const gameState = await this.getGameState(data.roomId);
-    
-  //   console.log('Chess move attempt:', {
-  //     playerId: data.playerId,
-  //     currentTurn: gameState.currentTurn,
-  //     move: data.move,
-  //     gameStarted: gameState.gameStarted,
-  //     gameOver: gameState.gameOver,
-  //     chessPlayers: gameState.chessPlayers
-  //   });
-    
-  //   // Validate it's the player's turn
-  //   if (gameState.currentTurn !== data.playerId) {
-  //     throw new Error('Not your turn');
-  //   }
-    
-  //   // Validate player is a chess player (not spectator)
-  //   if (!gameState.chessPlayers || 
-  //       (gameState.chessPlayers.player1Id !== data.playerId && gameState.chessPlayers.player2Id !== data.playerId)) {
-  //     throw new Error('Only selected chess players can make moves');
-  //   }
-  
-  //   try {
-  //     const chess = new Chess(gameState.chessState!.board);
-  //     const move = chess.move({
-  //       from: data.move.substring(0, 2),
-  //       to: data.move.substring(2, 4),
-  //       promotion: 'q'
-  //     });
-  
-  //     if (!move) throw new Error('Invalid move');
-  
-  //     // Update game state
-  //     gameState.chessState = {
-  //       board: chess.fen(),
-  //       moves: [...gameState.chessState!.moves, move.san]
-  //     };
-  
-  //     // Check if game is over
-  //     if (chess.isGameOver()) {
-  //       gameState.gameOver = true;
-  //       if (chess.isCheckmate()) {
-  //         gameState.winner = data.playerId;
-  //       } else if (chess.isDraw()) {
-  //         gameState.winner = 'draw';
-  //       }
-  //       await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
-  //       await this.saveGameSession(data.roomId, gameState);
-  //     } else {
-  //       // Switch turns only between the two chess players
-  //       if (gameState.chessPlayers) {
-  //         const nextPlayerId = gameState.chessPlayers.player1Id === data.playerId 
-  //           ? gameState.chessPlayers.player2Id 
-  //           : gameState.chessPlayers.player1Id;
-  //         gameState.currentTurn = nextPlayerId;
-  //         gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayerId);
-  //       }
-  //     }
-  
-  //     await this.updateGameState(data.roomId, gameState);
-      
-  //     console.log('Chess move completed:', {
-  //       move: move.san,
-  //       newTurn: gameState.currentTurn,
-  //       gameOver: gameState.gameOver,
-  //       winner: gameState.winner,
-  //       chessPlayers: gameState.chessPlayers
-  //     });
-      
-  //     return { roomId: data.roomId, move: move.san, gameState };
-  //   } catch (error) {
-  //     console.error('Chess move error:', error);
-  //     throw error;
-  //   }
-  // }

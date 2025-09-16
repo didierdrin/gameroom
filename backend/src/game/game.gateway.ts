@@ -5,10 +5,10 @@ import { GameService } from './game.service';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
 import { UserService } from '../user/user.service';
 
-// @WebSocketGateway({ cors: { origin: 'https://alu-globe-gameroom.onrender.com', credentials: true } })
 @WebSocketGateway({ 
   cors: { 
     origin: [
+      'http://localhost:3000',
       'http://localhost:5173',
       'https://alu-globe-gameroom-frontend.vercel.app',
       'https://alu-globe-gameroom.onrender.com'
