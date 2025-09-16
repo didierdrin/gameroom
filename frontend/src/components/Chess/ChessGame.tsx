@@ -64,16 +64,18 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       }
     };
 
-    const handleMoveResponse = (response: any) => {
-      console.log('Received move response:', response);
-      if (response.success) {
-        setPendingMove(null);
-        setMoveInProgress(false);
-      } else {
-        setPendingMove(null);
-        setMoveInProgress(false);
-      }
-    };
+    // In the useEffect hook in ChessGame.tsx, add:
+const handleMoveResponse = (response: any) => {
+  console.log('Received move response:', response);
+  if (response.success && response.move === pendingMove) {
+    setPendingMove(null);
+    setMoveInProgress(false);
+    console.log('Move confirmed by server');
+  }
+};
+
+// Add this to your socket listeners:
+socket.on('chessMoveResponse', handleMoveResponse);
 
     // NEW: Handle server errors to clear pending state
     const handleError = (err: { message: string; type?: string }) => {
@@ -125,23 +127,27 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     if (!gameState.gameStarted) return false;
     if (gameState.gameOver) return false;
     if (!gameState.chessPlayers) return false;
-    if (moveInProgress) return false; // Prevent moves while one is being processed
-
+    if (moveInProgress) return false;
+  
     // Player role checks
     const isChessPlayer = gameState.chessPlayers.player1Id === currentPlayer || 
                          gameState.chessPlayers.player2Id === currentPlayer;
     if (!isChessPlayer) return false;
-
-    // Turn validation using SERVER state, not local chess.js
-    // The server's currentTurn field should match the chess player whose turn it is
+  
+    // Turn validation using SERVER state
     const isMyTurn = gameState.currentTurn === currentPlayer;
     
-    console.log('Turn check:', {
-      serverCurrentTurn: gameState.currentTurn,
-      currentPlayer: currentPlayer,
-      isMyTurn: isMyTurn,
-      boardFen: getCurrentFen()
-    });
+    // Additional validation: check if the move would be for the correct color
+    if (isMyTurn) {
+      const currentFen = getCurrentFen();
+      const tempChess = new Chess(currentFen);
+      const playerColor = getPlayerColor();
+      
+      if (playerColor && tempChess.turn() !== playerColor) {
+        console.log('Move blocked: not the correct color to move');
+        return false;
+      }
+    }
     
     return isMyTurn;
   };
@@ -158,56 +164,112 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     }
   };
 
-  const handleMove = ({ sourceSquare, targetSquare }: { 
-    sourceSquare: string; 
-    targetSquare: string 
-  }) => {
-    // Early validation
-    if (!canMakeMove()) {
-      console.log('Move blocked: not player turn or game conditions not met');
-      return null;
+
+  // Replace the handleMove function in ChessGame.tsx:
+const handleMove = ({ sourceSquare, targetSquare }: { 
+  sourceSquare: string; 
+  targetSquare: string 
+}) => {
+  if (!canMakeMove()) {
+    console.log('Move blocked: not player turn or game conditions not met');
+    return null;
+  }
+  
+  // Additional validation to prevent invalid moves from being sent
+  if (!isValidMove(sourceSquare, targetSquare)) {
+    console.log('Invalid move blocked:', sourceSquare, '->', targetSquare);
+    return null;
+  }
+  
+  console.log(`Attempting move: ${sourceSquare} -> ${targetSquare}`);
+  
+  // Check if it's a promotion move
+  let promotionChar = '';
+  const currentFen = getCurrentFen();
+  const tempChess = new Chess(currentFen);
+  const piece = tempChess.get(sourceSquare as any);
+  
+  if (piece && piece.type === 'p') {
+    const isPromotion = (piece.color === 'w' && targetSquare[1] === '8') || 
+                       (piece.color === 'b' && targetSquare[1] === '1');
+    if (isPromotion) {
+      promotionChar = 'q'; // Always promote to queen for simplicity
     }
-    
-    // Additional validation to prevent invalid moves from being sent
-    if (!isValidMove(sourceSquare, targetSquare)) {
-      console.log('Invalid move blocked:', sourceSquare, '->', targetSquare);
-      return null;
+  }
+  
+  // Set move in progress to prevent multiple moves
+  const moveString = `${sourceSquare}${targetSquare}${promotionChar}`;
+  setMoveInProgress(true);
+  setPendingMove(moveString);
+  
+  // Send move to server
+  console.log('Move sent to server:', moveString);
+  onChessMove(moveString);
+  
+  // Backup timeout to clear pending state if something goes wrong
+  const timeoutId = setTimeout(() => {
+    console.log('Move timeout check - clearing if still pending:', moveString);
+    if (pendingMove === moveString) {
+      setPendingMove(null);
+      setMoveInProgress(false);
+      console.warn('Move timed out - server did not respond');
     }
+  }, 5000); // Increased to 5 seconds
+  
+  return () => clearTimeout(timeoutId);
+};
+
+
+  // const handleMove = ({ sourceSquare, targetSquare }: { 
+  //   sourceSquare: string; 
+  //   targetSquare: string 
+  // }) => {
+  //   // Early validation
+  //   if (!canMakeMove()) {
+  //     console.log('Move blocked: not player turn or game conditions not met');
+  //     return null;
+  //   }
     
-    console.log(`Attempting move: ${sourceSquare} -> ${targetSquare}`);
+  //   // Additional validation to prevent invalid moves from being sent
+  //   if (!isValidMove(sourceSquare, targetSquare)) {
+  //     console.log('Invalid move blocked:', sourceSquare, '->', targetSquare);
+  //     return null;
+  //   }
     
-    // Check if it's a promotion move (pawn reaching end rank)
-    let promotionChar = '';
-    const currentFen = getCurrentFen();
-    const tempChess = new Chess(currentFen);
-    const piece = tempChess.get(sourceSquare as any);
+  //   console.log(`Attempting move: ${sourceSquare} -> ${targetSquare}`);
     
-    if (piece && piece.type === 'p') {
-      const isPromotion = (piece.color === 'w' && targetSquare[1] === '8') || 
-                         (piece.color === 'b' && targetSquare[1] === '1');
-      if (isPromotion) {
-        promotionChar = 'q'; // Always promote to queen for simplicity
-      }
-    }
+  //   // Check if it's a promotion move (pawn reaching end rank)
+  //   let promotionChar = '';
+  //   const currentFen = getCurrentFen();
+  //   const tempChess = new Chess(currentFen);
+  //   const piece = tempChess.get(sourceSquare as any);
     
-    // Set move in progress to prevent multiple moves
-    const moveString = `${sourceSquare}${targetSquare}${promotionChar}`;
-    setMoveInProgress(true);
-    setPendingMove(moveString);
+  //   if (piece && piece.type === 'p') {
+  //     const isPromotion = (piece.color === 'w' && targetSquare[1] === '8') || 
+  //                        (piece.color === 'b' && targetSquare[1] === '1');
+  //     if (isPromotion) {
+  //       promotionChar = 'q'; // Always promote to queen for simplicity
+  //     }
+  //   }
     
-    // Send move to server
-    console.log('Move sent to server:', moveString);
-    onChessMove(moveString);
+  //   // Set move in progress to prevent multiple moves
+  //   const moveString = `${sourceSquare}${targetSquare}${promotionChar}`;
+  //   setMoveInProgress(true);
+  //   setPendingMove(moveString);
     
-    // Backup timeout to clear pending state if something goes wrong
-    setTimeout(() => {
-      console.log('Move timeout check - clearing if still pending:', moveString);
-      setPendingMove(prev => prev === moveString ? null : prev);
-      setMoveInProgress(prev => prev ? false : false);
-    }, 3000); // Reduced to 3 seconds for better UX
+  //   // Send move to server
+  //   console.log('Move sent to server:', moveString);
+  //   onChessMove(moveString);
     
-    return true;
-  };
+  //   // Backup timeout to clear pending state if something goes wrong
+  //   setTimeout(() => {
+  //     console.log('Move timeout check - clearing if still pending:', moveString);
+  //     setPendingMove(prev => prev === moveString ? null : prev);
+  //     setMoveInProgress(prev => prev ? false : false);
+  //   }, 3000); // Reduced to 3 seconds for better UX
+    
+  //   return true;
+  // };
 
   const getCurrentTurnDisplay = () => {
     if (gameState.gameOver) {

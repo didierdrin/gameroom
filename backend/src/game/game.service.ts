@@ -975,7 +975,9 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
 }
 
   
-// In your GameService class, replace the existing makeChessMove method with this:
+
+
+
 async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
   try {
     console.log('Processing chess move:', { 
@@ -1028,19 +1030,29 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     const to = data.move.substring(2, 4);
     const promotion = data.move.length > 4 ? data.move.substring(4, 5) : undefined;
 
-    // Attempt to make the move (this validates the move)
-    const moveOptions: any = { from, to };
-    if (promotion) {
-      moveOptions.promotion = promotion;
+    // Add validation for move format
+    if (!from || !to || from.length !== 2 || to.length !== 2) {
+      throw new Error('Invalid move format. Expected format like "e2e4"');
     }
 
-    const move = chessGame.move(moveOptions);
+    // Attempt to make the move (this validates the move)
+    let move;
+    try {
+      const moveOptions: any = { from, to };
+      if (promotion) {
+        moveOptions.promotion = promotion;
+      }
+      move = chessGame.move(moveOptions);
+    } catch (error) {
+      console.error('Chess.js move validation failed:', error);
+      throw new Error(`Invalid move: ${from} to ${to}`);
+    }
     
     if (!move) {
       throw new Error('Invalid chess move');
     }
 
-    // Update the game state with the new board position - ONLY SAVE, DON'T MANAGE TURNS
+    // Update the game state with the new board position
     if (!gameState.chessState) {
       gameState.chessState = {
         board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
