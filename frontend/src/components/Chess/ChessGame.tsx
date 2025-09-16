@@ -24,28 +24,14 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   const [fen, setFen] = useState('start');
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
   const [showFireworks, setShowFireworks] = useState(false);
-  const [currentTurn, setCurrentTurn] = useState<string>('');
 
-  // Initialize chess game and manage turn locally
+  // Initialize chess game and set player color
   useEffect(() => {
     if (gameState?.chessState?.board) {
       try {
         console.log('Loading board from server:', gameState.chessState.board);
         gameRef.current.load(gameState.chessState.board);
-        setFen(gameRef.current.fen());
-        
-        // Set current turn based on chess position, not server state
-        const chessTurn = gameRef.current.turn(); // 'w' or 'b'
-        if (gameState.chessPlayers) {
-          const whitePlayerId = gameState.chessPlayers.player1Id;
-          const blackPlayerId = gameState.chessPlayers.player2Id;
-          
-          setCurrentTurn(chessTurn === 'w' ? whitePlayerId : blackPlayerId);
-          console.log('Turn set based on chess position:', {
-            chessTurn,
-            currentTurnPlayerId: chessTurn === 'w' ? whitePlayerId : blackPlayerId
-          });
-        }
+        setFen(gameState.chessState.board); // Use server board state directly
       } catch (e) {
         console.error('Failed to load chess position:', e);
       }
@@ -61,56 +47,39 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     }
   }, [gameState?.chessState?.board, gameState?.chessPlayers, currentPlayer]);
 
-
-  // Add this useEffect to your ChessGame component after the existing useEffects
-
-useEffect(() => {
-  if (!socket) return;
-
   // Listen for board updates from the server
-  const handleChessBoardUpdate = (data: {
-    board: string;
-    move: string;
-    gameState: any;
-  }) => {
-    console.log('Received board update from server:', data);
-    
-    try {
-      // Update the local chess instance with the new board state
-      gameRef.current.load(data.board);
-      setFen(data.board);
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleChessBoardUpdate = (data: {
+      board: string;
+      move: string;
+      gameState: any;
+    }) => {
+      console.log('Received board update from server:', data);
       
-      // Update local turn state based on the new chess position
-      const chessTurn = gameRef.current.turn(); // 'w' or 'b'
-      if (gameState?.chessPlayers) {
-        const whitePlayerId = gameState.chessPlayers.player1Id;
-        const blackPlayerId = gameState.chessPlayers.player2Id;
+      try {
+        // Update the local chess instance with the new board state
+        gameRef.current.load(data.board);
+        setFen(data.board);
         
-        setCurrentTurn(chessTurn === 'w' ? whitePlayerId : blackPlayerId);
-        console.log('Turn updated from board update:', {
-          chessTurn,
-          currentTurnPlayerId: chessTurn === 'w' ? whitePlayerId : blackPlayerId
-        });
+        // Handle game over states
+        if (data.gameState.gameOver) {
+          setShowFireworks(true);
+        }
+        
+      } catch (error) {
+        console.error('Error handling board update:', error);
       }
-      
-      // Handle game over states
-      if (data.gameState.gameOver) {
-        setShowFireworks(true);
-      }
-      
-    } catch (error) {
-      console.error('Error handling board update:', error);
-    }
-  };
+    };
 
-  socket.on('chessBoardUpdate', handleChessBoardUpdate);
+    socket.on('chessBoardUpdate', handleChessBoardUpdate);
 
-  // Cleanup function
-  return () => {
-    socket.off('chessBoardUpdate', handleChessBoardUpdate);
-  };
-}, [socket, gameState?.chessPlayers]);
-
+    // Cleanup function
+    return () => {
+      socket.off('chessBoardUpdate', handleChessBoardUpdate);
+    };
+  }, [socket]);
 
   // Show fireworks when game ends
   useEffect(() => {
@@ -139,7 +108,7 @@ useEffect(() => {
                          gameState.chessPlayers.player2Id === currentPlayer;
     if (!isChessPlayer) return false;
 
-    // Turn validation using LOCAL turn state (not server state)
+    // Turn validation using chess.js turn state
     const chessJSTurn = gameRef.current.turn(); // 'w' or 'b'
     const playerChessColor = getPlayerColor();
     
@@ -149,7 +118,7 @@ useEffect(() => {
       playerChessColor,
       currentPlayer,
       isMyTurn,
-      currentTurnState: currentTurn
+      boardFen: gameRef.current.fen()
     });
     
     return isMyTurn;
@@ -193,26 +162,16 @@ useEffect(() => {
       }
       
       if (move) {
-        // Update UI immediately for better responsiveness
-        const newFen = gameRef.current.fen();
-        setFen(newFen);
-        
-        // Update local turn state based on chess position
-        const nextTurn = gameRef.current.turn(); // 'w' or 'b'
-        const nextPlayerId = nextTurn === 'w' 
-          ? gameState.chessPlayers.player1Id 
-          : gameState.chessPlayers.player2Id;
-        setCurrentTurn(nextPlayerId);
-        
         console.log('Move successful:', {
           move: move.san,
-          newFen,
-          nextTurn,
-          nextPlayerId
+          newFen: gameRef.current.fen()
         });
         
-        // Send move to server (server only saves, doesn't manage turns)
+        // Send move to server - server will handle the board update
         onChessMove(`${sourceSquare}${targetSquare}${promotionChar}`);
+        
+        // Revert to backup state - let server update be authoritative
+        gameRef.current.load(currentFen);
         
         return move;
       } else {
@@ -256,7 +215,7 @@ useEffect(() => {
       return 'You are spectating this chess game';
     }
     
-    // Use LOCAL turn state for display
+    // Use chess.js turn state for display
     const chessJSTurn = gameRef.current.turn();
     const playerChessColor = getPlayerColor();
     
@@ -361,7 +320,6 @@ useEffect(() => {
     </div>
   );
 };
-
 
 // import React, { useEffect, useState, useRef } from 'react';
 // import Chessboard from 'chessboardjsx';
