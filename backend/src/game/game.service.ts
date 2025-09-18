@@ -1148,18 +1148,12 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
         }
       });
 
-      // Find the socket for the player who made the move
-  const playerSocket = Array.from(this.server.sockets.sockets.values())
-  .find(s => s.handshake.auth?.userId === data.playerId);
-
-if (playerSocket) {
-  playerSocket.emit('chessMove', {
-    success: true,
-    roomId: data.roomId,
-    move: data.move
-  });
-}
-
+      // Emit success confirmation to the entire room (all clients will receive, but only sender has pendingMove)
+      this.server.to(data.roomId).emit('chessMove', {
+        success: true,
+        roomId: data.roomId,
+        move: data.move
+      });
     }
 
     // Return the move result
@@ -1181,8 +1175,8 @@ if (playerSocket) {
         winCondition: gameState.winCondition,
         players: gameState.players,
         chessPlayers: gameState.chessPlayers,
-        currentTurn: gameState.currentTurn, // Include updated turn in response
-        currentPlayer: gameState.currentPlayer // Include updated player index
+        currentTurn: gameState.currentTurn, 
+        currentPlayer: gameState.currentPlayer 
       },
       board: chessGame.fen(),
       isGameOver: chessGame.isGameOver(),
