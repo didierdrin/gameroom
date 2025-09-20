@@ -2,7 +2,7 @@
 import React from 'react';
 import { UsersIcon } from 'lucide-react';
 import { Player as LudoPlayer } from '../Ludo/types/game';
-import { useUsername } from '../../hooks/useUsername';
+import { useUserData } from '../../hooks/useUserData';
 
 interface Player extends LudoPlayer {
   isOnline?: boolean;
@@ -17,7 +17,7 @@ interface PlayerItemProps {
   mutedPlayers?: string[];
 }
 
-// Separate component for each player to use the useUsername hook
+// Separate component for each player to use the useUserData hook
 const PlayerItem: React.FC<PlayerItemProps> = ({
   player,
   currentPlayerId,
@@ -26,7 +26,7 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
   onPlayerClick,
   mutedPlayers = []
 }) => {
-  const { username, isLoading } = useUsername(player.id);
+  const { username, avatar, isLoading } = useUserData(player.id);
 
   const getPlayerDisplay = () => {
     // For the current player
@@ -62,9 +62,13 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
       onClick={() => isHost && onPlayerClick?.(player)} // Remove AI check
     >
       <img 
-        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
+        src={avatar} 
         alt={name}
         className="w-8 h-8 rounded-full"
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`;
+        }}
       />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{name}</p>

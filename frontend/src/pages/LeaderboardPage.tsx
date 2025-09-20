@@ -76,7 +76,7 @@ export const LeaderboardPage = () => {
       const formattedLeaderboard = leaderboard.map((player: any) => ({
         _id: player._id || '',
         username: player.username || 'Unknown Player',
-        avatar: player.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username || 'default'}`,
+        avatar: player.avatar && player.avatar.trim() !== '' ? player.avatar : `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username || 'default'}`,
         score: Number(player.score) || 0,
         gamesPlayed: Number(player.gamesPlayed) || 0,
         gamesWon: Number(player.gamesWon) || 0,
@@ -87,6 +87,7 @@ export const LeaderboardPage = () => {
       formattedLeaderboard.sort((a, b) => b.score - a.score);
 
       console.log('Formatted leaderboard:', formattedLeaderboard);
+      console.log('Sample avatar URLs:', formattedLeaderboard.slice(0, 3).map(p => ({ username: p.username, avatar: p.avatar })));
       setLeaderboardData(formattedLeaderboard);
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);

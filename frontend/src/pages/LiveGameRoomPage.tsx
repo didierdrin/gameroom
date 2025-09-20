@@ -291,14 +291,30 @@ useEffect(() => {
   }
 }, [gameState?.players]);
 
-  // Helper function to check if current user is a playing participant (not host spectator)
+  // Helper function to check if current user is a playing participant
   const isActivePlayer = () => {
+    // For chess games, check if user is one of the selected chess players
+    if (gameType === 'chess' && gameState?.chessPlayers) {
+      return gameState.chessPlayers.player1Id === user?.id || 
+             gameState.chessPlayers.player2Id === user?.id;
+    }
+    
+    // For other games, exclude host if they're spectating
     const actualGamePlayers = gameState.players.filter(p => p.id !== roomInfo?.host);
     return actualGamePlayers.some(p => p.id === user?.id);
   };
 
   // Helper function to get actual game players (excluding host if they're spectating)
   const getActiveGamePlayers = () => {
+    // For chess games, return the selected chess players
+    if (gameType === 'chess' && gameState?.chessPlayers) {
+      return gameState.players.filter(p => 
+        p.id === gameState.chessPlayers?.player1Id || 
+        p.id === gameState.chessPlayers?.player2Id
+      );
+    }
+    
+    // For other games, exclude host if they're spectating
     if (!roomInfo?.host) return gameState.players;
     return gameState.players.filter(p => p.id !== roomInfo.host);
   };
