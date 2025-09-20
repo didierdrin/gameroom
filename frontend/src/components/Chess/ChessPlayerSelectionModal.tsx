@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { XIcon, UsersIcon, CheckIcon } from 'lucide-react';
+import { useUserData } from '../../hooks/useUserData';
 
 interface Player {
   id: string;
@@ -15,6 +16,70 @@ interface ChessPlayerSelectionModalProps {
   hostId: string;
   playerIdToUsername?: Record<string, string>;
 }
+
+// Component for each player to use the useUserData hook
+const PlayerSelectionItem: React.FC<{
+  player: Player;
+  isHost: boolean;
+  isSpectator: boolean;
+  playerName: string;
+  isSelected: boolean;
+  isDisabled: boolean;
+  onClick: () => void;
+}> = ({ player, isHost, isSpectator, playerName, isSelected, isDisabled, onClick }) => {
+  const { avatar } = useUserData(player.id);
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={isDisabled}
+      className={`p-4 rounded-lg border-2 transition-all ${
+        isDisabled
+          ? 'border-gray-700 bg-gray-800/50 text-gray-500 cursor-not-allowed'
+          : isSelected
+          ? 'border-purple-500 bg-purple-500/20 text-purple-400'
+          : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500 hover:bg-gray-700'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <img 
+            src={avatar} 
+            alt="Player avatar"
+            className="w-8 h-8 rounded-full"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`;
+            }}
+          />
+          <div className="flex flex-col items-start">
+            <span className="font-medium">{playerName}</span>
+            <div className="flex items-center space-x-2">
+              {isHost && (
+                <span className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded-full border border-yellow-600/30">
+                  Host
+                </span>
+              )}
+              {isSpectator && (
+                <span className="text-xs bg-blue-600/20 text-blue-400 px-2 py-1 rounded-full border border-blue-600/30">
+                  Spectator
+                </span>
+              )}
+              {!isHost && !isSpectator && (
+                <span className="text-xs bg-green-600/20 text-green-400 px-2 py-1 rounded-full border border-green-600/30">
+                  Player
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        {isSelected && (
+          <CheckIcon size={20} className="text-purple-400" />
+        )}
+      </div>
+    </button>
+  );
+};
 
 export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps> = ({
   isOpen,
@@ -103,52 +168,20 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {availablePlayers.map((player) => {
                   const isHost = player.id === hostId;
-                  const isSpectator = player.isSpectator;
+                  const isSpectator = player.isSpectator || false;
                   const playerName = getPlayerName(player.id);
                   
                   return (
-                    <button
+                    <PlayerSelectionItem
                       key={`player1-${player.id}`}
+                      player={player}
+                      isHost={isHost}
+                      isSpectator={isSpectator}
+                      playerName={playerName}
+                      isSelected={selectedPlayer1 === player.id}
+                      isDisabled={false}
                       onClick={() => handlePlayerSelect(player.id, true)}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        selectedPlayer1 === player.id
-                          ? 'border-purple-500 bg-purple-500/20 text-purple-400'
-                          : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500 hover:bg-gray-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <img 
-                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
-                            alt="Player avatar"
-                            className="w-8 h-8 rounded-full"
-                          />
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">{playerName}</span>
-                            <div className="flex items-center space-x-2">
-                              {isHost && (
-                                <span className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded-full border border-yellow-600/30">
-                                  Host
-                                </span>
-                              )}
-                              {isSpectator && (
-                                <span className="text-xs bg-blue-600/20 text-blue-400 px-2 py-1 rounded-full border border-blue-600/30">
-                                  Spectator
-                                </span>
-                              )}
-                              {!isHost && !isSpectator && (
-                                <span className="text-xs bg-green-600/20 text-green-400 px-2 py-1 rounded-full border border-green-600/30">
-                                  Player
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        {selectedPlayer1 === player.id && (
-                          <CheckIcon size={20} className="text-purple-400" />
-                        )}
-                      </div>
-                    </button>
+                    />
                   );
                 })}
               </div>
@@ -162,55 +195,20 @@ export const ChessPlayerSelectionModal: React.FC<ChessPlayerSelectionModalProps>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {availablePlayers.map((player) => {
                   const isHost = player.id === hostId;
-                  const isSpectator = player.isSpectator;
+                  const isSpectator = player.isSpectator || false;
                   const playerName = getPlayerName(player.id);
                   
                   return (
-                    <button
+                    <PlayerSelectionItem
                       key={`player2-${player.id}`}
+                      player={player}
+                      isHost={isHost}
+                      isSpectator={isSpectator}
+                      playerName={playerName}
+                      isSelected={selectedPlayer2 === player.id}
+                      isDisabled={selectedPlayer1 === player.id}
                       onClick={() => handlePlayerSelect(player.id, false)}
-                      disabled={selectedPlayer1 === player.id}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        selectedPlayer1 === player.id
-                          ? 'border-gray-700 bg-gray-800/50 text-gray-500 cursor-not-allowed'
-                          : selectedPlayer2 === player.id
-                          ? 'border-purple-500 bg-purple-500/20 text-purple-400'
-                          : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500 hover:bg-gray-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <img 
-                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
-                            alt="Player avatar"
-                            className="w-8 h-8 rounded-full"
-                          />
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">{playerName}</span>
-                            <div className="flex items-center space-x-2">
-                              {isHost && (
-                                <span className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded-full border border-yellow-600/30">
-                                  Host
-                                </span>
-                              )}
-                              {isSpectator && (
-                                <span className="text-xs bg-blue-600/20 text-blue-400 px-2 py-1 rounded-full border border-blue-600/30">
-                                  Spectator
-                                </span>
-                              )}
-                              {!isHost && !isSpectator && (
-                                <span className="text-xs bg-green-600/20 text-green-400 px-2 py-1 rounded-full border border-green-600/30">
-                                  Player
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        {selectedPlayer2 === player.id && (
-                          <CheckIcon size={20} className="text-purple-400" />
-                        )}
-                      </div>
-                    </button>
+                    />
                   );
                 })}
               </div>

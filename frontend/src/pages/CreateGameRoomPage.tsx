@@ -196,7 +196,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
         alert('Request timed out. Please try again.');
       }, 10000);
 
-      const handleGameCreated = (game: any) => {
+      const handleGameCreated = async (game: any) => {
         if (responded || !isMountedRef.current) return;
         responded = true;
         clearTimeout(timeout);
@@ -204,6 +204,66 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
         
         // Store the created game data
         setCreatedGameData(game);
+        
+        // For chess games in playNow mode, automatically join the host as a player
+        if (gameType === 'chess' && gameMode === 'playNow' && game?.roomId && user?.id) {
+          try {
+            console.log('Auto-joining host as player for chess game:', game.roomId);
+            
+            // Join the host as a player
+            const joinPayload = {
+              roomId: game.roomId,
+              playerId: user.id,
+              playerName: user.username,
+              joinAsPlayer: true,
+              password: privacy === 'private' ? password : undefined
+            };
+            
+            // Wait for join confirmation
+            await new Promise<void>((resolve, reject) => {
+              const joinTimeout = setTimeout(() => {
+                cleanupListeners();
+                reject(new Error('Join operation timed out'));
+              }, 5000);
+              
+              const handleJoinSuccess = (data: any) => {
+                clearTimeout(joinTimeout);
+                cleanupListeners();
+                console.log('Host successfully joined as player:', data);
+                resolve();
+              };
+              
+              const handleJoinError = (error: any) => {
+                clearTimeout(joinTimeout);
+                cleanupListeners();
+                console.error('Failed to join as player:', error);
+                reject(error);
+              };
+              
+              const cleanupListeners = () => {
+                socket?.off('playerJoined', handleJoinSuccess);
+                socket?.off('error', handleJoinError);
+              };
+              
+              socket?.on('playerJoined', handleJoinSuccess);
+              socket?.on('error', handleJoinError);
+              
+              socket?.emit('joinGame', joinPayload);
+            });
+            
+            // Navigate to game room after successful join
+            navigate(`/game-room/${game.roomId}`);
+            if (onGameCreated) onGameCreated();
+            return;
+            
+          } catch (joinError) {
+            console.error('Failed to auto-join host as player:', joinError);
+            // Fall back to normal navigation even if join fails
+            navigate(`/game-room/${game.roomId}`);
+            if (onGameCreated) onGameCreated();
+            return;
+          }
+        }
         
         // Check if this is an invite-only room for playNow mode
         if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
