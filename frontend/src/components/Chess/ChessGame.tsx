@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Chessboard from 'chessboardjsx';
 import { Chess } from 'chess.js';
 
@@ -26,6 +26,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   const [showFireworks, setShowFireworks] = useState(false);
   const [pendingMove, setPendingMove] = useState<string | null>(null);
   const [moveInProgress, setMoveInProgress] = useState(false);
+  const pendingMoveRef = useRef<string | null>(null);
 
   // Set player color based on chess player assignments
   useEffect(() => {
@@ -50,6 +51,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       console.log('Clearing pending move state due to server update');
       setPendingMove(null);
       setMoveInProgress(false);
+      pendingMoveRef.current = null;
       if (data.gameState.gameOver) {
         setShowFireworks(true);
       }
@@ -61,28 +63,28 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         console.log('Clearing pending move state due to gameState update with board');
         setPendingMove(null);
         setMoveInProgress(false);
+        pendingMoveRef.current = null;
       }
     };
 
-    // In the useEffect hook in ChessGame.tsx, add:
-const handleMoveResponse = (response: any) => {
-  console.log('Received move response:', response);
-  if (response.success && response.move === pendingMove) {
-    setPendingMove(null);
-    setMoveInProgress(false);
-    console.log('Move confirmed by server');
-  }
-};
+    // Handle move confirmation from server
+    const handleMoveResponse = (response: any) => {
+      console.log('Received move response:', response);
+      if (response.success && response.move === pendingMoveRef.current) {
+        setPendingMove(null);
+        setMoveInProgress(false);
+        pendingMoveRef.current = null;
+        console.log('Move confirmed by server');
+      }
+    };
 
-// Add this to your socket listeners:
-socket.on('chessMoveResponse', handleMoveResponse);
-
-    // NEW: Handle server errors to clear pending state
+    // Handle server errors to clear pending state
     const handleError = (err: { message: string; type?: string }) => {
       console.log('Received error from server:', err);
       if (err.type === 'chessMoveError') {
         setPendingMove(null);
         setMoveInProgress(false);
+        pendingMoveRef.current = null;
         // Optional: Show error to user (replace with your toast/alert system)
         alert(`Move failed: ${err.message}`);
       }
@@ -91,13 +93,13 @@ socket.on('chessMoveResponse', handleMoveResponse);
     socket.on('chessBoardUpdate', handleChessBoardUpdate);
     socket.on('gameState', handleGameState);
     socket.on('chessMove', handleMoveResponse);
-    socket.on('error', handleError);  // NEW listener
+    socket.on('error', handleError);
 
     return () => {
       socket.off('chessBoardUpdate', handleChessBoardUpdate);
       socket.off('gameState', handleGameState);
       socket.off('chessMove', handleMoveResponse);
-      socket.off('error', handleError);  // NEW cleanup
+      socket.off('error', handleError);
     };
   }, [socket, pendingMove, moveInProgress]);
 
@@ -201,6 +203,7 @@ const handleMove = ({ sourceSquare, targetSquare }: {
   const moveString = `${sourceSquare}${targetSquare}${promotionChar}`;
   setMoveInProgress(true);
   setPendingMove(moveString);
+  pendingMoveRef.current = moveString;
   
   // Send move to server
   console.log('Move sent to server:', moveString);
@@ -209,9 +212,10 @@ const handleMove = ({ sourceSquare, targetSquare }: {
   // Backup timeout to clear pending state if something goes wrong
   const timeoutId = setTimeout(() => {
     console.log('Move timeout check - clearing if still pending:', moveString);
-    if (pendingMove === moveString) {
+    if (pendingMoveRef.current === moveString) {
       setPendingMove(null);
       setMoveInProgress(false);
+      pendingMoveRef.current = null;
       console.warn('Move timed out - server did not respond');
     }
   }, 5000); // Increased to 5 seconds
