@@ -1017,8 +1017,10 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       throw new Error('Only selected chess players can make moves');
     }
 
+    // Enhanced turn validation
     if (gameState.currentTurn !== data.playerId) {
-      throw new Error('Not your turn');
+      const currentPlayerName = gameState.players.find(p => p.id === gameState.currentTurn)?.name || 'Unknown';
+      throw new Error(`Not your turn. It's ${currentPlayerName}'s turn.`);
     }
 
     // Initialize chess.js instance with current board state
@@ -1034,9 +1036,29 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     const to = data.move.substring(2, 4);
     const promotion = data.move.length > 4 ? data.move.substring(4, 5) : undefined;
 
-    // Add validation for move format
+    // Enhanced validation for move format
     if (!from || !to || from.length !== 2 || to.length !== 2) {
       throw new Error('Invalid move format. Expected format like "e2e4"');
+    }
+
+    // Validate square notation
+    const isValidSquare = (square: string) => {
+      return square.length === 2 && 
+             square[0] >= 'a' && square[0] <= 'h' && 
+             square[1] >= '1' && square[1] <= '8';
+    };
+
+    if (!isValidSquare(from) || !isValidSquare(to)) {
+      throw new Error(`Invalid square notation: ${from} or ${to}`);
+    }
+
+    // Check if it's the correct color's turn using chess.js
+    const expectedColor = chessGame.turn();
+    const playerColor = isPlayer1 ? 'w' : 'b';
+    
+    if (expectedColor !== playerColor) {
+      const colorName = expectedColor === 'w' ? 'White' : 'Black';
+      throw new Error(`Not your turn. It's ${colorName}'s turn.`);
     }
 
     // Attempt to make the move (this validates the move)
@@ -1049,11 +1071,11 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       move = chessGame.move(moveOptions);
     } catch (error) {
       console.error('Chess.js move validation failed:', error);
-      throw new Error(`Invalid move: ${from} to ${to}`);
+      throw new Error(`Invalid move: ${from} to ${to}. ${error.message}`);
     }
     
     if (!move) {
-      throw new Error('Invalid chess move');
+      throw new Error(`Invalid chess move: ${from} to ${to}`);
     }
 
     // Update the game state with the new board position
@@ -1087,12 +1109,19 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
 
     // After successful move, update currentTurn based on chess.js state
     const nextTurn = chessGame.turn(); // 'w' or 'b'
-    gameState.currentTurn = nextTurn === 'w' 
+    const nextPlayerId = nextTurn === 'w' 
       ? gameState.chessPlayers.player1Id 
       : gameState.chessPlayers.player2Id;
+    
+    gameState.currentTurn = nextPlayerId;
+    gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayerId);
 
-    // Update current player index as well
-    gameState.currentPlayer = gameState.players.findIndex(p => p.id === gameState.currentTurn);
+    console.log('Turn updated after move:', {
+      move: move.san,
+      nextTurn: nextTurn,
+      nextPlayerId: nextPlayerId,
+      currentPlayerIndex: gameState.currentPlayer
+    });
 
     // Check for game ending conditions
     if (chessGame.isGameOver()) {

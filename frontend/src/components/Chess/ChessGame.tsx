@@ -19,6 +19,8 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   onChessMove,
   playerIdToUsername
 }) => {
+  // roomId is used for socket room management in the parent component
+  console.log('ChessGame initialized for room:', roomId);
   // REMOVED: Local chess game instance and fen state
   // We now rely entirely on server state
   
@@ -75,6 +77,13 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         setMoveInProgress(false);
         pendingMoveRef.current = null;
         console.log('Move confirmed by server');
+      } else if (!response.success) {
+        // Handle move rejection
+        setPendingMove(null);
+        setMoveInProgress(false);
+        pendingMoveRef.current = null;
+        console.log('Move rejected by server:', response.message);
+        alert(`Move rejected: ${response.message || 'Unknown error'}`);
       }
     };
 
@@ -85,7 +94,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         setPendingMove(null);
         setMoveInProgress(false);
         pendingMoveRef.current = null;
-        // Optional: Show error to user (replace with your toast/alert system)
+        // Show error to user
         alert(`Move failed: ${err.message}`);
       }
     };
@@ -141,12 +150,17 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     
     // Additional validation: check if the move would be for the correct color
     if (isMyTurn) {
-      const currentFen = getCurrentFen();
-      const tempChess = new Chess(currentFen);
-      const playerColor = getPlayerColor();
-      
-      if (playerColor && tempChess.turn() !== playerColor) {
-        console.log('Move blocked: not the correct color to move');
+      try {
+        const currentFen = getCurrentFen();
+        const tempChess = new Chess(currentFen);
+        const playerColor = getPlayerColor();
+        
+        if (playerColor && tempChess.turn() !== playerColor) {
+          console.log('Move blocked: not the correct color to move');
+          return false;
+        }
+      } catch (error) {
+        console.error('Error validating turn:', error);
         return false;
       }
     }
@@ -167,13 +181,20 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   };
 
 
-  // Replace the handleMove function in ChessGame.tsx:
+  // Enhanced handleMove function with better validation and error handling
 const handleMove = ({ sourceSquare, targetSquare }: { 
   sourceSquare: string; 
   targetSquare: string 
 }) => {
+  // Early validation
   if (!canMakeMove()) {
     console.log('Move blocked: not player turn or game conditions not met');
+    return null;
+  }
+  
+  // Validate move format
+  if (!sourceSquare || !targetSquare || sourceSquare === targetSquare) {
+    console.log('Invalid move: same source and target squares');
     return null;
   }
   
@@ -185,42 +206,47 @@ const handleMove = ({ sourceSquare, targetSquare }: {
   
   console.log(`Attempting move: ${sourceSquare} -> ${targetSquare}`);
   
-  // Check if it's a promotion move
-  let promotionChar = '';
-  const currentFen = getCurrentFen();
-  const tempChess = new Chess(currentFen);
-  const piece = tempChess.get(sourceSquare as any);
-  
-  if (piece && piece.type === 'p') {
-    const isPromotion = (piece.color === 'w' && targetSquare[1] === '8') || 
-                       (piece.color === 'b' && targetSquare[1] === '1');
-    if (isPromotion) {
-      promotionChar = 'q'; // Always promote to queen for simplicity
+  try {
+    // Check if it's a promotion move
+    let promotionChar = '';
+    const currentFen = getCurrentFen();
+    const tempChess = new Chess(currentFen);
+    const piece = tempChess.get(sourceSquare as any);
+    
+    if (piece && piece.type === 'p') {
+      const isPromotion = (piece.color === 'w' && targetSquare[1] === '8') || 
+                         (piece.color === 'b' && targetSquare[1] === '1');
+      if (isPromotion) {
+        promotionChar = 'q'; // Always promote to queen for simplicity
+      }
     }
+    
+    // Set move in progress to prevent multiple moves
+    const moveString = `${sourceSquare}${targetSquare}${promotionChar}`;
+    setMoveInProgress(true);
+    setPendingMove(moveString);
+    pendingMoveRef.current = moveString;
+    
+    // Send move to server
+    console.log('Move sent to server:', moveString);
+    onChessMove(moveString);
+    
+    // Backup timeout to clear pending state if something goes wrong
+    const timeoutId = setTimeout(() => {
+      console.log('Move timeout check - clearing if still pending:', moveString);
+      if (pendingMoveRef.current === moveString) {
+        setPendingMove(null);
+        setMoveInProgress(false);
+        pendingMoveRef.current = null;
+        console.warn('Move timed out - server did not respond');
+      }
+    }, 5000); // 5 seconds timeout
+    
+    return () => clearTimeout(timeoutId);
+  } catch (error) {
+    console.error('Error processing move:', error);
+    return null;
   }
-  
-  // Set move in progress to prevent multiple moves
-  const moveString = `${sourceSquare}${targetSquare}${promotionChar}`;
-  setMoveInProgress(true);
-  setPendingMove(moveString);
-  pendingMoveRef.current = moveString;
-  
-  // Send move to server
-  console.log('Move sent to server:', moveString);
-  onChessMove(moveString);
-  
-  // Backup timeout to clear pending state if something goes wrong
-  const timeoutId = setTimeout(() => {
-    console.log('Move timeout check - clearing if still pending:', moveString);
-    if (pendingMoveRef.current === moveString) {
-      setPendingMove(null);
-      setMoveInProgress(false);
-      pendingMoveRef.current = null;
-      console.warn('Move timed out - server did not respond');
-    }
-  }, 5000); // Increased to 5 seconds
-  
-  return () => clearTimeout(timeoutId);
 };
 
 
@@ -316,11 +342,15 @@ const handleMove = ({ sourceSquare, targetSquare }: {
                           'Opponent';
       
       // Determine color from server state
-      const currentFen = getCurrentFen();
-      const tempChess = new Chess(currentFen);
-      const currentTurnColor = tempChess.turn() === 'w' ? 'White' : 'Black';
-      
-      return `${opponentName}'s turn (${currentTurnColor})`;
+      try {
+        const currentFen = getCurrentFen();
+        const tempChess = new Chess(currentFen);
+        const currentTurnColor = tempChess.turn() === 'w' ? 'White' : 'Black';
+        return `${opponentName}'s turn (${currentTurnColor})`;
+      } catch (error) {
+        console.error('Error determining turn color:', error);
+        return `${opponentName}'s turn`;
+      }
     }
   };
 
@@ -418,20 +448,40 @@ const handleMove = ({ sourceSquare, targetSquare }: {
           </p>
         )}
         
+        {/* Move history display */}
         {gameState.chessState?.moves?.length > 0 && (
-          <p className="text-sm text-gray-500">
-            Last move: {gameState.chessState.moves.slice(-1)[0]}
-          </p>
+          <div className="text-sm text-gray-500">
+            <p className="font-medium">Last move: {gameState.chessState.moves.slice(-1)[0]}</p>
+            {gameState.chessState.moves.length > 1 && (
+              <p className="text-xs text-gray-600">
+                Total moves: {gameState.chessState.moves.length}
+              </p>
+            )}
+          </div>
         )}
         
         {/* Game status indicators based on server state */}
         {gameStatus && (
           <div className="text-xs text-gray-600 space-y-1">
             {gameStatus.inCheck && (
-              <p className="text-yellow-500">Check!</p>
+              <p className="text-yellow-500 font-bold">Check!</p>
             )}
             <p>Move #{gameStatus.moveNumber}</p>
             <p>Turn: {gameStatus.currentTurn}</p>
+          </div>
+        )}
+        
+        {/* Move history for recent moves */}
+        {gameState.chessState?.moves?.length > 0 && gameState.chessState.moves.length <= 10 && (
+          <div className="text-xs text-gray-600 mt-2">
+            <p className="font-medium mb-1">Recent moves:</p>
+            <div className="flex flex-wrap gap-1">
+              {gameState.chessState.moves.slice(-5).map((move: string, index: number) => (
+                <span key={index} className="bg-gray-700 px-2 py-1 rounded">
+                  {move}
+                </span>
+              ))}
+            </div>
           </div>
         )}
         
