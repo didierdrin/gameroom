@@ -335,13 +335,15 @@ export class GameService {
         if (gameRoom.gameType === 'chess') {
           const gameState = await this.getGameState(joinGameDto.roomId);
           
-          // For chess, new players start as spectators
+          // For chess, check if this is the host joining
+          const isHost = gameRoom.host === joinGameDto.playerId;
+          
           if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
             const playerName = joinGameDto.playerName || await this.getPlayerName(joinGameDto.playerId);
             const newPlayer = { 
               id: joinGameDto.playerId, 
               name: playerName, 
-              isSpectator: true // All players are spectators until selected by host
+              isSpectator: !isHost // Host is not a spectator, others are spectators until selected
             };
             gameState.players.push(newPlayer);
           }
