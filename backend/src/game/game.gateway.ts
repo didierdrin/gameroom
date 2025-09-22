@@ -370,6 +370,8 @@ async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; m
       playerId: data.playerId,
       success: true
     });
+
+    this.server.to(data.roomId).emit('gameState', result.gameState);
     
     // Get the updated game state and emit to all clients
     const updatedGameState = await this.gameService.getGameState(data.roomId);
