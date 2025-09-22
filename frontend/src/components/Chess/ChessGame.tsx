@@ -28,13 +28,26 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   useEffect(() => {
     setLocalGameState(gameState);
     
+    // Always load the board state from server
     if (gameState?.chessState?.board) {
       try {
         game.load(gameState.chessState.board);
         setFen(game.fen());
+        console.log('Chess board loaded:', {
+          fen: game.fen(),
+          turn: game.turn(),
+          moves: gameState.chessState.moves
+        });
       } catch (e) {
         console.error('Failed to load chess position:', e);
+        // Reset to starting position if loading fails
+        game.reset();
+        setFen(game.fen());
       }
+    } else {
+      // If no chess state, reset to starting position
+      game.reset();
+      setFen(game.fen());
     }
 
     const player = gameState?.players?.find((p: any) => p.id === currentPlayer);
@@ -53,7 +66,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     targetSquare: string 
   }) => {
     try {
-      // Check if it's the player's turn (let backend handle detailed validation)
+      // Check if it's the player's turn
       if (localGameState.currentTurn !== currentPlayer) {
         console.log("Not your turn");
         return null;
@@ -62,6 +75,16 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       // Check if the game is over
       if (localGameState.gameOver) {
         console.log("Game is over");
+        return null;
+      }
+
+      // Check if the move is valid for the current player's color
+      const player = localGameState.players.find((p: any) => p.id === currentPlayer);
+      const moveColor = game.turn();
+      
+      if ((moveColor === 'w' && player?.chessColor !== 'white') || 
+          (moveColor === 'b' && player?.chessColor !== 'black')) {
+        console.log("Not your color's turn");
         return null;
       }
   

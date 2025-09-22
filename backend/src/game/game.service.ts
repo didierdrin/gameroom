@@ -815,11 +815,19 @@ export class GameService {
           gameState.triviaState!.answers[player.id] = null;
         });
       } else if (room.gameType === 'chess') {
-        // Ensure chess game starts with white's turn
-        gameState.currentTurn = gameState.players[0]?.id || '';
-        gameState.currentPlayer = 0;
+        // For chess, use the selected chess players
+        if (gameState.chessPlayers) {
+          gameState.currentTurn = gameState.chessPlayers.player1Id; // White starts
+          gameState.currentPlayer = gameState.players.findIndex(p => p.id === gameState.chessPlayers!.player1Id);
+        } else {
+          // Fallback to first player if chess players not selected
+          gameState.currentTurn = gameState.players[0]?.id || '';
+          gameState.currentPlayer = 0;
+        }
+        
         console.log('Chess game started:', {
           currentTurn: gameState.currentTurn,
+          chessPlayers: gameState.chessPlayers,
           players: gameState.players.map((p: any) => ({ 
             id: p.id, 
             chessColor: p.chessColor 
