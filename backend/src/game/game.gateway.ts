@@ -289,38 +289,6 @@ export class GameGateway {
     }
   }
 
-  
-
-//   @SubscribeMessage('makeChessMove')
-// async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; move: string }, @ConnectedSocket() client: Socket) {
-//   try {
-//     console.log('Chess move:', data);
-//     const result = await this.gameService.makeChessMove(data);
-    
-//     // Emit the move result to all clients
-//     this.server.to(data.roomId).emit('chessMove', result);
-    
-//     // Get and emit the updated game state
-//     const gameState = await this.gameService.getGameState(data.roomId);
-//     this.server.to(data.roomId).emit('gameState', gameState);
-    
-//     if (gameState.gameOver) {
-//       this.server.to(data.roomId).emit('gameOver', { 
-//         winner: gameState.winner,
-//         winCondition: gameState.winCondition
-//       });
-//     }
-    
-//     console.log('Chess move processed, new game state:', {
-//       currentTurn: gameState.currentTurn,
-//       gameOver: gameState.gameOver,
-//       winner: gameState.winner
-//     });
-//   } catch (error) {
-//     console.error('Chess move error:', error.message);
-//     client.emit('error', { message: error.message, type: 'chessMoveError' });
-//   }
-// }
 
 // Updated makeChessMove handler for game.gateway.ts
 @SubscribeMessage('makeChessMove')
@@ -345,11 +313,11 @@ async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; m
 
     // Get current game state before move
     const preGameState = await this.gameService.getGameState(data.roomId);
-    console.log('Pre-move game state:', {
+    console.log('Pre-move validation:', {
       currentTurn: preGameState.currentTurn,
+      attemptingPlayer: data.playerId,
       gameStarted: preGameState.gameStarted,
-      gameOver: preGameState.gameOver,
-      players: preGameState.players.map(p => ({ id: p.id, chessColor: p.chessColor }))
+      gameOver: preGameState.gameOver
     });
 
     // Make the chess move
@@ -359,31 +327,32 @@ async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; m
       move: result.move,
       moveDetails: result.moveDetails,
       gameOver: result.gameState.gameOver,
+      newCurrentTurn: result.gameState.currentTurn,
       winner: result.gameState.winner
     });
 
-    // Emit the move result to all clients in the room
+    // Emit move confirmation first
     this.server.to(data.roomId).emit('chessMove', {
       roomId: result.roomId,
       move: result.move,
       moveDetails: result.moveDetails,
       playerId: data.playerId,
-      success: true
+      success: true,
+      timestamp: new Date().toISOString()
     });
 
+    // Then emit the complete updated game state to ALL clients
+    console.log('Broadcasting updated game state to room:', data.roomId);
     this.server.to(data.roomId).emit('gameState', result.gameState);
     
-    // Get the updated game state and emit to all clients
-    const updatedGameState = await this.gameService.getGameState(data.roomId);
-    this.server.to(data.roomId).emit('gameState', updatedGameState);
-    
     // Handle game over scenario
-    if (updatedGameState.gameOver) {
+    if (result.gameState.gameOver) {
       const gameOverData = {
-        winner: updatedGameState.winner,
-        winCondition: updatedGameState.winCondition || 'unknown',
+        winner: result.gameState.winner,
+        winCondition: result.gameState.winCondition || 'unknown',
         roomId: data.roomId,
-        finalBoard: updatedGameState.chessState?.board
+        finalBoard: result.gameState.chessState?.board,
+        finalMoves: result.gameState.chessState?.moves || []
       };
 
       console.log('Chess game over:', gameOverData);
@@ -395,10 +364,11 @@ async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; m
       this.server.emit('gameRoomsList', { rooms });
     }
     
-    console.log('Chess move completed successfully:', {
-      newTurn: updatedGameState.currentTurn,
-      moveNumber: updatedGameState.chessState?.moves?.length || 0,
-      gameOver: updatedGameState.gameOver
+    console.log('Chess move completed and broadcasted:', {
+      roomId: data.roomId,
+      newTurn: result.gameState.currentTurn,
+      moveNumber: result.gameState.chessState?.moves?.length || 0,
+      gameOver: result.gameState.gameOver
     });
 
   } catch (error) {
@@ -421,7 +391,8 @@ async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; m
     client.emit('chessMoveError', {
       message: error.message,
       move: data.move,
-      roomId: data.roomId
+      roomId: data.roomId,
+      timestamp: new Date().toISOString()
     });
   }
 }

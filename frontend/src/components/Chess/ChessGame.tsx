@@ -18,95 +18,109 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   gameState, 
   onChessMove 
 }) => {
-  const [game] = useState(() => new Chess());
+  // Remove local Chess instance - use server state only
   const [fen, setFen] = useState('start');
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
-  const [localGameState, setLocalGameState] = useState(gameState);
   const [showFireworks, setShowFireworks] = useState(false);
+  const [isMyTurn, setIsMyTurn] = useState(false);
 
-  // Sync local state with server gameState when it changes
+  // Sync with server gameState only - no local chess logic
   useEffect(() => {
-    setLocalGameState(gameState);
-    
-    // Always load the board state from server
+    console.log('Game state update received:', {
+      currentTurn: gameState?.currentTurn,
+      currentPlayer,
+      chessState: gameState?.chessState,
+      players: gameState?.players
+    });
+
+    // Always use server board state
     if (gameState?.chessState?.board) {
-      try {
-        game.load(gameState.chessState.board);
-        setFen(game.fen());
-        console.log('Chess board loaded:', {
-          fen: game.fen(),
-          turn: game.turn(),
-          moves: gameState.chessState.moves
-        });
-      } catch (e) {
-        console.error('Failed to load chess position:', e);
-        // Reset to starting position if loading fails
-        game.reset();
-        setFen(game.fen());
-      }
+      setFen(gameState.chessState.board);
+      console.log('Board updated from server:', gameState.chessState.board);
     } else {
-      // If no chess state, reset to starting position
-      game.reset();
-      setFen(game.fen());
+      // Reset to starting position if no chess state
+      setFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
     }
 
+    // Determine player color and turn status
     const player = gameState?.players?.find((p: any) => p.id === currentPlayer);
-    setPlayerColor(player?.chessColor || 'white');
-  }, [gameState]);
+    if (player?.chessColor) {
+      setPlayerColor(player.chessColor);
+    }
+
+    // Check if it's the current player's turn
+    const myTurn = gameState?.currentTurn === currentPlayer;
+    setIsMyTurn(myTurn);
+    
+    console.log('Player state updated:', {
+      playerId: currentPlayer,
+      playerColor: player?.chessColor,
+      isMyTurn: myTurn,
+      serverCurrentTurn: gameState?.currentTurn
+    });
+  }, [gameState, currentPlayer]);
 
   // Show fireworks when game ends
   useEffect(() => {
-    if (localGameState?.gameOver && !showFireworks) {
+    if (gameState?.gameOver && !showFireworks) {
       setShowFireworks(true);
     }
-  }, [localGameState?.gameOver, showFireworks]);
+  }, [gameState?.gameOver, showFireworks]);
 
   const handleMove = ({ sourceSquare, targetSquare }: { 
     sourceSquare: string; 
     targetSquare: string 
   }) => {
     try {
-      // Check if it's the player's turn
-      if (localGameState.currentTurn !== currentPlayer) {
-        console.log("Not your turn");
+      console.log('Move attempt:', {
+        from: sourceSquare,
+        to: targetSquare,
+        isMyTurn,
+        currentPlayer,
+        serverCurrentTurn: gameState?.currentTurn,
+        gameOver: gameState?.gameOver
+      });
+
+      // Basic validation - let server handle the rest
+      if (!isMyTurn) {
+        console.log("Not your turn - blocking move");
         return null;
       }
   
-      // Check if the game is over
-      if (localGameState.gameOver) {
-        console.log("Game is over");
+      if (gameState?.gameOver) {
+        console.log("Game is over - blocking move");
         return null;
       }
 
-      // Check if the move is valid for the current player's color
-      const player = localGameState.players.find((p: any) => p.id === currentPlayer);
-      const moveColor = game.turn();
+      // Create move string and send to server immediately
+      const moveString = `${sourceSquare}${targetSquare}`;
+      console.log('Sending move to server:', moveString);
       
-      if ((moveColor === 'w' && player?.chessColor !== 'white') || 
-          (moveColor === 'b' && player?.chessColor !== 'black')) {
-        console.log("Not your color's turn");
-        return null;
-      }
-  
-      // Try to make the move locally first for immediate UI feedback
-      const move = game.move({
-        from: sourceSquare,
-        to: targetSquare,
-        promotion: 'q',
-      });
-  
-      if (move) {
-        // Update local state immediately for responsive UI
-        setFen(game.fen());
-        
-        // Send move to server - don't update local state here
-        // Let the server response update the state via useEffect
-        onChessMove(`${sourceSquare}${targetSquare}`);
-      }
-    } catch (e) {
-      console.error('Invalid move:', e);
+      // Send move to server - do NOT update local state
+      onChessMove(moveString);
+      
+      return true; // Allow the visual move temporarily
+    } catch (error) {
+      console.error('Client-side move error:', error);
       return null;
     }
+  };
+
+  // Get current turn display text
+  const getCurrentTurnText = () => {
+    if (gameState?.gameOver) {
+      return `Game Over! Winner: ${gameState.winner || 'Draw'}`;
+    }
+    
+    if (isMyTurn) {
+      return 'Your turn';
+    }
+    
+    // Find the current player's name
+    const currentTurnPlayer = gameState?.players?.find((p: any) => p.id === gameState.currentTurn);
+    const opponentName = currentTurnPlayer?.name || 'Opponent';
+    
+    return `${opponentName}'s turn`;
   };
 
   return (
@@ -115,12 +129,29 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         show={showFireworks} 
         onComplete={() => setShowFireworks(false)} 
       />
-      <div className="w-full max-w-lg mb-4">
+      
+      {/* Game Status */}
+      <div className="mb-4 text-center">
+        <div className="text-lg font-semibold mb-2">
+          {getCurrentTurnText()}
+        </div>
+        <div className="text-sm text-gray-500">
+          You are playing as: <span className="font-medium">{playerColor}</span>
+        </div>
+        {gameState?.chessState?.moves?.length > 0 && (
+          <div className="text-sm text-gray-400 mt-1">
+            Last move: {gameState.chessState.moves.slice(-1)[0]}
+          </div>
+        )}
+      </div>
+
+      {/* Chess Board */}
+      <div className="w-full max-w-lg">
         <Chessboard
           position={fen}
           onDrop={handleMove}
           orientation={playerColor}
-          draggable={localGameState.currentTurn === currentPlayer && !localGameState.gameOver}
+          draggable={isMyTurn && !gameState?.gameOver}
           boardStyle={{
             borderRadius: '8px',
             boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)',
@@ -129,24 +160,176 @@ export const ChessGame: React.FC<GameRenderProps> = ({
           transitionDuration={300}
         />
       </div>
-      <div className="text-center">
-        <p className="text-gray-400">
-          {localGameState.gameOver 
-            ? `Game Over! Winner: ${localGameState.winner}`
-            : `Current Turn: ${localGameState.currentTurn === currentPlayer 
-                ? 'Your turn' 
-                : 'Opponent\'s turn'}`
-          }
-        </p>
-        <p className="text-sm text-gray-500">
-          You are playing as: {playerColor}
-        </p>
-        {localGameState.chessState?.moves?.length > 0 && (
-          <p className="text-sm text-gray-500 mt-2">
-            Last move: {localGameState.chessState.moves.slice(-1)[0]}
-          </p>
-        )}
-      </div>
+
+      {/* Move History */}
+      {gameState?.chessState?.moves && gameState.chessState.moves.length > 0 && (
+        <div className="mt-4 w-full max-w-lg">
+          <div className="text-sm font-semibold mb-2">Move History:</div>
+          <div className="bg-gray-100 dark:bg-gray-800 rounded p-2 max-h-32 overflow-y-auto">
+            <div className="text-xs text-gray-600 dark:text-gray-400">
+              {gameState.chessState.moves.map((move: string, index: number) => (
+                <span key={index} className="mr-2">
+                  {Math.floor(index / 2) + 1}{index % 2 === 0 ? '.' : '...'} {move}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+
+// import React, { useEffect, useState } from 'react';
+// import Chessboard from 'chessboardjsx';
+// import { Chess } from 'chess.js';
+// import { Fireworks } from '../UI/Fireworks';
+
+// interface GameRenderProps {
+//   socket: any;
+//   roomId: string;
+//   currentPlayer: string;
+//   gameState: any;
+//   onChessMove: (move: string) => void;
+// }
+
+// export const ChessGame: React.FC<GameRenderProps> = ({ 
+//   socket, 
+//   roomId, 
+//   currentPlayer, 
+//   gameState, 
+//   onChessMove 
+// }) => {
+//   const [game] = useState(() => new Chess());
+//   const [fen, setFen] = useState('start');
+//   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
+//   const [localGameState, setLocalGameState] = useState(gameState);
+//   const [showFireworks, setShowFireworks] = useState(false);
+
+//   // Sync local state with server gameState when it changes
+//   useEffect(() => {
+//     setLocalGameState(gameState);
+    
+//     // Always load the board state from server
+//     if (gameState?.chessState?.board) {
+//       try {
+//         game.load(gameState.chessState.board);
+//         setFen(game.fen());
+//         console.log('Chess board loaded:', {
+//           fen: game.fen(),
+//           turn: game.turn(),
+//           moves: gameState.chessState.moves
+//         });
+//       } catch (e) {
+//         console.error('Failed to load chess position:', e);
+//         // Reset to starting position if loading fails
+//         game.reset();
+//         setFen(game.fen());
+//       }
+//     } else {
+//       // If no chess state, reset to starting position
+//       game.reset();
+//       setFen(game.fen());
+//     }
+
+//     const player = gameState?.players?.find((p: any) => p.id === currentPlayer);
+//     setPlayerColor(player?.chessColor || 'white');
+//   }, [gameState]);
+
+//   // Show fireworks when game ends
+//   useEffect(() => {
+//     if (localGameState?.gameOver && !showFireworks) {
+//       setShowFireworks(true);
+//     }
+//   }, [localGameState?.gameOver, showFireworks]);
+
+//   const handleMove = ({ sourceSquare, targetSquare }: { 
+//     sourceSquare: string; 
+//     targetSquare: string 
+//   }) => {
+//     try {
+//       // Check if it's the player's turn
+//       if (localGameState.currentTurn !== currentPlayer) {
+//         console.log("Not your turn");
+//         return null;
+//       }
+  
+//       // Check if the game is over
+//       if (localGameState.gameOver) {
+//         console.log("Game is over");
+//         return null;
+//       }
+
+//       // Check if the move is valid for the current player's color
+//       const player = localGameState.players.find((p: any) => p.id === currentPlayer);
+//       const moveColor = game.turn();
+      
+//       if ((moveColor === 'w' && player?.chessColor !== 'white') || 
+//           (moveColor === 'b' && player?.chessColor !== 'black')) {
+//         console.log("Not your color's turn");
+//         return null;
+//       }
+  
+//       // Try to make the move locally first for immediate UI feedback
+//       const move = game.move({
+//         from: sourceSquare,
+//         to: targetSquare,
+//         promotion: 'q',
+//       });
+  
+//       if (move) {
+//         // Update local state immediately for responsive UI
+//         setFen(game.fen());
+        
+//         // Send move to server - don't update local state here
+//         // Let the server response update the state via useEffect
+//         onChessMove(`${sourceSquare}${targetSquare}`);
+//       }
+//     } catch (e) {
+//       console.error('Invalid move:', e);
+//       return null;
+//     }
+//   };
+
+//   return (
+//     <div className="flex flex-col items-center justify-center h-full">
+//       <Fireworks 
+//         show={showFireworks} 
+//         onComplete={() => setShowFireworks(false)} 
+//       />
+//       <div className="w-full max-w-lg mb-4">
+//         <Chessboard
+//           position={fen}
+//           onDrop={handleMove}
+//           orientation={playerColor}
+//           draggable={localGameState.currentTurn === currentPlayer && !localGameState.gameOver}
+//           boardStyle={{
+//             borderRadius: '8px',
+//             boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)',
+//           }}
+//           width={500}
+//           transitionDuration={300}
+//         />
+//       </div>
+//       <div className="text-center">
+//         <p className="text-gray-400">
+//           {localGameState.gameOver 
+//             ? `Game Over! Winner: ${localGameState.winner}`
+//             : `Current Turn: ${localGameState.currentTurn === currentPlayer 
+//                 ? 'Your turn' 
+//                 : 'Opponent\'s turn'}`
+//           }
+//         </p>
+//         <p className="text-sm text-gray-500">
+//           You are playing as: {playerColor}
+//         </p>
+//         {localGameState.chessState?.moves?.length > 0 && (
+//           <p className="text-sm text-gray-500 mt-2">
+//             Last move: {localGameState.chessState.moves.slice(-1)[0]}
+//           </p>
+//         )}
+//       </div>
+//     </div>
+//   );
+// };
