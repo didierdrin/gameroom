@@ -289,56 +289,138 @@ export class GameGateway {
     }
   }
 
-  // @SubscribeMessage('makeChessMove')
-  // async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; move: string }, @ConnectedSocket() client: Socket) {
-  //   try {
-  //     console.log('Chess move:', data);
-  //     const result = await this.gameService.makeChessMove(data);
-  //     this.server.to(data.roomId).emit('chessMove', result);
-  //     const gameState = await this.gameService.getGameState(data.roomId);
-  //     this.server.to(data.roomId).emit('gameState', gameState);
-  //     if (gameState.gameOver) {
-  //       this.server.to(data.roomId).emit('gameOver', { winner: gameState.winner });
-  //     }
-  //     console.log('Chess move processed, new game state:', {
-  //       currentTurn: gameState.currentTurn,
-  //       gameOver: gameState.gameOver,
-  //       winner: gameState.winner
-  //     });
-  //   } catch (error) {
-  //     console.error('Chess move error:', error.message);
-  //     client.emit('error', { message: error.message, type: 'chessMoveError' });
-  //   }
-  // }
+  
 
-  @SubscribeMessage('makeChessMove')
+//   @SubscribeMessage('makeChessMove')
+// async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; move: string }, @ConnectedSocket() client: Socket) {
+//   try {
+//     console.log('Chess move:', data);
+//     const result = await this.gameService.makeChessMove(data);
+    
+//     // Emit the move result to all clients
+//     this.server.to(data.roomId).emit('chessMove', result);
+    
+//     // Get and emit the updated game state
+//     const gameState = await this.gameService.getGameState(data.roomId);
+//     this.server.to(data.roomId).emit('gameState', gameState);
+    
+//     if (gameState.gameOver) {
+//       this.server.to(data.roomId).emit('gameOver', { 
+//         winner: gameState.winner,
+//         winCondition: gameState.winCondition
+//       });
+//     }
+    
+//     console.log('Chess move processed, new game state:', {
+//       currentTurn: gameState.currentTurn,
+//       gameOver: gameState.gameOver,
+//       winner: gameState.winner
+//     });
+//   } catch (error) {
+//     console.error('Chess move error:', error.message);
+//     client.emit('error', { message: error.message, type: 'chessMoveError' });
+//   }
+// }
+
+// Updated makeChessMove handler for game.gateway.ts
+@SubscribeMessage('makeChessMove')
 async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; move: string }, @ConnectedSocket() client: Socket) {
   try {
-    console.log('Chess move:', data);
+    console.log('Chess move received:', {
+      roomId: data.roomId,
+      playerId: data.playerId,
+      move: data.move,
+      socketId: client.id
+    });
+
+    // Validate input
+    if (!data.roomId || !data.playerId || !data.move) {
+      throw new Error('Missing required move data');
+    }
+
+    // Validate move format (should be like "e2e4" or "e7e8q")
+    if (!/^[a-h][1-8][a-h][1-8][qrnb]?$/.test(data.move)) {
+      throw new Error('Invalid move format');
+    }
+
+    // Get current game state before move
+    const preGameState = await this.gameService.getGameState(data.roomId);
+    console.log('Pre-move game state:', {
+      currentTurn: preGameState.currentTurn,
+      gameStarted: preGameState.gameStarted,
+      gameOver: preGameState.gameOver,
+      players: preGameState.players.map(p => ({ id: p.id, chessColor: p.chessColor }))
+    });
+
+    // Make the chess move
     const result = await this.gameService.makeChessMove(data);
     
-    // Emit the move result to all clients
-    this.server.to(data.roomId).emit('chessMove', result);
+    console.log('Chess move successful:', {
+      move: result.move,
+      moveDetails: result.moveDetails,
+      gameOver: result.gameState.gameOver,
+      winner: result.gameState.winner
+    });
+
+    // Emit the move result to all clients in the room
+    this.server.to(data.roomId).emit('chessMove', {
+      roomId: result.roomId,
+      move: result.move,
+      moveDetails: result.moveDetails,
+      playerId: data.playerId,
+      success: true
+    });
     
-    // Get and emit the updated game state
-    const gameState = await this.gameService.getGameState(data.roomId);
-    this.server.to(data.roomId).emit('gameState', gameState);
+    // Get the updated game state and emit to all clients
+    const updatedGameState = await this.gameService.getGameState(data.roomId);
+    this.server.to(data.roomId).emit('gameState', updatedGameState);
     
-    if (gameState.gameOver) {
-      this.server.to(data.roomId).emit('gameOver', { 
-        winner: gameState.winner,
-        winCondition: gameState.winCondition
-      });
+    // Handle game over scenario
+    if (updatedGameState.gameOver) {
+      const gameOverData = {
+        winner: updatedGameState.winner,
+        winCondition: updatedGameState.winCondition || 'unknown',
+        roomId: data.roomId,
+        finalBoard: updatedGameState.chessState?.board
+      };
+
+      console.log('Chess game over:', gameOverData);
+      
+      this.server.to(data.roomId).emit('gameOver', gameOverData);
+      
+      // Update active rooms list
+      const rooms = await this.gameService.getActiveGameRooms();
+      this.server.emit('gameRoomsList', { rooms });
     }
     
-    console.log('Chess move processed, new game state:', {
-      currentTurn: gameState.currentTurn,
-      gameOver: gameState.gameOver,
-      winner: gameState.winner
+    console.log('Chess move completed successfully:', {
+      newTurn: updatedGameState.currentTurn,
+      moveNumber: updatedGameState.chessState?.moves?.length || 0,
+      gameOver: updatedGameState.gameOver
     });
+
   } catch (error) {
-    console.error('Chess move error:', error.message);
-    client.emit('error', { message: error.message, type: 'chessMoveError' });
+    console.error('Chess move error:', {
+      error: error.message,
+      roomId: data.roomId,
+      playerId: data.playerId,
+      move: data.move
+    });
+
+    // Send error only to the client who made the invalid move
+    client.emit('error', { 
+      message: error.message || 'Invalid chess move', 
+      type: 'chessMoveError',
+      roomId: data.roomId,
+      playerId: data.playerId 
+    });
+
+    // Also emit a specific chess error event for better handling
+    client.emit('chessMoveError', {
+      message: error.message,
+      move: data.move,
+      roomId: data.roomId
+    });
   }
 }
 

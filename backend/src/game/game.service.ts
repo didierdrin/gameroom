@@ -871,138 +871,393 @@ export class GameService {
   }
 
 
-  async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
-    const gameState = await this.getGameState(data.roomId);
-    const room = await this.getGameRoomById(data.roomId);
+  // async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
+  //   const gameState = await this.getGameState(data.roomId);
+  //   const room = await this.getGameRoomById(data.roomId);
 
-    if (room?.host !== data.hostId) {
-      throw new Error('Only the host can select chess players');
+  //   if (room?.host !== data.hostId) {
+  //     throw new Error('Only the host can select chess players');
+  //   }
+
+  //   if (gameState.gameType !== 'chess') {
+  //     throw new Error('This is not a chess game');
+  //   }
+
+  //   const player1 = gameState.players.find(p => p.id === data.player1Id);
+  //   const player2 = gameState.players.find(p => p.id === data.player2Id);
+
+  //   if (!player1 || !player2) {
+  //     throw new Error('One or both selected players not found');
+  //   }
+
+  //   if (data.player1Id === data.player2Id) {
+  //     throw new Error('Cannot select the same player for both sides');
+  //   }
+
+  //   gameState.chessPlayers = {
+  //     player1Id: data.player1Id,
+  //     player2Id: data.player2Id
+  //   };
+
+  //   gameState.players.forEach(player => {
+  //     if (player.id === data.player1Id) {
+  //       player.chessColor = 'white';
+  //       (player as any).isSpectator = false as any;
+  //     } else if (player.id === data.player2Id) {
+  //       player.chessColor = 'black';
+  //       (player as any).isSpectator = false as any;
+  //     } else {
+  //       (player as any).isSpectator = true as any;
+  //       delete (player as any).chessColor;
+  //     }
+  //   });
+
+  //   gameState.currentTurn = data.player1Id;
+  //   gameState.currentPlayer = gameState.players.findIndex(p => p.id === data.player1Id);
+
+  //   await this.updateGameState(data.roomId, gameState);
+
+  //   console.log('Chess players selected:', {
+  //     roomId: data.roomId,
+  //     host: data.hostId,
+  //     player1: { id: data.player1Id, color: 'white' },
+  //     player2: { id: data.player2Id, color: 'black' },
+  //     initialTurn: gameState.currentTurn,
+  //     currentPlayerIndex: gameState.currentPlayer
+  //   });
+
+  //   return { 
+  //     roomId: data.roomId, 
+  //     chessPlayers: gameState.chessPlayers,
+  //     currentTurn: gameState.currentTurn,
+  //     gameState 
+  //   };
+  // }
+
+
+  // async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
+  //   const gameState = await this.getGameState(data.roomId);
+    
+  //   console.log('Chess move attempt:', {
+  //     playerId: data.playerId,
+  //     currentTurn: gameState.currentTurn,
+  //     move: data.move,
+  //     gameStarted: gameState.gameStarted,
+  //     gameOver: gameState.gameOver
+  //   });
+    
+  //   // Validate it's the player's turn
+  //   if (gameState.currentTurn !== data.playerId) {
+  //     throw new Error('Not your turn');
+  //   }
+  
+  //   try {
+  //     const chess = new Chess(gameState.chessState!.board);
+  //     const move = chess.move({
+  //       from: data.move.substring(0, 2),
+  //       to: data.move.substring(2, 4),
+  //       promotion: 'q'
+  //     });
+  
+  //     if (!move) throw new Error('Invalid move');
+  
+  //     // Update game state
+  //     gameState.chessState = {
+  //       board: chess.fen(),
+  //       moves: [...gameState.chessState!.moves, move.san]
+  //     };
+  
+  //     // Check if game is over
+  //     if (chess.isGameOver()) {
+  //       gameState.gameOver = true;
+  //       if (chess.isCheckmate()) {
+  //         gameState.winner = data.playerId;
+  //       } else if (chess.isDraw()) {
+  //         gameState.winner = 'draw';
+  //       }
+  //       await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
+  //       await this.saveGameSession(data.roomId, gameState);
+  //     } else {
+  //       // Switch turns only if game isn't over
+  //       const currentPlayerIndex = gameState.players.findIndex(p => p.id === data.playerId);
+  //       gameState.currentPlayer = (currentPlayerIndex + 1) % gameState.players.length;
+  //       gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+  //     }
+  
+  //     await this.updateGameState(data.roomId, gameState);
+      
+  //     console.log('Chess move completed:', {
+  //       move: move.san,
+  //       newTurn: gameState.currentTurn,
+  //       gameOver: gameState.gameOver,
+  //       winner: gameState.winner,
+  //       players: gameState.players.map((p: any) => ({ 
+  //         id: p.id, 
+  //         chessColor: p.chessColor 
+  //       }))
+  //     });
+      
+  //     return { roomId: data.roomId, move: move.san, gameState };
+  //   } catch (error) {
+  //     console.error('Chess move error:', error);
+  //     throw error;
+  //   }
+  // }
+
+  // Updated makeChessMove method for game.service.ts
+
+async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
+  const gameState = await this.getGameState(data.roomId);
+  
+  console.log('Chess move attempt:', {
+    playerId: data.playerId,
+    move: data.move,
+    currentTurn: gameState.currentTurn,
+    gameStarted: gameState.gameStarted,
+    gameOver: gameState.gameOver,
+    currentBoard: gameState.chessState?.board
+  });
+  
+  // Validate game state
+  if (gameState.gameType !== 'chess') {
+    throw new Error('Not a chess game');
+  }
+  
+  if (!gameState.gameStarted) {
+    throw new Error('Game has not started yet');
+  }
+  
+  if (gameState.gameOver) {
+    throw new Error('Game is already over');
+  }
+  
+  // Validate it's the player's turn
+  if (gameState.currentTurn !== data.playerId) {
+    throw new Error(`Not your turn. Current turn: ${gameState.currentTurn}`);
+  }
+
+  // Find the player making the move
+  const movingPlayer = gameState.players.find(p => p.id === data.playerId);
+  if (!movingPlayer || !movingPlayer.chessColor) {
+    throw new Error('Player not found or not assigned a color');
+  }
+
+  try {
+    // Create chess instance from current board state
+    const chess = new Chess(gameState.chessState!.board);
+    
+    console.log('Chess state before move:', {
+      fen: chess.fen(),
+      turn: chess.turn(),
+      playerColor: movingPlayer.chessColor,
+      isCheck: chess.inCheck(),
+      possibleMoves: chess.moves().length
+    });
+
+    // Validate that it's the correct color's turn
+    const currentTurn = chess.turn(); // 'w' or 'b'
+    const expectedColor = currentTurn === 'w' ? 'white' : 'black';
+    
+    if (movingPlayer.chessColor !== expectedColor) {
+      throw new Error(`It's ${expectedColor}'s turn, but you are ${movingPlayer.chessColor}`);
     }
 
-    if (gameState.gameType !== 'chess') {
-      throw new Error('This is not a chess game');
+    // Parse the move (format: "e2e4" or "e7e8q" for promotion)
+    const fromSquare = data.move.substring(0, 2);
+    const toSquare = data.move.substring(2, 4);
+    const promotion = data.move.length > 4 ? data.move.substring(4) : 'q';
+
+    // Attempt to make the move
+    const move = chess.move({
+      from: fromSquare,
+      to: toSquare,
+      promotion: promotion
+    });
+
+    if (!move) {
+      console.log('Invalid move attempted:', {
+        from: fromSquare,
+        to: toSquare,
+        promotion: promotion,
+        currentFen: gameState.chessState!.board,
+        legalMoves: chess.moves()
+      });
+      throw new Error('Invalid chess move');
     }
 
-    const player1 = gameState.players.find(p => p.id === data.player1Id);
-    const player2 = gameState.players.find(p => p.id === data.player2Id);
+    console.log('Valid chess move made:', {
+      moveNotation: move.san,
+      from: move.from,
+      to: move.to,
+      piece: move.piece,
+      captured: move.captured,
+      flags: move.flags,
+      newFen: chess.fen()
+    });
 
-    if (!player1 || !player2) {
-      throw new Error('One or both selected players not found');
-    }
-
-    if (data.player1Id === data.player2Id) {
-      throw new Error('Cannot select the same player for both sides');
-    }
-
-    gameState.chessPlayers = {
-      player1Id: data.player1Id,
-      player2Id: data.player2Id
+    // Update game state with new board position
+    gameState.chessState = {
+      board: chess.fen(),
+      moves: [...(gameState.chessState?.moves || []), move.san]
     };
 
-    gameState.players.forEach(player => {
-      if (player.id === data.player1Id) {
-        player.chessColor = 'white';
-        (player as any).isSpectator = false as any;
-      } else if (player.id === data.player2Id) {
-        player.chessColor = 'black';
-        (player as any).isSpectator = false as any;
-      } else {
-        (player as any).isSpectator = true as any;
-        delete (player as any).chessColor;
+    // Check if game is over
+    if (chess.isGameOver()) {
+      gameState.gameOver = true;
+      
+      if (chess.isCheckmate()) {
+        gameState.winner = data.playerId;
+        gameState.winCondition = 'checkmate';
+        console.log(`Checkmate! Winner: ${data.playerId}`);
+      } else if (chess.isStalemate()) {
+        gameState.winner = 'draw';
+        gameState.winCondition = 'stalemate';
+        console.log('Game ended in stalemate');
+      } else if (chess.isDraw()) {
+        gameState.winner = 'draw';
+        if (chess.isInsufficientMaterial()) {
+          gameState.winCondition = 'insufficient_material';
+        } else if (chess.isThreefoldRepetition()) {
+          gameState.winCondition = 'threefold_repetition';
+        } else {
+          gameState.winCondition = 'fifty_move_rule';
+        }
+        console.log(`Game ended in draw: ${gameState.winCondition}`);
       }
-    });
+      
+      // Update database
+      await this.gameRoomModel.updateOne(
+        { roomId: data.roomId }, 
+        { status: 'completed', winner: gameState.winner }
+      );
+      await this.saveGameSession(data.roomId, gameState);
+    } else {
+      // Switch turns - find the next player
+      const currentPlayerIndex = gameState.players.findIndex(p => p.id === data.playerId);
+      const nextPlayerIndex = (currentPlayerIndex + 1) % gameState.players.length;
+      
+      // Find the next player who has a chess color (in case of spectators)
+      let nextPlayer = gameState.players[nextPlayerIndex];
+      for (let i = 0; i < gameState.players.length; i++) {
+        const candidatePlayer = gameState.players[(nextPlayerIndex + i) % gameState.players.length];
+        if (candidatePlayer.chessColor && candidatePlayer.id !== data.playerId) {
+          nextPlayer = candidatePlayer;
+          break;
+        }
+      }
+      
+      gameState.currentTurn = nextPlayer.id;
+      gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
+      
+      console.log('Turn switched:', {
+        previousPlayer: data.playerId,
+        nextPlayer: nextPlayer.id,
+        nextPlayerColor: nextPlayer.chessColor,
+        boardTurn: chess.turn()
+      });
+    }
 
-    gameState.currentTurn = data.player1Id;
-    gameState.currentPlayer = gameState.players.findIndex(p => p.id === data.player1Id);
-
+    // Save updated game state
     await this.updateGameState(data.roomId, gameState);
-
-    console.log('Chess players selected:', {
-      roomId: data.roomId,
-      host: data.hostId,
-      player1: { id: data.player1Id, color: 'white' },
-      player2: { id: data.player2Id, color: 'black' },
-      initialTurn: gameState.currentTurn,
-      currentPlayerIndex: gameState.currentPlayer
-    });
-
+    
     return { 
       roomId: data.roomId, 
-      chessPlayers: gameState.chessPlayers,
-      currentTurn: gameState.currentTurn,
-      gameState 
-    };
-  }
-
-
-  async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
-    const gameState = await this.getGameState(data.roomId);
-    
-    console.log('Chess move attempt:', {
-      playerId: data.playerId,
-      currentTurn: gameState.currentTurn,
-      move: data.move,
-      gameStarted: gameState.gameStarted,
-      gameOver: gameState.gameOver
-    });
-    
-    // Validate it's the player's turn
-    if (gameState.currentTurn !== data.playerId) {
-      throw new Error('Not your turn');
-    }
-  
-    try {
-      const chess = new Chess(gameState.chessState!.board);
-      const move = chess.move({
-        from: data.move.substring(0, 2),
-        to: data.move.substring(2, 4),
-        promotion: 'q'
-      });
-  
-      if (!move) throw new Error('Invalid move');
-  
-      // Update game state
-      gameState.chessState = {
-        board: chess.fen(),
-        moves: [...gameState.chessState!.moves, move.san]
-      };
-  
-      // Check if game is over
-      if (chess.isGameOver()) {
-        gameState.gameOver = true;
-        if (chess.isCheckmate()) {
-          gameState.winner = data.playerId;
-        } else if (chess.isDraw()) {
-          gameState.winner = 'draw';
-        }
-        await this.gameRoomModel.updateOne({ roomId: data.roomId }, { status: 'completed', winner: gameState.winner });
-        await this.saveGameSession(data.roomId, gameState);
-      } else {
-        // Switch turns only if game isn't over
-        const currentPlayerIndex = gameState.players.findIndex(p => p.id === data.playerId);
-        gameState.currentPlayer = (currentPlayerIndex + 1) % gameState.players.length;
-        gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
+      move: move.san, 
+      gameState,
+      moveDetails: {
+        from: move.from,
+        to: move.to,
+        piece: move.piece,
+        captured: move.captured,
+        san: move.san
       }
-  
-      await this.updateGameState(data.roomId, gameState);
-      
-      console.log('Chess move completed:', {
-        move: move.san,
-        newTurn: gameState.currentTurn,
-        gameOver: gameState.gameOver,
-        winner: gameState.winner,
-        players: gameState.players.map((p: any) => ({ 
-          id: p.id, 
-          chessColor: p.chessColor 
-        }))
-      });
-      
-      return { roomId: data.roomId, move: move.san, gameState };
-    } catch (error) {
-      console.error('Chess move error:', error);
-      throw error;
-    }
+    };
+  } catch (error) {
+    console.error('Chess move error:', error);
+    throw error;
   }
+}
+
+// Also update the selectChessPlayers method to ensure proper initialization:
+
+async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
+  const gameState = await this.getGameState(data.roomId);
+  const room = await this.getGameRoomById(data.roomId);
+
+  if (room?.host !== data.hostId) {
+    throw new Error('Only the host can select chess players');
+  }
+
+  if (gameState.gameType !== 'chess') {
+    throw new Error('This is not a chess game');
+  }
+
+  if (data.player1Id === data.player2Id) {
+    throw new Error('Cannot select the same player for both sides');
+  }
+
+  // Ensure both players exist in the room (either as players or spectators)
+  const allParticipants = [...(room?.playerIds || []), ...(room?.spectatorIds || [])];
+  if (!allParticipants.includes(data.player1Id) || !allParticipants.includes(data.player2Id)) {
+    throw new Error('Selected players must be in the room');
+  }
+
+  // Store chess players selection
+  gameState.chessPlayers = {
+    player1Id: data.player1Id,
+    player2Id: data.player2Id
+  };
+
+  // Update all players - set chess colors for selected players, mark others as spectators
+  gameState.players = gameState.players.map(player => {
+    if (player.id === data.player1Id) {
+      return {
+        ...player,
+        chessColor: 'white' as const,
+        name: player.name || player.id
+      };
+    } else if (player.id === data.player2Id) {
+      return {
+        ...player,
+        chessColor: 'black' as const,
+        name: player.name || player.id
+      };
+    } else {
+      // Remove chess color for spectators
+      const { chessColor, ...playerWithoutColor } = player as any;
+      return playerWithoutColor;
+    }
+  });
+
+  // Ensure the game starts with white's turn (player1)
+  gameState.currentTurn = data.player1Id;
+  gameState.currentPlayer = gameState.players.findIndex(p => p.id === data.player1Id);
+
+  // Reset chess state to initial position
+  gameState.chessState = {
+    board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    moves: []
+  };
+
+  await this.updateGameState(data.roomId, gameState);
+
+  console.log('Chess players selected:', {
+    roomId: data.roomId,
+    host: data.hostId,
+    player1: { id: data.player1Id, color: 'white' },
+    player2: { id: data.player2Id, color: 'black' },
+    initialTurn: gameState.currentTurn,
+    currentPlayerIndex: gameState.currentPlayer,
+    initialBoard: gameState.chessState.board
+  });
+
+  return { 
+    roomId: data.roomId, 
+    chessPlayers: gameState.chessPlayers,
+    currentTurn: gameState.currentTurn,
+    gameState 
+  };
+}
   
   private updateChessBoard(currentFen: string, move: string): string {
     try {
