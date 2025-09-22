@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Chessboard from 'chessboardjsx';
-import { Chess } from 'chess.js';
 import { Fireworks } from '../UI/Fireworks';
 
 interface GameRenderProps {
@@ -18,22 +17,25 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   gameState, 
   onChessMove 
 }) => {
-  // Remove local Chess instance - use server state only
   const [fen, setFen] = useState('start');
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
   const [showFireworks, setShowFireworks] = useState(false);
   const [isMyTurn, setIsMyTurn] = useState(false);
+  const [lastMoveTime, setLastMoveTime] = useState<number>(0);
 
-  // Sync with server gameState only - no local chess logic
+  // Handle game state updates from server
   useEffect(() => {
-    console.log('Game state update received:', {
+    console.log('=== FRONTEND STATE UPDATE ===');
+    console.log('Received game state:', {
       currentTurn: gameState?.currentTurn,
       currentPlayer,
       chessState: gameState?.chessState,
-      players: gameState?.players
+      players: gameState?.players?.map((p: any) => ({ id: p.id, name: p.name, chessColor: p.chessColor })),
+      gameStarted: gameState?.gameStarted,
+      gameOver: gameState?.gameOver
     });
 
-    // Always use server board state
+    // Always use server board state - this is the source of truth
     if (gameState?.chessState?.board) {
       setFen(gameState.chessState.board);
       console.log('Board updated from server:', gameState.chessState.board);
@@ -42,21 +44,25 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       setFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
     }
 
-    // Determine player color and turn status
+    // Determine player color
     const player = gameState?.players?.find((p: any) => p.id === currentPlayer);
     if (player?.chessColor) {
       setPlayerColor(player.chessColor);
+      console.log('Player color set:', player.chessColor);
     }
 
     // Check if it's the current player's turn
-    const myTurn = gameState?.currentTurn === currentPlayer;
+    const myTurn = gameState?.currentTurn === currentPlayer && 
+                   gameState?.gameStarted && 
+                   !gameState?.gameOver;
     setIsMyTurn(myTurn);
     
-    console.log('Player state updated:', {
+    console.log('Turn status:', {
       playerId: currentPlayer,
-      playerColor: player?.chessColor,
+      serverCurrentTurn: gameState?.currentTurn,
       isMyTurn: myTurn,
-      serverCurrentTurn: gameState?.currentTurn
+      gameStarted: gameState?.gameStarted,
+      gameOver: gameState?.gameOver
     });
   }, [gameState, currentPlayer]);
 
@@ -67,49 +73,97 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     }
   }, [gameState?.gameOver, showFireworks]);
 
-  const handleMove = ({ sourceSquare, targetSquare }: { 
+  // Listen for chess move confirmations
+  useEffect(() => {
+    const handleChessMove = (data: any) => {
+      console.log('Chess move confirmed:', data);
+      setLastMoveTime(Date.now());
+    };
+
+    const handleChessMoveError = (error: any) => {
+      console.error('Chess move error:', error);
+      // Force refresh the board state
+      if (gameState?.chessState?.board) {
+        setFen(gameState.chessState.board);
+      }
+    };
+
+    if (socket) {
+      socket.on('chessMove', handleChessMove);
+      socket.on('chessMoveError', handleChessMoveError);
+
+      return () => {
+        socket.off('chessMove', handleChessMove);
+        socket.off('chessMoveError', handleChessMoveError);
+      };
+    }
+  }, [socket, gameState]);
+
+  const handleMove = useCallback(({ sourceSquare, targetSquare }: { 
     sourceSquare: string; 
     targetSquare: string 
   }) => {
-    try {
-      console.log('Move attempt:', {
-        from: sourceSquare,
-        to: targetSquare,
-        isMyTurn,
-        currentPlayer,
-        serverCurrentTurn: gameState?.currentTurn,
-        gameOver: gameState?.gameOver
-      });
+    console.log('=== FRONTEND MOVE ATTEMPT ===');
+    console.log('Move details:', {
+      from: sourceSquare,
+      to: targetSquare,
+      isMyTurn,
+      currentPlayer,
+      serverCurrentTurn: gameState?.currentTurn,
+      gameOver: gameState?.gameOver,
+      gameStarted: gameState?.gameStarted
+    });
 
-      // Basic validation - let server handle the rest
-      if (!isMyTurn) {
-        console.log("Not your turn - blocking move");
-        return null;
-      }
-  
-      if (gameState?.gameOver) {
-        console.log("Game is over - blocking move");
-        return null;
-      }
-
-      // Create move string and send to server immediately
-      const moveString = `${sourceSquare}${targetSquare}`;
-      console.log('Sending move to server:', moveString);
-      
-      // Send move to server - do NOT update local state
-      onChessMove(moveString);
-      
-      return true; // Allow the visual move temporarily
-    } catch (error) {
-      console.error('Client-side move error:', error);
+    // Prevent rapid-fire moves
+    const now = Date.now();
+    if (now - lastMoveTime < 500) {
+      console.log('Move blocked - too rapid');
       return null;
     }
-  };
+
+    // Basic client-side validation
+    if (!isMyTurn) {
+      console.log('Move blocked - not your turn');
+      return null;
+    }
+
+    if (gameState?.gameOver) {
+      console.log('Move blocked - game is over');
+      return null;
+    }
+
+    if (!gameState?.gameStarted) {
+      console.log('Move blocked - game not started');
+      return null;
+    }
+
+    // Create move string and send to server
+    const moveString = `${sourceSquare}${targetSquare}`;
+    console.log('Sending move to server:', moveString);
+    
+    try {
+      onChessMove(moveString);
+      setLastMoveTime(now);
+      return true; // Allow the visual move temporarily
+    } catch (error) {
+      console.error('Failed to send move:', error);
+      return null;
+    }
+  }, [isMyTurn, currentPlayer, gameState, onChessMove, lastMoveTime]);
 
   // Get current turn display text
   const getCurrentTurnText = () => {
     if (gameState?.gameOver) {
-      return `Game Over! Winner: ${gameState.winner || 'Draw'}`;
+      if (gameState.winner === 'draw') {
+        return `Game Over - Draw (${gameState.winCondition || 'unknown reason'})`;
+      }
+      const winnerPlayer = gameState?.players?.find((p: any) => p.id === gameState.winner);
+      const winnerName = winnerPlayer?.name || gameState.winner;
+      return `Game Over! Winner: ${winnerName}`;
+    }
+    
+    if (!gameState?.gameStarted) {
+      return 'Game not started';
     }
     
     if (isMyTurn) {
@@ -123,6 +177,12 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     return `${opponentName}'s turn`;
   };
 
+  // Get move count
+  const getMoveCount = () => {
+    const moves = gameState?.chessState?.moves || [];
+    return Math.ceil(moves.length / 2);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center h-full">
       <Fireworks 
@@ -132,17 +192,16 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       
       {/* Game Status */}
       <div className="mb-4 text-center">
-        <div className="text-lg font-semibold mb-2">
+        <div className={`text-lg font-semibold mb-2 ${isMyTurn ? 'text-green-600' : 'text-gray-600'}`}>
           {getCurrentTurnText()}
         </div>
-        <div className="text-sm text-gray-500">
-          You are playing as: <span className="font-medium">{playerColor}</span>
+        <div className="text-sm text-gray-500 space-x-4">
+          <span>Playing as: <span className="font-medium capitalize">{playerColor}</span></span>
+          <span>Move: {getMoveCount()}</span>
+          {gameState?.chessState?.moves?.length > 0 && (
+            <span>Last: {gameState.chessState.moves.slice(-1)[0]}</span>
+          )}
         </div>
-        {gameState?.chessState?.moves?.length > 0 && (
-          <div className="text-sm text-gray-400 mt-1">
-            Last move: {gameState.chessState.moves.slice(-1)[0]}
-          </div>
-        )}
       </div>
 
       {/* Chess Board */}
@@ -151,7 +210,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
           position={fen}
           onDrop={handleMove}
           orientation={playerColor}
-          draggable={isMyTurn && !gameState?.gameOver}
+          draggable={isMyTurn}
           boardStyle={{
             borderRadius: '8px',
             boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)',
@@ -161,25 +220,58 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         />
       </div>
 
+      {/* Game Info */}
+      <div className="mt-4 text-center text-sm text-gray-500">
+        {gameState?.players && (
+          <div className="flex justify-center space-x-6">
+            {gameState.players.map((player: any) => (
+              <div key={player.id} className={`flex items-center space-x-2 ${
+                player.id === gameState.currentTurn ? 'font-bold text-blue-600' : ''
+              }`}>
+                <div className={`w-3 h-3 rounded-full ${
+                  player.chessColor === 'white' ? 'bg-gray-200 border border-gray-400' : 'bg-gray-800'
+                }`}></div>
+                <span>{player.name}</span>
+                {player.id === gameState.currentTurn && (
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                    Turn
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Move History */}
       {gameState?.chessState?.moves && gameState.chessState.moves.length > 0 && (
         <div className="mt-4 w-full max-w-lg">
           <div className="text-sm font-semibold mb-2">Move History:</div>
-          <div className="bg-gray-100 dark:bg-gray-800 rounded p-2 max-h-32 overflow-y-auto">
-            <div className="text-xs text-gray-600 dark:text-gray-400">
+          <div className="bg-gray-100 dark:bg-gray-800 rounded p-3 max-h-32 overflow-y-auto">
+            <div className="text-xs text-gray-600 dark:text-gray-400 font-mono">
               {gameState.chessState.moves.map((move: string, index: number) => (
-                <span key={index} className="mr-2">
-                  {Math.floor(index / 2) + 1}{index % 2 === 0 ? '.' : '...'} {move}
+                <span key={index} className="mr-3">
+                  {index % 2 === 0 ? `${Math.floor(index / 2) + 1}.` : ''} {move}
                 </span>
               ))}
             </div>
           </div>
         </div>
       )}
+
+      {/* Debug info (remove in production) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-4 text-xs text-gray-400 bg-gray-100 p-2 rounded max-w-lg w-full">
+          <div>Player ID: {currentPlayer}</div>
+          <div>Current Turn: {gameState?.currentTurn}</div>
+          <div>Is My Turn: {isMyTurn ? 'Yes' : 'No'}</div>
+          <div>Game Started: {gameState?.gameStarted ? 'Yes' : 'No'}</div>
+          <div>Game Over: {gameState?.gameOver ? 'Yes' : 'No'}</div>
+        </div>
+      )}
     </div>
   );
 };
-
 
 // import React, { useEffect, useState } from 'react';
 // import Chessboard from 'chessboardjsx';
