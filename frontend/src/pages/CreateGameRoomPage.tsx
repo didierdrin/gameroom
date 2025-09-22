@@ -126,7 +126,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
     if (onGameCreated) onGameCreated();
   };
 
-  // Simplified function to join host as player (mirrors HomePage.tsx approach)
+  // FIXED: Improved function to join host as player
   const joinHostAsPlayer = async (gameRoomId: string): Promise<boolean> => {
     if (!socket || !user) {
       console.error('Missing socket or user for auto-join');
@@ -142,31 +142,51 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
         password: privacy === 'private' ? password : undefined
       };
 
-      const joinResult = await new Promise<boolean>((resolve, _reject) => {
-        const timeout = setTimeout(() => {
-          cleanupListeners();
-          resolve(false);
-        }, 8000);
+      console.log('Host attempting to join as player with payload:', joinPayload);
 
-        const handleJoinSuccess = (_data: any) => {
-          clearTimeout(timeout);
-          cleanupListeners();
-          resolve(true);
+      const joinResult = await new Promise<boolean>((resolve) => {
+        let resolved = false;
+        const resolveOnce = (result: boolean) => {
+          if (!resolved) {
+            resolved = true;
+            resolve(result);
+          }
         };
 
-        const handleJoinError = (_error: any) => {
+        const timeout = setTimeout(() => {
+          cleanupListeners();
+          console.log('Host join timeout after 8 seconds');
+          resolveOnce(false);
+        }, 8000);
+
+        const handleJoinSuccess = (data: any) => {
+          console.log('Host join success event received:', data);
           clearTimeout(timeout);
           cleanupListeners();
-          resolve(false);
+          resolveOnce(true);
+        };
+
+        const handleJoinError = (error: any) => {
+          console.error('Host join error event received:', error);
+          clearTimeout(timeout);
+          cleanupListeners();
+          resolveOnce(false);
         };
 
         const cleanupListeners = () => {
           socket.off('playerJoined', handleJoinSuccess);
+          socket.off('spectatorJoined', handleJoinSuccess);  // Also listen for spectator join in case of fallback
+          socket.off('joinGameSuccess', handleJoinSuccess);   // Alternative success event
           socket.off('error', handleJoinError);
         };
 
+        // Listen for multiple possible success events
         socket.on('playerJoined', handleJoinSuccess);
+        socket.on('spectatorJoined', handleJoinSuccess);
+        socket.on('joinGameSuccess', handleJoinSuccess);
         socket.on('error', handleJoinError);
+
+        // Emit the join request
         socket.emit('joinGame', joinPayload);
       });
 
@@ -253,18 +273,31 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
         clearTimeout(timeout);
         setIsLoading(false);
         
+        console.log('Game created successfully:', game);
+        
         // Store the created game data
         setCreatedGameData(game);
         
-        // For chess games (playNow or scheduled), automatically join the host as a player
-        if (gameType === 'chess' && game?.roomId) {
-          const joinSuccess = await joinHostAsPlayer(game.roomId);
-          if (joinSuccess) {
-            navigate(`/game-room/${game.roomId}`);
-            if (onGameCreated) onGameCreated();
-            return;
-          }
-          // If auto-join fails, continue with normal flow below
+        // FIXED: For playNow games, always try to join host as player first
+        if (gameMode === 'playNow' && game?.roomId) {
+          console.log('Attempting to auto-join host as player...');
+          
+          // Add a small delay to ensure the room is fully created on the backend
+          setTimeout(async () => {
+            const joinSuccess = await joinHostAsPlayer(game.roomId);
+            if (joinSuccess) {
+              console.log('Host successfully joined as player');
+              navigate(`/game-room/${game.roomId}`);
+              if (onGameCreated) onGameCreated();
+              return;
+            } else {
+              console.log('Host auto-join failed, proceeding with normal navigation');
+              // If auto-join fails, still navigate but let the user join manually
+              navigate(`/game-room/${game.roomId}`);
+              if (onGameCreated) onGameCreated();
+            }
+          }, 500); // 500ms delay
+          return;
         }
         
         // Check if this is an invite-only room for playNow mode
@@ -275,7 +308,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
           setInviteUrl(gameUrl);
           setShowInviteModal(true);
         } else {
-          // Normal flow for other privacy settings
+          // Normal flow for scheduled games or other privacy settings
           if (gameMode === 'playNow' && game?.roomId) {
             navigate(`/game-room/${game.roomId}`);
           } else {
@@ -292,6 +325,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
         responded = true;
         clearTimeout(timeout);
         setIsLoading(false);
+        console.error('Game creation error:', error);
         alert(error.message || 'Failed to create game room');
       };
 
@@ -701,7 +735,6 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
     </div>
   );
 };
-
 
 // import React, { useState, useEffect, useRef } from 'react';
 // import { SectionTitle } from '../components/UI/SectionTitle';

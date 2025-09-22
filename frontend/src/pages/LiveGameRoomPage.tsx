@@ -1210,7 +1210,7 @@ useEffect(() => {
                 currentPlayer={String(user!.id)}
                 gameState={gameState}
                 onChessMove={handleChessMoveAction}
-                playerIdToUsername={playerIdToUsername}
+                // playerIdToUsername={playerIdToUsername}
               />
               
               {/* Show spectator message for host */}
