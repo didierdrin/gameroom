@@ -1003,9 +1003,23 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     } else {
       // Update currentTurn based on chess.js turn state
       const nextTurn = chess.turn(); // 'w' or 'b'
-      const nextPlayerId = nextTurn === 'w' 
-        ? gameState.chessPlayers!.player1Id 
-        : gameState.chessPlayers!.player2Id;
+      
+      // Handle case where chessPlayers might not be set
+      let nextPlayerId: string;
+      if (gameState.chessPlayers) {
+        nextPlayerId = nextTurn === 'w' 
+          ? gameState.chessPlayers.player1Id 
+          : gameState.chessPlayers.player2Id;
+      } else {
+        // Fallback: find players by their chess color
+        const nextColor = nextTurn === 'w' ? 'white' : 'black';
+        const nextPlayer = gameState.players.find(p => p.chessColor === nextColor);
+        if (!nextPlayer) {
+          console.error('No player found for color:', nextColor);
+          throw new Error('Chess players not properly configured');
+        }
+        nextPlayerId = nextPlayer.id;
+      }
       
       gameState.currentTurn = nextPlayerId;
       gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayerId);
@@ -1014,7 +1028,8 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
         previousPlayer: data.playerId,
         nextPlayer: nextPlayerId,
         nextPlayerColor: nextTurn === 'w' ? 'white' : 'black',
-        boardTurn: nextTurn
+        boardTurn: nextTurn,
+        chessPlayers: gameState.chessPlayers
       });
     }
 
@@ -1836,6 +1851,25 @@ private async getPlayerName(playerId: string): Promise<string> {
   } catch (error) {
     console.log(`Could not fetch username for player ${playerId}, using ID as fallback`);
     return playerId;
+  }
+}
+
+private ensureChessPlayersSet(gameState: GameState): void {
+  if (!gameState.chessPlayers && gameState.gameType === 'chess') {
+    // Auto-assign chess players if not set
+    const playersWithColors = gameState.players.filter(p => p.chessColor);
+    if (playersWithColors.length >= 2) {
+      const whitePlayer = playersWithColors.find(p => p.chessColor === 'white');
+      const blackPlayer = playersWithColors.find(p => p.chessColor === 'black');
+      
+      if (whitePlayer && blackPlayer) {
+        gameState.chessPlayers = {
+          player1Id: whitePlayer.id,
+          player2Id: blackPlayer.id
+        };
+        console.log('Auto-assigned chess players:', gameState.chessPlayers);
+      }
+    }
   }
 }
 

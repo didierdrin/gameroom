@@ -99,17 +99,8 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         // Update local state immediately for responsive UI
         setFen(game.fen());
         
-        // Update localGameState with the new board and moves
-        setLocalGameState((prev: any) => ({
-          ...prev,
-          chessState: {
-            ...prev.chessState,
-            board: game.fen(),
-            moves: [...(prev.chessState?.moves || []), move.san]
-          }
-        }));
-        
-        // Send move to server
+        // Send move to server - don't update local state here
+        // Let the server response update the state via useEffect
         onChessMove(`${sourceSquare}${targetSquare}`);
       }
     } catch (e) {
