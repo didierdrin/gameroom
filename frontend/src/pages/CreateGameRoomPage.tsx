@@ -154,7 +154,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
           console.warn('Host auto-join timed out');
           cleanupListeners();
           resolve(false);
-        }, 10000); // Increased timeout
+        }, 30000); // Increased timeout
 
         const handleJoinSuccess = (data: any) => {
           console.log('Host successfully joined as player:', data);
@@ -303,7 +303,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
           console.log('Attempting to auto-join host as player...');
           
           // Add a small delay to ensure the room is fully created
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 3000));
           
           const joinSuccess = await joinHostAsPlayer(
             game.roomId, 
