@@ -1374,7 +1374,15 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
     if (redisState) {
       const parsedState: GameState = JSON.parse(redisState);
       
-      // Enhance player names
+      // Ensure chessState is always present for chess games
+      if (parsedState.gameType === 'chess' && !parsedState.chessState) {
+        console.warn(`Chess state missing for room ${roomId}. Initializing default chess state.`);
+        parsedState.chessState = {
+          board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+          moves: []
+        };
+      }
+      
       const enhancedPlayers = await Promise.all(
         parsedState.players.map(async (player) => {
           const playerName = await this.getPlayerName(player.id);
@@ -1398,6 +1406,7 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
         gameStarted: enhancedState.gameStarted,
         gameOver: enhancedState.gameOver,
         gameType: enhancedState.gameType,
+        chessStateExists: !!enhancedState.chessState,
         players: enhancedState.players.map((p: any) => ({ 
           id: p.id, 
           name: p.name,
