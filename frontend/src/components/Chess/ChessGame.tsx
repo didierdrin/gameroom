@@ -36,6 +36,13 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 
   // Handle game state updates from server with better logging
   useEffect(() => {
+
+    // Add a guard clause at the top of the useEffect
+  if (!gameState?.chessState) {
+    console.warn('gameState or chessState is undefined. Skipping board update.');
+    return;
+  }
+
     console.log('=== CHESS FRONTEND STATE UPDATE ===');
     console.log('Received game state:', {
       currentTurn: gameState?.currentTurn,
@@ -119,6 +126,12 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 
   // Enhanced chess move and error handlers
   useEffect(() => {
+    // Add a guard clause at the top of the useEffect
+  if (!gameState?.chessState) {
+    console.warn('gameState or chessState is undefined. Skipping board update.');
+    return;
+  }
+
     const handleChessMove = (data: any) => {
       console.log('✅ Chess move confirmed from server:', {
         move: data.move,
@@ -189,6 +202,12 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     sourceSquare: string; 
     targetSquare: string 
   }) => {
+
+    // Add a guard clause at the top of the useCallback
+  if (!gameStateRef.current?.chessState || !isMyTurn) {
+    console.warn('Game state not ready or not your turn. Move canceled.');
+    return;
+  }
     console.log('=== CHESS MOVE ATTEMPT ===');
     
     // Use refs to get current values (prevents stale closure issues)
