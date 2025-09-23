@@ -316,11 +316,13 @@ async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; m
     // Make the chess move (this handles all validation and state updates)
     const result = await this.gameService.makeChessMove(data);
     
-    console.log('Move processed successfully:', {
+    console.log('✅ Move processed successfully:', {
       move: result.move,
       previousTurn: data.playerId,
       newTurn: result.gameState.currentTurn,
-      gameOver: result.gameState.gameOver
+      gameOver: result.gameState.gameOver,
+      winner: result.gameState.winner,
+      timestamp: result.timestamp
     });
 
     // 1. First, emit the move confirmation to all players in the room
@@ -330,25 +332,31 @@ async handleChessMove(@MessageBody() data: { roomId: string; playerId: string; m
       moveDetails: result.moveDetails,
       playerId: data.playerId,
       success: true,
-      timestamp: new Date().toISOString()
+      timestamp: result.timestamp
     });
 
+    console.log('📡 Move confirmation broadcasted to room:', data.roomId);
+
     // 2. Then, emit the complete updated game state to ALL clients in the room
-    console.log('Broadcasting game state to all clients in room:', data.roomId);
-    this.server.to(data.roomId).emit('gameState', result.gameState);
-    
-    // 3. Log the broadcast for verification
-    console.log('State broadcasted:', {
-      roomId: data.roomId,
-      currentTurn: result.gameState.currentTurn,
-      gameStarted: result.gameState.gameStarted,
-      gameOver: result.gameState.gameOver,
-      players: result.gameState.players.map(p => ({ 
-        id: p.id, 
-        name: p.name, 
-        chessColor: p.chessColor 
-      }))
-    });
+    // Add a small delay to ensure move confirmation is processed first
+    setTimeout(() => {
+      console.log('📡 Broadcasting updated game state to room:', data.roomId);
+      this.server.to(data.roomId).emit('gameState', result.gameState);
+      
+      // Log the state that was broadcasted
+      console.log('📋 Broadcasted state summary:', {
+        roomId: data.roomId,
+        currentTurn: result.gameState.currentTurn,
+        gameStarted: result.gameState.gameStarted,
+        gameOver: result.gameState.gameOver,
+        moveCount: result.gameState.chessState?.moves?.length || 0,
+        players: result.gameState.players.map(p => ({ 
+          id: p.id, 
+          name: p.name, 
+          chessColor: p.chessColor 
+        }))
+      });
+    }, 1000); // 50ms delay
     
     // 4. Handle game over scenario
     if (result.gameState.gameOver) {

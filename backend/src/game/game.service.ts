@@ -881,18 +881,18 @@ export class GameService {
 
 
 // COMPLETE FIX FOR CHESS MULTIPLAYER - Replace your makeChessMove method in game.service.ts
-
 async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
   const gameState = await this.getGameState(data.roomId);
   
-  console.log('=== CHESS MOVE START ===');
-  console.log('Move attempt:', {
+  console.log('=== BACKEND CHESS MOVE START ===');
+  console.log('Move request:', {
     playerId: data.playerId,
     move: data.move,
     currentTurn: gameState.currentTurn,
     gameStarted: gameState.gameStarted,
     gameOver: gameState.gameOver,
-    currentBoard: gameState.chessState?.board
+    currentBoard: gameState.chessState?.board,
+    timestamp: new Date().toISOString()
   });
   
   // Validate game state
@@ -933,7 +933,8 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       boardTurn: chess.turn(),
       playerColor: movingPlayer.chessColor,
       isCheck: chess.inCheck(),
-      legalMovesCount: chess.moves().length
+      legalMovesCount: chess.moves().length,
+      gameOver: chess.isGameOver()
     });
 
     // Validate that it's the correct color's turn according to the board
@@ -954,6 +955,13 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     const toSquare = data.move.substring(2, 4);
     const promotion = data.move.length > 4 ? data.move.substring(4) : 'q';
 
+    console.log('Move parsing:', {
+      rawMove: data.move,
+      fromSquare,
+      toSquare,
+      promotion: data.move.length > 4 ? promotion : 'none'
+    });
+
     // Attempt to make the move
     const move = chess.move({
       from: fromSquare,
@@ -966,7 +974,8 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
         from: fromSquare,
         to: toSquare,
         promotion: promotion,
-        legalMoves: chess.moves().slice(0, 10) // Show first 10 legal moves
+        legalMoves: chess.moves().slice(0, 10), // Show first 10 legal moves for debugging
+        currentFen: chess.fen()
       });
       throw new Error(`Invalid chess move: ${data.move}`);
     }
@@ -977,7 +986,9 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       to: move.to,
       piece: move.piece,
       captured: move.captured,
-      newFen: chess.fen()
+      newFen: chess.fen(),
+      check: chess.inCheck(),
+      checkmate: chess.isCheckmate()
     });
 
     // Update game state with new board position
@@ -992,9 +1003,9 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       gameState.gameOver = true;
       
       if (chess.isCheckmate()) {
-        gameState.winner = data.playerId;
+        gameState.winner = data.playerId; // The player who just moved is the winner
         gameState.winCondition = 'checkmate';
-        console.log(`🏆 Checkmate! Winner: ${data.playerId}`);
+        console.log(`🏆 Checkmate! Winner: ${data.playerId} (${movingPlayer.chessColor})`);
       } else if (chess.isStalemate()) {
         gameState.winner = 'draw';
         gameState.winCondition = 'stalemate';
@@ -1022,6 +1033,14 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       const nextBoardTurn = chess.turn(); // Get the next turn from chess.js
       const nextColor = nextBoardTurn === 'w' ? 'white' : 'black';
       
+      console.log('🔄 Turn switching logic:', {
+        currentMoveBy: data.playerId,
+        currentMoveColor: movingPlayer.chessColor,
+        nextBoardTurn,
+        nextColor,
+        availablePlayers: gameState.players.map(p => ({ id: p.id, color: p.chessColor }))
+      });
+      
       // Find the player with the next color
       const nextPlayer = gameState.players.find(p => p.chessColor === nextColor);
       
@@ -1039,8 +1058,9 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       gameState.currentTurn = nextPlayer.id;
       gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
       
-      console.log('🔄 Turn switched successfully:', {
+      console.log('✅ Turn switched successfully:', {
         previousPlayer: previousTurn,
+        previousColor: movingPlayer.chessColor,
         nextPlayer: nextPlayer.id,
         nextPlayerColor: nextColor,
         boardTurn: nextBoardTurn,
@@ -1048,15 +1068,27 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       });
     }
 
-    // CRITICAL: Save state immediately before returning
+    // CRITICAL: Save state immediately and verify it was saved
     await this.updateGameState(data.roomId, gameState);
+    
+    // Verify the state was saved correctly
+    const verifyState = await this.getGameState(data.roomId);
+    console.log('🔍 State verification:', {
+      savedCurrentTurn: verifyState.currentTurn,
+      savedBoard: verifyState.chessState?.board?.substring(0, 20) + '...',
+      savedMoveCount: verifyState.chessState?.moves?.length || 0,
+      gameOver: verifyState.gameOver
+    });
 
-    console.log('=== CHESS MOVE COMPLETED ===');
-    console.log('Final state:', {
+    console.log('=== BACKEND CHESS MOVE COMPLETED ===');
+    console.log('Final response data:', {
+      roomId: data.roomId,
+      moveNotation: move.san,
       newTurn: gameState.currentTurn,
-      moveNumber: gameState.chessState?.moves?.length || 0,
       gameOver: gameState.gameOver,
-      currentFen: gameState.chessState?.board
+      winner: gameState.winner,
+      moveNumber: gameState.chessState?.moves?.length || 0,
+      timestamp: new Date().toISOString()
     });
 
     return { 
@@ -1069,15 +1101,24 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
         piece: move.piece,
         captured: move.captured,
         san: move.san,
-        fen: chess.fen()
-      }
+        fen: chess.fen(),
+        check: chess.inCheck(),
+        checkmate: chess.isCheckmate()
+      },
+      success: true,
+      timestamp: new Date().toISOString()
     };
   } catch (error) {
-    console.error('❌ Chess move error:', {
+    console.error('❌ Chess move processing error:', {
       error: error.message,
       playerId: data.playerId,
       move: data.move,
-      currentTurn: gameState.currentTurn
+      currentTurn: gameState.currentTurn,
+      gameState: {
+        started: gameState.gameStarted,
+        over: gameState.gameOver,
+        currentBoard: gameState.chessState?.board?.substring(0, 30) + '...'
+      }
     });
     throw error;
   }
