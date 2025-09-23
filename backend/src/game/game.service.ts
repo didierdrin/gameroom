@@ -848,18 +848,18 @@ export class GameService {
   
       await this.updateGameState(roomId, gameState);
       
-              console.log('Game started, state updated:', {
-          roomId,
-          gameType: gameState.gameType,
-          currentTurn: gameState.currentTurn,
-          gameStarted: gameState.gameStarted,
-          players: gameState.players.map((p: any) => ({ 
-            id: p.id, 
-            chessColor: p.chessColor,
-            color: p.color,
-            score: p.score
-          }))
-        });
+      console.log('Game started, state updated:', {
+        roomId,
+        gameType: gameState.gameType,
+        currentTurn: gameState.currentTurn,
+        gameStarted: gameState.gameStarted,
+        players: gameState.players.map((p: any) => ({ 
+          id: p.id, 
+          chessColor: p.chessColor,
+          color: p.color,
+          score: p.score
+        }))
+      });
       
       // Emit to room only if server is available
       if (this.server) {
@@ -1090,6 +1090,30 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
       moveNumber: gameState.chessState?.moves?.length || 0,
       timestamp: new Date().toISOString()
     });
+
+
+// CRITICAL: Emit events to notify all clients in the room
+if (this.server) {
+  // Emit the updated game state first
+  this.server.to(data.roomId).emit('gameState', gameState);
+  
+  // Then emit the specific chess move confirmation
+  this.server.to(data.roomId).emit('chessMove', {
+    roomId: data.roomId,
+    move: move.san,
+    playerId: data.playerId,
+    success: true,
+    timestamp: new Date().toISOString()
+  });
+  
+  console.log('✅ Socket events emitted:', {
+    gameState: 'emitted',
+    chessMove: 'emitted',
+    roomId: data.roomId,
+    move: move.san
+  });
+}
+
 
     return { 
       roomId: data.roomId, 

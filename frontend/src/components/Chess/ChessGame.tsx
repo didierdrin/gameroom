@@ -27,6 +27,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   // Ref to track the latest game state
   const gameStateRef = useRef(gameState);
   const currentPlayerRef = useRef(currentPlayer);
+  const pendingMoveRef = useRef<string | null>(null);
 
   // Update refs when props change
   useEffect(() => {
@@ -40,12 +41,18 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     });
   }, [gameState, currentPlayer]);
 
+  // Update pending move ref
+  useEffect(() => {
+    pendingMoveRef.current = pendingMove;
+  }, [pendingMove]);
+
   // Handle game state updates from server
   useEffect(() => {
     if (!gameState) {
       console.warn('Game state is undefined. Skipping update.');
-      setFen('start'); // Reset to initial position
+      setFen('start');
       setIsMyTurn(false);
+      setPendingMove(null);
       return;
     }
 
@@ -54,6 +61,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       const defaultFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
       setFen(defaultFen);
       setIsMyTurn(false);
+      setPendingMove(null);
       return;
     }
 
@@ -81,6 +89,13 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         same: fen === newFen
       });
       setFen(newFen);
+      
+      // CRITICAL FIX: Clear pending move when board updates from server
+      // This indicates the move was processed successfully
+      if (pendingMove) {
+        console.log('🔄 Clearing pending move due to board update:', pendingMove);
+        setPendingMove(null);
+      }
     }
 
     // Update player color
@@ -106,18 +121,13 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       gameStarted,
       gameOver,
       calculatedIsMyTurn: myTurn,
-      previousIsMyTurn: isMyTurn
+      previousIsMyTurn: isMyTurn,
+      pendingMove
     });
     
     setIsMyTurn(myTurn);
 
-    // Clear pending moves
-    if (pendingMove) {
-      console.log('🔄 Clearing pending move due to state update');
-      setPendingMove(null);
-    }
-
-  }, [gameState, currentPlayer]);
+  }, [gameState, currentPlayer, fen, playerColor, isMyTurn, pendingMove]);
 
   // Show fireworks when game ends
   useEffect(() => {
@@ -134,11 +144,13 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         move: data.move,
         playerId: data.playerId,
         timestamp: data.timestamp,
-        success: data.success
+        success: data.success,
+        currentPendingMove: pendingMoveRef.current
       });
       
-      if (pendingMove && data.success) {
-        console.log('🔄 Clearing confirmed pending move:', pendingMove);
+      // Clear pending move if this matches our pending move
+      if (pendingMoveRef.current && data.success) {
+        console.log('🔄 Clearing confirmed pending move:', pendingMoveRef.current);
         setPendingMove(null);
       }
       
@@ -150,11 +162,13 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         error: error.message,
         move: error.move,
         playerId: error.playerId,
-        timestamp: error.timestamp
+        timestamp: error.timestamp,
+        currentPendingMove: pendingMoveRef.current
       });
       
-      if (pendingMove) {
-        console.log('🔄 Clearing pending move due to error');
+      // Always clear pending move on error
+      if (pendingMoveRef.current) {
+        console.log('🔄 Clearing pending move due to error:', pendingMoveRef.current);
         setPendingMove(null);
       }
       
@@ -166,23 +180,34 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       alert(`Chess move failed: ${error.message || 'Invalid move'}`);
     };
 
+    const handleGameState = (newGameState: any) => {
+      console.log('🔄 Game state update received via socket:', {
+        currentTurn: newGameState?.currentTurn,
+        gameOver: newGameState?.gameOver,
+        boardChanged: newGameState?.chessState?.board !== gameStateRef.current?.chessState?.board
+      });
+      
+      // Clear pending move if game state indicates move was processed
+      if (pendingMoveRef.current && newGameState?.chessState?.board !== gameStateRef.current?.chessState?.board) {
+        console.log('🔄 Clearing pending move due to game state update');
+        setPendingMove(null);
+      }
+    };
+
     if (socket) {
       socket.on('chessMove', handleChessMove);
       socket.on('chessMoveError', handleChessMoveError);
-      socket.on('gameState', () => {
-        console.log('🔄 Game state update received via socket');
-        // Trigger a re-render by relying on parent component to pass updated gameState
-      });
+      socket.on('gameState', handleGameState);
 
       return () => {
         socket.off('chessMove', handleChessMove);
         socket.off('chessMoveError', handleChessMoveError);
-        socket.off('gameState');
+        socket.off('gameState', handleGameState);
       };
     }
-  }, [socket, pendingMove]);
+  }, [socket]);
 
-  // Enhanced move handler
+  // Enhanced move handler with timeout fallback
   const handleMove = useCallback(({ sourceSquare, targetSquare }: { 
     sourceSquare: string; 
     targetSquare: string 
@@ -217,7 +242,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       isMyTurn,
       gameOver: currentGameState?.gameOver,
       gameStarted: currentGameState?.gameStarted,
-      pendingMove,
+      pendingMove: pendingMoveRef.current,
       timestamp: new Date().toISOString()
     });
 
@@ -229,8 +254,8 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     }
 
     // Prevent moves while another is pending
-    if (pendingMove) {
-      console.log('❌ Move blocked - another move is pending');
+    if (pendingMoveRef.current) {
+      console.log('❌ Move blocked - another move is pending:', pendingMoveRef.current);
       return null;
     }
 
@@ -257,10 +282,22 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       onChessMove(moveString);
       setLastMoveTime(now);
       
+      // CRITICAL FIX: Add timeout fallback to clear pending move
+      const timeoutId = setTimeout(() => {
+        if (pendingMoveRef.current === moveString) {
+          console.warn('⚠️ Timeout: Clearing pending move after 10 seconds:', moveString);
+          setPendingMove(null);
+        }
+      }, 10000); // 10 second timeout
+      
       console.log('📤 Move sent to server:', {
         move: moveString,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        timeoutSet: true
       });
+      
+      // Store timeout ID for potential cleanup
+      (window as any).chessMoveTimeout = timeoutId;
       
       return true;
     } catch (error) {
@@ -268,9 +305,16 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       setPendingMove(null);
       return null;
     }
-  }, [isMyTurn, onChessMove, lastMoveTime, pendingMove]);
+  }, [isMyTurn, onChessMove, lastMoveTime]);
 
-
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if ((window as any).chessMoveTimeout) {
+        clearTimeout((window as any).chessMoveTimeout);
+      }
+    };
+  }, []);
 
   // Get current turn display text
   const getCurrentTurnText = () => {
@@ -412,7 +456,6 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     </div>
   );
 };
-
 
 
 // import React, { useEffect, useState, useCallback, useRef } from 'react';
