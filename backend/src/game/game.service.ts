@@ -144,7 +144,8 @@ export class GameService {
       if (isNaN(scheduledTimeCombined.getTime())) throw new Error('Invalid scheduled time format');
       if (scheduledTimeCombined <= new Date()) throw new Error('Scheduled time must be in the future');
     }
-    const maxPlayers = createGameDto.gameType.toLowerCase() === 'chess' ? 2 : 4;
+    // Allow more than two users to join chess rooms (only two will be selected to play later)
+    const maxPlayers = createGameDto.gameType.toLowerCase() === 'chess' ? 10 : 4;
     const gameRoom = new this.gameRoomModel({
       roomId,
       name: createGameDto.name,
@@ -313,21 +314,8 @@ export class GameService {
         const playerIndex = gameState.players.length;
         
         if (gameRoom.gameType === 'chess') {
-          // Ensure game state has correct players for chess (max 2)
-          if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
-            const currentCount = gameState.players.length;
-            if (currentCount >= 2) {
-              // Should not happen because maxPlayers gate, but guard anyway
-              throw new Error('Chess game already has two players');
-            }
-            gameState.players.push({ id: joinGameDto.playerId, name: joinGameDto.playerName || joinGameDto.playerId, chessColor: currentCount === 0 ? 'white' : 'black' });
-          }
-          // Ensure currentTurn starts with white
-          const whitePlayer = gameState.players.find(p => p.chessColor === 'white');
-          if (whitePlayer) {
-            gameState.currentTurn = whitePlayer.id;
-            gameState.currentPlayer = gameState.players.findIndex(p => p.id === gameState.currentTurn);
-          }
+          // Do not auto-assign chess players on join. Host will select two players via selectChessPlayers.
+          // We still persist the updated room playerIds/currentPlayers above; no gameState player changes here.
           await this.updateGameState(joinGameDto.roomId, gameState);
         } else if (gameRoom.gameType === 'ludo') {
           // Assign next color and initialize coins

@@ -708,6 +708,18 @@ useEffect(() => {
         ...prev,
         [data.playerId]: data.playerName || data.playerId,
       }));
+      // Refresh room info to keep participant lists up to date
+      socket.emit('getRoomInfo', { roomId });
+    };
+    const handleSpectatorConnected = (data: any) => {
+      console.log("Spectator connected:", data);
+      // Keep username map for modal display
+      setPlayerIdToUsername((prev) => ({
+        ...prev,
+        [data.playerId]: data.playerName || data.playerId,
+      }));
+      // Refresh room info to update spectatorIds
+      socket.emit('getRoomInfo', { roomId });
     };
 
     const handlePlayerDisconnected = (data: any) => {
@@ -858,6 +870,7 @@ useEffect(() => {
     socket.on("gameState", handleGameState);
     socket.on("playerJoined", handlePlayerJoined);
     socket.on("playerConnected", handlePlayerConnected);
+    socket.on("spectatorConnected", handleSpectatorConnected);
     socket.on("playerDisconnected", handlePlayerDisconnected);
     socket.on("playerRemoved", handlePlayerRemoved);
     socket.on("playerMuted", handlePlayerMuted);
@@ -876,6 +889,7 @@ useEffect(() => {
       socket.off("gameState", handleGameState);
       socket.off("playerJoined", handlePlayerJoined);
       socket.off("playerConnected", handlePlayerConnected);
+      socket.off("spectatorConnected", handleSpectatorConnected);
       socket.off("playerDisconnected", handlePlayerDisconnected);
       socket.off("playerRemoved", handlePlayerRemoved);
       socket.off("playerMuted", handlePlayerMuted);
@@ -917,6 +931,36 @@ useEffect(() => {
           userId: user.id, 
           hostId: roomData.host, 
           isHost: userIsHost 
+        });
+
+        // Build a unified participants list for chess selection modal
+        // Merge room players and spectators into local players list if missing
+        const participantIds: string[] = [
+          ...(roomData.playerIds || []),
+          ...(roomData.spectatorIds || [])
+        ];
+        // Ensure we have names for each participant in the map
+        setPlayers(prev => {
+          const existing = new Map(prev.map(p => [p.id, p]));
+          participantIds.forEach(id => {
+            if (!existing.has(id)) {
+              existing.set(id, {
+                id,
+                name: playerIdToUsername[id] || id,
+                color: '',
+                coins: [0,0,0,0]
+              } as any);
+            }
+          });
+          return Array.from(existing.values());
+        });
+        // Also seed username map for any missing ids
+        setPlayerIdToUsername(prev => {
+          const next = { ...prev };
+          participantIds.forEach(id => {
+            if (!next[id]) next[id] = id;
+          });
+          return next;
         });
       };
       
