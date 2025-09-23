@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { GameModule } from './game/game.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
+import { ChessModule } from './chess/chess.module';
 import { TriviaController } from './trivia/trivia.controller';
 
 @Module({
@@ -12,6 +13,7 @@ import { TriviaController } from './trivia/trivia.controller';
     GameModule,
     UserModule,
     AuthModule,
+    ChessModule,
   ],
   controllers: [TriviaController],
 })

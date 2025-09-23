@@ -881,551 +881,284 @@ export class GameService {
 
 
 
-  async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
-    const gameState = await this.getGameState(data.roomId);
+  // async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
+  //   const gameState = await this.getGameState(data.roomId);
     
-    console.log('=== BACKEND CHESS MOVE START ===');
-    console.log('Move request:', {
-      playerId: data.playerId,
-      move: data.move,
-      currentTurn: gameState.currentTurn,
-      gameStarted: gameState.gameStarted,
-      gameOver: gameState.gameOver,
-      currentBoard: gameState.chessState?.board,
-      timestamp: new Date().toISOString()
-    });
+  //   console.log('=== BACKEND CHESS MOVE START ===');
+  //   console.log('Move request:', {
+  //     playerId: data.playerId,
+  //     move: data.move,
+  //     currentTurn: gameState.currentTurn,
+  //     gameStarted: gameState.gameStarted,
+  //     gameOver: gameState.gameOver,
+  //     currentBoard: gameState.chessState?.board,
+  //     timestamp: new Date().toISOString()
+  //   });
     
-    // Validate game state
-    if (gameState.gameType !== 'chess') {
-      throw new Error('Not a chess game');
-    }
+  //   // Validate game state
+  //   if (gameState.gameType !== 'chess') {
+  //     throw new Error('Not a chess game');
+  //   }
     
-    if (!gameState.gameStarted) {
-      throw new Error('Game has not started yet');
-    }
+  //   if (!gameState.gameStarted) {
+  //     throw new Error('Game has not started yet');
+  //   }
     
-    if (gameState.gameOver) {
-      throw new Error('Game is already over');
-    }
+  //   if (gameState.gameOver) {
+  //     throw new Error('Game is already over');
+  //   }
     
-    // CRITICAL: Strict turn validation
-    if (gameState.currentTurn !== data.playerId) {
-      console.log('❌ Turn validation failed:', {
-        expectedPlayer: gameState.currentTurn,
-        attemptingPlayer: data.playerId,
-        players: gameState.players.map(p => ({ id: p.id, color: p.chessColor }))
-      });
-      throw new Error(`Not your turn. Current turn belongs to: ${gameState.currentTurn}`);
-    }
+  //   // CRITICAL: Strict turn validation
+  //   if (gameState.currentTurn !== data.playerId) {
+  //     console.log('❌ Turn validation failed:', {
+  //       expectedPlayer: gameState.currentTurn,
+  //       attemptingPlayer: data.playerId,
+  //       players: gameState.players.map(p => ({ id: p.id, color: p.chessColor }))
+  //     });
+  //     throw new Error(`Not your turn. Current turn belongs to: ${gameState.currentTurn}`);
+  //   }
   
-    // Find the player making the move
-    const movingPlayer = gameState.players.find(p => p.id === data.playerId);
-    if (!movingPlayer || !movingPlayer.chessColor) {
-      throw new Error('Player not found or not assigned a color');
-    }
+  //   // Find the player making the move
+  //   const movingPlayer = gameState.players.find(p => p.id === data.playerId);
+  //   if (!movingPlayer || !movingPlayer.chessColor) {
+  //     throw new Error('Player not found or not assigned a color');
+  //   }
   
-    try {
-      // Create chess instance from current board state
-      const chess = new Chess(gameState.chessState!.board);
+  //   try {
+  //     // Create chess instance from current board state
+  //     const chess = new Chess(gameState.chessState!.board);
       
-      console.log('Chess state validation:', {
-        fen: chess.fen(),
-        boardTurn: chess.turn(),
-        playerColor: movingPlayer.chessColor,
-        isCheck: chess.inCheck(),
-        legalMovesCount: chess.moves().length,
-        gameOver: chess.isGameOver()
-      });
+  //     console.log('Chess state validation:', {
+  //       fen: chess.fen(),
+  //       boardTurn: chess.turn(),
+  //       playerColor: movingPlayer.chessColor,
+  //       isCheck: chess.inCheck(),
+  //       legalMovesCount: chess.moves().length,
+  //       gameOver: chess.isGameOver()
+  //     });
   
-      // Validate that it's the correct color's turn according to the board
-      const boardTurn = chess.turn(); // 'w' or 'b'
-      const expectedColor = boardTurn === 'w' ? 'white' : 'black';
+  //     // Validate that it's the correct color's turn according to the board
+  //     const boardTurn = chess.turn(); // 'w' or 'b'
+  //     const expectedColor = boardTurn === 'w' ? 'white' : 'black';
       
-      if (movingPlayer.chessColor !== expectedColor) {
-        console.log('❌ Color/turn mismatch:', {
-          boardTurn,
-          expectedColor,
-          playerColor: movingPlayer.chessColor
-        });
-        throw new Error(`It's ${expectedColor}'s turn, but you are ${movingPlayer.chessColor}`);
-      }
+  //     if (movingPlayer.chessColor !== expectedColor) {
+  //       console.log('❌ Color/turn mismatch:', {
+  //         boardTurn,
+  //         expectedColor,
+  //         playerColor: movingPlayer.chessColor
+  //       });
+  //       throw new Error(`It's ${expectedColor}'s turn, but you are ${movingPlayer.chessColor}`);
+  //     }
   
-      // Parse the move (format: "e2e4" or "e7e8q" for promotion)
-      const fromSquare = data.move.substring(0, 2);
-      const toSquare = data.move.substring(2, 4);
-      const promotion = data.move.length > 4 ? data.move.substring(4) : undefined; // FIXED: Use undefined for non-promotion moves
+  //     // Parse the move (format: "e2e4" or "e7e8q" for promotion)
+  //     const fromSquare = data.move.substring(0, 2);
+  //     const toSquare = data.move.substring(2, 4);
+  //     const promotion = data.move.length > 4 ? data.move.substring(4) : undefined; // FIXED: Use undefined for non-promotion moves
   
-      console.log('Move parsing:', {
-        rawMove: data.move,
-        fromSquare,
-        toSquare,
-        promotion: promotion || 'none'
-      });
+  //     console.log('Move parsing:', {
+  //       rawMove: data.move,
+  //       fromSquare,
+  //       toSquare,
+  //       promotion: promotion || 'none'
+  //     });
   
-      // Attempt to make the move
-      const move = chess.move({
-        from: fromSquare,
-        to: toSquare,
-        promotion: promotion
-      });
+  //     // Attempt to make the move
+  //     const move = chess.move({
+  //       from: fromSquare,
+  //       to: toSquare,
+  //       promotion: promotion
+  //     });
   
-      if (!move) {
-        console.log('❌ Invalid move:', {
-          from: fromSquare,
-          to: toSquare,
-          promotion: promotion,
-          legalMoves: chess.moves().slice(0, 10), // Show first 10 legal moves for debugging
-          currentFen: chess.fen()
-        });
-        throw new Error(`Invalid chess move: ${data.move}`);
-      }
+  //     if (!move) {
+  //       console.log('❌ Invalid move:', {
+  //         from: fromSquare,
+  //         to: toSquare,
+  //         promotion: promotion,
+  //         legalMoves: chess.moves().slice(0, 10), // Show first 10 legal moves for debugging
+  //         currentFen: chess.fen()
+  //       });
+  //       throw new Error(`Invalid chess move: ${data.move}`);
+  //     }
   
-      console.log('✅ Valid move executed:', {
-        moveNotation: move.san,
-        from: move.from,
-        to: move.to,
-        piece: move.piece,
-        captured: move.captured,
-        newFen: chess.fen(),
-        check: chess.inCheck(),
-        checkmate: chess.isCheckmate()
-      });
+  //     console.log('✅ Valid move executed:', {
+  //       moveNotation: move.san,
+  //       from: move.from,
+  //       to: move.to,
+  //       piece: move.piece,
+  //       captured: move.captured,
+  //       newFen: chess.fen(),
+  //       check: chess.inCheck(),
+  //       checkmate: chess.isCheckmate()
+  //     });
   
-      // Update game state with new board position
-      gameState.chessState = {
-        board: chess.fen(),
-        moves: [...(gameState.chessState?.moves || []), move.san]
-      };
+  //     // Update game state with new board position
+  //     gameState.chessState = {
+  //       board: chess.fen(),
+  //       moves: [...(gameState.chessState?.moves || []), move.san]
+  //     };
   
-      // CRITICAL: Handle turn switching and game end detection
-      console.log('Game end checks:', { // ADDED: Debug logs for game over reasons
-        isGameOver: chess.isGameOver(),
-        isCheckmate: chess.isCheckmate(),
-        isStalemate: chess.isStalemate(),
-        isDraw: chess.isDraw(),
-        isInsufficientMaterial: chess.isInsufficientMaterial(),
-        isThreefoldRepetition: chess.isThreefoldRepetition(),
-        // isFiftyMoves: chess.isFiftyMoves()
-      });
+  //     // CRITICAL: Handle turn switching and game end detection
+  //     console.log('Game end checks:', { // ADDED: Debug logs for game over reasons
+  //       isGameOver: chess.isGameOver(),
+  //       isCheckmate: chess.isCheckmate(),
+  //       isStalemate: chess.isStalemate(),
+  //       isDraw: chess.isDraw(),
+  //       isInsufficientMaterial: chess.isInsufficientMaterial(),
+  //       isThreefoldRepetition: chess.isThreefoldRepetition(),
+  //       // isFiftyMoves: chess.isFiftyMoves()
+  //     });
   
-      if (chess.isGameOver()) {
-        console.log('🏁 Game Over Detected');
-        gameState.gameOver = true;
+  //     if (chess.isGameOver()) {
+  //       console.log('🏁 Game Over Detected');
+  //       gameState.gameOver = true;
         
-        if (chess.isCheckmate()) {
-          gameState.winner = data.playerId; // The player who just moved is the winner
-          gameState.winCondition = 'checkmate';
-          console.log(`🏆 Checkmate! Winner: ${data.playerId} (${movingPlayer.chessColor})`);
-        } else if (chess.isStalemate()) {
-          gameState.winner = 'draw';
-          gameState.winCondition = 'stalemate';
-          console.log('🤝 Stalemate - Draw');
-        } else if (chess.isDraw()) {
-          gameState.winner = 'draw';
-          if (chess.isInsufficientMaterial()) {
-            gameState.winCondition = 'insufficient_material';
-          } else if (chess.isThreefoldRepetition()) {
-            gameState.winCondition = 'threefold_repetition';
-          } else {
-            gameState.winCondition = 'fifty_move_rule';
-          }
-          console.log(`🤝 Draw: ${gameState.winCondition}`);
-        }
+  //       if (chess.isCheckmate()) {
+  //         gameState.winner = data.playerId; // The player who just moved is the winner
+  //         gameState.winCondition = 'checkmate';
+  //         console.log(`🏆 Checkmate! Winner: ${data.playerId} (${movingPlayer.chessColor})`);
+  //       } else if (chess.isStalemate()) {
+  //         gameState.winner = 'draw';
+  //         gameState.winCondition = 'stalemate';
+  //         console.log('🤝 Stalemate - Draw');
+  //       } else if (chess.isDraw()) {
+  //         gameState.winner = 'draw';
+  //         if (chess.isInsufficientMaterial()) {
+  //           gameState.winCondition = 'insufficient_material';
+  //         } else if (chess.isThreefoldRepetition()) {
+  //           gameState.winCondition = 'threefold_repetition';
+  //         } else {
+  //           gameState.winCondition = 'fifty_move_rule';
+  //         }
+  //         console.log(`🤝 Draw: ${gameState.winCondition}`);
+  //       }
         
-        // Update database
-        await this.gameRoomModel.updateOne(
-          { roomId: data.roomId }, 
-          { status: 'completed', winner: gameState.winner }
-        );
-        await this.saveGameSession(data.roomId, gameState);
-      } else {
-        // CRITICAL: Proper turn switching logic
-        const nextBoardTurn = chess.turn(); // Get the next turn from chess.js
-        const nextColor = nextBoardTurn === 'w' ? 'white' : 'black';
+  //       // Update database
+  //       await this.gameRoomModel.updateOne(
+  //         { roomId: data.roomId }, 
+  //         { status: 'completed', winner: gameState.winner }
+  //       );
+  //       await this.saveGameSession(data.roomId, gameState);
+  //     } else {
+  //       // CRITICAL: Proper turn switching logic
+  //       const nextBoardTurn = chess.turn(); // Get the next turn from chess.js
+  //       const nextColor = nextBoardTurn === 'w' ? 'white' : 'black';
         
-        console.log('🔄 Turn switching logic:', {
-          currentMoveBy: data.playerId,
-          currentMoveColor: movingPlayer.chessColor,
-          nextBoardTurn,
-          nextColor,
-          availablePlayers: gameState.players.map(p => ({ id: p.id, color: p.chessColor }))
-        });
+  //       console.log('🔄 Turn switching logic:', {
+  //         currentMoveBy: data.playerId,
+  //         currentMoveColor: movingPlayer.chessColor,
+  //         nextBoardTurn,
+  //         nextColor,
+  //         availablePlayers: gameState.players.map(p => ({ id: p.id, color: p.chessColor }))
+  //       });
         
-        // Find the player with the next color
-        const nextPlayer = gameState.players.find(p => p.chessColor === nextColor);
+  //       // Find the player with the next color
+  //       const nextPlayer = gameState.players.find(p => p.chessColor === nextColor);
         
-        if (!nextPlayer) {
-          console.error('❌ Critical error: No player found for next color:', {
-            nextColor,
-            nextBoardTurn,
-            players: gameState.players.map(p => ({ id: p.id, color: p.chessColor }))
-          });
-          throw new Error('Chess game configuration error - missing player for next turn');
-        }
+  //       if (!nextPlayer) {
+  //         console.error('❌ Critical error: No player found for next color:', {
+  //           nextColor,
+  //           nextBoardTurn,
+  //           players: gameState.players.map(p => ({ id: p.id, color: p.chessColor }))
+  //         });
+  //         throw new Error('Chess game configuration error - missing player for next turn');
+  //       }
         
-        // Update the game state turn
-        const previousTurn = gameState.currentTurn;
-        gameState.currentTurn = nextPlayer.id;
-        gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
+  //       // Update the game state turn
+  //       const previousTurn = gameState.currentTurn;
+  //       gameState.currentTurn = nextPlayer.id;
+  //       gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
         
-        console.log('✅ Turn switched successfully:', {
-          previousPlayer: previousTurn,
-          previousColor: movingPlayer.chessColor,
-          nextPlayer: nextPlayer.id,
-          nextPlayerColor: nextColor,
-          boardTurn: nextBoardTurn,
-          currentPlayerIndex: gameState.currentPlayer
-        });
-      }
+  //       console.log('✅ Turn switched successfully:', {
+  //         previousPlayer: previousTurn,
+  //         previousColor: movingPlayer.chessColor,
+  //         nextPlayer: nextPlayer.id,
+  //         nextPlayerColor: nextColor,
+  //         boardTurn: nextBoardTurn,
+  //         currentPlayerIndex: gameState.currentPlayer
+  //       });
+  //     }
   
-      // CRITICAL: Save state immediately and verify it was saved
-      await this.updateGameState(data.roomId, gameState);
+  //     // CRITICAL: Save state immediately and verify it was saved
+  //     await this.updateGameState(data.roomId, gameState);
       
-      // Verify the state was saved correctly
-      const verifyState = await this.getGameState(data.roomId);
-      console.log('🔍 State verification:', {
-        savedCurrentTurn: verifyState.currentTurn,
-        savedBoard: verifyState.chessState?.board?.substring(0, 20) + '...',
-        savedMoveCount: verifyState.chessState?.moves?.length || 0,
-        gameOver: verifyState.gameOver
-      });
+  //     // Verify the state was saved correctly
+  //     const verifyState = await this.getGameState(data.roomId);
+  //     console.log('🔍 State verification:', {
+  //       savedCurrentTurn: verifyState.currentTurn,
+  //       savedBoard: verifyState.chessState?.board?.substring(0, 20) + '...',
+  //       savedMoveCount: verifyState.chessState?.moves?.length || 0,
+  //       gameOver: verifyState.gameOver
+  //     });
   
-      console.log('=== BACKEND CHESS MOVE COMPLETED ===');
-      console.log('Final response data:', {
-        roomId: data.roomId,
-        moveNotation: move.san,
-        newTurn: gameState.currentTurn,
-        gameOver: gameState.gameOver,
-        winner: gameState.winner,
-        moveNumber: gameState.chessState?.moves?.length || 0,
-        timestamp: new Date().toISOString()
-      });
+  //     console.log('=== BACKEND CHESS MOVE COMPLETED ===');
+  //     console.log('Final response data:', {
+  //       roomId: data.roomId,
+  //       moveNotation: move.san,
+  //       newTurn: gameState.currentTurn,
+  //       gameOver: gameState.gameOver,
+  //       winner: gameState.winner,
+  //       moveNumber: gameState.chessState?.moves?.length || 0,
+  //       timestamp: new Date().toISOString()
+  //     });
   
   
-      // CRITICAL: Emit events to notify all clients in the room
-      if (this.server) {
-        // Emit the updated game state first
-        this.server.to(data.roomId).emit('gameState', gameState);
+  //     // CRITICAL: Emit events to notify all clients in the room
+  //     if (this.server) {
+  //       // Emit the updated game state first
+  //       this.server.to(data.roomId).emit('gameState', gameState);
         
-        // Then emit the specific chess move confirmation
-        this.server.to(data.roomId).emit('chessMove', {
-          roomId: data.roomId,
-          move: move.san,
-          playerId: data.playerId,
-          success: true,
-          timestamp: new Date().toISOString()
-        });
+  //       // Then emit the specific chess move confirmation
+  //       this.server.to(data.roomId).emit('chessMove', {
+  //         roomId: data.roomId,
+  //         move: move.san,
+  //         playerId: data.playerId,
+  //         success: true,
+  //         timestamp: new Date().toISOString()
+  //       });
         
-        console.log('✅ Socket events emitted:', {
-          gameState: 'emitted',
-          chessMove: 'emitted',
-          roomId: data.roomId,
-          move: move.san
-        });
-      }
+  //       console.log('✅ Socket events emitted:', {
+  //         gameState: 'emitted',
+  //         chessMove: 'emitted',
+  //         roomId: data.roomId,
+  //         move: move.san
+  //       });
+  //     }
   
   
-      return { 
-        roomId: data.roomId, 
-        move: move.san, 
-        gameState, // Return the complete updated game state
-        moveDetails: {
-          from: move.from,
-          to: move.to,
-          piece: move.piece,
-          captured: move.captured,
-          san: move.san,
-          fen: chess.fen(),
-          check: chess.inCheck(),
-          checkmate: chess.isCheckmate()
-        },
-        success: true,
-        timestamp: new Date().toISOString()
-      };
-    } catch (error) {
-      console.error('❌ Chess move processing error:', {
-        error: error.message,
-        playerId: data.playerId,
-        move: data.move,
-        currentTurn: gameState.currentTurn,
-        gameState: {
-          started: gameState.gameStarted,
-          over: gameState.gameOver,
-          currentBoard: gameState.chessState?.board?.substring(0, 30) + '...'
-        }
-      });
-      throw error;
-    }
-  }
+  //     return { 
+  //       roomId: data.roomId, 
+  //       move: move.san, 
+  //       gameState, // Return the complete updated game state
+  //       moveDetails: {
+  //         from: move.from,
+  //         to: move.to,
+  //         piece: move.piece,
+  //         captured: move.captured,
+  //         san: move.san,
+  //         fen: chess.fen(),
+  //         check: chess.inCheck(),
+  //         checkmate: chess.isCheckmate()
+  //       },
+  //       success: true,
+  //       timestamp: new Date().toISOString()
+  //     };
+  //   } catch (error) {
+  //     console.error('❌ Chess move processing error:', {
+  //       error: error.message,
+  //       playerId: data.playerId,
+  //       move: data.move,
+  //       currentTurn: gameState.currentTurn,
+  //       gameState: {
+  //         started: gameState.gameStarted,
+  //         over: gameState.gameOver,
+  //         currentBoard: gameState.chessState?.board?.substring(0, 30) + '...'
+  //       }
+  //     });
+  //     throw error;
+  //   }
+  // }
 
   
-// // COMPLETE FIX FOR CHESS MULTIPLAYER - Replace your makeChessMove method in game.service.ts
-// async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
-//   const gameState = await this.getGameState(data.roomId);
-  
-//   console.log('=== BACKEND CHESS MOVE START ===');
-//   console.log('Move request:', {
-//     playerId: data.playerId,
-//     move: data.move,
-//     currentTurn: gameState.currentTurn,
-//     gameStarted: gameState.gameStarted,
-//     gameOver: gameState.gameOver,
-//     currentBoard: gameState.chessState?.board,
-//     timestamp: new Date().toISOString()
-//   });
-  
-//   // Validate game state
-//   if (gameState.gameType !== 'chess') {
-//     throw new Error('Not a chess game');
-//   }
-  
-//   if (!gameState.gameStarted) {
-//     throw new Error('Game has not started yet');
-//   }
-  
-//   if (gameState.gameOver) {
-//     throw new Error('Game is already over');
-//   }
-  
-//   // CRITICAL: Strict turn validation
-//   if (gameState.currentTurn !== data.playerId) {
-//     console.log('❌ Turn validation failed:', {
-//       expectedPlayer: gameState.currentTurn,
-//       attemptingPlayer: data.playerId,
-//       players: gameState.players.map(p => ({ id: p.id, color: p.chessColor }))
-//     });
-//     throw new Error(`Not your turn. Current turn belongs to: ${gameState.currentTurn}`);
-//   }
-
-//   // Find the player making the move
-//   const movingPlayer = gameState.players.find(p => p.id === data.playerId);
-//   if (!movingPlayer || !movingPlayer.chessColor) {
-//     throw new Error('Player not found or not assigned a color');
-//   }
-
-//   try {
-//     // Create chess instance from current board state
-//     const chess = new Chess(gameState.chessState!.board);
-    
-//     console.log('Chess state validation:', {
-//       fen: chess.fen(),
-//       boardTurn: chess.turn(),
-//       playerColor: movingPlayer.chessColor,
-//       isCheck: chess.inCheck(),
-//       legalMovesCount: chess.moves().length,
-//       gameOver: chess.isGameOver()
-//     });
-
-//     // Validate that it's the correct color's turn according to the board
-//     const boardTurn = chess.turn(); // 'w' or 'b'
-//     const expectedColor = boardTurn === 'w' ? 'white' : 'black';
-    
-//     if (movingPlayer.chessColor !== expectedColor) {
-//       console.log('❌ Color/turn mismatch:', {
-//         boardTurn,
-//         expectedColor,
-//         playerColor: movingPlayer.chessColor
-//       });
-//       throw new Error(`It's ${expectedColor}'s turn, but you are ${movingPlayer.chessColor}`);
-//     }
-
-//     // Parse the move (format: "e2e4" or "e7e8q" for promotion)
-//     const fromSquare = data.move.substring(0, 2);
-//     const toSquare = data.move.substring(2, 4);
-//     const promotion = data.move.length > 4 ? data.move.substring(4) : undefined;
-
-//     console.log('Move parsing:', {
-//       rawMove: data.move,
-//       fromSquare,
-//       toSquare,
-//       promotion: data.move.length > 4 ? promotion : 'none'
-//     });
-
-//     // Attempt to make the move
-//     const move = chess.move({
-//       from: fromSquare,
-//       to: toSquare,
-//       promotion: promotion
-//     });
-
-//     if (!move) {
-//       console.log('❌ Invalid move:', {
-//         from: fromSquare,
-//         to: toSquare,
-//         promotion: promotion,
-//         legalMoves: chess.moves().slice(0, 10), // Show first 10 legal moves for debugging
-//         currentFen: chess.fen()
-//       });
-//       throw new Error(`Invalid chess move: ${data.move}`);
-//     }
-
-//     console.log('✅ Valid move executed:', {
-//       moveNotation: move.san,
-//       from: move.from,
-//       to: move.to,
-//       piece: move.piece,
-//       captured: move.captured,
-//       newFen: chess.fen(),
-//       check: chess.inCheck(),
-//       checkmate: chess.isCheckmate()
-//     });
-
-//     // Update game state with new board position
-//     gameState.chessState = {
-//       board: chess.fen(),
-//       moves: [...(gameState.chessState?.moves || []), move.san]
-//     };
-
-//     // CRITICAL: Handle turn switching and game end detection
-//     if (chess.isGameOver()) {
-//       console.log('🏁 Game Over Detected');
-//       gameState.gameOver = true;
-      
-//       if (chess.isCheckmate()) {
-//         gameState.winner = data.playerId; // The player who just moved is the winner
-//         gameState.winCondition = 'checkmate';
-//         console.log(`🏆 Checkmate! Winner: ${data.playerId} (${movingPlayer.chessColor})`);
-//       } else if (chess.isStalemate()) {
-//         gameState.winner = 'draw';
-//         gameState.winCondition = 'stalemate';
-//         console.log('🤝 Stalemate - Draw');
-//       } else if (chess.isDraw()) {
-//         gameState.winner = 'draw';
-//         if (chess.isInsufficientMaterial()) {
-//           gameState.winCondition = 'insufficient_material';
-//         } else if (chess.isThreefoldRepetition()) {
-//           gameState.winCondition = 'threefold_repetition';
-//         } else {
-//           gameState.winCondition = 'fifty_move_rule';
-//         }
-//         console.log(`🤝 Draw: ${gameState.winCondition}`);
-//       }
-      
-//       // Update database
-//       await this.gameRoomModel.updateOne(
-//         { roomId: data.roomId }, 
-//         { status: 'completed', winner: gameState.winner }
-//       );
-//       await this.saveGameSession(data.roomId, gameState);
-//     } else {
-//       // CRITICAL: Proper turn switching logic
-//       const nextBoardTurn = chess.turn(); // Get the next turn from chess.js
-//       const nextColor = nextBoardTurn === 'w' ? 'white' : 'black';
-      
-//       console.log('🔄 Turn switching logic:', {
-//         currentMoveBy: data.playerId,
-//         currentMoveColor: movingPlayer.chessColor,
-//         nextBoardTurn,
-//         nextColor,
-//         availablePlayers: gameState.players.map(p => ({ id: p.id, color: p.chessColor }))
-//       });
-      
-//       // Find the player with the next color
-//       const nextPlayer = gameState.players.find(p => p.chessColor === nextColor);
-      
-//       if (!nextPlayer) {
-//         console.error('❌ Critical error: No player found for next color:', {
-//           nextColor,
-//           nextBoardTurn,
-//           players: gameState.players.map(p => ({ id: p.id, color: p.chessColor }))
-//         });
-//         throw new Error('Chess game configuration error - missing player for next turn');
-//       }
-      
-//       // Update the game state turn
-//       const previousTurn = gameState.currentTurn;
-//       gameState.currentTurn = nextPlayer.id;
-//       gameState.currentPlayer = gameState.players.findIndex(p => p.id === nextPlayer.id);
-      
-//       console.log('✅ Turn switched successfully:', {
-//         previousPlayer: previousTurn,
-//         previousColor: movingPlayer.chessColor,
-//         nextPlayer: nextPlayer.id,
-//         nextPlayerColor: nextColor,
-//         boardTurn: nextBoardTurn,
-//         currentPlayerIndex: gameState.currentPlayer
-//       });
-//     }
-
-//     // CRITICAL: Save state immediately and verify it was saved
-//     await this.updateGameState(data.roomId, gameState);
-    
-//     // Verify the state was saved correctly
-//     const verifyState = await this.getGameState(data.roomId);
-//     console.log('🔍 State verification:', {
-//       savedCurrentTurn: verifyState.currentTurn,
-//       savedBoard: verifyState.chessState?.board?.substring(0, 20) + '...',
-//       savedMoveCount: verifyState.chessState?.moves?.length || 0,
-//       gameOver: verifyState.gameOver
-//     });
-
-//     console.log('=== BACKEND CHESS MOVE COMPLETED ===');
-//     console.log('Final response data:', {
-//       roomId: data.roomId,
-//       moveNotation: move.san,
-//       newTurn: gameState.currentTurn,
-//       gameOver: gameState.gameOver,
-//       winner: gameState.winner,
-//       moveNumber: gameState.chessState?.moves?.length || 0,
-//       timestamp: new Date().toISOString()
-//     });
-
-
-// // CRITICAL: Emit events to notify all clients in the room
-// if (this.server) {
-//   // Emit the updated game state first
-//   this.server.to(data.roomId).emit('gameState', gameState);
-  
-//   // Then emit the specific chess move confirmation
-//   this.server.to(data.roomId).emit('chessMove', {
-//     roomId: data.roomId,
-//     move: move.san,
-//     playerId: data.playerId,
-//     success: true,
-//     timestamp: new Date().toISOString()
-//   });
-  
-//   console.log('✅ Socket events emitted:', {
-//     gameState: 'emitted',
-//     chessMove: 'emitted',
-//     roomId: data.roomId,
-//     move: move.san
-//   });
-// }
-
-
-//     return { 
-//       roomId: data.roomId, 
-//       move: move.san, 
-//       gameState, // Return the complete updated game state
-//       moveDetails: {
-//         from: move.from,
-//         to: move.to,
-//         piece: move.piece,
-//         captured: move.captured,
-//         san: move.san,
-//         fen: chess.fen(),
-//         check: chess.inCheck(),
-//         checkmate: chess.isCheckmate()
-//       },
-//       success: true,
-//       timestamp: new Date().toISOString()
-//     };
-//   } catch (error) {
-//     console.error('❌ Chess move processing error:', {
-//       error: error.message,
-//       playerId: data.playerId,
-//       move: data.move,
-//       currentTurn: gameState.currentTurn,
-//       gameState: {
-//         started: gameState.gameStarted,
-//         over: gameState.gameOver,
-//         currentBoard: gameState.chessState?.board?.substring(0, 30) + '...'
-//       }
-//     });
-//     throw error;
-//   }
-// }
 
 async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
   const gameState = await this.getGameState(data.roomId);
