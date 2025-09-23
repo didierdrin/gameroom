@@ -953,7 +953,7 @@ async makeChessMove(data: { roomId: string; playerId: string; move: string }) {
     // Parse the move (format: "e2e4" or "e7e8q" for promotion)
     const fromSquare = data.move.substring(0, 2);
     const toSquare = data.move.substring(2, 4);
-    const promotion = data.move.length > 4 ? data.move.substring(4) : 'q';
+    const promotion = data.move.length > 4 ? data.move.substring(4) : undefined;
 
     console.log('Move parsing:', {
       rawMove: data.move,
