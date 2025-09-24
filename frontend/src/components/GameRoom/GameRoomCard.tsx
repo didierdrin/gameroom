@@ -1,23 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Users, Lock, Unlock, Play, Clock, Trophy } from 'lucide-react';
+import React from 'react';
+import { Users, Lock, Unlock, Clock } from 'lucide-react';
 import { useUsername } from '../../hooks/useUsername';
+import { useAvatar } from '../../hooks/useAvatar';
 
 interface GameRoomCardProps {
   gameRoom: any;
   onJoinRoom: (gameRoom: any) => void;
-  playerIdToUsername?: Record<string, string>; // Add this prop for username mapping
 }
 
 export const GameRoomCard: React.FC<GameRoomCardProps> = ({
   gameRoom,
   onJoinRoom,
-  playerIdToUsername = {},
 }) => {
-  const navigate = useNavigate();
   
   const {
-    id,
     name,
     gameType,
     host,
@@ -30,6 +26,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
   } = gameRoom;
 
   const { username: hostDisplayName, isLoading: isLoadingHost } = useUsername(host);
+  const { avatarUrl: resolvedHostAvatar } = useAvatar(host, hostDisplayName || host);
 
   // Get host's display name - now simplified using the hook
   const getHostDisplayName = () => {
@@ -109,16 +106,11 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
           </div>
         </div>
         <div className="flex items-center mb-4">
-          <img
-            src={
-              hostAvatar ||
-              `https://api.dicebear.com/7.x/avataaars/svg?seed=${
-                host || "default"
-              }`
-            }
-            alt={hostDisplayName}
-            className="w-6 h-6 rounded-full border border-gray-700"
-          />
+        <img
+          src={hostAvatar || resolvedHostAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${host || "default"}`}
+          alt={hostDisplayName}
+          className="w-6 h-6 rounded-full border border-gray-700"
+        />
           <p className="text-sm text-gray-300 ml-2">
             Hosted by {getHostDisplayName()}
           </p>

@@ -19,7 +19,7 @@ export const GameRoomList: React.FC<GameRoomListProps> = ({
           key={gameRoom.id} 
           gameRoom={gameRoom} 
           onJoinRoom={onJoinRoom}
-          playerIdToUsername={playerIdToUsername}
+          // playerIdToUsername={playerIdToUsername}
         />
       ))}
     </div>

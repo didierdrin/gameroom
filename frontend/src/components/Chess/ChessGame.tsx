@@ -40,6 +40,46 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   }, [gameState, currentPlayer]);
 
 
+  // after updating FEN and playerColor
+useEffect(() => {
+  setLocalGameState(gameState);
+}, [gameState]);
+
+
+// const handleMove = ({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string }) => {
+//   try {
+//     // Use props gameState, not localGameState
+//     if (gameState.currentTurn !== currentPlayer) {
+//       console.log("Not your turn");
+//       return null;
+//     }
+
+//     const player = gameState.players.find((p: any) => p.id === currentPlayer);
+//     const moveColor = game.turn();
+//     if ((moveColor === 'w' && player?.chessColor !== 'white') ||
+//         (moveColor === 'b' && player?.chessColor !== 'black')) {
+//       console.log("Not your color's turn");
+//       return null;
+//     }
+
+//     const move = game.move({ from: sourceSquare, to: targetSquare, promotion: 'q' });
+//     if (move) {
+//       setFen(game.fen());
+//       setLocalGameState((prev: any) => ({
+//         ...prev,
+//         chessState: {
+//           ...prev?.chessState,
+//           board: game.fen(),
+//           moves: [...(prev?.chessState?.moves || []), `${sourceSquare}${targetSquare}`]
+//         }
+//       }));
+//       onChessMove(`${sourceSquare}${targetSquare}`);
+//     }
+//   } catch (e) {
+//     console.error('Invalid move:', e);
+//     return null;
+//   }
+// };
   // Update your handleMove to use localGameState
   const handleMove = ({ sourceSquare, targetSquare }: { 
     sourceSquare: string; 
