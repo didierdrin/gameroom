@@ -13,7 +13,7 @@ import { TriviaController } from './trivia/trivia.controller';
     GameModule,
     UserModule,
     AuthModule,
-    ChessModule,
+    // ChessModule,
   ],
   controllers: [TriviaController],
 })

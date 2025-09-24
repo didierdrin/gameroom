@@ -4,6 +4,7 @@ import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
 import { UserService } from '../user/user.service';
+import { ChessService } from 'src/chess/chess.service';
 
 @WebSocketGateway({ 
   cors: { 
@@ -25,7 +26,8 @@ export class GameGateway {
   private connectedSockets = new Map<string, Socket>();
   constructor(
     private readonly gameService: GameService,
-    private readonly userService: UserService
+    private readonly userService: UserService,
+    private readonly chessService: ChessService
   ) {}
 
   afterInit() {
@@ -271,23 +273,23 @@ export class GameGateway {
     }
   }
 
-  @SubscribeMessage('selectChessPlayers')
-  async handleSelectChessPlayers(@MessageBody() data: { roomId: string; hostId: string; player1Id: string; player2Id: string }, @ConnectedSocket() client: Socket) {
-    try {
-      console.log('Selecting chess players:', data);
-      const result = await this.gameService.selectChessPlayers(data);
-      this.server.to(data.roomId).emit('chessPlayersSelected', result);
-      const gameState = await this.gameService.getGameState(data.roomId);
-      this.server.to(data.roomId).emit('gameState', gameState);
-      console.log('Chess players selected, new game state:', {
-        chessPlayers: result.chessPlayers,
-        currentTurn: gameState.currentTurn
-      });
-    } catch (error) {
-      console.error('Select chess players error:', error.message);
-      client.emit('error', { message: error.message, type: 'selectChessPlayersError' });
-    }
-  }
+  // @SubscribeMessage('selectChessPlayers')
+  // async handleSelectChessPlayers(@MessageBody() data: { roomId: string; hostId: string; player1Id: string; player2Id: string }, @ConnectedSocket() client: Socket) {
+  //   try {
+  //     console.log('Selecting chess players:', data);
+  //     const result = await this.gameService.selectChessPlayers(data);
+  //     this.server.to(data.roomId).emit('chessPlayersSelected', result);
+  //     const gameState = await this.gameService.getGameState(data.roomId);
+  //     this.server.to(data.roomId).emit('gameState', gameState);
+  //     console.log('Chess players selected, new game state:', {
+  //       chessPlayers: result.chessPlayers,
+  //       currentTurn: gameState.currentTurn
+  //     });
+  //   } catch (error) {
+  //     console.error('Select chess players error:', error.message);
+  //     client.emit('error', { message: error.message, type: 'selectChessPlayersError' });
+  //   }
+  // }
 
 
 // UPDATED GATEWAY HANDLER - Replace your makeChessMove handler in game.gateway.ts
@@ -712,7 +714,171 @@ async handleGetRoomInfo(@MessageBody() data: { roomId: string }, @ConnectedSocke
 }
 
 
+
+
+
+// Add these methods to route chess events to chess service:
+
+@SubscribeMessage('selectChessPlayers')
+async handleSelectChessPlayers(
+  @MessageBody() data: { roomId: string; hostId: string; player1Id: string; player2Id: string }, 
+  @ConnectedSocket() client: Socket
+) {
+  try {
+    console.log('Selecting chess players via chess service:', data);
+    
+    // Validate host permissions using game service
+    const room = await this.gameService.getGameRoomById(data.roomId);
+    if (room?.host !== data.hostId) {
+      throw new Error('Only the host can select chess players');
+    }
+
+    // Use chess service for chess-specific logic
+    const result = await this.chessService.selectChessPlayers(data);
+    
+    // Broadcast result
+    this.server.to(data.roomId).emit('chessPlayersSelected', {
+      roomId: data.roomId,
+      chessPlayers: {
+        player1Id: data.player1Id,
+        player2Id: data.player2Id
+      },
+      currentTurn: result.currentTurn,
+      players: result.players
+    });
+
+    // Update main game state to reflect chess players
+    const gameState = await this.gameService.getGameState(data.roomId);
+    gameState.chessPlayers = {
+      player1Id: data.player1Id,
+      player2Id: data.player2Id
+    };
+    
+    // Update player list with chess colors
+    gameState.players = [
+      {
+        id: data.player1Id,
+        name: data.player1Id,
+        chessColor: 'white' as const
+      },
+      {
+        id: data.player2Id,
+        name: data.player2Id,
+        chessColor: 'black' as const
+      }
+    ];
+    
+    gameState.currentTurn = data.player1Id;
+    gameState.currentPlayer = 0;
+    
+    await this.gameService.updateGameState(data.roomId, gameState);
+    this.server.to(data.roomId).emit('gameState', gameState);
+    
+  } catch (error) {
+    console.error('Select chess players error:', error.message);
+    client.emit('error', { message: error.message, type: 'selectChessPlayersError' });
+  }
+}
+
+@SubscribeMessage('makeChessMove')
+async handleMakeChessMove(
+  @MessageBody() data: { roomId: string; playerId: string; move: string }, 
+  @ConnectedSocket() client: Socket
+) {
+  try {
+    console.log('Chess move via chess service:', {
+      roomId: data.roomId,
+      playerId: data.playerId,
+      move: data.move
+    });
+
+    // Validate input
+    if (!data.roomId || !data.playerId || !data.move) {
+      throw new Error('Missing required move data');
+    }
+
+    // Use chess service for move validation and execution
+    const result = await this.chessService.makeMove({
+      roomId: data.roomId,
+      playerId: data.playerId,
+      move: data.move
+    });
+
+    // Broadcast move confirmation
+    this.server.to(data.roomId).emit('chessMove', {
+      roomId: data.roomId,
+      move: data.move,
+      moveDetails: result.moveDetails,
+      playerId: data.playerId,
+      success: true,
+      timestamp: new Date().toISOString()
+    });
+
+    // Get chess state from chess service
+    const chessState = await this.chessService.getChessState(data.roomId);
+    
+    // Update main game state
+    const gameState = await this.gameService.getGameState(data.roomId);
+    gameState.chessState = {
+      board: chessState.board,
+      moves: chessState.moves
+    };
+    gameState.currentTurn = chessState.currentTurn;
+    gameState.gameOver = chessState.gameOver;
+    gameState.winner = chessState.winner!;
+    gameState.winCondition = chessState.winCondition;
+
+    await this.gameService.updateGameState(data.roomId, gameState);
+
+    // Broadcast updated game state
+    this.server.to(data.roomId).emit('gameState', gameState);
+
+    // Handle game over
+    if (chessState.gameOver) {
+      this.server.to(data.roomId).emit('gameOver', {
+        winner: chessState.winner,
+        winCondition: chessState.winCondition,
+        roomId: data.roomId,
+        finalBoard: chessState.board,
+        finalMoves: chessState.moves
+      });
+
+      // Update rooms list
+      const rooms = await this.gameService.getActiveGameRooms();
+      this.server.emit('gameRoomsList', { rooms });
+    }
+
+  } catch (error) {
+    console.error('Chess move failed:', {
+      error: error.message,
+      roomId: data.roomId,
+      playerId: data.playerId,
+      move: data.move
+    });
+
+    client.emit('error', { 
+      message: error.message || 'Invalid chess move', 
+      type: 'chessMoveError',
+      roomId: data.roomId,
+      playerId: data.playerId,
+      move: data.move
+    });
+
+    client.emit('chessMoveError', {
+      message: error.message,
+      move: data.move,
+      roomId: data.roomId,
+      playerId: data.playerId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+
   
+}
+
+
+
 }
 
 

@@ -222,33 +222,33 @@ export class GameService {
           },
         };
         break;
-      case 'chess':
-        initialGameState = {
-          roomId,
-          players: [{ id: hostId, name: hostId, chessColor: 'white' }],
-          currentTurn: hostId,
-          currentPlayer: 0,
-          gameStarted: false,
-          gameOver: false,
-          winner: null,
-          roomName,
-          gameType: 'chess',
-          host: hostId,
-          chessState: {
-            board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', // Initial FEN
-            moves: [],
-          },
-        };
-        console.log('Chess game initialized:', {
-          roomId,
-          hostId,
-          currentTurn: initialGameState.currentTurn,
-          players: initialGameState.players.map((p: any) => ({ 
-            id: p.id, 
-            chessColor: p.chessColor 
-          }))
-        });
-        break;
+      // case 'chess':
+      //   initialGameState = {
+      //     roomId,
+      //     players: [{ id: hostId, name: hostId, chessColor: 'white' }],
+      //     currentTurn: hostId,
+      //     currentPlayer: 0,
+      //     gameStarted: false,
+      //     gameOver: false,
+      //     winner: null,
+      //     roomName,
+      //     gameType: 'chess',
+      //     host: hostId,
+      //     chessState: {
+      //       board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', // Initial FEN
+      //       moves: [],
+      //     },
+      //   };
+      //   console.log('Chess game initialized:', {
+      //     roomId,
+      //     hostId,
+      //     currentTurn: initialGameState.currentTurn,
+      //     players: initialGameState.players.map((p: any) => ({ 
+      //       id: p.id, 
+      //       chessColor: p.chessColor 
+      //     }))
+      //   });
+      //   break;
       default: // ludo, uno, pictionary, sudoku
         initialGameState = {
           roomId,
@@ -1148,103 +1148,103 @@ export class GameService {
 
   
 
-async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
-  const gameState = await this.getGameState(data.roomId);
-  const room = await this.getGameRoomById(data.roomId);
+// async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: string; player2Id: string }) {
+//   const gameState = await this.getGameState(data.roomId);
+//   const room = await this.getGameRoomById(data.roomId);
 
-  if (room?.host !== data.hostId) {
-    throw new Error('Only the host can select chess players');
-  }
+//   if (room?.host !== data.hostId) {
+//     throw new Error('Only the host can select chess players');
+//   }
 
-  if (gameState.gameType !== 'chess') {
-    throw new Error('This is not a chess game');
-  }
+//   if (gameState.gameType !== 'chess') {
+//     throw new Error('This is not a chess game');
+//   }
 
-  if (data.player1Id === data.player2Id) {
-    throw new Error('Cannot select the same player for both sides');
-  }
+//   if (data.player1Id === data.player2Id) {
+//     throw new Error('Cannot select the same player for both sides');
+//   }
 
-  // Ensure both players exist in the room (either as players or spectators)
-  const allParticipants = [...(room?.playerIds || []), ...(room?.spectatorIds || [])];
-  if (!allParticipants.includes(data.player1Id) || !allParticipants.includes(data.player2Id)) {
-    throw new Error('Selected players must be in the room');
-  }
+//   // Ensure both players exist in the room (either as players or spectators)
+//   const allParticipants = [...(room?.playerIds || []), ...(room?.spectatorIds || [])];
+//   if (!allParticipants.includes(data.player1Id) || !allParticipants.includes(data.player2Id)) {
+//     throw new Error('Selected players must be in the room');
+//   }
 
-  // Store chess players selection
-  gameState.chessPlayers = {
-    player1Id: data.player1Id,
-    player2Id: data.player2Id
-  };
+//   // Store chess players selection
+//   gameState.chessPlayers = {
+//     player1Id: data.player1Id,
+//     player2Id: data.player2Id
+//   };
 
-  // Clear existing players and add only the selected chess players
-  gameState.players = [
-    {
-      id: data.player1Id,
-      name: data.player1Id,
-      chessColor: 'white' as const
-    },
-    {
-      id: data.player2Id,
-      name: data.player2Id,
-      chessColor: 'black' as const
-    }
-  ];
+//   // Clear existing players and add only the selected chess players
+//   gameState.players = [
+//     {
+//       id: data.player1Id,
+//       name: data.player1Id,
+//       chessColor: 'white' as const
+//     },
+//     {
+//       id: data.player2Id,
+//       name: data.player2Id,
+//       chessColor: 'black' as const
+//     }
+//   ];
 
-  // White always goes first
-  gameState.currentTurn = data.player1Id;
-  gameState.currentPlayer = 0;
+//   // White always goes first
+//   gameState.currentTurn = data.player1Id;
+//   gameState.currentPlayer = 0;
 
-  // Reset chess state to initial position
-  gameState.chessState = {
-    board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-    moves: []
-  };
+//   // Reset chess state to initial position
+//   gameState.chessState = {
+//     board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+//     moves: []
+//   };
 
-  await this.updateGameState(data.roomId, gameState);
+//   await this.updateGameState(data.roomId, gameState);
 
-  console.log('Chess players selected:', {
-    roomId: data.roomId,
-    host: data.hostId,
-    player1: { id: data.player1Id, color: 'white' },
-    player2: { id: data.player2Id, color: 'black' },
-    initialTurn: gameState.currentTurn,
-    currentPlayerIndex: gameState.currentPlayer,
-    initialBoard: gameState.chessState.board
-  });
+//   console.log('Chess players selected:', {
+//     roomId: data.roomId,
+//     host: data.hostId,
+//     player1: { id: data.player1Id, color: 'white' },
+//     player2: { id: data.player2Id, color: 'black' },
+//     initialTurn: gameState.currentTurn,
+//     currentPlayerIndex: gameState.currentPlayer,
+//     initialBoard: gameState.chessState.board
+//   });
 
-  return { 
-    roomId: data.roomId, 
-    chessPlayers: gameState.chessPlayers,
-    currentTurn: gameState.currentTurn,
-    gameState 
-  };
-}
+//   return { 
+//     roomId: data.roomId, 
+//     chessPlayers: gameState.chessPlayers,
+//     currentTurn: gameState.currentTurn,
+//     gameState 
+//   };
+// }
 
   
-  private updateChessBoard(currentFen: string, move: string): string {
-    try {
-      const chess = new Chess(currentFen);
-      chess.move({
-        from: move.substring(0, 2),
-        to: move.substring(2, 4),
-        promotion: 'q'
-      });
-      return chess.fen();
-    } catch (e) {
-      console.error('Failed to update chess board:', e);
-      return currentFen;
-    }
-  }
+//   private updateChessBoard(currentFen: string, move: string): string {
+//     try {
+//       const chess = new Chess(currentFen);
+//       chess.move({
+//         from: move.substring(0, 2),
+//         to: move.substring(2, 4),
+//         promotion: 'q'
+//       });
+//       return chess.fen();
+//     } catch (e) {
+//       console.error('Failed to update chess board:', e);
+//       return currentFen;
+//     }
+//   }
   
-  private isChessGameOver(fen: string): boolean {
-    try {
-      const chess = new Chess(fen);
-      return chess.isGameOver();
-    } catch (e) {
-      console.error('Failed to check game over:', e);
-      return false;
-    }
-  }
+//   private isChessGameOver(fen: string): boolean {
+//     try {
+//       const chess = new Chess(fen);
+//       return chess.isGameOver();
+//     } catch (e) {
+//       console.error('Failed to check game over:', e);
+//       return false;
+//     }
+//   }
 
   async submitKahootAnswer(data: { roomId: string; playerId: string; answerIndex: number }) {
     const gameState = await this.getGameState(data.roomId);
@@ -1398,14 +1398,14 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
     if (redisState) {
       const parsedState: GameState = JSON.parse(redisState);
       
-      // Ensure chessState is always present for chess games
-      if (parsedState.gameType === 'chess' && !parsedState.chessState) {
-        console.warn(`Chess state missing for room ${roomId}. Initializing default chess state.`);
-        parsedState.chessState = {
-          board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-          moves: []
-        };
-      }
+      // // Ensure chessState is always present for chess games
+      // if (parsedState.gameType === 'chess' && !parsedState.chessState) {
+      //   console.warn(`Chess state missing for room ${roomId}. Initializing default chess state.`);
+      //   parsedState.chessState = {
+      //     board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      //     moves: []
+      //   };
+      // }
       
       const enhancedPlayers = await Promise.all(
         parsedState.players.map(async (player) => {
@@ -1447,28 +1447,28 @@ async selectChessPlayers(data: { roomId: string; hostId: string; player1Id: stri
       const colors = ['red', 'blue', 'green', 'yellow'];
       let defaultGameState: GameState;
       switch (room.gameType) {
-        case 'chess':
-          defaultGameState = {
-            roomId,
-            gameType: 'chess',
-            roomName: room.name,
-            host: room.host, // Add this line
-            gameStarted: false,
-            gameOver: false,
-            currentPlayer: 0,
-            currentTurn: room.playerIds?.[0] || '',
-            players: room.playerIds.map((playerId, index) => ({
-              id: playerId,
-              name: playerId.startsWith('ai-') ? `AI ${index + 1}` : playerId,
-              chessColor: index === 0 ? 'white' : 'black',
-            })),
-            winner: null,
-            chessState: {
-              board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-              moves: [],
-            },
-          };
-          break;
+        // case 'chess':
+        //   defaultGameState = {
+        //     roomId,
+        //     gameType: 'chess',
+        //     roomName: room.name,
+        //     host: room.host, // Add this line
+        //     gameStarted: false,
+        //     gameOver: false,
+        //     currentPlayer: 0,
+        //     currentTurn: room.playerIds?.[0] || '',
+        //     players: room.playerIds.map((playerId, index) => ({
+        //       id: playerId,
+        //       name: playerId.startsWith('ai-') ? `AI ${index + 1}` : playerId,
+        //       chessColor: index === 0 ? 'white' : 'black',
+        //     })),
+        //     winner: null,
+        //     chessState: {
+        //       board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        //       moves: [],
+        //     },
+        //   };
+        //   break;
     
         case 'kahoot':
         case 'trivia':
@@ -1962,23 +1962,23 @@ private async getPlayerName(playerId: string): Promise<string> {
   }
 }
 
-private ensureChessPlayersSet(gameState: GameState): void {
-  if (!gameState.chessPlayers && gameState.gameType === 'chess') {
-    // Auto-assign chess players if not set
-    const playersWithColors = gameState.players.filter(p => p.chessColor);
-    if (playersWithColors.length >= 2) {
-      const whitePlayer = playersWithColors.find(p => p.chessColor === 'white');
-      const blackPlayer = playersWithColors.find(p => p.chessColor === 'black');
+// private ensureChessPlayersSet(gameState: GameState): void {
+//   if (!gameState.chessPlayers && gameState.gameType === 'chess') {
+//     // Auto-assign chess players if not set
+//     const playersWithColors = gameState.players.filter(p => p.chessColor);
+//     if (playersWithColors.length >= 2) {
+//       const whitePlayer = playersWithColors.find(p => p.chessColor === 'white');
+//       const blackPlayer = playersWithColors.find(p => p.chessColor === 'black');
       
-      if (whitePlayer && blackPlayer) {
-        gameState.chessPlayers = {
-          player1Id: whitePlayer.id,
-          player2Id: blackPlayer.id
-        };
-        console.log('Auto-assigned chess players:', gameState.chessPlayers);
-      }
-    }
-  }
-}
+//       if (whitePlayer && blackPlayer) {
+//         gameState.chessPlayers = {
+//           player1Id: whitePlayer.id,
+//           player2Id: blackPlayer.id
+//         };
+//         console.log('Auto-assigned chess players:', gameState.chessPlayers);
+//       }
+//     }
+//   }
+// }
 
 }
