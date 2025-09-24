@@ -1,9 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Document } from 'mongoose';
+import { Model } from 'mongoose';
 import { Chess } from 'chess.js';
-import { ChessGameDocument } from './interfaces/chess.interface';
-import { ChessGame } from './schemas/chess.schema'; // Add this import
+import { ChessGame, ChessGameDocument } from './interfaces/chess.interface';
 import { SelectChessPlayersDto, MakeChessMoveDto } from './dto/chess.dto';
 import { ChessPlayer } from './interfaces/chess.interface';
 
@@ -12,10 +11,10 @@ export class ChessService {
   private chessInstances: Map<string, Chess> = new Map();
 
   constructor(
-    @InjectModel(ChessGame.name) private chessModel: Model<ChessGameDocument>,
+    @InjectModel('ChessGame') private chessModel: Model<ChessGame>,
   ) {}
 
-  // Fixed: Use proper return type that matches what Mongoose actually returns
+  // Add this method to handle integration with game rooms
   async initializeChessRoom(roomId: string): Promise<ChessGameDocument> {
     const existingGame = await this.chessModel.findOne({ roomId });
     if (existingGame) {
@@ -34,9 +33,11 @@ export class ChessService {
       gameOver: false,
     });
 
-    return await game.save();
+    await game.save();
+    return game;
   }
 
+  // Add this method to get chess state for integration
   async getChessState(roomId: string): Promise<{
     board: string;
     moves: string[];
@@ -49,6 +50,7 @@ export class ChessService {
   }> {
     const game = await this.chessModel.findOne({ roomId });
     if (!game) {
+      // Return default state if game not found
       return {
         board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
         moves: [],
@@ -71,8 +73,8 @@ export class ChessService {
     };
   }
 
+  // Enhanced selectChessPlayers to validate against game room
   async selectChessPlayers(dto: SelectChessPlayersDto): Promise<ChessGameDocument> {
-    // Fixed: Proper type handling for Mongoose queries
     let game = await this.chessModel.findOne({ roomId: dto.roomId });
 
     if (!game) {
@@ -119,7 +121,9 @@ export class ChessService {
     }
 
     game.gameStarted = true;
-    return await game.save();
+    await game.save();
+
+    return game;
   }
 
   async makeMove(dto: MakeChessMoveDto): Promise<{ 
@@ -185,11 +189,11 @@ export class ChessService {
         }
       }
 
-      const savedGame = await game.save();
+      await game.save();
 
       return { 
         success: true, 
-        game: savedGame,
+        game,
         moveDetails: {
           from: moveResult.from,
           to: moveResult.to,
@@ -204,11 +208,11 @@ export class ChessService {
     }
   }
 
-  async getChessGame(roomId: string): Promise<ChessGameDocument | null> {
+  async getChessGame(roomId: string): Promise<ChessGameDocument> {
     const game = await this.chessModel.findOne({ roomId });
     if (!game) {
-      // Return null instead of auto-initializing to avoid confusion
-      return null;
+      // Auto-initialize if not found
+      return await this.initializeChessRoom(roomId);
     }
     return game;
   }
@@ -230,16 +234,20 @@ export class ChessService {
     game.winner = undefined;
     game.winCondition = undefined;
 
+    await game.save();
+
     this.chessInstances.delete(roomId);
 
-    return await game.save();
+    return game;
   }
 }
 
 
+// // Add these methods to /chess/chess.service.ts to integrate with game rooms:
+
 // import { Injectable, BadRequestException } from '@nestjs/common';
 // import { InjectModel } from '@nestjs/mongoose';
-// import { Model, Document } from 'mongoose';
+// import { Model } from 'mongoose';
 // import { Chess } from 'chess.js';
 // import { ChessGameDocument } from './interfaces/chess.interface';
 // import { SelectChessPlayersDto, MakeChessMoveDto } from './dto/chess.dto';
@@ -253,7 +261,7 @@ export class ChessService {
 //     @InjectModel('ChessGame') private chessModel: Model<ChessGameDocument>,
 //   ) {}
 
-//   // Fixed: Use proper return type that matches what Mongoose actually returns
+//   // Add this method to handle integration with game rooms
 //   async initializeChessRoom(roomId: string): Promise<ChessGameDocument> {
 //     const existingGame = await this.chessModel.findOne({ roomId });
 //     if (existingGame) {
@@ -272,9 +280,11 @@ export class ChessService {
 //       gameOver: false,
 //     });
 
-//     return await game.save();
+//     await game.save();
+//     return game;
 //   }
 
+//   // Add this method to get chess state for integration
 //   async getChessState(roomId: string): Promise<{
 //     board: string;
 //     moves: string[];
@@ -287,6 +297,7 @@ export class ChessService {
 //   }> {
 //     const game = await this.chessModel.findOne({ roomId });
 //     if (!game) {
+//       // Return default state if game not found
 //       return {
 //         board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
 //         moves: [],
@@ -309,8 +320,8 @@ export class ChessService {
 //     };
 //   }
 
+//   // Enhanced selectChessPlayers to validate against game room
 //   async selectChessPlayers(dto: SelectChessPlayersDto): Promise<ChessGameDocument> {
-//     // Fixed: Proper type handling for Mongoose queries
 //     let game = await this.chessModel.findOne({ roomId: dto.roomId });
 
 //     if (!game) {
@@ -357,7 +368,9 @@ export class ChessService {
 //     }
 
 //     game.gameStarted = true;
-//     return await game.save();
+//     await game.save();
+
+//     return game;
 //   }
 
 //   async makeMove(dto: MakeChessMoveDto): Promise<{ 
@@ -423,11 +436,11 @@ export class ChessService {
 //         }
 //       }
 
-//       const savedGame = await game.save();
+//       await game.save();
 
 //       return { 
 //         success: true, 
-//         game: savedGame,
+//         game,
 //         moveDetails: {
 //           from: moveResult.from,
 //           to: moveResult.to,
@@ -442,11 +455,11 @@ export class ChessService {
 //     }
 //   }
 
-//   async getChessGame(roomId: string): Promise<ChessGameDocument | null> {
+//   async getChessGame(roomId: string): Promise<ChessGameDocument> {
 //     const game = await this.chessModel.findOne({ roomId });
 //     if (!game) {
-//       // Return null instead of auto-initializing to avoid confusion
-//       return null;
+//       // Auto-initialize if not found
+//       return await this.initializeChessRoom(roomId);
 //     }
 //     return game;
 //   }
@@ -468,8 +481,11 @@ export class ChessService {
 //     game.winner = undefined;
 //     game.winCondition = undefined;
 
+//     await game.save();
+
 //     this.chessInstances.delete(roomId);
 
-//     return await game.save();
+//     return game;
 //   }
 // }
+
