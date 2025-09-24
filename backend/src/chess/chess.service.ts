@@ -5,6 +5,7 @@ import { Chess } from 'chess.js';
 import { ChessGame, ChessGameDocument } from './interfaces/chess.interface';
 import { SelectChessPlayersDto, MakeChessMoveDto } from './dto/chess.dto';
 import { ChessPlayer } from './interfaces/chess.interface';
+import { GameRoom } from '../game/schemas/game-room.schema'; // Adjust path as needed
 
 @Injectable()
 export class ChessService {
@@ -12,6 +13,7 @@ export class ChessService {
 
   constructor(
     @InjectModel('ChessGame') private chessModel: Model<ChessGame>,
+    @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoom>,
   ) {}
 
   // Add this method to handle integration with game rooms
@@ -101,6 +103,20 @@ export class ChessService {
 
     // Initialize chess instance for this room
     this.chessInstances.set(dto.roomId, new Chess());
+
+    // Update GameRoom to set selected players as players and others as spectators
+    const gameRoom = await this.gameRoomModel.findOne({ roomId: dto.roomId });
+    if (gameRoom) {
+      const selectedIds = [dto.player1Id, dto.player2Id];
+      const allCurrentIds = [...(gameRoom.playerIds || []), ...(gameRoom.spectatorIds || [])];
+      const newPlayerIds = selectedIds.filter(id => allCurrentIds.includes(id));
+      const newSpectatorIds = allCurrentIds.filter(id => !newPlayerIds.includes(id));
+
+      gameRoom.playerIds = newPlayerIds;
+      gameRoom.spectatorIds = [...new Set(newSpectatorIds)]; // Remove duplicates if any
+
+      await gameRoom.save();
+    }
 
     return game;
   }
@@ -242,14 +258,11 @@ export class ChessService {
   }
 }
 
-
-// // Add these methods to /chess/chess.service.ts to integrate with game rooms:
-
 // import { Injectable, BadRequestException } from '@nestjs/common';
 // import { InjectModel } from '@nestjs/mongoose';
 // import { Model } from 'mongoose';
 // import { Chess } from 'chess.js';
-// import { ChessGameDocument } from './interfaces/chess.interface';
+// import { ChessGame, ChessGameDocument } from './interfaces/chess.interface';
 // import { SelectChessPlayersDto, MakeChessMoveDto } from './dto/chess.dto';
 // import { ChessPlayer } from './interfaces/chess.interface';
 
@@ -258,7 +271,7 @@ export class ChessService {
 //   private chessInstances: Map<string, Chess> = new Map();
 
 //   constructor(
-//     @InjectModel('ChessGame') private chessModel: Model<ChessGameDocument>,
+//     @InjectModel('ChessGame') private chessModel: Model<ChessGame>,
 //   ) {}
 
 //   // Add this method to handle integration with game rooms
@@ -488,4 +501,3 @@ export class ChessService {
 //     return game;
 //   }
 // }
-
