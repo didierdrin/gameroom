@@ -276,7 +276,6 @@ useEffect(() => {
       if (player.name && player.name !== player.id) {
         newMapping[player.id] = player.name;
       } else if (!newMapping[player.id]) {
-        // Try to get username from user service if not already mapped
         // You might need to implement this API call
         newMapping[player.id] = player.id; // Fallback to ID
       }
@@ -284,29 +283,37 @@ useEffect(() => {
     setPlayerIdToUsername(newMapping);
     
     // Update players list with proper names
-    setPlayers(gameState.players.map(p => ({
-      ...p,
-      name: newMapping[p.id] || p.id
-    })));
+    setPlayers(prevPlayers => {
+      const existingPlayersMap = new Map(prevPlayers.map(p => [p.id, p]));
+      
+      gameState.players.forEach(player => {
+        const existing = existingPlayersMap.get(player.id) || {};
+        existingPlayersMap.set(player.id, {
+          ...existing,
+          ...player,
+          name: newMapping[player.id] || player.name || player.id,
+        });
+      });
+      
+      return Array.from(existingPlayersMap.values());
+    });
   }
 }, [gameState?.players]);
 
   // Helper function to check if current user is a playing participant (not host spectator)
   const isActivePlayer = () => {
-    const actualGamePlayers = gameState.players.filter(p => p.id !== roomInfo?.host);
-    return actualGamePlayers.some(p => p.id === user?.id);
+    return gameState.players.some(p => p.id === user?.id);
   };
 
-  // Helper function to get actual game players (excluding host if they're spectating)
+  // Helper function to get actual game players
   const getActiveGamePlayers = () => {
-    if (!roomInfo?.host) return gameState.players;
-    return gameState.players.filter(p => p.id !== roomInfo.host);
+    return gameState.players;
   };
 
   // Player management functions
   const handlePlayerClick = (player: Player) => {
     if (isHost) {
-      // Allow host to click on any player (remove AI check)
+      // Allow host to click on any player
       if (player.id === user?.id || player.id !== user?.id) {
         setSelectedPlayer(player);
         setShowPlayerModal(true);
@@ -663,7 +670,7 @@ useEffect(() => {
         // Update existing players or add new ones from game state
         updatedPlayers.forEach(player => {
           existingPlayersMap.set(player.id, {
-            ...existingPlayersMap.get(player.id),
+            ...existingPlayersMap.get(player.id) || {},
             ...player,
             name: playerIdToUsername[player.id] || player.name || player.id,
           });
@@ -699,6 +706,7 @@ useEffect(() => {
               name: data.playerName || data.playerId,
               color: "",
               coins: [0, 0, 0, 0],
+              isSpectator: false  // Explicitly set for players
             },
           ];
         }
@@ -708,12 +716,28 @@ useEffect(() => {
         ...prev,
         [data.playerId]: data.playerName || data.playerId,
       }));
-      // Refresh room info to keep participant lists up to date
+      // Refresh room info to get updated player/spectator lists
       socket.emit('getRoomInfo', { roomId });
     };
     const handleSpectatorConnected = (data: any) => {
       console.log("Spectator connected:", data);
-      // Keep username map for modal display
+      // Add to players list with isSpectator flag
+      setPlayers((prev) => {
+        const exists = prev.some(p => p.id === data.playerId);
+        if (!exists) {
+          return [
+            ...prev,
+            {
+              id: data.playerId,
+              name: data.playerName || data.playerId,
+              color: "",
+              coins: [0, 0, 0, 0],
+              isSpectator: true
+            },
+          ];
+        }
+        return prev;
+      });
       setPlayerIdToUsername((prev) => ({
         ...prev,
         [data.playerId]: data.playerName || data.playerId,
@@ -937,7 +961,7 @@ useEffect(() => {
         });
 
         // Build a unified participants list for chess selection modal
-        // Merge room room players and spectators into local players list if missing
+        // Merge room players and spectators into local players list if missing
         const participantIds: string[] = [
           ...(roomData.playerIds || []),
           ...(roomData.spectatorIds || [])
@@ -1158,12 +1182,11 @@ useEffect(() => {
     }
 
     if (!gameState?.gameStarted) {
-      const activeGamePlayers = getActiveGamePlayers();
       return (
         <div className="flex flex-col items-center justify-center h-full">
           <h2 className="text-2xl mb-4">Waiting for players...</h2>
           <p className="text-gray-400 mb-4">
-            Active players in room: {activeGamePlayers.length}
+            Active players in room: {roomInfo?.currentPlayers || gameState.players.length}
             {isHost && !isActivePlayer() && (
               <span className="block text-sm text-purple-400 mt-1">
                 (You are spectating as host)
@@ -1409,7 +1432,7 @@ useEffect(() => {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-400">Connecting to game room...</p>
         </div>
       </div>
@@ -1583,6 +1606,7 @@ useEffect(() => {
     </div>
   );
 };
+
 
 
 // import React, { useEffect, useState, useRef } from "react";

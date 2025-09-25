@@ -1,4 +1,3 @@
-
 import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, ConnectedSocket } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
@@ -400,9 +399,6 @@ async handleChatMessage(
       timestamp: new Date().toISOString()
     });
 
-    // Optionally: Store the message in Redis or database
-    // await this.gameService.storeChatMessage(data.roomId, data.playerId, data.message);
-    
   } catch (error) {
     console.error('Error handling chat message:', error);
     client.emit('chatError', { message: 'Failed to send chat message' });
@@ -422,8 +418,6 @@ async handleGetChatHistory(
     console.error('Error getting chat history:', error);
   }
 }
-
-
 
 
 @SubscribeMessage('webrtc-offer')
@@ -568,9 +562,6 @@ async handleGetRoomInfo(@MessageBody() data: { roomId: string }, @ConnectedSocke
     client.emit('error', { message: error.message, type: 'roomInfoError' });
   }
 }
-
-
-
 
 
 // Add these methods to route chess events to chess service:
@@ -728,104 +719,6 @@ async handleMakeChessMove(
     client.emit('gameState', currentState);
   }
 }
-
-
-// @SubscribeMessage('makeChessMove')
-// async handleMakeChessMove(
-//   @MessageBody() data: { roomId: string; playerId: string; move: string }, 
-//   @ConnectedSocket() client: Socket
-// ) {
-//   try {
-//     console.log('Chess move via chess service:', {
-//       roomId: data.roomId,
-//       playerId: data.playerId,
-//       move: data.move
-//     });
-
-//     // Validate input
-//     if (!data.roomId || !data.playerId || !data.move) {
-//       throw new Error('Missing required move data');
-//     }
-
-//     // Use chess service for move validation and execution
-//     const result = await this.chessService.makeMove({
-//       roomId: data.roomId,
-//       playerId: data.playerId,
-//       move: data.move
-//     });
-
-//     // Broadcast move confirmation
-//     this.server.to(data.roomId).emit('chessMove', {
-//       roomId: data.roomId,
-//       move: data.move,
-//       moveDetails: result.moveDetails,
-//       playerId: data.playerId,
-//       success: true,
-//       timestamp: new Date().toISOString()
-//     });
-
-//     // Get chess state from chess service
-//     const chessState = await this.chessService.getChessState(data.roomId);
-    
-//     // Update main game state
-//     const gameState = await this.gameService.getGameState(data.roomId);
-//     gameState.chessState = {
-//       board: chessState.board,
-//       moves: chessState.moves
-//     };
-//     gameState.currentTurn = chessState.currentTurn;
-//     gameState.gameOver = chessState.gameOver;
-//     gameState.winner = chessState.winner!;
-//     gameState.winCondition = chessState.winCondition;
-
-//     await this.gameService.updateGameState(data.roomId, gameState);
-
-//     // Broadcast updated game state
-//     this.server.to(data.roomId).emit('gameState', gameState);
-
-//     // Handle game over
-//     if (chessState.gameOver) {
-//       this.server.to(data.roomId).emit('gameOver', {
-//         winner: chessState.winner,
-//         winCondition: chessState.winCondition,
-//         roomId: data.roomId,
-//         finalBoard: chessState.board,
-//         finalMoves: chessState.moves
-//       });
-
-//       // Update rooms list
-//       const rooms = await this.gameService.getActiveGameRooms();
-//       this.server.emit('gameRoomsList', { rooms });
-//     }
-
-//   } catch (error) {
-//     console.error('Chess move failed:', {
-//       error: error.message,
-//       roomId: data.roomId,
-//       playerId: data.playerId,
-//       move: data.move
-//     });
-
-//     client.emit('error', { 
-//       message: error.message || 'Invalid chess move', 
-//       type: 'chessMoveError',
-//       roomId: data.roomId,
-//       playerId: data.playerId,
-//       move: data.move
-//     });
-
-//     client.emit('chessMoveError', {
-//       message: error.message,
-//       move: data.move,
-//       roomId: data.roomId,
-//       playerId: data.playerId,
-//       timestamp: new Date().toISOString()
-//     });
-//   }
-
-
-  
-// }
 
 
 
