@@ -13,6 +13,7 @@ import axios from 'axios';
 import { Socket, Server } from 'socket.io';
 import { Chess } from 'chess.js';
 import { UserService } from '../user/user.service';
+import { ChessService } from 'src/chess/chess.service';
 interface PublicGameRoom {
   id: string;
   roomId: string;
@@ -87,6 +88,7 @@ export class GameService {
   private startPositions = [1, 14, 27, 40]; // Red, Blue, Green, Yellow
   private safePositions = [1, 9, 14, 22, 27, 35, 40, 48];
   private homeColumnStart = 52; // Positions 52–57 are home column
+  chessService: ChessService;
 
   constructor(
     private readonly redisService: RedisService,
@@ -1015,26 +1017,57 @@ export class GameService {
   }
 
 
-  async updateGameState(roomId: string, gameState: GameState) {
-    try {
-      await this.redisService.set(`game:${roomId}`, JSON.stringify(gameState));
-      console.log(`Game state updated for room ${roomId}:`, {
-        currentTurn: gameState.currentTurn,
-        gameStarted: gameState.gameStarted,
-        gameOver: gameState.gameOver,
-        gameType: gameState.gameType,
-        players: gameState.players.map((p: any) => ({ 
-          id: p.id, 
-          chessColor: p.chessColor,
-          color: p.color,
-          score: p.score
-        }))
-      });
-    } catch (error) {
-      console.error(`Error in updateGameState for room ${roomId}:`, error);
-      throw error;
+  // In game.service.ts, update the updateGameState method:
+async updateGameState(roomId: string, gameState: GameState) {
+  try {
+    // If it's a chess game, ensure we have the latest chess state
+    if (gameState.gameType === 'chess' && this.chessService) {
+      const chessState = await this.chessService.getChessState(roomId);
+      
+      // Force sync the turn from chess state
+      if (chessState.currentTurn && chessState.currentTurn !== gameState.currentTurn) {
+        console.log(`Syncing turn from chess state: ${gameState.currentTurn} -> ${chessState.currentTurn}`);
+        gameState.currentTurn = chessState.currentTurn;
+        
+        // Update current player index
+        const currentPlayerIndex = gameState.players.findIndex(p => p.id === chessState.currentTurn);
+        gameState.currentPlayer = currentPlayerIndex !== -1 ? currentPlayerIndex : 0;
+      }
     }
+    
+    await this.redisService.set(`game:${roomId}`, JSON.stringify(gameState));
+    console.log(`Game state updated for room ${roomId}:`, {
+      currentTurn: gameState.currentTurn,
+      gameStarted: gameState.gameStarted,
+      gameOver: gameState.gameOver,
+      gameType: gameState.gameType,
+    });
+  } catch (error) {
+    console.error(`Error in updateGameState for room ${roomId}:`, error);
+    throw error;
   }
+}
+
+  // async updateGameState(roomId: string, gameState: GameState) {
+  //   try {
+  //     await this.redisService.set(`game:${roomId}`, JSON.stringify(gameState));
+  //     console.log(`Game state updated for room ${roomId}:`, {
+  //       currentTurn: gameState.currentTurn,
+  //       gameStarted: gameState.gameStarted,
+  //       gameOver: gameState.gameOver,
+  //       gameType: gameState.gameType,
+  //       players: gameState.players.map((p: any) => ({ 
+  //         id: p.id, 
+  //         chessColor: p.chessColor,
+  //         color: p.color,
+  //         score: p.score
+  //       }))
+  //     });
+  //   } catch (error) {
+  //     console.error(`Error in updateGameState for room ${roomId}:`, error);
+  //     throw error;
+  //   }
+  // }
 
   async saveGameSession(roomId: string, gameState: GameState) {
     try {
