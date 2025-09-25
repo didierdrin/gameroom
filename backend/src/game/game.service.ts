@@ -1552,6 +1552,19 @@ export class GameService {
     }
   }
 
+
+
+// async updateGameState(roomId: string, gameState: any): Promise<void> {
+//   const room = await this.gameRoomModel.findOne({ roomId });
+//   if (!room) {
+//     throw new BadRequestException('Room not found');
+//   }
+  
+//   // Store the game state (you may want to add a gameState field to your GameRoom schema)
+//   // For now, you can store it in Redis or in-memory
+//   this.gameStates.set(roomId, gameState);
+// }
+
   async updateGameState(roomId: string, gameState: GameState) {
     try {
       await this.redisService.set(`game:${roomId}`, JSON.stringify(gameState));

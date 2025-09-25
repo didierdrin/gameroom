@@ -28,15 +28,6 @@ export class ChessGateway {
     }
   }
 
-//   @SubscribeMessage('startGame')
-//   async handleStartGame(client: Socket, payload: { roomId: string }) {
-//     try {
-//       const game = await this.chessService.startChessGame(payload.roomId);
-//       this.server.to(payload.roomId).emit('gameState', game);
-//     } catch (error) {
-//       client.emit('error', { message: error.message });
-//     }
-//   }
 
   @SubscribeMessage('makeChessMove')
   async handleMakeMove(@MessageBody() dto: MakeChessMoveDto, client: Socket) {
@@ -59,13 +50,4 @@ export class ChessGateway {
     }
   }
 
-//   @SubscribeMessage('restartGame')
-//   async handleRestartGame(client: Socket, payload: { roomId: string; hostId: string }) {
-//     try {
-//       const game = await this.chessService.resetGame(payload.roomId);
-//       this.server.to(payload.roomId).emit('gameState', game);
-//     } catch (error) {
-//       client.emit('error', { message: error.message });
-//     }
-//   }
 }
