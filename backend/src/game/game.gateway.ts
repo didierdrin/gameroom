@@ -272,22 +272,6 @@ export class GameGateway {
     }
   }
 
-  @SubscribeMessage('submitKahootAnswer')
-  async handleKahootAnswer(@MessageBody() data: { roomId: string; playerId: string; answerIndex: number }, @ConnectedSocket() client: Socket) {
-    try {
-      console.log('Kahoot answer:', data);
-      const result = await this.gameService.submitKahootAnswer(data);
-      this.server.to(data.roomId).emit('kahootAnswer', result);
-      const gameState = await this.gameService.getGameState(data.roomId);
-      this.server.to(data.roomId).emit('gameState', gameState);
-      if (gameState.gameOver) {
-        this.server.to(data.roomId).emit('gameOver', { winner: gameState.winner });
-      }
-    } catch (error) {
-      console.error('Kahoot answer error:', error.message);
-      client.emit('error', { message: error.message, type: 'kahootAnswerError' });
-    }
-  }
 
   @SubscribeMessage('triviaAnswer')
   async handleTriviaAnswer(@MessageBody() data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }, @ConnectedSocket() client: Socket) {
@@ -757,6 +741,18 @@ async handleSelectChessPlayers(
   }
 }
 
+
+
+
+
+}
+
+
+
+
+
+
+
 // // Add these methods to route chess events to chess service:
 
 // @SubscribeMessage('selectChessPlayers')
@@ -912,10 +908,3 @@ async handleSelectChessPlayers(
 //     client.emit('gameState', currentState);
 //   }
 // }
-
-
-
-}
-
-
-

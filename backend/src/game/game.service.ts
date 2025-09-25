@@ -36,7 +36,7 @@ interface Player {
   name: string;
   color?: string; // Optional for Ludo, Chess
   coins?: number[]; // Ludo-specific
-  score?: number; // Trivia, Kahoot-specific
+  score?: number; // Trivia specific
   chessColor?: 'white' | 'black'; // Chess-specific
 }
 
@@ -44,14 +44,6 @@ interface ChessState {
   board: string; // FEN notation for chess position
   moves: string[]; // List of moves in algebraic notation
   capturedPieces?: string[]; // Optional: track captured pieces
-}
-
-interface KahootState {
-  currentQuestionIndex: number;
-  questions: { id: string; text: string; options: string[]; correctAnswer: number }[];
-  scores: Record<string, number>;
-  answers: Record<string, number | null>; // Player answers for current question
-  questionTimer: number; // Seconds remaining
 }
 
 interface TriviaState {
@@ -80,9 +72,7 @@ interface GameState {
   coins?: Record<string, number[]>;
   // Chess-specific
   chessState?: ChessState;
-  chessPlayers?: { player1Id: string; player2Id: string }; // Track selected chess players
-  // Kahoot-specific
-  kahootState?: KahootState;
+  chessPlayers?: { player1Id: string; player2Id: string }; 
   triviaState?: TriviaState; 
   winCondition?: string; 
 }
@@ -133,7 +123,7 @@ export class GameService {
   }
 
   async createGame(createGameDto: CreateGameDto) {
-    const validGameTypes = ['ludo', 'trivia', 'chess', 'kahoot', 'uno', 'pictionary', 'sudoku'];
+    const validGameTypes = ['ludo', 'trivia', 'chess', 'uno', 'pictionary', 'sudoku'];
     if (!validGameTypes.includes(createGameDto.gameType.toLowerCase())) {
       throw new Error('Invalid game type');
     }
@@ -197,28 +187,6 @@ export class GameService {
             scores: { [hostId]: 0 },
             answers: { [hostId]: null },
             questionTimer: 30,
-          },
-        };
-        break;
-      case 'kahoot':
-        const questions = await this.fetchTriviaQuestions(triviaTopic || 'general');
-        initialGameState = {
-          roomId,
-          players: [{ id: hostId, name: hostId, score: 0 }],
-          currentTurn: hostId,
-          currentPlayer: 0,
-          gameStarted: false,
-          gameOver: false,
-          winner: null,
-          roomName,
-          gameType: gameType.toLowerCase(),
-          host: hostId,
-          kahootState: {
-            currentQuestionIndex: 0,
-            questions,
-            scores: { [hostId]: 0 },
-            answers: { [hostId]: null },
-            questionTimer: 20,
           },
         };
         break;
@@ -302,7 +270,7 @@ export class GameService {
             gameState.coins[joinGameDto.playerId] = [0, 0, 0, 0];
           }
           await this.updateGameState(joinGameDto.roomId, gameState);
-        } else if (gameRoom.gameType === 'trivia' || gameRoom.gameType === 'kahoot') {
+        } else if (gameRoom.gameType === 'trivia') {
           // Add player with score and ensure answer maps include them
           if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
             gameState.players.push({ id: joinGameDto.playerId, name: joinGameDto.playerName || joinGameDto.playerId, score: 0 });
@@ -310,10 +278,6 @@ export class GameService {
           if (gameRoom.gameType === 'trivia' && gameState.triviaState) {
             gameState.triviaState.scores[joinGameDto.playerId] = 0;
             gameState.triviaState.answers[joinGameDto.playerId] = null;
-          }
-          if (gameRoom.gameType === 'kahoot' && gameState.kahootState) {
-            gameState.kahootState.scores[joinGameDto.playerId] = 0;
-            gameState.kahootState.answers[joinGameDto.playerId] = null;
           }
           await this.updateGameState(joinGameDto.roomId, gameState);
         }
@@ -763,14 +727,7 @@ export class GameService {
       gameState.gameStarted = true;
       
       // Initialize game-specific state
-      if (room.gameType === 'kahoot' && gameState.kahootState) {
-        gameState.kahootState.currentQuestionIndex = 0;
-        gameState.kahootState.questionTimer = 20;
-        gameState.players.forEach(player => {
-          gameState.kahootState!.answers[player.id] = null;
-        });
-        setTimeout(() => this.handleKahootQuestionTimeout(roomId), 20000);
-      } else if (room.gameType === 'trivia' && gameState.triviaState) {
+     if (room.gameType === 'trivia' && gameState.triviaState) {
         gameState.triviaState.currentQuestionIndex = 0;
         gameState.triviaState.questionTimer = 30;
         gameState.players.forEach(player => {
@@ -841,24 +798,6 @@ export class GameService {
   }
 
 
-
-  async submitKahootAnswer(data: { roomId: string; playerId: string; answerIndex: number }) {
-    const gameState = await this.getGameState(data.roomId);
-    if (gameState.gameType !== 'kahoot') throw new Error('Invalid game type');
-    if (!gameState.kahootState) throw new Error('Kahoot state not initialized');
-    if (gameState.kahootState.answers[data.playerId] !== null) throw new Error('Answer already submitted');
-
-    gameState.kahootState.answers[data.playerId] = data.answerIndex;
-    const allAnswered = gameState.players.every(p => gameState.kahootState!.answers[p.id] !== null);
-    
-    if (allAnswered) {
-      await this.processKahootQuestion(data.roomId);
-    } else {
-      await this.updateGameState(data.roomId, gameState);
-    }
-    return { roomId: data.roomId, playerId: data.playerId, answerIndex: data.answerIndex };
-  }
-
   async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }) {
     const gameState = await this.getGameState(data.roomId);
     if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
@@ -902,35 +841,6 @@ export class GameService {
     return { roomId: data.roomId, winner, scores: gameState.triviaState!.scores };
   }
 
-  async processKahootQuestion(roomId: string) {
-    const gameState = await this.getGameState(roomId);
-    if (!gameState.kahootState) throw new Error('Kahoot state not initialized');
-    
-    const question = gameState.kahootState.questions[gameState.kahootState.currentQuestionIndex];
-    gameState.players.forEach(p => {
-      if (gameState.kahootState!.answers[p.id] === question.correctAnswer) {
-        gameState.kahootState!.scores[p.id] = (gameState.kahootState!.scores[p.id] || 0) + 100;
-        p.score = gameState.kahootState!.scores[p.id];
-      }
-    });
-
-    gameState.kahootState.currentQuestionIndex++;
-    if (gameState.kahootState.currentQuestionIndex >= gameState.kahootState.questions.length) {
-      gameState.gameOver = true;
-      gameState.winner = gameState.players.reduce((a, b) => 
-        (gameState.kahootState!.scores[a.id] || 0) > (gameState.kahootState!.scores[b.id] || 0) ? a : b
-      ).id;
-      await this.gameRoomModel.updateOne({ roomId }, { status: 'completed', winner: gameState.winner });
-      await this.saveGameSession(roomId, gameState);
-    } else {
-      gameState.kahootState.answers = gameState.players.reduce((acc, p) => ({ ...acc, [p.id]: null }), {});
-      gameState.kahootState.questionTimer = 20;
-      setTimeout(() => this.handleKahootQuestionTimeout(roomId), 20000);
-    }
-
-    await this.updateGameState(roomId, gameState);
-    return gameState;
-  }
 
   async processTriviaQuestion(roomId: string) {
     const gameState = await this.getGameState(roomId);
@@ -953,13 +863,7 @@ export class GameService {
     return gameState;
   }
 
-  async handleKahootQuestionTimeout(roomId: string) {
-    const gameState = await this.getGameState(roomId);
-    if (gameState.gameType !== 'kahoot' || !gameState.kahootState || gameState.gameOver) return;
-    
-    gameState.kahootState.questionTimer = 0;
-    await this.processKahootQuestion(roomId);
-  }
+
 
   async handleDisconnect(client: Socket) {
     try {
@@ -1036,9 +940,9 @@ export class GameService {
       let defaultGameState: GameState;
       switch (room.gameType) {
        
-        case 'kahoot':
+      
         case 'trivia':
-          const questions = room.gameType === 'kahoot' ? await this.fetchTriviaQuestions() : [];
+          const questions = await this.fetchTriviaQuestions();
           defaultGameState = {
             roomId,
             gameType: room.gameType,
@@ -1054,15 +958,7 @@ export class GameService {
               score: 0,
             })),
             winner: null,
-            ...(room.gameType === 'kahoot' ? {
-              kahootState: {
-                currentQuestionIndex: 0,
-                questions,
-                scores: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}),
-                answers: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: null }), {}),
-                questionTimer: 20,
-              }
-            } : {
+            ...({
               triviaState: {
                 currentQuestionIndex: 0,
                 questions,
@@ -1169,8 +1065,6 @@ export class GameService {
         // Calculate score based on game type - Winner gets 5 points, others get 1 point
         if (gameState.gameType === 'ludo') {
           score = gameState.winner === player.id ? 5 : 1;
-        } else if (gameState.kahootState?.scores?.[player.id] !== undefined) {
-          score = gameState.kahootState.scores[player.id];
         } else if (gameState.triviaState?.scores?.[player.id] !== undefined) {
           score = gameState.triviaState.scores[player.id];
         } else {

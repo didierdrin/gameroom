@@ -77,7 +77,19 @@ export class ChessService {
     let game = await this.chessModel.findOne({ roomId: dto.roomId });
 
     if (!game) {
-      game = await this.initializeChessRoom(dto.roomId);
+      try {
+        game = await this.initializeChessRoom(dto.roomId);
+      } catch (error) {
+        if (error.code === 11000) { // duplicate key error
+          // Race condition, find again
+          game = await this.chessModel.findOne({ roomId: dto.roomId });
+          if (!game) {
+            throw error;
+          }
+        } else {
+          throw error;
+        }
+      }
     }
 
     if (game.players.length > 0) {

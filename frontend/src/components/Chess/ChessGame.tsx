@@ -284,6 +284,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 
 export default ChessGame;
 
+
 // // ChessGame.tsx - Complete fixed component
 // import React, { useEffect, useState, useRef, useCallback } from 'react';
 // import Chessboard from 'chessboardjsx';
