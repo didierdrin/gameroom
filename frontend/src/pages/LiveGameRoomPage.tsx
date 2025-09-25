@@ -674,17 +674,6 @@ useEffect(() => {
       });
     };
 
-    // const handlePlayerJoined = (data: any) => {
-    //   console.log("Player joined:", data);
-    //   if (data.success) {
-    //     console.log("Successfully joined room");
-    //     setPlayerIdToUsername((prev) => ({
-    //       ...prev,
-    //       [data.playerId]: data.playerName || data.playerId,
-    //     }));
-    //   }
-    // };
-
     const handlePlayerJoined = (data: any) => {
       console.log("Player joined:", data);
       if (data.success) {
@@ -693,24 +682,6 @@ useEffect(() => {
           ...prev,
           [data.playerId]: data.playerName || data.playerId,
         }));
-    
-        // Add self to players if not already present
-        setPlayers((prev) => {
-          const playerId = data.playerId;
-          if (prev.some((p) => p.id === playerId)) {
-            return prev;
-          }
-          return [
-            ...prev,
-            {
-              id: playerId,
-              name: data.playerName || playerId,
-              color: "",
-              coins: [0, 0, 0, 0],
-              isSpectator: false,
-            },
-          ];
-        });
       }
     };
 
