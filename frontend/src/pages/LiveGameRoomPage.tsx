@@ -835,14 +835,31 @@ useEffect(() => {
       }));
     };
 
-    const handleChessMove = (data: any) => {
-      setGameState((prev) => ({
-        ...prev,
-        chessState: data.gameState.chessState,
-        currentTurn: data.gameState.currentTurn,
-        currentPlayer: data.gameState.currentPlayer,
-      }));
+    // Replace your existing handleChessMove in LiveGameRoomPage.tsx with:
+const handleChessMove = (data: any) => {
+  // data: { roomId, move, moveDetails, playerId, success, board, currentTurn, nextPlayer, timestamp }
+  setGameState((prev) => {
+    const nextMoves =
+      data.move && prev.chessState?.moves
+        ? [...prev.chessState.moves, data.move]
+        : prev.chessState?.moves || [];
+
+    const updatedChessState = data.board
+      ? { board: data.board, moves: nextMoves }
+      : prev.chessState;
+
+    const nextTurn = data.currentTurn ?? prev.currentTurn;
+    const nextPlayerIndex =
+      nextTurn ? prev.players.findIndex((p) => p.id === nextTurn) : prev.currentPlayer;
+
+    return {
+      ...prev,
+      chessState: updatedChessState,
+      currentTurn: nextTurn,
+      currentPlayer: nextPlayerIndex !== -1 ? nextPlayerIndex : prev.currentPlayer,
     };
+  });
+};
 
     const handleChessPlayersSelected = (data: any) => {
       console.log("Chess players selected:", data);
