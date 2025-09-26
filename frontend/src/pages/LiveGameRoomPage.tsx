@@ -835,7 +835,7 @@ useEffect(() => {
       }));
     };
 
-    // Replace your existing handleChessMove in LiveGameRoomPage.tsx with:
+    
 const handleChessMove = (data: any) => {
   // data: { roomId, move, moveDetails, playerId, success, board, currentTurn, nextPlayer, timestamp }
   setGameState((prev) => {

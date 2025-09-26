@@ -547,152 +547,6 @@ async handleGetRoomInfo(@MessageBody() data: { roomId: string }, @ConnectedSocke
   }
 }
 
-
-// game.gateway.ts - Updated chess move handler with proper turn management
-// Replace the makeChessMove handler in your game.gateway.ts with this:
-
-@SubscribeMessage('makeChessMove')
-async handleMakeChessMove(
-  @MessageBody() data: { roomId: string; playerId: string; move: string }, 
-  @ConnectedSocket() client: Socket
-) {
-  try {
-    console.log('Chess move received:', data);
-
-    // Validate input
-    if (!data.roomId || !data.playerId || !data.move) {
-      throw new Error('Missing required move data');
-    }
-
-    // Get current game state BEFORE the move
-    const beforeState = await this.gameService.getGameState(data.roomId);
-    console.log('State before move:', {
-      currentTurn: beforeState.currentTurn,
-      players: beforeState.players.map(p => ({ id: p.id, chessColor: p.chessColor }))
-    });
-
-    // Use chess service for move validation and execution
-    const result = await this.chessService.makeMove({
-      roomId: data.roomId,
-      playerId: data.playerId,
-      move: data.move
-    });
-
-    if (!result.success) {
-      throw new Error('Move failed');
-    }
-
-    // Get updated chess state from the chess service (which has the correct turn)
-    const chessState = await this.chessService.getChessState(data.roomId);
-    console.log('Chess state after move:', {
-      currentTurn: chessState.currentTurn,
-      board: chessState.board.substring(0, 20) + '...'
-    });
-    
-    // Update main game state with the correct turn from chess state
-    const gameState = await this.gameService.getGameState(data.roomId);
-    
-    // Ensure players array has chess colors from the chess game
-    if (!gameState.players || gameState.players.length === 0) {
-      gameState.players = chessState.players.map(p => ({
-        id: p.id,
-        name: p.id,
-        chessColor: p.chessColor
-      }));
-    }
-    
-    // Update chess-specific state
-    gameState.chessState = {
-      board: chessState.board,
-      moves: chessState.moves
-    };
-    
-    // CRITICAL FIX: Use the currentTurn from chessState which was properly updated
-    gameState.currentTurn = chessState.currentTurn;
-    
-    // Find the index of the current player
-    const currentPlayerIndex = gameState.players.findIndex(p => p.id === chessState.currentTurn);
-    gameState.currentPlayer = currentPlayerIndex !== -1 ? currentPlayerIndex : 0;
-    
-    // Update game over state
-    gameState.gameOver = chessState.gameOver;
-    if (chessState.winner) {
-      gameState.winner = chessState.winner;
-    }
-    gameState.winCondition = chessState.winCondition;
-
-    console.log('Turn after move - FINAL:', {
-      previousTurn: beforeState.currentTurn,
-      newTurn: gameState.currentTurn,
-      currentPlayer: gameState.currentPlayer
-    });
-
-    // Save updated game state
-    await this.gameService.updateGameState(data.roomId, gameState);
-
-    // Emit chess move event with board and turn info
-    const moveEvent = {
-      roomId: data.roomId,
-      move: data.move,
-      moveDetails: result.moveDetails,
-      playerId: data.playerId,
-      success: true,
-      board: chessState.board,
-      currentTurn: gameState.currentTurn,
-      nextPlayer: gameState.currentTurn, // Be explicit about next player
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log('Emitting chessMove event:', {
-      currentTurn: moveEvent.currentTurn,
-      nextPlayer: moveEvent.nextPlayer
-    });
-    
-    this.server.to(data.roomId).emit('chessMove', moveEvent);
-
-    // Emit game state update immediately (no delay needed)
-    this.server.to(data.roomId).emit('gameState', gameState);
-    
-    // Also emit a specific turn change event for absolute clarity
-    this.server.to(data.roomId).emit('turnChanged', {
-      roomId: data.roomId,
-      currentTurn: gameState.currentTurn,
-      previousTurn: beforeState.currentTurn,
-      currentPlayer: gameState.currentPlayer,
-      players: gameState.players
-    });
-
-    // Handle game over
-    if (chessState.gameOver) {
-      this.server.to(data.roomId).emit('gameOver', {
-        winner: chessState.winner,
-        winCondition: chessState.winCondition,
-        roomId: data.roomId
-      });
-    }
-
-  } catch (error) {
-    console.error('Chess move failed:', error);
-    client.emit('chessMoveError', {
-      message: error.message,
-      move: data.move,
-      roomId: data.roomId,
-      playerId: data.playerId
-    });
-    
-    // Re-sync state on error
-    try {
-      const currentState = await this.gameService.getGameState(data.roomId);
-      client.emit('gameState', currentState);
-    } catch (syncError) {
-      console.error('Failed to sync state after error:', syncError);
-    }
-  }
-}
-
-// // game.gateway.ts - Updated makeChessMove handler with proper turn management
-// // Add this updated handler to your existing game.gateway.ts file
-
 // @SubscribeMessage('makeChessMove')
 // async handleMakeChessMove(
 //   @MessageBody() data: { roomId: string; playerId: string; move: string }, 
@@ -706,6 +560,13 @@ async handleMakeChessMove(
 //       throw new Error('Missing required move data');
 //     }
 
+//     // Get current game state BEFORE the move
+//     const beforeState = await this.gameService.getGameState(data.roomId);
+//     console.log('State before move:', {
+//       currentTurn: beforeState.currentTurn,
+//       players: beforeState.players.map(p => ({ id: p.id, chessColor: p.chessColor }))
+//     });
+
 //     // Use chess service for move validation and execution
 //     const result = await this.chessService.makeMove({
 //       roomId: data.roomId,
@@ -717,10 +578,14 @@ async handleMakeChessMove(
 //       throw new Error('Move failed');
 //     }
 
-//     // Get updated chess state
+//     // Get updated chess state from the chess service (which has the correct turn)
 //     const chessState = await this.chessService.getChessState(data.roomId);
+//     console.log('Chess state after move:', {
+//       currentTurn: chessState.currentTurn,
+//       board: chessState.board.substring(0, 20) + '...'
+//     });
     
-//     // Update main game state
+//     // Update main game state with the correct turn from chess state
 //     const gameState = await this.gameService.getGameState(data.roomId);
     
 //     // Ensure players array has chess colors from the chess game
@@ -738,7 +603,7 @@ async handleMakeChessMove(
 //       moves: chessState.moves
 //     };
     
-//     // CRITICAL: Update turn information properly
+//     // CRITICAL FIX: Use the currentTurn from chessState which was properly updated
 //     gameState.currentTurn = chessState.currentTurn;
     
 //     // Find the index of the current player
@@ -752,37 +617,46 @@ async handleMakeChessMove(
 //     }
 //     gameState.winCondition = chessState.winCondition;
 
-//     console.log(`Turn after move: currentTurn=${gameState.currentTurn}, currentPlayer=${gameState.currentPlayer}`);
+//     console.log('Turn after move - FINAL:', {
+//       previousTurn: beforeState.currentTurn,
+//       newTurn: gameState.currentTurn,
+//       currentPlayer: gameState.currentPlayer
+//     });
 
 //     // Save updated game state
 //     await this.gameService.updateGameState(data.roomId, gameState);
 
-//     // Emit move details first with all necessary information
+//     // Emit chess move event with board and turn info
 //     const moveEvent = {
 //       roomId: data.roomId,
 //       move: data.move,
 //       moveDetails: result.moveDetails,
 //       playerId: data.playerId,
 //       success: true,
-//       board: result.moveDetails.fen,
-//       currentTurn: gameState.currentTurn, // Include current turn info
+//       board: chessState.board,
+//       currentTurn: gameState.currentTurn,
+//       nextPlayer: gameState.currentTurn, // Be explicit about next player
 //       timestamp: new Date().toISOString()
 //     };
     
+//     console.log('Emitting chessMove event:', {
+//       currentTurn: moveEvent.currentTurn,
+//       nextPlayer: moveEvent.nextPlayer
+//     });
+    
 //     this.server.to(data.roomId).emit('chessMove', moveEvent);
 
-//     // Then emit game state update with a small delay to ensure proper sequencing
-//     setTimeout(() => {
-//       this.server.to(data.roomId).emit('gameState', gameState);
-      
-//       // Also emit turn change event for clarity
-//       this.server.to(data.roomId).emit('turnChanged', {
-//         roomId: data.roomId,
-//         currentTurn: gameState.currentTurn,
-//         currentPlayer: gameState.currentPlayer,
-//         players: gameState.players
-//       });
-//     }, 100);
+//     // Emit game state update immediately (no delay needed)
+//     this.server.to(data.roomId).emit('gameState', gameState);
+    
+//     // Also emit a specific turn change event for absolute clarity
+//     this.server.to(data.roomId).emit('turnChanged', {
+//       roomId: data.roomId,
+//       currentTurn: gameState.currentTurn,
+//       previousTurn: beforeState.currentTurn,
+//       currentPlayer: gameState.currentPlayer,
+//       players: gameState.players
+//     });
 
 //     // Handle game over
 //     if (chessState.gameOver) {
@@ -812,75 +686,75 @@ async handleMakeChessMove(
 //   }
 // }
 
-// Also update selectChessPlayers handler for better state management
-@SubscribeMessage('selectChessPlayers')
-async handleSelectChessPlayers(
-  @MessageBody() data: { roomId: string; hostId: string; player1Id: string; player2Id: string }, 
-  @ConnectedSocket() client: Socket
-) {
-  try {
-    console.log('Selecting chess players:', data);
+// // Also update selectChessPlayers handler for better state management
+// @SubscribeMessage('selectChessPlayers')
+// async handleSelectChessPlayers(
+//   @MessageBody() data: { roomId: string; hostId: string; player1Id: string; player2Id: string }, 
+//   @ConnectedSocket() client: Socket
+// ) {
+//   try {
+//     console.log('Selecting chess players:', data);
     
-    // Validate host permissions
-    const room = await this.gameService.getGameRoomById(data.roomId);
-    if (room?.host !== data.hostId) {
-      throw new Error('Only the host can select chess players');
-    }
+//     // Validate host permissions
+//     const room = await this.gameService.getGameRoomById(data.roomId);
+//     if (room?.host !== data.hostId) {
+//       throw new Error('Only the host can select chess players');
+//     }
 
-    // Use chess service for chess-specific logic
-    const result = await this.chessService.selectChessPlayers(data);
+//     // Use chess service for chess-specific logic
+//     const result = await this.chessService.selectChessPlayers(data);
     
-    // Update main game state with selected players
-    const gameState = await this.gameService.getGameState(data.roomId);
+//     // Update main game state with selected players
+//     const gameState = await this.gameService.getGameState(data.roomId);
     
-    // Set up chess players in game state
-    gameState.chessPlayers = {
-      player1Id: data.player1Id,
-      player2Id: data.player2Id
-    };
+//     // Set up chess players in game state
+//     gameState.chessPlayers = {
+//       player1Id: data.player1Id,
+//       player2Id: data.player2Id
+//     };
     
-    // Create player entries with chess colors
-    gameState.players = [
-      {
-        id: data.player1Id,
-        name: data.player1Id,
-        chessColor: 'white' as const
-      },
-      {
-        id: data.player2Id,
-        name: data.player2Id,
-        chessColor: 'black' as const
-      }
-    ];
+//     // Create player entries with chess colors
+//     gameState.players = [
+//       {
+//         id: data.player1Id,
+//         name: data.player1Id,
+//         chessColor: 'white' as const
+//       },
+//       {
+//         id: data.player2Id,
+//         name: data.player2Id,
+//         chessColor: 'black' as const
+//       }
+//     ];
     
-    // Set initial turn (white/player1 starts)
-    gameState.currentTurn = data.player1Id;
-    gameState.currentPlayer = 0;
+//     // Set initial turn (white/player1 starts)
+//     gameState.currentTurn = data.player1Id;
+//     gameState.currentPlayer = 0;
     
-    await this.gameService.updateGameState(data.roomId, gameState);
+//     await this.gameService.updateGameState(data.roomId, gameState);
     
-    // Broadcast the selection
-    this.server.to(data.roomId).emit('chessPlayersSelected', {
-      roomId: data.roomId,
-      chessPlayers: gameState.chessPlayers,
-      currentTurn: gameState.currentTurn,
-      gameState: gameState
-    });
+//     // Broadcast the selection
+//     this.server.to(data.roomId).emit('chessPlayersSelected', {
+//       roomId: data.roomId,
+//       chessPlayers: gameState.chessPlayers,
+//       currentTurn: gameState.currentTurn,
+//       gameState: gameState
+//     });
     
-    // Emit updated game state
-    this.server.to(data.roomId).emit('gameState', gameState);
+//     // Emit updated game state
+//     this.server.to(data.roomId).emit('gameState', gameState);
     
-    console.log('Chess players selected successfully:', {
-      player1: data.player1Id,
-      player2: data.player2Id,
-      currentTurn: gameState.currentTurn
-    });
+//     console.log('Chess players selected successfully:', {
+//       player1: data.player1Id,
+//       player2: data.player2Id,
+//       currentTurn: gameState.currentTurn
+//     });
     
-  } catch (error) {
-    console.error('Select chess players error:', error.message);
-    client.emit('error', { message: error.message, type: 'selectChessPlayersError' });
-  }
-}
+//   } catch (error) {
+//     console.error('Select chess players error:', error.message);
+//     client.emit('error', { message: error.message, type: 'selectChessPlayersError' });
+//   }
+// }
 
 
 
