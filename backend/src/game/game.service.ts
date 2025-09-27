@@ -1048,27 +1048,6 @@ async updateGameState(roomId: string, gameState: GameState) {
   }
 }
 
-  // async updateGameState(roomId: string, gameState: GameState) {
-  //   try {
-  //     await this.redisService.set(`game:${roomId}`, JSON.stringify(gameState));
-  //     console.log(`Game state updated for room ${roomId}:`, {
-  //       currentTurn: gameState.currentTurn,
-  //       gameStarted: gameState.gameStarted,
-  //       gameOver: gameState.gameOver,
-  //       gameType: gameState.gameType,
-  //       players: gameState.players.map((p: any) => ({ 
-  //         id: p.id, 
-  //         chessColor: p.chessColor,
-  //         color: p.color,
-  //         score: p.score
-  //       }))
-  //     });
-  //   } catch (error) {
-  //     console.error(`Error in updateGameState for room ${roomId}:`, error);
-  //     throw error;
-  //   }
-  // }
-
   async saveGameSession(roomId: string, gameState: GameState) {
     try {
       const room = await this.gameRoomModel.findOne({ roomId });
