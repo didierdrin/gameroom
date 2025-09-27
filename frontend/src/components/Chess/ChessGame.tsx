@@ -17,29 +17,26 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   gameState, 
   onChessMove 
 }) => {
+  // Use ref to maintain chess instance across renders
   const gameRef = useRef<Chess>(new Chess());
   const [fen, setFen] = useState('start');
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [gameStatus, setGameStatus] = useState('');
-  const [lastProcessedMove, setLastProcessedMove] = useState<number>(0);
 
   // Initialize game state
   useEffect(() => {
-    console.log('===== Game State Update =====');
-    console.log('currentTurn:', gameState?.currentTurn);
-    console.log('currentPlayer:', currentPlayer);
-    console.log('board:', gameState?.chessState?.board);
-    console.log('players:', gameState?.players);
-    
+    console.log('Game state update received:', {
+      currentTurn: gameState?.currentTurn,
+      currentPlayer: currentPlayer,
+      board: gameState?.chessState?.board
+    });
+
     if (gameState?.chessState?.board) {
       try {
         const newFen = gameState.chessState.board;
-        // Only update if the FEN has actually changed
-        if (newFen !== gameRef.current.fen()) {
-          gameRef.current = new Chess(newFen);
-          setFen(newFen);
-        }
+        gameRef.current = new Chess(newFen);
+        setFen(newFen);
       } catch (e) {
         console.error('Failed to load chess position:', e);
         gameRef.current = new Chess();
@@ -65,31 +62,19 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     if (!socket) return;
 
     const handleChessMove = (data: any) => {
-      console.log('===== Chess Move Event =====');
-      console.log('Move data:', data);
+      console.log('Received chess move event:', data);
       
       // Update board from the move event
       if (data.board) {
         try {
-          // Only update if this is a new move (prevent duplicate processing)
-          const moveTimestamp = data.timestamp || Date.now();
-          if (moveTimestamp > lastProcessedMove) {
-            gameRef.current = new Chess(data.board);
-            setFen(data.board);
-            setLastProcessedMove(moveTimestamp);
-            
-            // CRITICAL: Update turn from the move event
-            if (data.currentTurn !== undefined) {
-              const myTurn = data.currentTurn === currentPlayer;
-              setIsMyTurn(myTurn);
-              console.log(`Turn updated from move: currentTurn=${data.currentTurn}, isMyTurn=${myTurn}`);
-            }
-            
-            // If move was successful and it wasn't our move, show a status update
-            if (data.playerId !== currentPlayer) {
-              setGameStatus("Opponent moved");
-              setTimeout(() => setGameStatus(''), 2000);
-            }
+          gameRef.current = new Chess(data.board);
+          setFen(data.board);
+          
+          // Update turn if included in move event
+          if (data.currentTurn !== undefined) {
+            const myTurn = data.currentTurn === currentPlayer;
+            setIsMyTurn(myTurn);
+            console.log(`Turn updated from move: currentTurn=${data.currentTurn}, isMyTurn=${myTurn}`);
           }
         } catch (e) {
           console.error('Failed to update board from move:', e);
@@ -98,10 +83,8 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     };
 
     const handleGameState = (newGameState: any) => {
-      console.log('===== Full Game State Update =====');
-      console.log('New game state:', {
+      console.log('Received game state update:', {
         currentTurn: newGameState?.currentTurn,
-        currentPlayer: newGameState?.currentPlayer,
         players: newGameState?.players
       });
       
@@ -117,38 +100,29 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         }
       }
       
-      // CRITICAL: Always update turn status from game state
-      if (newGameState.currentTurn !== undefined) {
-        const myTurn = newGameState.currentTurn === currentPlayer;
-        setIsMyTurn(myTurn);
-        console.log(`Turn from game state: currentTurn=${newGameState.currentTurn}, isMyTurn=${myTurn}`);
-      }
+      // CRITICAL: Update turn status from game state
+      const myTurn = newGameState.currentTurn === currentPlayer;
+      setIsMyTurn(myTurn);
+      console.log(`Turn from game state: currentTurn=${newGameState.currentTurn}, isMyTurn=${myTurn}`);
     };
 
     const handleTurnChanged = (data: any) => {
-      console.log('===== Explicit Turn Change =====');
-      console.log('Turn change data:', data);
-      if (data.roomId === roomId && data.currentTurn !== undefined) {
+      console.log('Turn changed event:', data);
+      if (data.roomId === roomId) {
         const myTurn = data.currentTurn === currentPlayer;
         setIsMyTurn(myTurn);
         console.log(`Turn explicitly changed: currentTurn=${data.currentTurn}, isMyTurn=${myTurn}`);
-        
-        // Show status update
-        if (myTurn) {
-          setGameStatus("Your turn!");
-          setTimeout(() => setGameStatus(''), 3000);
-        }
       }
     };
 
     const handleChessMoveError = (data: any) => {
-      console.error('Chess move error:', data);
-      // Revert to the last known good state
-      if (gameState?.chessState?.board) {
-        gameRef.current = new Chess(gameState.chessState.board);
-        setFen(gameState.chessState.board);
-      }
-      setGameStatus(`Move error: ${data.message}`);
+      console.error('Chess move failed:', data.message);
+      
+      // Revert optimistic update by reloading current game state
+      socket.emit('getGameState', { roomId });
+      
+      // Show error message
+      setGameStatus(`Move failed: ${data.message}`);
       setTimeout(() => setGameStatus(''), 3000);
     };
 
@@ -163,7 +137,10 @@ export const ChessGame: React.FC<GameRenderProps> = ({
       socket.off('turnChanged', handleTurnChanged);
       socket.off('chessMoveError', handleChessMoveError);
     };
-  }, [socket, currentPlayer, roomId, lastProcessedMove]);
+  }, [socket, currentPlayer, roomId]);
+
+
+
 
   const handleMove = useCallback(({ sourceSquare, targetSquare }: { 
     sourceSquare: string; 
@@ -320,6 +297,7 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 
 export default ChessGame;
 
+
 // import React, { useEffect, useState, useRef, useCallback } from 'react';
 // import Chessboard from 'chessboardjsx';
 // import { Chess } from 'chess.js';
@@ -339,26 +317,29 @@ export default ChessGame;
 //   gameState, 
 //   onChessMove 
 // }) => {
-//   // Use ref to maintain chess instance across renders
 //   const gameRef = useRef<Chess>(new Chess());
 //   const [fen, setFen] = useState('start');
 //   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
 //   const [isMyTurn, setIsMyTurn] = useState(false);
 //   const [gameStatus, setGameStatus] = useState('');
+//   const [lastProcessedMove, setLastProcessedMove] = useState<number>(0);
 
 //   // Initialize game state
 //   useEffect(() => {
-//     console.log('Game state update received:', {
-//       currentTurn: gameState?.currentTurn,
-//       currentPlayer: currentPlayer,
-//       board: gameState?.chessState?.board
-//     });
-
+//     console.log('===== Game State Update =====');
+//     console.log('currentTurn:', gameState?.currentTurn);
+//     console.log('currentPlayer:', currentPlayer);
+//     console.log('board:', gameState?.chessState?.board);
+//     console.log('players:', gameState?.players);
+    
 //     if (gameState?.chessState?.board) {
 //       try {
 //         const newFen = gameState.chessState.board;
-//         gameRef.current = new Chess(newFen);
-//         setFen(newFen);
+//         // Only update if the FEN has actually changed
+//         if (newFen !== gameRef.current.fen()) {
+//           gameRef.current = new Chess(newFen);
+//           setFen(newFen);
+//         }
 //       } catch (e) {
 //         console.error('Failed to load chess position:', e);
 //         gameRef.current = new Chess();
@@ -384,19 +365,31 @@ export default ChessGame;
 //     if (!socket) return;
 
 //     const handleChessMove = (data: any) => {
-//       console.log('Received chess move event:', data);
+//       console.log('===== Chess Move Event =====');
+//       console.log('Move data:', data);
       
 //       // Update board from the move event
 //       if (data.board) {
 //         try {
-//           gameRef.current = new Chess(data.board);
-//           setFen(data.board);
-          
-//           // Update turn if included in move event
-//           if (data.currentTurn !== undefined) {
-//             const myTurn = data.currentTurn === currentPlayer;
-//             setIsMyTurn(myTurn);
-//             console.log(`Turn updated from move: currentTurn=${data.currentTurn}, isMyTurn=${myTurn}`);
+//           // Only update if this is a new move (prevent duplicate processing)
+//           const moveTimestamp = data.timestamp || Date.now();
+//           if (moveTimestamp > lastProcessedMove) {
+//             gameRef.current = new Chess(data.board);
+//             setFen(data.board);
+//             setLastProcessedMove(moveTimestamp);
+            
+//             // CRITICAL: Update turn from the move event
+//             if (data.currentTurn !== undefined) {
+//               const myTurn = data.currentTurn === currentPlayer;
+//               setIsMyTurn(myTurn);
+//               console.log(`Turn updated from move: currentTurn=${data.currentTurn}, isMyTurn=${myTurn}`);
+//             }
+            
+//             // If move was successful and it wasn't our move, show a status update
+//             if (data.playerId !== currentPlayer) {
+//               setGameStatus("Opponent moved");
+//               setTimeout(() => setGameStatus(''), 2000);
+//             }
 //           }
 //         } catch (e) {
 //           console.error('Failed to update board from move:', e);
@@ -405,8 +398,10 @@ export default ChessGame;
 //     };
 
 //     const handleGameState = (newGameState: any) => {
-//       console.log('Received game state update:', {
+//       console.log('===== Full Game State Update =====');
+//       console.log('New game state:', {
 //         currentTurn: newGameState?.currentTurn,
+//         currentPlayer: newGameState?.currentPlayer,
 //         players: newGameState?.players
 //       });
       
@@ -422,31 +417,53 @@ export default ChessGame;
 //         }
 //       }
       
-//       // CRITICAL: Update turn status from game state
-//       const myTurn = newGameState.currentTurn === currentPlayer;
-//       setIsMyTurn(myTurn);
-//       console.log(`Turn from game state: currentTurn=${newGameState.currentTurn}, isMyTurn=${myTurn}`);
+//       // CRITICAL: Always update turn status from game state
+//       if (newGameState.currentTurn !== undefined) {
+//         const myTurn = newGameState.currentTurn === currentPlayer;
+//         setIsMyTurn(myTurn);
+//         console.log(`Turn from game state: currentTurn=${newGameState.currentTurn}, isMyTurn=${myTurn}`);
+//       }
 //     };
 
 //     const handleTurnChanged = (data: any) => {
-//       console.log('Turn changed event:', data);
-//       if (data.roomId === roomId) {
+//       console.log('===== Explicit Turn Change =====');
+//       console.log('Turn change data:', data);
+//       if (data.roomId === roomId && data.currentTurn !== undefined) {
 //         const myTurn = data.currentTurn === currentPlayer;
 //         setIsMyTurn(myTurn);
 //         console.log(`Turn explicitly changed: currentTurn=${data.currentTurn}, isMyTurn=${myTurn}`);
+        
+//         // Show status update
+//         if (myTurn) {
+//           setGameStatus("Your turn!");
+//           setTimeout(() => setGameStatus(''), 3000);
+//         }
 //       }
+//     };
+
+//     const handleChessMoveError = (data: any) => {
+//       console.error('Chess move error:', data);
+//       // Revert to the last known good state
+//       if (gameState?.chessState?.board) {
+//         gameRef.current = new Chess(gameState.chessState.board);
+//         setFen(gameState.chessState.board);
+//       }
+//       setGameStatus(`Move error: ${data.message}`);
+//       setTimeout(() => setGameStatus(''), 3000);
 //     };
 
 //     socket.on('chessMove', handleChessMove);
 //     socket.on('gameState', handleGameState);
 //     socket.on('turnChanged', handleTurnChanged);
+//     socket.on('chessMoveError', handleChessMoveError);
 
 //     return () => {
 //       socket.off('chessMove', handleChessMove);
 //       socket.off('gameState', handleGameState);
 //       socket.off('turnChanged', handleTurnChanged);
+//       socket.off('chessMoveError', handleChessMoveError);
 //     };
-//   }, [socket, currentPlayer, roomId]);
+//   }, [socket, currentPlayer, roomId, lastProcessedMove]);
 
 //   const handleMove = useCallback(({ sourceSquare, targetSquare }: { 
 //     sourceSquare: string; 
@@ -474,26 +491,28 @@ export default ChessGame;
 //         return null;
 //       }
 
-//       // Try the move locally first
-//       const move = gameRef.current.move({
+//       // Try the move locally first (for immediate feedback)
+//       const tempGame = new Chess(gameRef.current.fen());
+//       const move = tempGame.move({
 //         from: sourceSquare,
 //         to: targetSquare,
 //         promotion: 'q',
 //       });
 
 //       if (move) {
-//         console.log(`Move successful locally: ${move.san}`);
-        
-//         // Update local state immediately for responsiveness
-//         setFen(gameRef.current.fen());
+//         console.log(`Move valid locally: ${move.san}`);
         
 //         // Send move to backend
 //         const moveString = `${sourceSquare}${targetSquare}${move.promotion || ''}`;
 //         console.log(`Sending move to server: ${moveString}`);
 //         onChessMove(moveString);
         
-//         // Optimistically update turn (will be confirmed by server)
+//         // Optimistically update UI (will be confirmed/corrected by server)
+//         gameRef.current = tempGame;
+//         setFen(tempGame.fen());
 //         setIsMyTurn(false);
+//         setGameStatus("Move sent...");
+//         setTimeout(() => setGameStatus(''), 1000);
         
 //         return move;
 //       } else {
@@ -594,11 +613,6 @@ export default ChessGame;
 //             Moves played: {gameState.chessState.moves.length}
 //           </p>
 //         )}
-        
-//         {/* Debug info - remove in production */}
-//         <div className="text-xs text-gray-600 mt-2">
-//           Debug: Turn={gameState.currentTurn}, You={currentPlayer}, MyTurn={isMyTurn.toString()}
-//         </div>
 //       </div>
 //     </div>
 //   );

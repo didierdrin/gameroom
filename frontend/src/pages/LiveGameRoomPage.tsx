@@ -1124,12 +1124,12 @@ const handleChessMove = (data: any) => {
     }
   };
 
+
   const handleChessPlayerSelection = async (player1Id: string, player2Id: string) => {
     if (!socket || !roomId || !user?.id) return;
     
     console.log("Selecting chess players:", { player1Id, player2Id });
     
-    // First select players, then start game after a brief delay
     socket.emit("selectChessPlayers", {
       roomId,
       hostId: user.id,
@@ -1137,12 +1137,32 @@ const handleChessMove = (data: any) => {
       player2Id
     });
     
-    // Wait a moment for the server to process player selection
+    // Use the new start event for chess
     setTimeout(() => {
-      socket.emit("startGame", { roomId });
+      socket.emit('startChessGame', { roomId });
       setShowChessPlayerModal(false);
-    }, 500); // Increased delay to ensure state is updated
+    }, 500);
   };
+
+  // const handleChessPlayerSelection = async (player1Id: string, player2Id: string) => {
+  //   if (!socket || !roomId || !user?.id) return;
+    
+  //   console.log("Selecting chess players:", { player1Id, player2Id });
+    
+  //   // First select players, then start game after a brief delay
+  //   socket.emit("selectChessPlayers", {
+  //     roomId,
+  //     hostId: user.id,
+  //     player1Id,
+  //     player2Id
+  //   });
+    
+  //   // Wait a moment for the server to process player selection
+  //   setTimeout(() => {
+  //     socket.emit("startGame", { roomId });
+  //     setShowChessPlayerModal(false);
+  //   }, 500); // Increased delay to ensure state is updated
+  // };
 
   const handleEndGame = () => {
     if (!isHost || !socket || !roomId) return;
