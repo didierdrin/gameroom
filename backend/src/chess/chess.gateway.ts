@@ -54,22 +54,30 @@ export class ChessGateway {
   }
 
   @SubscribeMessage('startChessGame')
-  async handleStartChessGame(@MessageBody() data: { roomId: string }) {
-    try {
-      const chessGame = await this.chessService.startChessGame(data.roomId);
-      
-      // Update the main game state in Redis
-      const gameState = await this.gameService.getGameState(data.roomId);
-      gameState.gameStarted = chessGame.gameStarted;
-      
-      await this.gameService.updateGameState(data.roomId, gameState);
-      
-      // Emit the updated game state
-      this.server.to(data.roomId).emit('gameState', gameState);
-    } catch (error) {
-      this.server.to(data.roomId).emit('startChessGameError', { message: error.message });
-    }
+async handleStartChessGame(@MessageBody() data: { roomId: string }) {
+  try {
+    const chessGame = await this.chessService.startChessGame(data.roomId);
+    
+    // Update the main game state in Redis
+    const gameState = await this.gameService.getGameState(data.roomId);
+    gameState.gameStarted = chessGame.gameStarted;
+    
+    // Sync additional fields from chessGame to prevent races
+    gameState.currentTurn = chessGame.currentTurn;
+    gameState.players = chessGame.players.map(p => ({
+      id: p.id,
+      name: p.id,  // Names will be handled in frontend
+      chessColor: p.chessColor
+    }));
+    
+    await this.gameService.updateGameState(data.roomId, gameState);
+    
+    // Emit the updated game state
+    this.server.to(data.roomId).emit('gameState', gameState);
+  } catch (error) {
+    this.server.to(data.roomId).emit('startChessGameError', { message: error.message });
   }
+}
 
   @SubscribeMessage('makeChessMove')
   async handleMakeMove(@MessageBody() dto: MakeChessMoveDto, client: Socket) {
@@ -257,3 +265,22 @@ export class ChessGateway {
 
 
 // }
+
+
+  // @SubscribeMessage('startChessGame')
+  // async handleStartChessGame(@MessageBody() data: { roomId: string }) {
+  //   try {
+  //     const chessGame = await this.chessService.startChessGame(data.roomId);
+      
+  //     // Update the main game state in Redis
+  //     const gameState = await this.gameService.getGameState(data.roomId);
+  //     gameState.gameStarted = chessGame.gameStarted;
+      
+  //     await this.gameService.updateGameState(data.roomId, gameState);
+      
+  //     // Emit the updated game state
+  //     this.server.to(data.roomId).emit('gameState', gameState);
+  //   } catch (error) {
+  //     this.server.to(data.roomId).emit('startChessGameError', { message: error.message });
+  //   }
+  // }

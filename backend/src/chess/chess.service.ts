@@ -295,6 +295,42 @@ export class ChessService {
     }
   }
 
+ 
+
+  async getChessGame(roomId: string): Promise<ChessGameDocument> {
+    const game = await this.chessModel.findOne({ roomId });
+    if (!game) {
+      return await this.initializeChessRoom(roomId);
+    }
+    return game;
+  }
+
+  async resetGame(roomId: string): Promise<ChessGameDocument> {
+    const game = await this.chessModel.findOne({ roomId });
+
+    if (!game) {
+      throw new BadRequestException('Game not found');
+    }
+
+    game.chessState = { 
+      board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', 
+      moves: [] 
+    };
+    game.currentTurn = game.players.find(p => p.chessColor === 'white')?.id || '';
+    game.gameStarted = false;
+    game.gameOver = false;
+    game.winner = undefined;
+    game.winCondition = undefined;
+
+    await game.save();
+
+    this.chessInstances.delete(roomId);
+
+    return game;
+  }
+}
+
+
   // async makeMove(dto: MakeChessMoveDto): Promise<{ 
 //   success: boolean; 
 //   game: ChessGameDocument;
@@ -438,37 +474,3 @@ export class ChessService {
 //   }
 // }
 
- 
-
-  async getChessGame(roomId: string): Promise<ChessGameDocument> {
-    const game = await this.chessModel.findOne({ roomId });
-    if (!game) {
-      return await this.initializeChessRoom(roomId);
-    }
-    return game;
-  }
-
-  async resetGame(roomId: string): Promise<ChessGameDocument> {
-    const game = await this.chessModel.findOne({ roomId });
-
-    if (!game) {
-      throw new BadRequestException('Game not found');
-    }
-
-    game.chessState = { 
-      board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', 
-      moves: [] 
-    };
-    game.currentTurn = game.players.find(p => p.chessColor === 'white')?.id || '';
-    game.gameStarted = false;
-    game.gameOver = false;
-    game.winner = undefined;
-    game.winCondition = undefined;
-
-    await game.save();
-
-    this.chessInstances.delete(roomId);
-
-    return game;
-  }
-}

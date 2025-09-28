@@ -715,6 +715,7 @@ export class GameService {
       }
   
       const gameState = await this.getGameState(roomId);
+      
       if (gameState.gameStarted) throw new Error('Game already started');
       
       const room = await this.getGameRoomById(roomId);

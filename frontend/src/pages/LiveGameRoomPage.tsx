@@ -190,6 +190,7 @@ export const LiveGameRoomPage = () => {
   const { user } = useAuth();
   const socket = useSocket();
   const isSocketConnected = useSocketConnection();
+  const [startAfterSelect, setStartAfterSelect] = useState(false);
 
   // Existing state variables...
   const [gameState, setGameState] = useState<GameState>({
@@ -869,9 +870,14 @@ const handleChessMove = (data: any) => {
         currentTurn: data.currentTurn,
         players: data.gameState.players,
       }));
-
+    
       // Refresh room info to get updated player/spectator lists
       socket.emit('getRoomInfo', { roomId });
+      
+      if (startAfterSelect) {
+        socket.emit('startChessGame', { roomId });
+        setStartAfterSelect(false);
+      }
     };
 
     const handleKahootAnswer = (data: any) => {
@@ -1125,7 +1131,9 @@ const handleChessMove = (data: any) => {
   };
 
 
-  const handleChessPlayerSelection = async (player1Id: string, player2Id: string) => {
+  
+
+  const handleChessPlayerSelection = (player1Id: string, player2Id: string) => {
     if (!socket || !roomId || !user?.id) return;
     
     console.log("Selecting chess players:", { player1Id, player2Id });
@@ -1137,32 +1145,9 @@ const handleChessMove = (data: any) => {
       player2Id
     });
     
-    // Use the new start event for chess
-    setTimeout(() => {
-      socket.emit('startChessGame', { roomId });
-      setShowChessPlayerModal(false);
-    }, 500);
+    setStartAfterSelect(true);  
+    setShowChessPlayerModal(false);
   };
-
-  // const handleChessPlayerSelection = async (player1Id: string, player2Id: string) => {
-  //   if (!socket || !roomId || !user?.id) return;
-    
-  //   console.log("Selecting chess players:", { player1Id, player2Id });
-    
-  //   // First select players, then start game after a brief delay
-  //   socket.emit("selectChessPlayers", {
-  //     roomId,
-  //     hostId: user.id,
-  //     player1Id,
-  //     player2Id
-  //   });
-    
-  //   // Wait a moment for the server to process player selection
-  //   setTimeout(() => {
-  //     socket.emit("startGame", { roomId });
-  //     setShowChessPlayerModal(false);
-  //   }, 500); // Increased delay to ensure state is updated
-  // };
 
   const handleEndGame = () => {
     if (!isHost || !socket || !roomId) return;
@@ -1644,3 +1629,59 @@ const handleChessMove = (data: any) => {
   );
 };
 
+
+
+
+  // const handleChessPlayerSelection = async (player1Id: string, player2Id: string) => {
+  //   if (!socket || !roomId || !user?.id) return;
+    
+  //   console.log("Selecting chess players:", { player1Id, player2Id });
+    
+  //   // First select players, then start game after a brief delay
+  //   socket.emit("selectChessPlayers", {
+  //     roomId,
+  //     hostId: user.id,
+  //     player1Id,
+  //     player2Id
+  //   });
+    
+  //   // Wait a moment for the server to process player selection
+  //   setTimeout(() => {
+  //     socket.emit("startGame", { roomId });
+  //     setShowChessPlayerModal(false);
+  //   }, 500); // Increased delay to ensure state is updated
+  // };
+
+
+  // const handleChessPlayerSelection = async (player1Id: string, player2Id: string) => {
+  //   if (!socket || !roomId || !user?.id) return;
+    
+  //   console.log("Selecting chess players:", { player1Id, player2Id });
+    
+  //   socket.emit("selectChessPlayers", {
+  //     roomId,
+  //     hostId: user.id,
+  //     player1Id,
+  //     player2Id
+  //   });
+    
+  //   // Use the new start event for chess
+  //   setTimeout(() => {
+  //     socket.emit('startChessGame', { roomId });
+  //     setShowChessPlayerModal(false);
+  //   }, 500);
+  // };
+
+
+      // const handleChessPlayersSelected = (data: any) => {
+    //   console.log("Chess players selected:", data);
+    //   setGameState((prev) => ({
+    //     ...prev,
+    //     chessPlayers: data.chessPlayers,
+    //     currentTurn: data.currentTurn,
+    //     players: data.gameState.players,
+    //   }));
+
+    //   // Refresh room info to get updated player/spectator lists
+    //   socket.emit('getRoomInfo', { roomId });
+    // };
