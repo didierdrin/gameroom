@@ -1107,30 +1107,35 @@ const handleChessMove = (data: any) => {
     }
   };
 
-  const handleStartGame = () => {
-    if (!isHost) {
-      alert('Only the host can start the game.');
-      return;
-    }
+const handleStartGame = () => {
+  if (!isHost) {
+    alert('Only the host can start the game.');
+    return;
+  }
+  
+  console.log("Starting game for room:", roomId);
+  if (!socket || !socket.connected) {
+    console.error("Socket not connected");
+    return;
+  }
+  
+  // For chess games, check if players are already selected
+  if (gameType === 'chess') {
+    const playersSelected = gameState.players.length === 2 && 
+      gameState.players.every(p => p.chessColor === 'white' || p.chessColor === 'black');
     
-    console.log("Starting game for room:", roomId);
-    if (!socket || !socket.connected) {
-      console.error("Socket not connected");
-      return;
-    }
-    
-    // For chess games, show player selection modal first
-    if (gameType === 'chess') {
+    if (playersSelected) {
+      socket.emit('startChessGame', { roomId });
+    } else {
       setShowChessPlayerModal(true);
-      return;
     }
-    
-    if (socket && roomId) {
-      socket.emit("startGame", { roomId });
-    }
-  };
-
-
+    return;
+  }
+  
+  if (socket && roomId) {
+    socket.emit("startGame", { roomId });
+  }
+};
   
 
   const handleChessPlayerSelection = (player1Id: string, player2Id: string) => {
@@ -1685,3 +1690,31 @@ const handleChessMove = (data: any) => {
     //   // Refresh room info to get updated player/spectator lists
     //   socket.emit('getRoomInfo', { roomId });
     // };
+
+
+
+
+    
+  // const handleStartGame = () => {
+  //   if (!isHost) {
+  //     alert('Only the host can start the game.');
+  //     return;
+  //   }
+    
+  //   console.log("Starting game for room:", roomId);
+  //   if (!socket || !socket.connected) {
+  //     console.error("Socket not connected");
+  //     return;
+  //   }
+    
+  //   // For chess games, show player selection modal first
+  //   if (gameType === 'chess') {
+  //     setShowChessPlayerModal(true);
+  //     return;
+  //   }
+    
+  //   if (socket && roomId) {
+  //     socket.emit("startGame", { roomId });
+  //   }
+  // };
+
