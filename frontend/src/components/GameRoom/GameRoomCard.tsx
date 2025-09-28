@@ -28,6 +28,21 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
   const { username: hostDisplayName, isLoading: isLoadingHost } = useUsername(host);
   const { avatarUrl: resolvedHostAvatar } = useAvatar(host, hostDisplayName || host);
 
+  const getAvatarUrl = () => {
+    // First priority: hostAvatar from gameRoom data (like ProfilePage uses userData.avatar)
+    if (hostAvatar) {
+      return hostAvatar;
+    }
+    
+    // Second priority: If we have hostDisplayName, use it for dicebear fallback
+    if (hostDisplayName) {
+      return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(hostDisplayName)}`;
+    }
+    
+    // Final fallback: use host ID or default
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${host || "default"}`;
+  };
+
   // Get host's display name - now simplified using the hook
   const getHostDisplayName = () => {
     if (isLoadingHost) {
@@ -107,7 +122,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
         </div>
         <div className="flex items-center mb-4">
         <img
-          src={hostAvatar || resolvedHostAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${host || "default"}`}
+          src={getAvatarUrl()}
           alt={hostDisplayName}
           className="w-6 h-6 rounded-full border border-gray-700"
         />

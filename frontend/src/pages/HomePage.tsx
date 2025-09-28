@@ -13,7 +13,7 @@ interface GameRoom {
   roomId: string; 
   name: string;
   gameType: string;
-  host: string; // Backend sends 'host' field, not 'hostId'
+  host: string; 
   hostName: string;
   hostAvatar: string;
   currentPlayers: number;
@@ -37,7 +37,6 @@ interface Tournament {
 
 interface JoinRoomResponse {
   roomId: string;
-  // Add other properties you expect in the response
   success: boolean;
   message?: string;
 }
