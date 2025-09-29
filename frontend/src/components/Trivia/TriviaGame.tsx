@@ -126,7 +126,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       {gameState.gameOver ? (
         <div className="text-center p-6">
           <h2 className="text-3xl font-bold mb-4">Game Over!</h2>
-          <p className="text-xl">Your score: {score}/{questions.length}</p>
+          {/* <p className="text-xl">Your score: {score}/{questions.length}</p> */}
           {/* <div className="mt-4">
             <h3 className="text-2xl">Final Scores:</h3>
             {Object.entries(gameState.triviaState?.scores || {}).map(([playerId, playerScore]) => (
