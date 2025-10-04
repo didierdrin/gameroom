@@ -1572,7 +1572,7 @@ const handleStartGame = () => {
         </div>
       )}
 
-      <div className="z-50 l-5">
+      <div className="fixed left-4 bottom-4 z-50">
       <MediaControls
         videoEnabled={videoEnabled && mediaAvailable.video}
         audioEnabled={audioEnabled && mediaAvailable.audio}
