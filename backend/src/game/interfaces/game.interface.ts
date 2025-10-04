@@ -1,6 +1,28 @@
 // src/game/interfaces/game.interface.ts
 import { Document } from 'mongoose';
 
+export interface GameRoom extends Document {
+  roomId: string;
+  name: string;
+  gameType: string;
+  host: string;
+  maxPlayers: number;
+  currentPlayers: number;
+  isPrivate: boolean;
+  password?: string;
+  status: string;
+  scheduledTimeCombined?: Date;
+  playerIds: string[];
+  spectatorIds: string[];
+  createdAt: Date;
+  triviaSettings?: {
+    questionCount: number;
+    difficulty: string;
+    category: string;
+  };
+ 
+}
+
 export interface PlayerMove {
   playerId: string;
   action: 'roll' | 'move';

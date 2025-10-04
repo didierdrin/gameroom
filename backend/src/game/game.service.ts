@@ -126,8 +126,8 @@ export class GameService {
   }
 
   private async fetchTriviaQuestions(topic: string = 'general') {
-    // Legacy method, kept for fallback
-    return this.triviaService.fetchTriviaQuestions(topic);
+    // Legacy method, kept for fallback - now uses getQuestions
+    return this.triviaService.getQuestions({ questionCount: 10, difficulty: 'medium', category: topic || 'general' });
   }
 
   async createGame(createGameDto: CreateGameDto) {
@@ -197,7 +197,7 @@ export class GameService {
             currentQuestionIndex: 0,
             questions: [], // Questions will be loaded on startGame
             scores: { [hostId]: 0 },
-            answers: {},
+            answers: { [hostId]: { answer: null, isCorrect: null } },
             questionTimer: 30,
           },
         };
@@ -286,7 +286,7 @@ export class GameService {
           if (!gameState.players.find(p => p.id === joinGameDto.playerId)) {
             gameState.players.push({ id: joinGameDto.playerId, name: joinGameDto.playerName || joinGameDto.playerId, score: 0 });
           }
-          if (gameRoom.gameType === 'trivia' && gameState.triviaState) {
+          if (gameState.triviaState) {
             gameState.triviaState.scores[joinGameDto.playerId] = 0;
             gameState.triviaState.answers[joinGameDto.playerId] = { answer: null, isCorrect: null };
           }
