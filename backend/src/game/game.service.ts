@@ -288,7 +288,7 @@ export class GameService {
           }
           if (gameState.triviaState) {
             gameState.triviaState.scores[joinGameDto.playerId] = 0;
-            gameState.triviaState.answers[joinGameDto.playerId] = { answer: null, isCorrect: null };
+            gameState.triviaState!.answers[joinGameDto.playerId] = { answer: null, isCorrect: null };
           }
           await this.updateGameState(joinGameDto.roomId, gameState);
         }
@@ -750,7 +750,7 @@ export class GameService {
           gameState.triviaState.questionTimer = 30;
           // Initialize answers for all players
           gameState.players.forEach(player => {
-            gameState.triviaState.answers[player.id] = { answer: null, isCorrect: null };
+            gameState.triviaState!.answers[player.id] = { answer: null, isCorrect: null };
           });
         }
       } else if (room.gameType === 'chess') {
@@ -830,7 +830,7 @@ export class GameService {
 
     // Update answer and correctness
     const isCorrect = data.answer === currentQuestion.correctAnswer;
-    gameState.triviaState.answers[data.playerId] = { 
+    gameState.triviaState!.answers[data.playerId] = { 
       answer: data.answer, 
       isCorrect: isCorrect 
     };
@@ -915,7 +915,7 @@ export class GameService {
       await this.saveGameSession(roomId, gameState);
     } else {
       // Reset answers for next question
-      gameState.triviaState.answers = gameState.players.reduce((acc, p) => ({ 
+      gameState.triviaState!.answers = gameState.players.reduce((acc, p) => ({ 
         ...acc, 
         [p.id]: { answer: null, isCorrect: null } 
       }), {});
@@ -1212,7 +1212,7 @@ async updateGameState(roomId: string, gameState: GameState) {
             host: room.host,
             createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
             scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : undefined,
-            scores: room.scores ? Object.fromEntries(Object.entries(room.scores)) : {},
+            scores: room.scores ? (room.scores as Record<string, number>) : {},
           };
         })
       );

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, HydratedDocument } from 'mongoose';
 import { TriviaSettings } from '../../trivia/trivia.service';
 
 // export type GameRoomDocument = GameRoom & Document;
@@ -33,7 +33,9 @@ export class GameRoom {
   @Prop({ default: 'waiting' })
   status: 'waiting' | 'in-progress' | 'completed';
 
-  @Prop({ type: Map, of: Number, default: {} })
+  // @Prop({ type: Map, of: Number, default: {} })
+  // scores: Map<string, number>;
+  @Prop({ type: { type: Map, of: Number } })
   scores: Map<string, number>;
 
   @Prop()

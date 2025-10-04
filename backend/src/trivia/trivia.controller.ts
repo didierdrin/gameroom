@@ -2,11 +2,6 @@
 import { Controller, Get, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { TriviaService, Question, TriviaSettings } from './trivia.service';
 
-interface TriviaSettings {
-  questionCount: number;
-  difficulty: string;
-  category: string;
-}
 
 @Controller('trivia')
 export class TriviaController {
@@ -67,7 +62,7 @@ export class TriviaController {
         data: {
           questions,
           settings: {
-            count: questionCount,
+            questionCount,
             difficulty: selectedDifficulty,
             category: selectedCategory,
           }
