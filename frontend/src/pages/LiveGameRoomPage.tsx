@@ -1526,7 +1526,8 @@ const handleStartGame = () => {
       </div>
       <div className="flex flex-1 overflow-hidden">
         {showPlayers && (
-          <PlayerList
+         <div>
+           <PlayerList
             players={players}
             currentPlayerId={String(user!.id)}
             currentTurn={gameState?.currentTurn}
@@ -1541,6 +1542,7 @@ const handleStartGame = () => {
       >
         <XIcon size={16} />
       </button>
+         </div>
         )}
         <div className="flex-1 bg-gray-850">
           <div className="h-full p-2 sm:p-4">{renderGameContent()}</div>
