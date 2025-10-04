@@ -1,6 +1,33 @@
+
+// trivia.service.ts
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import axios from 'axios';
+import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
+
+export interface Question {
+  id: string;
+  text: string;
+  options: string[];
+  correctAnswer: string;
+  difficulty?: string;
+  category?: string;
+}
+
+export interface TriviaSettings {
+  questionCount: number;
+  difficulty: string;
+  category: string;
+}
+
+interface GeminiQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  explanation: string;
+}
+
 
 interface TriviaQuestion {
   question: string;
