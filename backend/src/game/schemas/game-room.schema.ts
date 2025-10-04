@@ -62,5 +62,5 @@ export class GameRoom {
   triviaSettings?: TriviaSettings;
 }
 
-// export const GameRoomSchema = SchemaFactory.createForClass(GameRoom);
+export const GameRoomSchema = SchemaFactory.createForClass(GameRoom);
 export type GameRoomDocument = HydratedDocument<GameRoom>;
