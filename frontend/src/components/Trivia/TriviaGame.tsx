@@ -131,7 +131,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
           <div className="mt-4">
             <h3 className="text-2xl">Final Scores:</h3>
             {Object.entries(gameState.triviaState?.scores || {}).map(([playerId, playerScore]) => (
-              <p key={playerId}>{playerId}: {playerScore}</p>
+              <p key={playerId}>{playerId}: {playerScore as any}</p>
             ))}
           </div>
         </div>

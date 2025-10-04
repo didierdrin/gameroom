@@ -1572,6 +1572,7 @@ const handleStartGame = () => {
         </div>
       )}
 
+      <div className="z-50 l-5">
       <MediaControls
         videoEnabled={videoEnabled && mediaAvailable.video}
         audioEnabled={audioEnabled && mediaAvailable.audio}
@@ -1590,6 +1591,7 @@ const handleStartGame = () => {
         mediaAvailable={mediaAvailable}
         isInitializingMedia={isInitializingMedia}
       />
+      </div>
 
       {/* Player Management Modal */}
       <PlayerManagementModal
