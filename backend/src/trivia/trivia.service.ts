@@ -97,7 +97,7 @@ export class TriviaService {
   };
 
   constructor() {
-    // Initialize Gemini AI - You'll need to set GEMINI_API_KEY in your environment
+    
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.warn('GEMINI_API_KEY not found. Falling back to OpenTDB API.');
@@ -112,13 +112,11 @@ export class TriviaService {
       // Use Gemini AI if available, otherwise fallback to OpenTDB
       if (this.model && settings) {
         return await this.generateQuestionsWithGemini(settings);
-      } else {
-        return await this.fetchQuestionsFromOpenTDB(settings?.questionCount || 10);
-      }
+      } 
     } catch (error) {
       console.error('Error getting questions:', error);
-      // Fallback to OpenTDB if Gemini fails
-      return await this.fetchQuestionsFromOpenTDB(settings?.questionCount || 10);
+      
+      
     }
   }
 
@@ -238,64 +236,6 @@ private getCategoryKeywords(category: string): string[] {
   return keywordMap[category] || [category];
 }
 
-// Update OpenTDB fallback to support categories
-private async fetchQuestionsFromOpenTDB(amount: number = 10, category?: string): Promise<Question[]> {
-  try {
-    let url = `https://opentdb.com/api.php?amount=${amount}&type=multiple`;
-    
-    // Map our categories to OpenTDB categories if possible
-    if (category) {
-      const categoryMap = {
-        science: 'science',
-        history: 'history',
-        geography: 'geography',
-        entertainment: 'entertainment',
-        sports: 'sports',
-        technology: 'science', // OpenTDB doesn't have pure technology category
-        // Add more mappings as needed
-      };
-      
-      const opentdbCategory = categoryMap[category];
-      if (opentdbCategory) {
-        url += `&category=${this.getOpenTDBCategoryId(opentdbCategory)}`;
-      }
-    }
-
-    const response = await axios.get(url);
-    console.log(`OpenTDB API call: ${url}, results: ${response.data.results?.length}`);
-
-    if (response.data.results) {
-      return response.data.results.map((q: any) => ({
-        id: crypto.randomUUID(),
-        text: this.decodeHtml(q.question),
-        options: this.shuffleArray([
-          ...q.incorrect_answers.map((a: string) => this.decodeHtml(a)),
-          this.decodeHtml(q.correct_answer),
-        ]),
-        correctAnswer: this.decodeHtml(q.correct_answer),
-        difficulty: q.difficulty,
-        category: q.category,
-      }));
-    }
-    return this.getFallbackQuestions(amount);
-  } catch (error) {
-    console.error('Error fetching from OpenTDB:', error);
-    return this.getFallbackQuestions(amount);
-  }
-}
-
-// Helper method for OpenTDB category IDs
-private getOpenTDBCategoryId(category: string): number {
-  const categoryIds = {
-    science: 17,
-    history: 23,
-    geography: 22,
-    entertainment: 11,
-    sports: 21,
-  };
-  
-  return categoryIds[category] || 9; // Default to general knowledge
-}
 
 
   private generatePrompt(category: string, subtopic: string, difficulty: string, previousQuestions: string[]): string {
@@ -375,6 +315,9 @@ Requirements:
     this.questionCache.delete(cacheKey);
   }
 }
+
+
+
 
 // // trivia.service.ts
 // import { Injectable } from '@nestjs/common';
