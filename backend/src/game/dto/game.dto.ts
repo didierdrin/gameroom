@@ -1,13 +1,3 @@
-// export class CreateGameDto {
-//     readonly name: string;
-//     readonly hostId: string;
-//     readonly isPrivate: boolean;
-//     readonly password?: string;
-//     scheduledTimeCombined?: string | Date;
-//     readonly gameType: string;
-//     readonly triviaTopic?: string; 
-//   }
-
 export interface CreateGameDto {
   name: string;
   gameType: string;
@@ -33,7 +23,7 @@ export interface CreateGameDto {
     readonly playerName: string;
     readonly password?: string;
     readonly scheduledTime?: string;
-    readonly joinAsPlayer?: boolean; // Add this new field
+    readonly joinAsPlayer?: boolean; 
   }
   
   export class RollDiceDto {

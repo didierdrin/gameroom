@@ -73,6 +73,12 @@ interface GameState {
   roomName: string;
   gameType: string;
   host?: string; 
+  // Trivia Sttings
+  triviaSettings?: {
+    questionCount: number; 
+    difficulty: string; 
+    category: string; 
+  }
   // Ludo-specific
   diceValue?: number;
   diceRolled?: boolean;
@@ -130,114 +136,137 @@ export class GameService {
     return this.triviaService.getQuestions({ questionCount: 10, difficulty: 'medium', category: topic || 'general' });
   }
 
-  async createGame(createGameDto: CreateGameDto) {
-    const validGameTypes = ['ludo', 'trivia', 'chess', 'uno', 'pictionary', 'sudoku'];
-    if (!validGameTypes.includes(createGameDto.gameType.toLowerCase())) {
-      throw new Error('Invalid game type');
-    }
-    const roomId = uuidv4();
-    let scheduledTimeCombined: Date | undefined;
-    if (createGameDto.scheduledTimeCombined) {
-      scheduledTimeCombined = new Date(createGameDto.scheduledTimeCombined);
-      if (isNaN(scheduledTimeCombined.getTime())) throw new Error('Invalid scheduled time format');
-      if (scheduledTimeCombined <= new Date()) throw new Error('Scheduled time must be in the future');
-    }
-    // Allow more than two users to join chess rooms (only two will be selected to play later)
-    const maxPlayers = createGameDto.gameType.toLowerCase() === 'chess' ? 10 : 4;
-    const gameRoomData: any = {
-      roomId,
-      name: createGameDto.name,
-      gameType: createGameDto.gameType.toLowerCase(),
-      host: createGameDto.hostId,
-      maxPlayers,
-      currentPlayers: 1,
-      isPrivate: createGameDto.isPrivate,
-      password: createGameDto.password,
-      status: 'waiting',
-      scheduledTimeCombined,
-      playerIds: [createGameDto.hostId],
-      createdAt: new Date(),
+
+async createGame(createGameDto: CreateGameDto) {
+  const validGameTypes = ['ludo', 'trivia', 'chess', 'uno', 'pictionary', 'sudoku'];
+  if (!validGameTypes.includes(createGameDto.gameType.toLowerCase())) {
+    throw new Error('Invalid game type');
+  }
+  
+  const roomId = uuidv4();
+  let scheduledTimeCombined: Date | undefined;
+  
+  if (createGameDto.scheduledTimeCombined) {
+    scheduledTimeCombined = new Date(createGameDto.scheduledTimeCombined);
+    if (isNaN(scheduledTimeCombined.getTime())) throw new Error('Invalid scheduled time format');
+    if (scheduledTimeCombined <= new Date()) throw new Error('Scheduled time must be in the future');
+  }
+  
+  // Allow more than two users to join chess rooms (only two will be selected to play later)
+  const maxPlayers = createGameDto.gameType.toLowerCase() === 'chess' ? 10 : 4;
+  
+  const gameRoomData: any = {
+    roomId,
+    name: createGameDto.name,
+    gameType: createGameDto.gameType.toLowerCase(),
+    host: createGameDto.hostId,
+    maxPlayers,
+    currentPlayers: 1,
+    isPrivate: createGameDto.isPrivate,
+    password: createGameDto.password,
+    status: 'waiting',
+    scheduledTimeCombined,
+    playerIds: [createGameDto.hostId],
+    createdAt: new Date(),
+  };
+
+  // Add triviaSettings if gameType is trivia 
+  if (createGameDto.gameType.toLowerCase() === 'trivia' && createGameDto.triviaSettings) {
+    gameRoomData.triviaSettings = {
+      questionCount: createGameDto.triviaSettings.questionCount,
+      difficulty: createGameDto.triviaSettings.difficulty,
+      category: createGameDto.triviaSettings.category,
     };
-
-    // Add triviaSettings if gameType is trivia
-    if (createGameDto.gameType.toLowerCase() === 'trivia' && createGameDto.triviaSettings) {
-      gameRoomData.triviaSettings = createGameDto.triviaSettings;
-    }
-
-    const gameRoom = new this.gameRoomModel(gameRoomData);
-    await gameRoom.save();
-    await this.initializeGameState(roomId, createGameDto.hostId, createGameDto.name, createGameDto.gameType);
-    console.log('Game created and initialized:', {
-      roomId,
-      gameType: createGameDto.gameType,
-      hostId: createGameDto.hostId,
-      maxPlayers: gameRoom.maxPlayers
-    });
-    return gameRoom;
+    
+    console.log('Storing trivia settings in game room:', gameRoomData.triviaSettings);
   }
 
-  private async initializeGameState(roomId: string, hostId: string, roomName: string, gameType: string) {
-    const colors = ['red', 'blue', 'green', 'yellow'];
-    let initialGameState: GameState;
+  const gameRoom = new this.gameRoomModel(gameRoomData);
+  await gameRoom.save();
+  
+  await this.initializeGameState(
+    roomId, 
+    createGameDto.hostId, 
+    createGameDto.name, 
+    createGameDto.gameType,
+    createGameDto.triviaSettings // Pass trivia settings to game state initialization
+  );
+  
+  console.log('Game created and initialized:', {
+    roomId,
+    gameType: createGameDto.gameType,
+    hostId: createGameDto.hostId,
+    maxPlayers: gameRoom.maxPlayers,
+    triviaSettings: gameRoom.triviaSettings
+  });
+  
+  return gameRoom;
+}
 
-    switch (gameType.toLowerCase()) {
-      case 'trivia':
-        initialGameState = {
-          roomId,
-          players: [{ id: hostId, name: hostId, score: 0 }],
-          currentTurn: hostId,
-          currentPlayer: 0,
-          gameStarted: false,
-          gameOver: false,
-          winner: null,
-          roomName,
-          gameType: gameType.toLowerCase(),
-          host: hostId,
-          triviaState: {
-            currentQuestionIndex: 0,
-            questions: [], // Questions will be loaded on startGame
-            scores: { [hostId]: 0 },
-            answers: { [hostId]: { answer: null, isCorrect: null } },
-            questionTimer: 30,
-          },
-        };
-        break;
+// Update initializeGameState to accept trivia settings
+private async initializeGameState(
+  roomId: string, 
+  hostId: string, 
+  roomName: string, 
+  gameType: string,
+  triviaSettings?: any
+) {
+  const colors = ['red', 'blue', 'green', 'yellow'];
+  let initialGameState: GameState;
 
-      default: // ludo, uno, pictionary, sudoku
-        initialGameState = {
-          roomId,
-          players: [{ 
-            id: hostId, 
-            name: hostId, 
-            color: colors[0], 
-            coins: [0, 0, 0, 0] 
-          }],
-          currentTurn: hostId,
-          currentPlayer: 0,
-          diceValue: 0,
-          diceRolled: false,
-          consecutiveSixes: 0,
-          coins: { [hostId]: [0, 0, 0, 0] },
-          gameStarted: false,
-          gameOver: false,
-          winner: null,
-          roomName,
-          gameType: gameType.toLowerCase(),
-          host: hostId,
-        };
-        console.log('Ludo game initialized:', {
-          roomId,
-          hostId,
-          currentTurn: initialGameState.currentTurn,
-          players: initialGameState.players.map((p: any) => ({ 
-            id: p.id, 
-            color: p.color,
-            coins: p.coins
-          }))
-        });
-    }
-    await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
+  switch (gameType.toLowerCase()) {
+    case 'trivia':
+      initialGameState = {
+        roomId,
+        players: [{ id: hostId, name: hostId, score: 0 }],
+        currentTurn: hostId,
+        currentPlayer: 0,
+        gameStarted: false,
+        gameOver: false,
+        winner: null,
+        roomName,
+        gameType: gameType.toLowerCase(),
+        host: hostId,
+        triviaState: {
+          currentQuestionIndex: 0,
+          questions: [], // Questions will be loaded on startGame
+          scores: { [hostId]: 0 },
+          answers: { [hostId]: { answer: null, isCorrect: null } },
+          questionTimer: 5,
+        },
+        // Store trivia settings in game state for frontend access
+        triviaSettings: triviaSettings
+      };
+      break;
+
+    default: // ludo, uno, pictionary, sudoku
+      initialGameState = {
+        roomId,
+        players: [{ 
+          id: hostId, 
+          name: hostId, 
+          color: colors[0], 
+          coins: [0, 0, 0, 0] 
+        }],
+        currentTurn: hostId,
+        currentPlayer: 0,
+        diceValue: 0,
+        diceRolled: false,
+        consecutiveSixes: 0,
+        coins: { [hostId]: [0, 0, 0, 0] },
+        gameStarted: false,
+        gameOver: false,
+        winner: null,
+        roomName,
+        gameType: gameType.toLowerCase(),
+        host: hostId,
+      };
   }
+  
+  await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
+}
+
+
 
   async joinGame(joinGameDto: JoinGameDto) {
     const gameRoom = await this.gameRoomModel.findOne({ roomId: joinGameDto.roomId });
@@ -711,49 +740,63 @@ export class GameService {
     }
   }
 
-  async startGame(roomId: string) {
-    try {
-      if (!this.server) {
-        throw new Error('Server instance not available');
-      }
   
-      const gameState = await this.getGameState(roomId);
+async startGame(roomId: string) {
+  try {
+    if (!this.server) {
+      throw new Error('Server instance not available');
+    }
+
+    const gameState = await this.getGameState(roomId);
+    
+    if (gameState.gameStarted) throw new Error('Game already started');
+    
+    const room = await this.getGameRoomById(roomId);
+    if (!room) throw new Error('Room not found');
+    
+    // Check minimum players
+    const minPlayers = room.gameType === 'chess' ? 2 : 1;
+    if (room.playerIds.length < minPlayers) {
+      throw new Error(`At least ${minPlayers} players required`);
+    }
+
+    gameState.gameStarted = true;
+    
+    // Initialize game-specific state
+    if (room.gameType === 'trivia') {
+      // Fetch trivia settings from room - FIX: Use actual settings from room
+      const triviaSettings: TriviaSettings = room.triviaSettings || {
+        questionCount: 10,
+        difficulty: 'medium',
+        category: 'general'
+      };
       
-      if (gameState.gameStarted) throw new Error('Game already started');
+      console.log('Fetching trivia questions with settings:', triviaSettings);
       
-      const room = await this.getGameRoomById(roomId);
-      if (!room) throw new Error('Room not found');
+      // Fetch questions using TriviaService with correct count and category
+      const questions = await this.triviaService.getQuestions(triviaSettings);
       
-      // Check minimum players
-      const minPlayers = room.gameType === 'chess' ? 2 : 1;
-      if (room.playerIds.length < minPlayers) {
-        throw new Error(`At least ${minPlayers} players required`);
+      // Validate questions are from the correct category
+      const categoryQuestions = questions.filter(q => 
+        q.category?.toLowerCase().includes(triviaSettings.category.toLowerCase())
+      );
+      
+      console.log(`Questions loaded: ${questions.length}, from category ${triviaSettings.category}: ${categoryQuestions.length}`);
+      
+      if (gameState.triviaState) {
+        // Use all questions or filter by category if needed
+        gameState.triviaState.questions = questions;
+        gameState.triviaState.currentQuestionIndex = 0;
+        gameState.triviaState.questionTimer = 30;
+        // Initialize answers for all players
+        gameState.players.forEach(player => {
+          gameState.triviaState!.answers[player.id] = { answer: null, isCorrect: null };
+        });
       }
-  
-      gameState.gameStarted = true;
       
-      // Initialize game-specific state
-      if (room.gameType === 'trivia') {
-        // Fetch trivia settings from room
-        const triviaSettings: TriviaSettings = room.triviaSettings || {
-          questionCount: 10,
-          difficulty: 'medium',
-          category: 'general'
-        };
-        
-        // Fetch questions using TriviaService
-        const questions = await this.triviaService.getQuestions(triviaSettings);
-        
-        if (gameState.triviaState) {
-          gameState.triviaState.questions = questions;
-          gameState.triviaState.currentQuestionIndex = 0;
-          gameState.triviaState.questionTimer = 30;
-          // Initialize answers for all players
-          gameState.players.forEach(player => {
-            gameState.triviaState!.answers[player.id] = { answer: null, isCorrect: null };
-          });
-        }
-      } else if (room.gameType === 'chess') {
+      // Store trivia settings in game state for frontend display
+      gameState.triviaSettings = triviaSettings;
+    } else if (room.gameType === 'chess') {
         // For chess, use the selected chess players
         if (gameState.chessPlayers) {
           gameState.currentTurn = gameState.chessPlayers.player1Id; // White starts
@@ -1470,7 +1513,6 @@ async restartGame(roomId: string, hostId: string) {
   return gameState;
 }
 
-// Add after line 110
 private async getPlayerName(playerId: string): Promise<string> {
   if (playerId.startsWith('ai-')) {
     return `AI ${playerId.split('-')[1]}`;
@@ -2923,3 +2965,123 @@ private async getPlayerName(playerId: string): Promise<string> {
 // }
 
 // }
+
+
+
+
+
+
+
+
+
+  // async createGame(createGameDto: CreateGameDto) {
+  //   const validGameTypes = ['ludo', 'trivia', 'chess', 'uno', 'pictionary', 'sudoku'];
+  //   if (!validGameTypes.includes(createGameDto.gameType.toLowerCase())) {
+  //     throw new Error('Invalid game type');
+  //   }
+  //   const roomId = uuidv4();
+  //   let scheduledTimeCombined: Date | undefined;
+  //   if (createGameDto.scheduledTimeCombined) {
+  //     scheduledTimeCombined = new Date(createGameDto.scheduledTimeCombined);
+  //     if (isNaN(scheduledTimeCombined.getTime())) throw new Error('Invalid scheduled time format');
+  //     if (scheduledTimeCombined <= new Date()) throw new Error('Scheduled time must be in the future');
+  //   }
+  //   // Allow more than two users to join chess rooms (only two will be selected to play later)
+  //   const maxPlayers = createGameDto.gameType.toLowerCase() === 'chess' ? 10 : 4;
+  //   const gameRoomData: any = {
+  //     roomId,
+  //     name: createGameDto.name,
+  //     gameType: createGameDto.gameType.toLowerCase(),
+  //     host: createGameDto.hostId,
+  //     maxPlayers,
+  //     currentPlayers: 1,
+  //     isPrivate: createGameDto.isPrivate,
+  //     password: createGameDto.password,
+  //     status: 'waiting',
+  //     scheduledTimeCombined,
+  //     playerIds: [createGameDto.hostId],
+  //     createdAt: new Date(),
+  //   };
+
+  //   // Add triviaSettings if gameType is trivia
+  //   if (createGameDto.gameType.toLowerCase() === 'trivia' && createGameDto.triviaSettings) {
+  //     gameRoomData.triviaSettings = createGameDto.triviaSettings;
+  //   }
+
+  //   const gameRoom = new this.gameRoomModel(gameRoomData);
+  //   await gameRoom.save();
+  //   await this.initializeGameState(roomId, createGameDto.hostId, createGameDto.name, createGameDto.gameType);
+  //   console.log('Game created and initialized:', {
+  //     roomId,
+  //     gameType: createGameDto.gameType,
+  //     hostId: createGameDto.hostId,
+  //     maxPlayers: gameRoom.maxPlayers
+  //   });
+  //   return gameRoom;
+  // }
+
+  // private async initializeGameState(roomId: string, hostId: string, roomName: string, gameType: string) {
+  //   const colors = ['red', 'blue', 'green', 'yellow'];
+  //   let initialGameState: GameState;
+
+  //   switch (gameType.toLowerCase()) {
+  //     case 'trivia':
+  //       initialGameState = {
+  //         roomId,
+  //         players: [{ id: hostId, name: hostId, score: 0 }],
+  //         currentTurn: hostId,
+  //         currentPlayer: 0,
+  //         gameStarted: false,
+  //         gameOver: false,
+  //         winner: null,
+  //         roomName,
+  //         gameType: gameType.toLowerCase(),
+  //         host: hostId,
+  //         triviaState: {
+  //           currentQuestionIndex: 0,
+  //           questions: [], // Questions will be loaded on startGame
+  //           scores: { [hostId]: 0 },
+  //           answers: { [hostId]: { answer: null, isCorrect: null } },
+  //           questionTimer: 30,
+  //         },
+  //       };
+  //       break;
+
+  //     default: // ludo, uno, pictionary, sudoku
+  //       initialGameState = {
+  //         roomId,
+  //         players: [{ 
+  //           id: hostId, 
+  //           name: hostId, 
+  //           color: colors[0], 
+  //           coins: [0, 0, 0, 0] 
+  //         }],
+  //         currentTurn: hostId,
+  //         currentPlayer: 0,
+  //         diceValue: 0,
+  //         diceRolled: false,
+  //         consecutiveSixes: 0,
+  //         coins: { [hostId]: [0, 0, 0, 0] },
+  //         gameStarted: false,
+  //         gameOver: false,
+  //         winner: null,
+  //         roomName,
+  //         gameType: gameType.toLowerCase(),
+  //         host: hostId,
+  //       };
+  //       console.log('Ludo game initialized:', {
+  //         roomId,
+  //         hostId,
+  //         currentTurn: initialGameState.currentTurn,
+  //         players: initialGameState.players.map((p: any) => ({ 
+  //           id: p.id, 
+  //           color: p.color,
+  //           coins: p.coins
+  //         }))
+  //       });
+  //   }
+  //   await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
+  // }
+
+
+  // In game.service.ts - Update the createGame method

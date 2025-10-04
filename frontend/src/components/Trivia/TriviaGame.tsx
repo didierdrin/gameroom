@@ -1,4 +1,4 @@
-// Updated /components/TriviaGame.tsx (minor updates to handle new question structure from Gemini)
+// /components/TriviaGame.tsx 
 import React, { useEffect, useState } from 'react';
 import { SocketType } from '../../SocketContext';
 import { Fireworks } from '../UI/Fireworks';

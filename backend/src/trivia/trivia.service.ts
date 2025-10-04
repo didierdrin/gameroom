@@ -122,83 +122,181 @@ export class TriviaService {
     }
   }
 
-  private async generateQuestionsWithGemini(settings: TriviaSettings): Promise<Question[]> {
-    const { questionCount, difficulty, category } = settings;
-    
-    // Check cache first
-    const cacheKey = `${category}_${difficulty}_${questionCount}`;
-    if (this.questionCache.has(cacheKey)) {
-      const cached = this.questionCache.get(cacheKey);
-      if (cached && cached.length >= questionCount) {
-        return this.shuffleArray(cached).slice(0, questionCount);
-      }
+  
+  // In trivia.service.ts - Update the generateQuestionsWithGemini method
+private async generateQuestionsWithGemini(settings: TriviaSettings): Promise<Question[]> {
+  const { questionCount, difficulty, category } = settings;
+  
+  // Check cache first - use a more specific cache key
+  const cacheKey = `${category}_${difficulty}_${questionCount}_${Date.now()}`; // Add timestamp for variety
+  if (this.questionCache.has(cacheKey)) {
+    const cached = this.questionCache.get(cacheKey);
+    if (cached && cached.length >= questionCount) {
+      const shuffled = this.shuffleArray(cached).slice(0, questionCount);
+      console.log(`Using cached questions for ${category}: ${shuffled.length} questions`);
+      return shuffled;
     }
-
-    const questions: Question[] = [];
-    const usedSubtopics = new Set<string>();
-    const previousQuestions = new Set<string>();
-    
-    // Get subtopics for the category
-    const subtopics = this.CATEGORY_SUBTOPICS[category] || this.CATEGORY_SUBTOPICS.general;
-
-    for (let i = 0; i < questionCount; i++) {
-      try {
-        // Select a subtopic
-        let availableSubtopics = subtopics.filter(st => !usedSubtopics.has(st));
-        if (availableSubtopics.length === 0) {
-          usedSubtopics.clear();
-          availableSubtopics = subtopics;
-        }
-        const subtopic = availableSubtopics[Math.floor(Math.random() * availableSubtopics.length)];
-        usedSubtopics.add(subtopic);
-
-        // Generate prompt
-        const prompt = this.generatePrompt(category, subtopic, difficulty, Array.from(previousQuestions));
-        
-        // Call Gemini AI
-        const result = await this.model.generateContent(prompt);
-        const response = await result.response;
-        let text = response.text();
-        
-        // Clean and parse response
-        text = text.replace(/```json\s*/g, '').replace(/\s*```/g, '').trim();
-        const questionData: GeminiQuestion = JSON.parse(text);
-        
-        // Create question object
-        const question: Question = {
-          id: crypto.randomUUID(),
-          text: questionData.question,
-          options: this.shuffleArray([...questionData.options]),
-          correctAnswer: questionData.options[0], // First option is always correct in Gemini response
-          difficulty: difficulty,
-          category: `${this.capitalizeFirst(category)} - ${subtopic}`
-        };
-        
-        questions.push(question);
-        previousQuestions.add(questionData.question);
-        
-        // Add small delay to avoid rate limiting
-        if (i < questionCount - 1) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      } catch (error) {
-        console.error(`Error generating question ${i + 1}:`, error);
-        // Continue to next question or use fallback
-      }
-    }
-
-    // If we couldn't generate enough questions, supplement with OpenTDB
-    if (questions.length < questionCount) {
-      const remaining = questionCount - questions.length;
-      const fallbackQuestions = await this.fetchQuestionsFromOpenTDB(remaining);
-      questions.push(...fallbackQuestions);
-    }
-
-    // Cache the questions
-    this.questionCache.set(cacheKey, questions);
-    
-    return questions.slice(0, questionCount);
   }
+
+  const questions: Question[] = [];
+  const usedSubtopics = new Set<string>();
+  const previousQuestions = new Set<string>();
+  
+  // Get subtopics for the category
+  const subtopics = this.CATEGORY_SUBTOPICS[category] || this.CATEGORY_SUBTOPICS.general;
+
+  for (let i = 0; i < questionCount; i++) {
+    try {
+      // Select a subtopic
+      let availableSubtopics = subtopics.filter(st => !usedSubtopics.has(st));
+      if (availableSubtopics.length === 0) {
+        usedSubtopics.clear();
+        availableSubtopics = subtopics;
+      }
+      const subtopic = availableSubtopics[Math.floor(Math.random() * availableSubtopics.length)];
+      usedSubtopics.add(subtopic);
+
+      // Generate prompt with strict category enforcement
+      const prompt = this.generatePrompt(category, subtopic, difficulty, Array.from(previousQuestions));
+      
+      // Call Gemini AI
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      let text = response.text();
+      
+      // Clean and parse response
+      text = text.replace(/```json\s*/g, '').replace(/\s*```/g, '').trim();
+      const questionData: GeminiQuestion = JSON.parse(text);
+      
+      // Validate question belongs to the requested category
+      const questionText = questionData.question.toLowerCase();
+      const categoryKeywords = this.getCategoryKeywords(category);
+      const isCategoryRelevant = categoryKeywords.some(keyword => 
+        questionText.includes(keyword)
+      );
+      
+      if (!isCategoryRelevant) {
+        console.warn(`Question rejected - not relevant to category ${category}: ${questionText}`);
+        i--; // Retry this iteration
+        continue;
+      }
+      
+      // Create question object
+      const question: Question = {
+        id: crypto.randomUUID(),
+        text: questionData.question,
+        options: this.shuffleArray([...questionData.options]),
+        correctAnswer: questionData.options[0], // First option is always correct in Gemini response
+        difficulty: difficulty,
+        category: `${this.capitalizeFirst(category)} - ${subtopic}`
+      };
+      
+      questions.push(question);
+      previousQuestions.add(questionData.question);
+      
+      // Add small delay to avoid rate limiting
+      if (i < questionCount - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Increased delay for better quality
+      }
+    } catch (error) {
+      console.error(`Error generating question ${i + 1}:`, error);
+      // Continue to next question or use fallback
+    }
+  }
+
+  // If we couldn't generate enough questions, supplement with OpenTDB
+  if (questions.length < questionCount) {
+    const remaining = questionCount - questions.length;
+    console.log(`Generating ${remaining} fallback questions for ${category}`);
+    const fallbackQuestions = await this.fetchQuestionsFromOpenTDB(remaining, category);
+    questions.push(...fallbackQuestions);
+  }
+
+  // Cache the questions with a shorter TTL for variety between games
+  this.questionCache.set(cacheKey, questions);
+  // Set cache expiration (1 hour) to ensure variety
+  setTimeout(() => {
+    this.questionCache.delete(cacheKey);
+  }, 60 * 60 * 1000);
+  
+  console.log(`Generated ${questions.length} questions for category: ${category}`);
+  return questions.slice(0, questionCount);
+}
+
+// Add helper method for category keywords
+private getCategoryKeywords(category: string): string[] {
+  const keywordMap = {
+    science: ['science', 'scientific', 'physics', 'chemistry', 'biology', 'astronomy', 'experiment'],
+    history: ['history', 'historical', 'ancient', 'century', 'war', 'empire', 'revolution'],
+    geography: ['geography', 'country', 'city', 'capital', 'mountain', 'river', 'continent'],
+    entertainment: ['movie', 'film', 'music', 'celebrity', 'actor', 'singer', 'entertainment'],
+    sports: ['sports', 'game', 'player', 'team', 'championship', 'olympic', 'athlete'],
+    technology: ['technology', 'computer', 'software', 'internet', 'digital', 'ai', 'robot'],
+    // Add more categories as needed
+  };
+  
+  return keywordMap[category] || [category];
+}
+
+// Update OpenTDB fallback to support categories
+private async fetchQuestionsFromOpenTDB(amount: number = 10, category?: string): Promise<Question[]> {
+  try {
+    let url = `https://opentdb.com/api.php?amount=${amount}&type=multiple`;
+    
+    // Map our categories to OpenTDB categories if possible
+    if (category) {
+      const categoryMap = {
+        science: 'science',
+        history: 'history',
+        geography: 'geography',
+        entertainment: 'entertainment',
+        sports: 'sports',
+        technology: 'science', // OpenTDB doesn't have pure technology category
+        // Add more mappings as needed
+      };
+      
+      const opentdbCategory = categoryMap[category];
+      if (opentdbCategory) {
+        url += `&category=${this.getOpenTDBCategoryId(opentdbCategory)}`;
+      }
+    }
+
+    const response = await axios.get(url);
+    console.log(`OpenTDB API call: ${url}, results: ${response.data.results?.length}`);
+
+    if (response.data.results) {
+      return response.data.results.map((q: any) => ({
+        id: crypto.randomUUID(),
+        text: this.decodeHtml(q.question),
+        options: this.shuffleArray([
+          ...q.incorrect_answers.map((a: string) => this.decodeHtml(a)),
+          this.decodeHtml(q.correct_answer),
+        ]),
+        correctAnswer: this.decodeHtml(q.correct_answer),
+        difficulty: q.difficulty,
+        category: q.category,
+      }));
+    }
+    return this.getFallbackQuestions(amount);
+  } catch (error) {
+    console.error('Error fetching from OpenTDB:', error);
+    return this.getFallbackQuestions(amount);
+  }
+}
+
+// Helper method for OpenTDB category IDs
+private getOpenTDBCategoryId(category: string): number {
+  const categoryIds = {
+    science: 17,
+    history: 23,
+    geography: 22,
+    entertainment: 11,
+    sports: 21,
+  };
+  
+  return categoryIds[category] || 9; // Default to general knowledge
+}
+
 
   private generatePrompt(category: string, subtopic: string, difficulty: string, previousQuestions: string[]): string {
     const difficultyPrompts = {

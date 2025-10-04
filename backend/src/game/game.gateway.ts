@@ -211,28 +211,7 @@ export class GameGateway {
     }
   }
 
-  // @SubscribeMessage('startGame')
-  // async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
-  //   try {
-  //     console.log('Starting game:', data);
-  //     const gameState = await this.gameService.startGame(data.roomId, this.triviaService); // Pass triviaService to GameService
-  //     console.log('Game started, emitting state:', {
-  //       roomId: data.roomId,
-  //       gameType: gameState.gameType,
-  //       currentTurn: gameState.currentTurn,
-  //       gameStarted: gameState.gameStarted
-  //     });
-  //     this.server.to(data.roomId).emit('gameState', {
-  //       ...gameState,
-  //       gameStarted: true,
-  //     });
-  //     const rooms = await this.gameService.getActiveGameRooms();
-  //     this.server.emit('gameRoomsList', { rooms });
-  //   } catch (error) {
-  //     console.error('Start game error:', error.message);
-  //     client.emit('error', { message: error.message, type: 'startGameError' });
-  //   }
-  // }
+
 
   @SubscribeMessage('startGame')
 async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
@@ -577,3 +556,27 @@ async handleGetRoomInfo(@MessageBody() data: { roomId: string }, @ConnectedSocke
 
 
 
+
+
+  // @SubscribeMessage('startGame')
+  // async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
+  //   try {
+  //     console.log('Starting game:', data);
+  //     const gameState = await this.gameService.startGame(data.roomId, this.triviaService); // Pass triviaService to GameService
+  //     console.log('Game started, emitting state:', {
+  //       roomId: data.roomId,
+  //       gameType: gameState.gameType,
+  //       currentTurn: gameState.currentTurn,
+  //       gameStarted: gameState.gameStarted
+  //     });
+  //     this.server.to(data.roomId).emit('gameState', {
+  //       ...gameState,
+  //       gameStarted: true,
+  //     });
+  //     const rooms = await this.gameService.getActiveGameRooms();
+  //     this.server.emit('gameRoomsList', { rooms });
+  //   } catch (error) {
+  //     console.error('Start game error:', error.message);
+  //     client.emit('error', { message: error.message, type: 'startGameError' });
+  //   }
+  // }

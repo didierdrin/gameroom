@@ -1,10 +1,40 @@
-// Complete CreateGameRoomPage.tsx
+// CreateGameRoomPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
 import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSocket } from '../SocketContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
+
+export const createTriviaGame = (
+  socket: any, 
+  user: any, 
+  triviaSettings: {
+    questionCount: number;
+    difficulty: string;
+    category: string;
+  },
+  roomName: string = 'Trivia Game',
+  isPrivate: boolean = false
+) => {
+  if (!socket || !user) {
+    console.error('Socket or user not available');
+    return;
+  }
+
+  const gameRoomData = {
+    name: roomName,
+    gameType: 'trivia',
+    hostId: user.id,
+    isPrivate: isPrivate,
+    triviaSettings: triviaSettings
+  };
+
+  console.log('Creating trivia game:', gameRoomData);
+  socket.emit('createGame', gameRoomData);
+};
+
 
 interface CreateGameRoomPageProps {
   onGameCreated?: () => void;
@@ -253,151 +283,302 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  //   e.preventDefault();
 
-    // Validate required fields
-    if (!gameType) {
-      alert('Please select a game type');
-      return;
-    }
+  //   // Validate required fields
+  //   if (!gameType) {
+  //     alert('Please select a game type');
+  //     return;
+  //   }
 
-    if (!roomName.trim()) {
-      alert('Please enter a room name');
-      return;
-    }
+  //   if (!roomName.trim()) {
+  //     alert('Please enter a room name');
+  //     return;
+  //   }
 
-    if (!user) {
-      alert('Please login to create a game room');
-      navigate('/login');
-      return;
-    }
+  //   if (!user) {
+  //     alert('Please login to create a game room');
+  //     navigate('/login');
+  //     return;
+  //   }
 
-    if (privacy === 'private' && !password.trim()) {
-      alert('Please enter a password for private room');
-      return;
-    }
+  //   if (privacy === 'private' && !password.trim()) {
+  //     alert('Please enter a password for private room');
+  //     return;
+  //   }
 
-    if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
-      alert('Please select both date and time for scheduled games');
-      return;
-    }
+  //   if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
+  //     alert('Please select both date and time for scheduled games');
+  //     return;
+  //   }
 
+  //   if (!socket) {
+  //     alert("Connection error. Please refresh and try again.");
+  //     return;
+  //   }
+
+  //   setIsLoading(true);
+
+  //   const scheduledTimeCombined = (scheduledDate && scheduledTime)
+  //     ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+  //     : undefined;
+
+  //   const gameRoomData: GameRoomData = {
+  //     name: roomName,
+  //     gameType: gameType.trim().toLowerCase(),
+  //     maxPlayers: playerLimit,
+  //     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
+  //     password: privacy === 'private' ? password : undefined,
+  //     hostId: String(user.id),
+  //     hostName: user.username,
+  //     scheduledTimeCombined,
+  //     description: description.trim() || undefined,
+  //     enableVideoChat,
+  //     enableVoiceChat,
+  //     allowSpectators,
+  //   };
+
+  //   // Add trivia settings if game type is trivia
+  //   if (gameType === 'trivia') {
+  //     gameRoomData.triviaSettings = {
+  //       questionCount: triviaQuestionCount,
+  //       difficulty: triviaDifficulty,
+  //       category: triviaCategory,
+  //     };
+  //   }
+
+  //   try {
+  //     if (!socket) {
+  //       throw new Error("Connection error. Please refresh and try again.");
+  //     }
+
+  //     let responded = false;
+  //     const timeout = setTimeout(() => {
+  //       if (responded || !isMountedRef.current) return;
+  //       responded = true;
+  //       setIsLoading(false);
+  //       alert('Request timed out. Please try again.');
+  //     }, 15000);
+
+  //     const handleGameCreated = async (game: any) => {
+  //       if (responded || !isMountedRef.current) return;
+  //       responded = true;
+  //       clearTimeout(timeout);
+  //       setIsLoading(false);
+        
+  //       console.log('Game created successfully:', game);
+        
+  //       setCreatedGameData(game);
+        
+  //       // Automatically join the host as a player for all games
+  //       if (game?.roomId) {
+  //         console.log('Attempting to auto-join host as player...');
+          
+  //         await new Promise(resolve => setTimeout(resolve, 3000));
+          
+  //         const joinSuccess = await joinHostAsPlayer(
+  //           game.roomId, 
+  //           privacy === 'private' ? password : undefined
+  //         );
+          
+  //         if (!joinSuccess) {
+  //           console.warn('Host auto-join failed, but continuing with game creation');
+  //         } else {
+  //           console.log('Host successfully joined as player');
+  //         }
+  //       }
+        
+  //       // Check if this is an invite-only room for playNow mode
+  //       if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
+  //         const baseUrl = window.location.origin;
+  //         const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
+  //         setInviteUrl(gameUrl);
+  //         setShowInviteModal(true);
+  //       } else {
+  //         if (gameMode === 'playNow' && game?.roomId) {
+  //           navigate(`/game-room/${game.roomId}`);
+  //         } else {
+  //           navigate('/my-game-rooms');
+  //           console.log('Game scheduled successfully!');
+  //         }
+          
+  //         if (onGameCreated) onGameCreated();
+  //       }
+  //     };
+
+  //     const handleError = (error: any) => {
+  //       if (responded || !isMountedRef.current) return;
+  //       responded = true;
+  //       clearTimeout(timeout);
+  //       setIsLoading(false);
+  //       console.error('Game creation error:', error);
+  //       alert(error.message || 'Failed to create game room');
+  //     };
+
+  //     socket.once('gameCreated', handleGameCreated);
+  //     socket.once('error', handleError);
+  //     socket.emit('createGame', gameRoomData);
+
+  //   } catch (error) {
+  //     if (isMountedRef.current) {
+  //       setIsLoading(false);
+  //       alert('Failed to create game room. Please try again.');
+  //       console.error('Create game error:', error);
+  //     }
+  //   }
+  // };
+
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+
+  // Validate required fields
+  if (!gameType) {
+    alert('Please select a game type');
+    return;
+  }
+
+  if (!roomName.trim()) {
+    alert('Please enter a room name');
+    return;
+  }
+
+  if (!user) {
+    alert('Please login to create a game room');
+    navigate('/login');
+    return;
+  }
+
+  if (privacy === 'private' && !password.trim()) {
+    alert('Please enter a password for private room');
+    return;
+  }
+
+  if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
+    alert('Please select both date and time for scheduled games');
+    return;
+  }
+
+  if (!socket) {
+    alert("Connection error. Please refresh and try again.");
+    return;
+  }
+
+  setIsLoading(true);
+
+  const scheduledTimeCombined = (scheduledDate && scheduledTime)
+    ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+    : undefined;
+
+  // Create the base game room data
+  const gameRoomData: any = {
+    name: roomName,
+    gameType: gameType.trim().toLowerCase(),
+    maxPlayers: playerLimit,
+    isPrivate: privacy === 'private' || privacy === 'inviteOnly',
+    password: privacy === 'private' ? password : undefined,
+    hostId: String(user.id),
+    hostName: user.username,
+    scheduledTimeCombined,
+    description: description.trim() || undefined,
+    enableVideoChat,
+    enableVoiceChat,
+    allowSpectators,
+  };
+
+  // Add trivia settings if game type is trivia - FIXED VERSION
+  if (gameType === 'trivia') {
+    gameRoomData.triviaSettings = {
+      questionCount: triviaQuestionCount,
+      difficulty: triviaDifficulty,
+      category: triviaCategory,
+    };
+    
+    console.log('Creating trivia game with settings:', gameRoomData.triviaSettings);
+  }
+
+  try {
     if (!socket) {
-      alert("Connection error. Please refresh and try again.");
-      return;
+      throw new Error("Connection error. Please refresh and try again.");
     }
 
-    setIsLoading(true);
+    let responded = false;
+    const timeout = setTimeout(() => {
+      if (responded || !isMountedRef.current) return;
+      responded = true;
+      setIsLoading(false);
+      alert('Request timed out. Please try again.');
+    }, 15000);
 
-    const scheduledTimeCombined = (scheduledDate && scheduledTime)
-      ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
-      : undefined;
-
-    const gameRoomData: GameRoomData = {
-      name: roomName,
-      gameType: gameType.trim().toLowerCase(),
-      maxPlayers: playerLimit,
-      isPrivate: privacy === 'private' || privacy === 'inviteOnly',
-      password: privacy === 'private' ? password : undefined,
-      hostId: String(user.id),
-      hostName: user.username,
-      scheduledTimeCombined,
-      description: description.trim() || undefined,
-      enableVideoChat,
-      enableVoiceChat,
-      allowSpectators,
+    const handleGameCreated = async (game: any) => {
+      if (responded || !isMountedRef.current) return;
+      responded = true;
+      clearTimeout(timeout);
+      setIsLoading(false);
+      
+      console.log('Game created successfully:', game);
+      
+      setCreatedGameData(game);
+      
+      // Automatically join the host as a player for all games
+      if (game?.roomId) {
+        console.log('Attempting to auto-join host as player...');
+        
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        const joinSuccess = await joinHostAsPlayer(
+          game.roomId, 
+          privacy === 'private' ? password : undefined
+        );
+        
+        if (!joinSuccess) {
+          console.warn('Host auto-join failed, but continuing with game creation');
+        } else {
+          console.log('Host successfully joined as player');
+        }
+      }
+      
+      // Check if this is an invite-only room for playNow mode
+      if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
+        const baseUrl = window.location.origin;
+        const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
+        setInviteUrl(gameUrl);
+        setShowInviteModal(true);
+      } else {
+        if (gameMode === 'playNow' && game?.roomId) {
+          navigate(`/game-room/${game.roomId}`);
+        } else {
+          navigate('/my-game-rooms');
+          console.log('Game scheduled successfully!');
+        }
+        
+        if (onGameCreated) onGameCreated();
+      }
     };
 
-    // Add trivia settings if game type is trivia
-    if (gameType === 'trivia') {
-      gameRoomData.triviaSettings = {
-        questionCount: triviaQuestionCount,
-        difficulty: triviaDifficulty,
-        category: triviaCategory,
-      };
+    const handleError = (error: any) => {
+      if (responded || !isMountedRef.current) return;
+      responded = true;
+      clearTimeout(timeout);
+      setIsLoading(false);
+      console.error('Game creation error:', error);
+      alert(error.message || 'Failed to create game room');
+    };
+
+    socket.once('gameCreated', handleGameCreated);
+    socket.once('error', handleError);
+    
+    console.log('Emitting createGame with data:', gameRoomData);
+    socket.emit('createGame', gameRoomData);
+
+  } catch (error) {
+    if (isMountedRef.current) {
+      setIsLoading(false);
+      alert('Failed to create game room. Please try again.');
+      console.error('Create game error:', error);
     }
-
-    try {
-      if (!socket) {
-        throw new Error("Connection error. Please refresh and try again.");
-      }
-
-      let responded = false;
-      const timeout = setTimeout(() => {
-        if (responded || !isMountedRef.current) return;
-        responded = true;
-        setIsLoading(false);
-        alert('Request timed out. Please try again.');
-      }, 15000);
-
-      const handleGameCreated = async (game: any) => {
-        if (responded || !isMountedRef.current) return;
-        responded = true;
-        clearTimeout(timeout);
-        setIsLoading(false);
-        
-        console.log('Game created successfully:', game);
-        
-        setCreatedGameData(game);
-        
-        // Automatically join the host as a player for all games
-        if (game?.roomId) {
-          console.log('Attempting to auto-join host as player...');
-          
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          
-          const joinSuccess = await joinHostAsPlayer(
-            game.roomId, 
-            privacy === 'private' ? password : undefined
-          );
-          
-          if (!joinSuccess) {
-            console.warn('Host auto-join failed, but continuing with game creation');
-          } else {
-            console.log('Host successfully joined as player');
-          }
-        }
-        
-        // Check if this is an invite-only room for playNow mode
-        if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
-          const baseUrl = window.location.origin;
-          const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
-          setInviteUrl(gameUrl);
-          setShowInviteModal(true);
-        } else {
-          if (gameMode === 'playNow' && game?.roomId) {
-            navigate(`/game-room/${game.roomId}`);
-          } else {
-            navigate('/my-game-rooms');
-            console.log('Game scheduled successfully!');
-          }
-          
-          if (onGameCreated) onGameCreated();
-        }
-      };
-
-      const handleError = (error: any) => {
-        if (responded || !isMountedRef.current) return;
-        responded = true;
-        clearTimeout(timeout);
-        setIsLoading(false);
-        console.error('Game creation error:', error);
-        alert(error.message || 'Failed to create game room');
-      };
-
-      socket.once('gameCreated', handleGameCreated);
-      socket.once('error', handleError);
-      socket.emit('createGame', gameRoomData);
-
-    } catch (error) {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-        alert('Failed to create game room. Please try again.');
-        console.error('Create game error:', error);
-      }
-    }
-  };
+  }
+};
 
   return (
     <div className="p-6 overflow-y-auto h-screen pb-20">
