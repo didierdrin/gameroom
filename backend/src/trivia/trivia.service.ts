@@ -100,7 +100,7 @@ export class TriviaService {
     
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.warn('GEMINI_API_KEY not found. Falling back to OpenTDB API.');
+      console.warn('GEMINI_API_KEY not found.');
     } else {
       this.genAI = new GoogleGenerativeAI(apiKey);
       this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
@@ -109,17 +109,20 @@ export class TriviaService {
 
   async getQuestions(settings?: TriviaSettings): Promise<Question[]> {
     try {
-      // Use Gemini AI if available, 
-      if (this.model && settings) {
-        return await this.generateQuestionsWithGemini(settings);
-      } 
+      // Use Gemini AI only - throw error if not available
+      if (!this.model) {
+        throw new Error('Gemini AI model not available. Please check GEMINI_API_KEY.');
+      }
+      
+      if (!settings) {
+        throw new Error('Trivia settings are required to generate questions.');
+      }
+      
+      return await this.generateQuestionsWithGemini(settings);
     } catch (error) {
       console.error('Error getting questions:', error);
-      if (this.model && settings) {
-        return await this.generateQuestionsWithGemini(settings);
-      } 
-      
-      
+      // Re-throw the error since you don't want fallbacks
+      throw error;
     }
   }
 
