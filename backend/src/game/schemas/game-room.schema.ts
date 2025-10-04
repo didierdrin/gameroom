@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { TriviaSettings } from '../../trivia/trivia.service';
 
-export type GameRoomDocument = GameRoom & Document;
+// export type GameRoomDocument = GameRoom & Document;
 
 @Schema({ timestamps: true })
 export class GameRoom {
@@ -56,7 +57,10 @@ export class GameRoom {
 
   @Prop({ type: Date, default: Date.now })
   updatedAt: Date;
+
+  @Prop({ type: Object, required: false })
+  triviaSettings?: TriviaSettings;
 }
 
-export const GameRoomSchema = SchemaFactory.createForClass(GameRoom);
-
+// export const GameRoomSchema = SchemaFactory.createForClass(GameRoom);
+export type GameRoomDocument = HydratedDocument<GameRoom>;

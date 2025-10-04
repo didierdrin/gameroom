@@ -1,6 +1,6 @@
-// Complete /src/trivia/trivia.controller.ts (already complete, no changes needed)
+// trivia.controller.ts
 import { Controller, Get, Query, HttpException, HttpStatus } from '@nestjs/common';
-import { TriviaService } from './trivia.service';
+import { TriviaService, Question, TriviaSettings } from './trivia.service';
 
 interface TriviaSettings {
   questionCount: number;
@@ -13,11 +13,11 @@ export class TriviaController {
   constructor(private readonly triviaService: TriviaService) {}
 
   @Get('questions')
-  async getQuestions(
+  async getQuestions( 
     @Query('count') count?: string,
     @Query('difficulty') difficulty?: string,
     @Query('category') category?: string,
-  ) {
+  ): Promise<{ success: true; data: { questions: Question[]; settings: TriviaSettings } }> {
     try {
       // Parse and validate parameters
       const questionCount = count ? parseInt(count, 10) : 10;

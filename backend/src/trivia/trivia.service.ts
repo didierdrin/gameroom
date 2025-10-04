@@ -1,10 +1,10 @@
-// Complete /src/trivia/trivia.service.ts 
+// trivia.service.ts
 import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
-interface Question {
+export interface Question {
   id: string;
   text: string;
   options: string[];
@@ -13,7 +13,7 @@ interface Question {
   category?: string;
 }
 
-interface TriviaSettings {
+export interface TriviaSettings {
   questionCount: number;
   difficulty: string;
   category: string;

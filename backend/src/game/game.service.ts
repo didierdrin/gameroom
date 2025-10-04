@@ -733,7 +733,7 @@ export class GameService {
       gameState.gameStarted = true;
       
       // Initialize game-specific state
-     if (room.gameType === 'trivia') {
+      if (room.gameType === 'trivia') {
         // Fetch trivia settings from room
         const triviaSettings: TriviaSettings = room.triviaSettings || {
           questionCount: 10,
