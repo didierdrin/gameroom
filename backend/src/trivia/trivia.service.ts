@@ -115,7 +115,7 @@ export class TriviaService {
       } 
     } catch (error) {
       console.error('Error getting questions:', error);
-      
+      return await this.generateQuestionsWithGemini(settings);      
       
     }
   }
@@ -202,12 +202,11 @@ private async generateQuestionsWithGemini(settings: TriviaSettings): Promise<Que
     }
   }
 
-  // If we couldn't generate enough questions, supplement with OpenTDB
+  // If we couldn't generate enough questions, don't supplement with OpenTDB
   if (questions.length < questionCount) {
     const remaining = questionCount - questions.length;
     console.log(`Generating ${remaining} fallback questions for ${category}`);
-    const fallbackQuestions = await this.fetchQuestionsFromOpenTDB(remaining, category);
-    questions.push(...fallbackQuestions);
+    
   }
 
   // Cache the questions with a shorter TTL for variety between games
