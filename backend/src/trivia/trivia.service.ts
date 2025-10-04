@@ -109,19 +109,22 @@ export class TriviaService {
 
   async getQuestions(settings?: TriviaSettings): Promise<Question[]> {
     try {
-      // Use Gemini AI if available, otherwise fallback to OpenTDB
+      // Use Gemini AI if available, 
       if (this.model && settings) {
         return await this.generateQuestionsWithGemini(settings);
       } 
     } catch (error) {
       console.error('Error getting questions:', error);
-      return await this.generateQuestionsWithGemini(settings);      
+      if (this.model && settings) {
+        return await this.generateQuestionsWithGemini(settings);
+      } 
+      
       
     }
   }
 
   
-  // In trivia.service.ts - Update the generateQuestionsWithGemini method
+  // In trivia.service.ts
 private async generateQuestionsWithGemini(settings: TriviaSettings): Promise<Question[]> {
   const { questionCount, difficulty, category } = settings;
   
