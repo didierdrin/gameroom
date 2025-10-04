@@ -1538,7 +1538,7 @@ const handleStartGame = () => {
           />
           <button
         onClick={() => setShowPlayers(false)}
-        className="sm:hidden absolute top-2 left-2 p-1 bg-gray-800 rounded-full"
+        className="sm:hidden absolute top-2 left-2 p-1 bg-gray-800 rounded-full z-50"
       >
         <XIcon size={16} />
       </button>
