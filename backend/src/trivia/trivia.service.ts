@@ -236,7 +236,7 @@ private getCategoryKeywords(category: string): string[] {
     entertainment: ['movie', 'film', 'music', 'celebrity', 'actor', 'singer', 'entertainment'],
     sports: ['sports', 'game', 'player', 'team', 'championship', 'olympic', 'athlete'],
     technology: ['technology', 'computer', 'software', 'internet', 'digital', 'ai', 'robot'],
-    // Add more categories as needed
+    
   };
   
   return keywordMap[category] || [category];
@@ -252,7 +252,7 @@ private getCategoryKeywords(category: string): string[] {
     };
 
     return `
-${difficultyPrompts[difficulty] || difficultyPrompts.medium} about ${category} focusing on ${subtopic}.
+${difficultyPrompts[difficulty] || difficultyPrompts.medium} about ${category}.
 ${previousQuestions.length > 0 ? `The question should be different from these: ${previousQuestions.slice(-3).join(', ')}` : ''}
 
 Format the response EXACTLY as JSON:
@@ -325,7 +325,7 @@ Requirements:
 
 
 
-// // trivia.service.ts
+// // trivia.service.ts focusing on ${subtopic}
 // import { Injectable } from '@nestjs/common';
 // import axios from 'axios';
 
