@@ -6,6 +6,7 @@ import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { ChessModule } from './chess/chess.module';
 import { TriviaController } from './trivia/trivia.controller';
+import { TriviaModule } from './trivia/trivia.module';
 
 @Module({
   imports: [
@@ -13,8 +14,9 @@ import { TriviaController } from './trivia/trivia.controller';
     GameModule,
     UserModule,
     AuthModule,
-    // ChessModule,
+    TriviaModule,
   ],
-  controllers: [TriviaController],
+  controllers: [],
+  providers: [], 
 })
 export class AppModule {}
