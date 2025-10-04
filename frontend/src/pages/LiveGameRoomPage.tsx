@@ -1535,6 +1535,12 @@ const handleStartGame = () => {
             mutedPlayers={mutedPlayers}
             playerIdToUsername={playerIdToUsername}
           />
+          <button
+        onClick={() => setShowPlayers(false)}
+        className="sm:hidden absolute top-2 right-2 p-1 bg-gray-800 rounded-full"
+      >
+        <XIcon size={16} />
+      </button>
         )}
         <div className="flex-1 bg-gray-850">
           <div className="h-full p-2 sm:p-4">{renderGameContent()}</div>
