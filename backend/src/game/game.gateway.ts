@@ -5,7 +5,7 @@ import { GameService } from './game.service';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
 import { UserService } from '../user/user.service';
 import { ChessService } from 'src/chess/chess.service';
-import { TriviaService } from './trivia/trivia.service'; // Add import
+import { TriviaService } from '../trivia/trivia.service'; // Add import
 
 @WebSocketGateway({ 
   cors: { 
