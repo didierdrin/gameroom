@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom'; // Added import
 import { Users, Lock, Unlock, Clock } from 'lucide-react';
 import { useUsername } from '../../hooks/useUsername';
-import { useAvatar } from '../hooks/useAvatar';
+import { useAvatar } from '../../hooks/useAvatar';
 
 interface GameRoomCardProps {
   gameRoom: any;
