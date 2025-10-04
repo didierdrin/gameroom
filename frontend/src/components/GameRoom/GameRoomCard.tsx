@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom'; // Added import
 import { Users, Lock, Unlock, Clock } from 'lucide-react';
 import { useUsername } from '../../hooks/useUsername';
 import { useAvatar } from '../../hooks/useAvatar';
@@ -108,6 +109,9 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
     return <div className="p-4 text-red-400">Invalid game room data</div>;
   }
 
+  const hostName = getHostDisplayName();
+  const isClickable = hostName !== 'Loading...' && hostName !== 'Unknown Host';
+
   return (
     <div className="relative bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/20 hover:border-purple-500/50">
       {isStartingSoon && (
@@ -142,7 +146,16 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
             )}
           </div>
           <p className="text-sm text-gray-300 ml-2">
-            Hosted by {getHostDisplayName()}
+            Hosted by {isClickable ? (
+              <Link 
+                to={`/profile/${hostName}`} 
+                className="text-purple-400 hover:underline"
+              >
+                {hostName}
+              </Link>
+            ) : (
+              hostName
+            )}
           </p>
         </div>
         <div className="flex items-center justify-between mb-4">
@@ -170,7 +183,6 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
     </div>
   );
 };
-
 
 // import React from 'react';
 // import { Users, Lock, Unlock, Clock } from 'lucide-react';
@@ -200,15 +212,20 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
 //   } = gameRoom;
 
 //   const { username: hostDisplayName, isLoading: isLoadingHost } = useUsername(host);
-//   const { avatarUrl: resolvedHostAvatar } = useAvatar(host, hostDisplayName || host);
+//   const { avatarUrl: resolvedHostAvatar, isLoading: isLoadingAvatar } = useAvatar(host, hostDisplayName || host);
 
 //   const getAvatarUrl = () => {
-//     // First priority: hostAvatar from gameRoom data (like ProfilePage uses userData.avatar)
+//     // First priority: Avatar fetched from database via useAvatar hook
+//     if (resolvedHostAvatar) {
+//       return resolvedHostAvatar;
+//     }
+    
+//     // Second priority: hostAvatar from gameRoom data (fallback)
 //     if (hostAvatar) {
 //       return hostAvatar;
 //     }
     
-//     // Second priority: If we have hostDisplayName, use it for dicebear fallback
+//     // Third priority: If we have hostDisplayName, use it for dicebear fallback
 //     if (hostDisplayName) {
 //       return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(hostDisplayName)}`;
 //     }
@@ -295,11 +312,21 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
 //           </div>
 //         </div>
 //         <div className="flex items-center mb-4">
-//         <img
-//           src={getAvatarUrl()}
-//           alt={hostDisplayName}
-//           className="w-6 h-6 rounded-full border border-gray-700"
-//         />
+//           <div className="relative">
+//             <img
+//               src={getAvatarUrl()}
+//               alt={hostDisplayName}
+//               className="w-6 h-6 rounded-full border border-gray-700"
+//               onError={(e) => {
+//                 // Fallback if image fails to load
+//                 const target = e.target as HTMLImageElement;
+//                 target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${host || "default"}`;
+//               }}
+//             />
+//             {isLoadingAvatar && (
+//               <div className="absolute inset-0 bg-gray-600 rounded-full animate-pulse"></div>
+//             )}
+//           </div>
 //           <p className="text-sm text-gray-300 ml-2">
 //             Hosted by {getHostDisplayName()}
 //           </p>
@@ -329,3 +356,4 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
 //     </div>
 //   );
 // };
+

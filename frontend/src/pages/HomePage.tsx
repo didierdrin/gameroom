@@ -250,11 +250,6 @@ export const HomePage = () => {
     setSearchQuery("");
   };
 
-  // Get current user ID
-  // const getCurrentUserId = () => {
-  //   return localStorage.getItem("userId");
-  // };
-
   // Updated handleJoinRoom function to open modal
   const handleJoinRoom = async (gameRoom: GameRoom) => {
     if (!user) {
@@ -648,7 +643,4 @@ export const HomePage = () => {
     </div>
   );
 };
-
-
-
 

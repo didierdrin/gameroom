@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom'; 
 import { SectionTitle } from '../components/UI/SectionTitle';
 import { TrophyIcon, BarChart3Icon, ClockIcon, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -89,6 +90,7 @@ export const ProfilePage = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [userData, setUserData] = useState<UserProfileData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(true);
   
   // Edit Profile Modal State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -106,11 +108,11 @@ export const ProfilePage = () => {
   // Avatar options for selection
   const avatarOptions = ['adventurer', 'adventurer-neutral', 'avataaars', 'avataaars-neutral', 'big-ears', 'big-ears-neutral', 'big-smile', 'bottts', 'bottts-neutral', 'croodles', 'croodles-neutral', 'fun-emoji', 'icons', 'identicon', 'initials', 'lorelei'];
 
+  const { username: paramUsername } = useParams<{ username?: string }>();
+
   // Function to fetch gamerooms data
-  const fetchGameroomsData = async (userId: string) => {
+  const fetchGameroomsData = async () => {
     try {
-      console.log('Fetching gamerooms data for user:', userId);
-      
       const response = await fetch('https://alu-globe-gameroom.onrender.com/gamerooms', {
         method: 'GET',
         headers: {
@@ -124,7 +126,6 @@ export const ProfilePage = () => {
       }
 
       const gameroomsData = await response.json();
-      console.log('Gamerooms response:', gameroomsData);
 
       let gamerooms: GameRoom[] = [];
       if (gameroomsData.success && gameroomsData.data) {
@@ -133,15 +134,7 @@ export const ProfilePage = () => {
         gamerooms = gameroomsData;
       }
 
-      // Filter gamerooms where the user participated
-      const userGamerooms = gamerooms.filter(room => 
-        room.players.some(player => 
-          player.id === userId || player.username === authUser?.username
-        )
-      );
-
-      console.log('User gamerooms:', userGamerooms);
-      return userGamerooms;
+      return gamerooms;
     } catch (error) {
       console.error('Error fetching gamerooms:', error);
       return [];
@@ -149,7 +142,7 @@ export const ProfilePage = () => {
   };
 
   // Function to process gamerooms data into game stats
-  const processGameStats = (gamerooms: GameRoom[], userId: string): GameStat[] => {
+  const processGameStats = (gamerooms: GameRoom[], targetUserId: string, targetUsername: string): GameStat[] => {
     const gameStatsMap = new Map<string, {
       count: number;
       wins: number;
@@ -159,7 +152,7 @@ export const ProfilePage = () => {
 
     gamerooms.forEach(room => {
       const gameType = room.gameType.toLowerCase();
-      const userPlayer = room.players.find(p => p.id === userId || p.username === authUser?.username);
+      const userPlayer = room.players.find(p => p.id === targetUserId || p.username === targetUsername);
       
       if (!userPlayer) return;
 
@@ -174,7 +167,7 @@ export const ProfilePage = () => {
       currentStat.totalScore += userPlayer.score || 0;
       
       // Check if user won this game
-      if (room.winner === userId || room.winner === authUser?.username || userPlayer.isWinner) {
+      if (room.winner === targetUserId || room.winner === targetUsername || userPlayer.isWinner) {
         currentStat.wins += 1;
       } else if (room.status === 'completed' && userPlayer.position === 1) {
         currentStat.wins += 1;
@@ -201,7 +194,7 @@ export const ProfilePage = () => {
   };
 
   // Function to process gamerooms data into recent games
-  const processRecentGames = (gamerooms: GameRoom[], userId: string): RecentGame[] => {
+  const processRecentGames = (gamerooms: GameRoom[], targetUserId: string, targetUsername: string): RecentGame[] => {
     return gamerooms
       .filter(room => room.status === 'completed' || room.endedAt) // Only completed games
       .sort((a, b) => {
@@ -211,8 +204,8 @@ export const ProfilePage = () => {
       })
       .slice(0, 10) // Get last 10 games
       .map(room => {
-        const userPlayer = room.players.find(p => p.id === userId || p.username === authUser?.username);
-        const isWinner = room.winner === userId || room.winner === authUser?.username || 
+        const userPlayer = room.players.find(p => p.id === targetUserId || p.username === targetUsername);
+        const isWinner = room.winner === targetUserId || room.winner === targetUsername || 
                         userPlayer?.isWinner || userPlayer?.position === 1;
         
         const startTime = room.startedAt ? new Date(room.startedAt) : new Date(room.createdAt);
@@ -234,18 +227,18 @@ export const ProfilePage = () => {
       });
   };
 
-  const fetchUserProfile = async (showLoading = true) => {
+  const fetchUserProfile = async (targetUsername?: string, showLoading = true) => {
     if (!authUser) return;
+    
+    const effectiveUsername = targetUsername || authUser.username;
+    const isOwn = !targetUsername || targetUsername.toLowerCase() === authUser.username.toLowerCase();
+    setIsOwnProfile(isOwn);
     
     if (showLoading) setLoading(true);
     setError(null);
     
     try {
-      console.log('Fetching profile for user ID:', authUser.id);
-      console.log('User object:', authUser);
-      
-      // First, always fetch the leaderboard to get the correct user ID
-      console.log('Fetching leaderboard to find correct user...');
+      // Fetch leaderboard
       const leaderboardResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard', {
         method: 'GET',
         headers: {
@@ -259,7 +252,6 @@ export const ProfilePage = () => {
       }
       
       const leaderboardData = await leaderboardResponse.json();
-      console.log('Leaderboard response:', leaderboardData);
       
       let users = [];
       if (leaderboardData.success && leaderboardData.data) {
@@ -268,61 +260,45 @@ export const ProfilePage = () => {
         users = leaderboardData;
       }
       
-      // Find current user in leaderboard by username first, then by ID
-      const currentUser = users.find((user: any) => {
-        const userIdString = user._id?.toString() || user._id;
-        return user.username === authUser.username || userIdString === authUser.id;
-      });
+      // Find target user in leaderboard by username (case-insensitive)
+      const targetUser = users.find((user: any) => 
+        user.username.toLowerCase() === effectiveUsername.toLowerCase()
+      );
       
-      console.log('Found user in leaderboard:', currentUser);
-      
-      if (!currentUser) {
-        // User not found in leaderboard, create a minimal profile
-        console.log('User not found in leaderboard, creating minimal profile');
-        setUserData({
-          _id: String(authUser.id),
-          username: authUser.username,
-          avatar: authUser.avatar, // Include avatar from auth context
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          totalScore: 0,
-          gamesPlayed: 0,
-          gamesWon: 0,
-          gameStats: [],
-          recentGames: [],
-          favoriteGames: [],
-          badges: [],
-          globalRank: 'Unranked',
-          winRate: 0
-        });
+      if (!targetUser) {
+        // User not found
+        setError('User not found');
+        setUserData(null);
         return;
       }
       
       // Convert ObjectId to string if needed
-      const correctUserId = currentUser._id?.toString() || currentUser._id;
+      const targetUserId = targetUser._id?.toString() || targetUser._id;
       
-      // Update auth context with correct ID if different
-      if (correctUserId !== authUser.id) {
-        console.log('Updating user ID in auth context from', authUser.id, 'to', correctUserId);
-        updateUser({ id: correctUserId });
+      // If own profile and ID mismatch, update auth
+      if (isOwn && targetUserId !== authUser.id) {
+        console.log('Updating user ID in auth context from', authUser.id, 'to', targetUserId);
+        updateUser({ id: targetUserId });
       }
       
-      // Fetch gamerooms data for this user
-      const userGamerooms = await fetchGameroomsData(correctUserId);
+      // Fetch gamerooms data (all, since we filter client-side)
+      const allGamerooms = await fetchGameroomsData();
       
-      // Process gamerooms data into stats and recent games
-      const gameStats = processGameStats(userGamerooms, correctUserId);
-      const recentGames = processRecentGames(userGamerooms, correctUserId);
+      // Filter user's gamerooms
+      const userGamerooms = allGamerooms.filter(room => 
+        room.players.some(player => 
+          player.id === targetUserId || player.username.toLowerCase() === effectiveUsername.toLowerCase()
+        )
+      );
       
-      console.log('Processed game stats:', gameStats);
-      console.log('Processed recent games:', recentGames);
+      // Process data
+      const gameStats = processGameStats(userGamerooms, targetUserId, effectiveUsername);
+      const recentGames = processRecentGames(userGamerooms, targetUserId, effectiveUsername);
       
-      // Try to fetch full profile with correct ID
-      let profileResponse;
+      // Fetch full profile
       let profileData = null;
-      
       try {
-        profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${correctUserId}/profile`, {
+        const profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${targetUserId}/profile`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -330,12 +306,8 @@ export const ProfilePage = () => {
           }
         });
         
-        console.log('Profile response status:', profileResponse.status);
-        
         if (profileResponse.ok) {
           const result = await profileResponse.json();
-          console.log('Profile response:', result);
-          
           if (result.success && result.data) {
             profileData = result.data;
           }
@@ -347,21 +319,21 @@ export const ProfilePage = () => {
       // Calculate global rank
       const globalRank = users.findIndex((u: any) => {
         const userIdString = u._id?.toString() || u._id;
-        return userIdString === correctUserId;
+        return userIdString === targetUserId;
       }) + 1;
       
-      // Create comprehensive profile data
+      // Set user data
       setUserData({
-        _id: correctUserId,
-        username: currentUser.username,
-        avatar: profileData?.avatar || currentUser.avatar, // Use avatar from profile data or leaderboard data
+        _id: targetUserId,
+        username: targetUser.username,
+        avatar: profileData?.avatar || targetUser.avatar,
         createdAt: profileData?.createdAt || new Date().toISOString(),
         updatedAt: profileData?.updatedAt || new Date().toISOString(),
-        totalScore: currentUser.score || 0,
-        gamesPlayed: currentUser.gamesPlayed || gameStats.reduce((sum, stat) => sum + stat.count, 0),
-        gamesWon: currentUser.gamesWon || gameStats.reduce((sum, stat) => sum + stat.wins, 0),
-        gameStats: gameStats, // Real data from gamerooms
-        recentGames: recentGames, // Real data from gamerooms
+        totalScore: targetUser.score || 0,
+        gamesPlayed: targetUser.gamesPlayed || gameStats.reduce((sum, stat) => sum + stat.count, 0),
+        gamesWon: targetUser.gamesWon || gameStats.reduce((sum, stat) => sum + stat.wins, 0),
+        gameStats,
+        recentGames,
         favoriteGames: gameStats.slice(0, 3).map(stat => ({
           gameType: stat.gameType,
           count: stat.count,
@@ -371,30 +343,13 @@ export const ProfilePage = () => {
         })),
         badges: profileData?.badges || [],
         globalRank: globalRank > 0 ? `#${globalRank}` : 'Unranked',
-        winRate: currentUser.winRate || (currentUser.gamesPlayed > 0 ? Math.round((currentUser.gamesWon / currentUser.gamesPlayed) * 100) : 0)
+        winRate: targetUser.winRate || (targetUser.gamesPlayed > 0 ? Math.round((targetUser.gamesWon / targetUser.gamesPlayed) * 100) : 0)
       });
       
     } catch (error: any) {
       console.error('Failed to fetch user profile:', error);
       setError(error.message || 'Failed to fetch profile data');
-      
-      // Set fallback data
-      setUserData({
-        _id: String(authUser.id),
-        username: authUser.username,
-        avatar: authUser.avatar, // Include avatar from auth context
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        totalScore: 0,
-        gamesPlayed: 0,
-        gamesWon: 0,
-        gameStats: [],
-        recentGames: [],
-        favoriteGames: [],
-        badges: [],
-        globalRank: 'Unranked',
-        winRate: 0
-      });
+      setUserData(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -402,12 +357,12 @@ export const ProfilePage = () => {
   };
 
   useEffect(() => {
-    fetchUserProfile();
-  }, [authUser]);
+    fetchUserProfile(paramUsername);
+  }, [authUser, paramUsername]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchUserProfile(false);
+    fetchUserProfile(paramUsername, false);
   };
 
   const renderStats = () => {
@@ -659,14 +614,14 @@ export const ProfilePage = () => {
     );
   }
 
-  if (error && !userData) {
+  if (error || !userData) {
     return (
       <div className="p-6 overflow-y-auto h-screen pb-20">
-        <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
+        <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
           <div className="text-red-400">
             <div className="text-center">
-              <div className="text-lg mb-2">Error: {error}</div>
+              <div className="text-lg mb-2">Error: {error || 'No profile data available'}</div>
               <button 
                 onClick={handleRefresh}
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
@@ -675,17 +630,6 @@ export const ProfilePage = () => {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!userData) {
-    return (
-      <div className="p-6 overflow-y-auto h-screen pb-20">
-        <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-400">No profile data available</div>
         </div>
       </div>
     );
@@ -707,32 +651,31 @@ export const ProfilePage = () => {
     : 'Unknown';
 
   const openEditModal = () => {
-    if (userData) {
-      // Try to parse style and seed from existing avatar URL
-      let parsedStyle = 'avataaars';
-      let parsedSeed = '';
-      if (userData.avatar) {
-        try {
-          const url = new URL(userData.avatar);
-          const pathParts = url.pathname.split('/');
-          // e.g. /7.x/{style}/svg
-          if (pathParts.length >= 3) {
-            parsedStyle = pathParts[2] || parsedStyle;
-          }
-          const seedParam = url.searchParams.get('seed');
-          if (seedParam) parsedSeed = seedParam;
-        } catch {}
-      }
-
-      setEditForm({
-        username: userData.username,
-        email: authUser?.email || '',
-        selectedAvatarStyle: parsedStyle,
-        selectedAvatarSeed: parsedSeed
-      });
-      // Reset avatar seed when opening modal
-      setAvatarSeed(0);
+    if (!isOwnProfile || !userData) return;
+    
+    // Try to parse style and seed from existing avatar URL
+    let parsedStyle = 'avataaars';
+    let parsedSeed = '';
+    if (userData.avatar) {
+      try {
+        const url = new URL(userData.avatar);
+        const pathParts = url.pathname.split('/');
+        if (pathParts.length >= 3) {
+          parsedStyle = pathParts[2] || parsedStyle;
+        }
+        const seedParam = url.searchParams.get('seed');
+        if (seedParam) parsedSeed = seedParam;
+      } catch {}
     }
+
+    setEditForm({
+      username: userData.username,
+      email: authUser?.email || '',
+      selectedAvatarStyle: parsedStyle,
+      selectedAvatarSeed: parsedSeed
+    });
+    // Reset avatar seed when opening modal
+    setAvatarSeed(0);
     setEditError(null);
     setShowEditModal(true);
   };
@@ -750,13 +693,6 @@ export const ProfilePage = () => {
     setEditError(null);
   
     try {
-      console.log('Submitting edit form:', {
-        username: editForm.username,
-        email: editForm.email,
-        style: editForm.selectedAvatarStyle,
-        seed: editForm.selectedAvatarSeed
-      });
-  
       // Build a persistent avatar URL using the exact selected style and seed
       const effectiveSeed = editForm.selectedAvatarSeed || (editForm.username || '');
       const avatarUrl = `https://api.dicebear.com/7.x/${editForm.selectedAvatarStyle}/svg?seed=${encodeURIComponent(effectiveSeed)}`;
@@ -774,7 +710,6 @@ export const ProfilePage = () => {
       });
   
       const result = await response.json();
-      console.log('Update profile response:', result);
   
       if (result.success) {
         // Update local state with ALL the changes, including avatar
@@ -793,7 +728,7 @@ export const ProfilePage = () => {
         
         closeEditModal();
         // Refresh profile to ensure consistency
-        fetchUserProfile(false);
+        fetchUserProfile(paramUsername, false);
       } else {
         setEditError(result.error || 'Failed to update profile');
       }
@@ -979,7 +914,7 @@ const EditProfileModal = () => (
 
   return (
     <div className="p-6 overflow-y-auto h-screen pb-20">
-      <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
+      <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
       
       {/* Profile Header */}
       <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-6 mb-8 relative overflow-hidden">
@@ -992,12 +927,14 @@ const EditProfileModal = () => (
                 alt={formattedName} 
                 className="w-24 h-24 rounded-full border-4 border-purple-500" 
               />
-              <div 
-                onClick={openEditModal}
-                className="absolute -bottom-2 -right-2 bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-gray-900 cursor-pointer hover:bg-purple-700 transition-colors"
-              >
-                <EditIcon size={16} />
-              </div>
+              {isOwnProfile && (
+                <div 
+                  onClick={openEditModal}
+                  className="absolute -bottom-2 -right-2 bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-gray-900 cursor-pointer hover:bg-purple-700 transition-colors"
+                >
+                  <EditIcon size={16} />
+                </div>
+              )}
             </div>
             <div className="md:ml-6 mt-4 md:mt-0 text-center md:text-left">
               <h2 className="text-2xl font-bold">{formattedName}</h2>
@@ -1036,12 +973,14 @@ const EditProfileModal = () => (
               <LogOutIcon size={16} className="mr-2" />
               Logout
             </button>
-            <button 
-              onClick={openEditModal}
-              className="px-4 py-2 bg-white text-purple-900 font-medium rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Edit Profile
-            </button>
+            {isOwnProfile && (
+              <button 
+                onClick={openEditModal}
+                className="px-4 py-2 bg-white text-purple-900 font-medium rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Edit Profile
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1068,22 +1007,24 @@ const EditProfileModal = () => (
         >
           Badges & Achievements
         </button>
-        <button 
-          onClick={() => setActiveTab('settings')} 
-          className={`px-6 py-3 font-medium transition-colors ${
-            activeTab === 'settings' 
-              ? 'text-purple-400 border-b-2 border-purple-500' 
-              : 'text-gray-400 hover:text-gray-300'
-          }`}
-        >
-          Settings
-        </button>
+        {isOwnProfile && (
+          <button 
+            onClick={() => setActiveTab('settings')} 
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'settings' 
+                ? 'text-purple-400 border-b-2 border-purple-500' 
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            Settings
+          </button>
+        )}
       </div>
       
       {/* Tab Content */}
       {activeTab === 'stats' && renderStats()}
       {activeTab === 'badges' && renderBadges()}
-      {activeTab === 'settings' && (
+      {activeTab === 'settings' && isOwnProfile && (
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-8 text-center">
           <p className="text-gray-400">Profile settings would appear here.</p>
         </div>
@@ -1094,6 +1035,7 @@ const EditProfileModal = () => (
     </div>
   );
 };
+
 
 // import React, { useState, useEffect } from 'react';
 // import { SectionTitle } from '../components/UI/SectionTitle';
@@ -1201,7 +1143,7 @@ const EditProfileModal = () => (
 //   const [avatarSeed, setAvatarSeed] = useState(0);
 
 //   // Avatar options for selection
-//   const avatarOptions = ['avataaars', 'micah', 'adventurer', 'fun-emoji'];
+//   const avatarOptions = ['adventurer', 'adventurer-neutral', 'avataaars', 'avataaars-neutral', 'big-ears', 'big-ears-neutral', 'big-smile', 'bottts', 'bottts-neutral', 'croodles', 'croodles-neutral', 'fun-emoji', 'icons', 'identicon', 'initials', 'lorelei'];
 
 //   // Function to fetch gamerooms data
 //   const fetchGameroomsData = async (userId: string) => {
@@ -1933,8 +1875,8 @@ const EditProfileModal = () => (
 //             <div className="flex-1 min-w-0">
 //               <div className="text-sm text-gray-400 mb-3">Choose Avatar Style</div>
               
-//               {/* 4 Avatar Options in 2x2 Grid */}
-//               <div className="grid grid-cols-2 gap-3">
+//               {/* 16 Avatar Options in 4x4 Grid */}
+//               <div className="grid grid-cols-4 gap-3">
 //                 {avatarOptions.map((style) => {
 //                   // Use the current username or seed for consistent avatars
 //                   const seedToUse = editForm.selectedAvatarSeed || editForm.username || userData?.username || 'default';
@@ -1962,7 +1904,7 @@ const EditProfileModal = () => (
 //                           </div>
 //                         )}
 //                       </button>
-//                       <p className="text-xs text-gray-400 mt-1 capitalize truncate">{style}</p>
+//                       <p className="text-xs text-gray-400 mt-1 capitalize truncate">{style.replace('-', ' ')}</p>
 //                     </div>
 //                   );
 //                 })}
@@ -2191,4 +2133,3 @@ const EditProfileModal = () => (
 //     </div>
 //   );
 // };
-
