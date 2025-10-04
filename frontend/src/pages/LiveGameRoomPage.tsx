@@ -1096,6 +1096,58 @@ const handleChessMove = (data: any) => {
       socket.emit('getRoomInfo', { roomId });
       
       // Handle room info response
+      // const handleRoomInfo = (roomData: any) => {
+      //   console.log('Room info received:', roomData);
+      //   setRoomInfo(roomData);
+        
+      //   // Set isHost based on the room data
+      //   const userIsHost = String(user.id) === String(roomData.host);
+      //   setIsHost(userIsHost);
+      //   console.log('User is host check:', { 
+      //     userId: user.id, 
+      //     hostId: roomData.host, 
+      //     isHost: userIsHost 
+      //   });
+
+      //   // Build a unified participants list for chess selection modal
+      //   // Merge room players and spectators into local players list if missing
+      //   const participantIds: string[] = [
+      //     ...(roomData.playerIds || []),
+      //     ...(roomData.spectatorIds || [])
+      //   ];
+      //   // Ensure we have names for each participant in the map
+      //   setPlayers(prev => {
+      //     const existing = new Map(prev.map(p => [p.id, p]));
+      //     participantIds.forEach(id => {
+      //       const isSpectator = roomData.spectatorIds?.includes(id) || false;
+      //       if (!existing.has(id)) {
+      //         existing.set(id, {
+      //           id: id as string, // Ensure id is treated as a string
+      //           name: playerIdToUsername[id] || id,
+      //           color: '',
+      //           coins: [0,0,0,0],
+      //           isSpectator
+      //         } as any);
+      //       } else {
+      //         const existingPlayer = existing.get(id);
+      //         existing.set(id, {
+      //           ...existingPlayer,
+      //           isSpectator
+      //         } as Player); // Ensure the type is Player
+      //       }
+      //     });
+      //     return Array.from(existing.values());
+      //   });
+      //   // Also seed username map for any missing ids
+      //   setPlayerIdToUsername(prev => {
+      //     const next = { ...prev };
+      //     participantIds.forEach(id => {
+      //       if (!next[id]) next[id] = id;
+      //     });
+      //     return next;
+      //   });
+      // };
+
       const handleRoomInfo = (roomData: any) => {
         console.log('Room info received:', roomData);
         setRoomInfo(roomData);
@@ -1103,48 +1155,29 @@ const handleChessMove = (data: any) => {
         // Set isHost based on the room data
         const userIsHost = String(user.id) === String(roomData.host);
         setIsHost(userIsHost);
-        console.log('User is host check:', { 
-          userId: user.id, 
-          hostId: roomData.host, 
-          isHost: userIsHost 
-        });
-
-        // Build a unified participants list for chess selection modal
-        // Merge room players and spectators into local players list if missing
-        const participantIds: string[] = [
+      
+        // Build players list from both playerIds and spectatorIds
+        const allParticipantIds = [
           ...(roomData.playerIds || []),
           ...(roomData.spectatorIds || [])
         ];
-        // Ensure we have names for each participant in the map
+        
         setPlayers(prev => {
           const existing = new Map(prev.map(p => [p.id, p]));
-          participantIds.forEach(id => {
-            const isSpectator = roomData.spectatorIds?.includes(id) || false;
+          
+          allParticipantIds.forEach(id => {
             if (!existing.has(id)) {
               existing.set(id, {
-                id: id as string, // Ensure id is treated as a string
+                id: id,
                 name: playerIdToUsername[id] || id,
                 color: '',
                 coins: [0,0,0,0],
-                isSpectator
-              } as any);
-            } else {
-              const existingPlayer = existing.get(id);
-              existing.set(id, {
-                ...existingPlayer,
-                isSpectator
-              } as Player); // Ensure the type is Player
+                isOnline: true
+              } as Player);
             }
           });
+          
           return Array.from(existing.values());
-        });
-        // Also seed username map for any missing ids
-        setPlayerIdToUsername(prev => {
-          const next = { ...prev };
-          participantIds.forEach(id => {
-            if (!next[id]) next[id] = id;
-          });
-          return next;
         });
       };
       
@@ -1661,6 +1694,7 @@ const handleStartGame = () => {
             onPlayerClick={handlePlayerClick}
             mutedPlayers={mutedPlayers}
             playerIdToUsername={playerIdToUsername}
+            spectatorIds={roomInfo?.spectatorIds || []}
           />
           <button
         onClick={() => setShowPlayers(false)}
