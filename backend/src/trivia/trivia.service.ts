@@ -103,7 +103,7 @@ export class TriviaService {
       console.warn('GEMINI_API_KEY not found.');
     } else {
       this.genAI = new GoogleGenerativeAI(apiKey);
-      this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5' });
     }
   }
 
