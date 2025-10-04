@@ -334,78 +334,7 @@ Requirements:
 9. Return ONLY valid JSON, no additional text or formatting`;
   }
 
-  // Fallback to OpenTDB API (existing implementation)
-  private async fetchQuestionsFromOpenTDB(amount: number = 10): Promise<Question[]> {
-    try {
-      const response = await axios.get(
-        `https://opentdb.com/api.php?amount=${amount}&type=multiple`
-      );
-
-      if (response.data.results) {
-        return response.data.results.map((q: any) => ({
-          id: crypto.randomUUID(),
-          text: this.decodeHtml(q.question),
-          options: this.shuffleArray([
-            ...q.incorrect_answers.map((a: string) => this.decodeHtml(a)),
-            this.decodeHtml(q.correct_answer),
-          ]),
-          correctAnswer: this.decodeHtml(q.correct_answer),
-          difficulty: q.difficulty,
-          category: q.category,
-        }));
-      }
-      return this.getFallbackQuestions(amount);
-    } catch (error) {
-      console.error('Error fetching from OpenTDB:', error);
-      return this.getFallbackQuestions(amount);
-    }
-  }
-
-  private getFallbackQuestions(amount: number = 10): Question[] {
-    // Fallback questions if both APIs fail
-    const fallbackQuestions = [
-      {
-        text: 'What is the capital of France?',
-        options: ['Paris', 'London', 'Berlin', 'Madrid'],
-        correctAnswer: 'Paris',
-        category: 'Geography',
-        difficulty: 'easy'
-      },
-      {
-        text: 'Who painted the Mona Lisa?',
-        options: ['Leonardo da Vinci', 'Vincent van Gogh', 'Pablo Picasso', 'Michelangelo'],
-        correctAnswer: 'Leonardo da Vinci',
-        category: 'Art',
-        difficulty: 'easy'
-      },
-      {
-        text: 'What is the largest planet in our solar system?',
-        options: ['Jupiter', 'Saturn', 'Neptune', 'Earth'],
-        correctAnswer: 'Jupiter',
-        category: 'Science',
-        difficulty: 'easy'
-      },
-      {
-        text: 'In which year did World War II end?',
-        options: ['1945', '1944', '1946', '1943'],
-        correctAnswer: '1945',
-        category: 'History',
-        difficulty: 'medium'
-      },
-      {
-        text: 'What is the chemical symbol for gold?',
-        options: ['Au', 'Ag', 'Fe', 'Cu'],
-        correctAnswer: 'Au',
-        category: 'Science',
-        difficulty: 'medium'
-      }
-    ];
-
-    return fallbackQuestions.slice(0, Math.min(amount, fallbackQuestions.length)).map(q => ({
-      id: crypto.randomUUID(),
-      ...q
-    }));
-  }
+ 
 
   private decodeHtml(html: string): string {
     const txt = document?.createElement?.('textarea') || { innerHTML: html };
