@@ -1,7 +1,5 @@
-
 // trivia.service.ts
 import { Injectable } from '@nestjs/common';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
@@ -20,281 +18,168 @@ export interface TriviaSettings {
   category: string;
 }
 
-interface GeminiQuestion {
-  question: string;
-  options: string[];
-  correctAnswer: string;
-  explanation: string;
-}
-
 @Injectable()
 export class TriviaService {
-  private genAI: GoogleGenerativeAI;
-  private model: any;
+  private readonly OPENTDB_API = 'https://opentdb.com/api.php';
   private questionCache: Map<string, Question[]> = new Map();
-  
-  // Category mappings for diverse subtopics
-  private readonly CATEGORY_SUBTOPICS = {
-    general: [
-      'World Facts', 'Famous People', 'Inventions', 'Languages', 'Holidays',
-      'Traditions', 'Currencies', 'Transportation', 'Communication', 'Education'
-    ],
-    science: [
-      'Physics', 'Chemistry', 'Biology', 'Astronomy', 'Earth Science',
-      'Environmental Science', 'Medicine', 'Technology', 'Mathematics', 'Ecology'
-    ],
-    history: [
-      'Ancient Civilizations', 'Middle Ages', 'Renaissance', 'Modern History',
-      'World Wars', 'Cold War', 'Ancient Egypt', 'Roman Empire', 'Asian History'
-    ],
-    geography: [
-      'Physical Geography', 'Human Geography', 'Climate', 'Natural Resources',
-      'Countries and Capitals', 'Landforms', 'Oceans', 'Cultural Geography'
-    ],
-    entertainment: [
-      'Movies', 'Television', 'Music', 'Theater', 'Video Games',
-      'Books', 'Comics', 'Celebrities', 'Pop Culture', 'Awards'
-    ],
-    sports: [
-      'Football', 'Basketball', 'Baseball', 'Soccer', 'Tennis',
-      'Olympics', 'Racing', 'Combat Sports', 'Winter Sports', 'Athletics'
-    ],
-    technology: [
-      'Computer Science', 'Internet', 'Mobile Technology', 'AI and Robotics',
-      'Social Media', 'Gaming', 'Cybersecurity', 'Innovation', 'Space Technology'
-    ],
-    literature: [
-      'Classic Literature', 'Modern Fiction', 'Poetry', 'Drama', 'Non-fiction',
-      'Children\'s Literature', 'Science Fiction', 'Fantasy', 'Mystery', 'Biography'
-    ],
-    music: [
-      'Classical Music', 'Rock', 'Pop', 'Jazz', 'Country',
-      'Hip Hop', 'Electronic', 'World Music', 'Music Theory', 'Musical Instruments'
-    ],
-    art: [
-      'Painting', 'Sculpture', 'Architecture', 'Photography', 'Modern Art',
-      'Renaissance Art', 'Digital Art', 'Art History', 'Famous Artists', 'Art Movements'
-    ],
-    politics: [
-      'World Politics', 'Elections', 'Political Systems', 'International Relations',
-      'Political History', 'Current Affairs', 'Political Theory', 'Leaders', 'Diplomacy'
-    ],
-    nature: [
-      'Animals', 'Plants', 'Ecosystems', 'Conservation', 'Marine Life',
-      'Birds', 'Insects', 'Forests', 'Weather', 'Natural Phenomena'
-    ],
-    movies: [
-      'Action Movies', 'Comedy', 'Drama', 'Science Fiction Films', 'Horror',
-      'Animated Films', 'Documentaries', 'Film Directors', 'Film History', 'TV Series'
-    ],
-    food: [
-      'Cuisine Types', 'Cooking Techniques', 'Food History', 'Ingredients',
-      'Famous Chefs', 'Restaurants', 'Nutrition', 'Beverages', 'Desserts', 'Food Culture'
-    ],
-    mythology: [
-      'Greek Mythology', 'Roman Mythology', 'Norse Mythology', 'Egyptian Mythology',
-      'Asian Mythology', 'Celtic Mythology', 'Native American Mythology', 'Folklore', 'Legends'
-    ]
-  };
 
-  constructor() {
-    
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.warn('GEMINI_API_KEY not found.');
-    } else {
-      this.genAI = new GoogleGenerativeAI(apiKey);
-      this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' }); 
-    }
-  }
+  // OpenTDB Category Mappings
+  private readonly CATEGORY_MAP: Record<string, number> = {
+    general: 9,          // General Knowledge
+    science: 17,         // Science & Nature
+    history: 23,         // History
+    geography: 22,       // Geography
+    entertainment: 11,   // Entertainment: Film
+    sports: 21,          // Sports
+    technology: 18,      // Science: Computers
+    literature: 10,      // Entertainment: Books
+    music: 12,           // Entertainment: Music
+    art: 25,             // Art
+    politics: 24,        // Politics
+    nature: 17,          // Science & Nature (same as science)
+    movies: 11,          // Entertainment: Film (same as entertainment)
+    food: 9,             // General Knowledge (OpenTDB doesn't have food category)
+    mythology: 20,       // Mythology
+  };
 
   async getQuestions(settings?: TriviaSettings): Promise<Question[]> {
     try {
-      // Use Gemini AI only - throw error if not available
-      if (!this.model) {
-        throw new Error('Gemini AI model not available. Please check GEMINI_API_KEY.');
-      }
-      
       if (!settings) {
         throw new Error('Trivia settings are required to generate questions.');
       }
-      
-      return await this.generateQuestionsWithGemini(settings);
+
+      return await this.fetchQuestionsFromOpenTDB(settings);
     } catch (error) {
       console.error('Error getting questions:', error);
-      // Re-throw the error since you don't want fallbacks
       throw error;
     }
   }
 
-  
-  // In trivia.service.ts
-private async generateQuestionsWithGemini(settings: TriviaSettings): Promise<Question[]> {
-  const { questionCount, difficulty, category } = settings;
-  
-  // Check cache first - use a more specific cache key
-  const cacheKey = `${category}_${difficulty}_${questionCount}_${Date.now()}`; // Add timestamp for variety
-  if (this.questionCache.has(cacheKey)) {
-    const cached = this.questionCache.get(cacheKey);
-    if (cached && cached.length >= questionCount) {
-      const shuffled = this.shuffleArray(cached).slice(0, questionCount);
-      console.log(`Using cached questions for ${category}: ${shuffled.length} questions`);
-      return shuffled;
+  private async fetchQuestionsFromOpenTDB(settings: TriviaSettings): Promise<Question[]> {
+    const { questionCount, difficulty, category } = settings;
+
+    // Check cache first
+    const cacheKey = `${category}_${difficulty}_${questionCount}`;
+    if (this.questionCache.has(cacheKey)) {
+      const cached = this.questionCache.get(cacheKey);
+      if (cached && cached.length >= questionCount) {
+        console.log(`Using cached questions for ${category}: ${cached.length} questions`);
+        return this.shuffleArray(cached).slice(0, questionCount);
+      }
     }
-  }
 
-  const questions: Question[] = [];
-  const usedSubtopics = new Set<string>();
-  const previousQuestions = new Set<string>();
-  
-  // Get subtopics for the category
-  const subtopics = this.CATEGORY_SUBTOPICS[category] || this.CATEGORY_SUBTOPICS.general;
-
-  for (let i = 0; i < questionCount; i++) {
     try {
-      // Select a subtopic
-      let availableSubtopics = subtopics.filter(st => !usedSubtopics.has(st));
-      if (availableSubtopics.length === 0) {
-        usedSubtopics.clear();
-        availableSubtopics = subtopics;
-      }
-      const subtopic = availableSubtopics[Math.floor(Math.random() * availableSubtopics.length)];
-      usedSubtopics.add(subtopic);
+      // Get OpenTDB category ID
+      const categoryId = this.CATEGORY_MAP[category.toLowerCase()] || 9;
 
-      // Generate prompt with strict category enforcement
-      const prompt = this.generatePrompt(category, subtopic, difficulty, Array.from(previousQuestions));
-      
-      // Call Gemini AI
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      let text = response.text();
-      
-      // Clean and parse response
-      text = text.replace(/```json\s*/g, '').replace(/\s*```/g, '').trim();
-      const questionData: GeminiQuestion = JSON.parse(text);
-      
-      // Validate question belongs to the requested category
-      const questionText = questionData.question.toLowerCase();
-      const categoryKeywords = this.getCategoryKeywords(category);
-      const isCategoryRelevant = categoryKeywords.some(keyword => 
-        questionText.includes(keyword)
-      );
-      
-      if (!isCategoryRelevant) {
-        console.warn(`Question rejected - not relevant to category ${category}: ${questionText}`);
-        i--; // Retry this iteration
-        continue;
-      }
-      
-      // Create question object
-      const question: Question = {
-        id: crypto.randomUUID(),
-        text: questionData.question,
-        options: this.shuffleArray([...questionData.options]),
-        correctAnswer: questionData.options[0], // First option is always correct in Gemini response
-        difficulty: difficulty,
-        category: `${this.capitalizeFirst(category)} - ${subtopic}`
+      // Build API parameters
+      const params: any = {
+        amount: questionCount,
+        category: categoryId,
+        type: 'multiple',
+        encode: 'url3986', // URL encoding
       };
-      
-      questions.push(question);
-      previousQuestions.add(questionData.question);
-      
-      // Add small delay to avoid rate limiting
-      if (i < questionCount - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Increased delay for better quality
+
+      // Add difficulty if not 'any'
+      if (difficulty && difficulty !== 'any') {
+        params.difficulty = difficulty.toLowerCase();
       }
+
+      console.log(`Fetching ${questionCount} questions from OpenTDB for category: ${category} (ID: ${categoryId})`);
+
+      const response = await axios.get(this.OPENTDB_API, {
+        params,
+        timeout: 10000,
+      });
+
+      if (response.data.response_code !== 0) {
+        throw new Error(`OpenTDB API error: ${this.getErrorMessage(response.data.response_code)}`);
+      }
+
+      if (!response.data.results || response.data.results.length === 0) {
+        throw new Error('No questions returned from OpenTDB');
+      }
+
+      // Transform questions to our format
+      const questions: Question[] = response.data.results.map((q: any) => {
+        const correctAnswer = this.decodeURIComponent(q.correct_answer);
+        const incorrectAnswers = q.incorrect_answers.map((a: string) => this.decodeURIComponent(a));
+        
+        // Shuffle all options
+        const allOptions = this.shuffleArray([correctAnswer, ...incorrectAnswers]);
+
+        return {
+          id: crypto.randomUUID(),
+          text: this.decodeURIComponent(q.question),
+          options: allOptions,
+          correctAnswer: correctAnswer,
+          difficulty: q.difficulty,
+          category: this.decodeURIComponent(q.category),
+        };
+      });
+
+      // Cache the questions
+      this.questionCache.set(cacheKey, questions);
+      
+      // Set cache expiration (30 minutes)
+      setTimeout(() => {
+        this.questionCache.delete(cacheKey);
+      }, 30 * 60 * 1000);
+
+      console.log(`Successfully fetched ${questions.length} questions for category: ${category}`);
+      return questions;
+
     } catch (error) {
-      console.error(`Error generating question ${i + 1}:`, error);
-      // Continue to next question or use fallback
+      console.error('Error fetching from OpenTDB:', error);
+      
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED') {
+          throw new Error('Request timeout. Please try again.');
+        }
+        if (error.response?.status === 429) {
+          throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+        }
+      }
+      
+      throw new Error(`Failed to fetch questions: ${error.message}`);
     }
   }
 
-  // If we couldn't generate enough questions, don't supplement with OpenTDB
-  if (questions.length < questionCount) {
-    const remaining = questionCount - questions.length;
-    console.log(`Generating ${remaining} fallback questions for ${category}`);
-    
-  }
-
-  // Cache the questions with a shorter TTL for variety between games
-  this.questionCache.set(cacheKey, questions);
-  // Set cache expiration (1 hour) to ensure variety
-  setTimeout(() => {
-    this.questionCache.delete(cacheKey);
-  }, 60 * 60 * 1000);
-  
-  console.log(`Generated ${questions.length} questions for category: ${category}`);
-  return questions.slice(0, questionCount);
-}
-
-// Add helper method for category keywords
-private getCategoryKeywords(category: string): string[] {
-  const keywordMap = {
-    science: ['science', 'scientific', 'physics', 'chemistry', 'biology', 'astronomy', 'experiment'],
-    history: ['history', 'historical', 'ancient', 'century', 'war', 'empire', 'revolution'],
-    geography: ['geography', 'country', 'city', 'capital', 'mountain', 'river', 'continent'],
-    entertainment: ['movie', 'film', 'music', 'celebrity', 'actor', 'singer', 'entertainment'],
-    sports: ['sports', 'game', 'player', 'team', 'championship', 'olympic', 'athlete'],
-    technology: ['technology', 'computer', 'software', 'internet', 'digital', 'ai', 'robot'],
-    
-  };
-  
-  return keywordMap[category] || [category];
-}
-
-
-
-  private generatePrompt(category: string, subtopic: string, difficulty: string, previousQuestions: string[]): string {
-    const difficultyPrompts = {
-      easy: 'Create an easy multiple-choice trivia question',
-      medium: 'Generate a moderately challenging multiple-choice trivia question',
-      hard: 'Devise a difficult multiple-choice trivia question'
+  private getErrorMessage(responseCode: number): string {
+    const errorMessages: Record<number, string> = {
+      1: 'Not enough questions available for the selected criteria',
+      2: 'Invalid parameter in request',
+      3: 'Session token not found',
+      4: 'Session token has returned all possible questions',
     };
-
-    return `
-${difficultyPrompts[difficulty] || difficultyPrompts.medium} about ${category}.
-${previousQuestions.length > 0 ? `The question should be different from these: ${previousQuestions.slice(-3).join(', ')}` : ''}
-
-Format the response EXACTLY as JSON:
-{
-  "question": "The complete question text",
-  "options": [
-    "Correct answer (must be factually accurate)",
-    "Plausible wrong answer",
-    "Plausible wrong answer",
-    "Plausible wrong answer"
-  ],
-  "correctAnswer": "Exact text of the correct answer from options array",
-  "explanation": "Brief explanation of why the answer is correct"
-}
-
-Requirements:
-1. The question must be clear, specific, and grammatically correct
-2. The correct answer MUST be the FIRST option in the array
-3. All options should be plausible and roughly the same length
-4. No joke answers or obviously wrong options
-5. The question should test knowledge, not just common sense
-6. Include specific facts, dates, names, or details when appropriate
-7. Ensure all information is factually accurate and up-to-date
-8. Make the difficulty appropriate for the ${difficulty} level
-9. Return ONLY valid JSON, no additional text or formatting`;
+    return errorMessages[responseCode] || 'Unknown error';
   }
 
- 
-
-  private decodeHtml(html: string): string {
-    const txt = document?.createElement?.('textarea') || { innerHTML: html };
-    txt.innerHTML = html;
-    return txt.value || html
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#039;/g, "'")
-      .replace(/&rsquo;/g, "'")
-      .replace(/&lsquo;/g, "'")
-      .replace(/&rdquo;/g, '"')
-      .replace(/&ldquo;/g, '"');
+  private decodeURIComponent(text: string): string {
+    try {
+      // Decode URL encoding
+      let decoded = decodeURIComponent(text);
+      
+      // Decode HTML entities
+      decoded = decoded
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'")
+        .replace(/&rsquo;/g, "'")
+        .replace(/&lsquo;/g, "'")
+        .replace(/&rdquo;/g, '"')
+        .replace(/&ldquo;/g, '"')
+        .replace(/&hellip;/g, '...')
+        .replace(/&mdash;/g, '—')
+        .replace(/&ndash;/g, '–');
+      
+      return decoded;
+    } catch (error) {
+      console.error('Error decoding text:', error);
+      return text;
+    }
   }
 
   private shuffleArray<T>(array: T[]): T[] {
@@ -304,10 +189,6 @@ Requirements:
       [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
     }
     return newArray;
-  }
-
-  private capitalizeFirst(str: string): string {
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
 
   // Method to clear cache
@@ -321,79 +202,3 @@ Requirements:
     this.questionCache.delete(cacheKey);
   }
 }
-
-
-
-
-// // trivia.service.ts focusing on ${subtopic}
-// import { Injectable } from '@nestjs/common';
-// import axios from 'axios';
-
-// @Injectable()
-// export class TriviaService {
-//   private readonly OPENTDB_API = 'https://opentdb.com/api.php';
-
-//   async fetchTriviaQuestions(topic: string = 'general') {
-//     try {
-//       const categoryMap: Record<string, number> = {
-//         science: 17,
-//         history: 23,
-//         geography: 22,
-//         entertainment: 11,
-//         sports: 21,
-//         technology: 18,
-//         art: 25,
-//         politics: 24,
-//       };
-
-//       const category = categoryMap[topic.toLowerCase()] || 9;
-
-//       const response = await axios.get(this.OPENTDB_API, {
-//         params: {
-//           amount: 5,
-//           category,
-//           type: 'multiple',
-//           encode: 'url3986',
-//         },
-//         timeout: 5000,
-//       });
-
-//       if (!response.data.results || response.data.results.length === 0) {
-//         throw new Error('No questions returned from OpenTDB');
-//       }
-
-//       const questions = response.data.results.map((q: any, index: number) => {
-//         const decode = (text: string) => decodeURIComponent(text);
-//         return {
-//           id: `q-${index}`,
-//           text: decode(q.question),
-//           options: [
-//             decode(q.correct_answer),
-//             ...q.incorrect_answers.map((a: string) => decode(a)),
-//           ].sort(() => Math.random() - 0.5),
-//           correctAnswer: decode(q.correct_answer),
-//           difficulty: q.difficulty,
-//           category: decode(q.category),
-//         };
-//       });
-
-//       return questions;
-//     } catch (error) {
-//       console.error('Error fetching trivia questions:', error);
-//       return [
-//         {
-//           id: 'q1',
-//           text: 'Who invented the World Wide Web?',
-//           options: ['Tim Berners-Lee', 'Bill Gates', 'Steve Jobs', 'Mark Zuckerberg'],
-//           correctAnswer: 0,
-//         },
-//         {
-//           id: 'q2',
-//           text: 'What is the capital of France?',
-//           options: ['Paris', 'London', 'Berlin', 'Madrid'],
-//           correctAnswer: 0,
-//         },
-//       ];
-//     }
-//   }
-// }
