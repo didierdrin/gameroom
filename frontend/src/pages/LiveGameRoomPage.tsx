@@ -33,7 +33,7 @@ import { VideoGrid } from "../components/GameRoom/VideoGrid";
 import { useSocket, useSocketConnection } from "../SocketContext";
 import { useAuth } from "../context/AuthContext";
 import { SocketType } from "../SocketContext";
-import { userUserData } from "../hooks/useUserData"; 
+import { useUserData } from "../hooks/useUserData"; 
 
 interface Participant {
   id: string;
@@ -63,122 +63,6 @@ interface PlayerManagementModalProps {
   isHostSelf?: boolean;
   onRestartGame?: () => void;
 }
-
-
-
-// // Player Management Modal Component
-// const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
-//   isOpen,
-//   player,
-//   onClose,
-//   onRemovePlayer,
-//   onMutePlayer,
-//   onUnmutePlayer,
-//   isMuted,
-//   isHostSelf = false,
-//   onRestartGame
-// }) => {
-//   if (!isOpen || !player) return null;
-
-//   const handleRemove = () => {
-//     if (window.confirm(`Are you sure you want to remove ${player.name || player.id} from the game room?`)) {
-//       onRemovePlayer(player.id);
-//       onClose();
-//     }
-//   };
-
-//   const handleMuteToggle = () => {
-//     if (isMuted) {
-//       onUnmutePlayer(player.id);
-//     } else {
-//       onMutePlayer(player.id);
-//     }
-//     onClose();
-//   };
-
-//   const handleRestartGame = () => {
-//     if (onRestartGame) {
-//       onRestartGame();
-//       onClose();
-//     }
-//   };
-
-//   return (
-//     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-//       <div className="bg-gray-800 rounded-xl border border-gray-700 max-w-sm w-full p-6 shadow-2xl">
-//         <div className="flex items-center justify-between mb-6">
-//           <div className="flex items-center space-x-3">
-//             <img 
-//               src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
-//               alt="Player avatar"
-//               className="w-10 h-10 rounded-full border border-gray-600"
-//             />
-//             <div>
-//               <h3 className="text-lg font-semibold text-white">{player.name || player.id}</h3>
-//               <p className="text-sm text-gray-400">
-//                 {isHostSelf ? 'Host Management' : 'Player Management'}
-//               </p>
-//             </div>
-//           </div>
-//           <button
-//             onClick={onClose}
-//             className="text-gray-400 hover:text-white transition-colors"
-//           >
-//             <XIcon size={20} />
-//           </button>
-//         </div>
-
-//         <div className="space-y-3">
-//           {isHostSelf ? (
-//             // Host self-management options
-//             <button
-//               onClick={handleRestartGame}
-//               className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-lg hover:bg-purple-600/30 transition-colors"
-//             >
-//               <RotateCcw size={18} />
-//               <span>Restart Game</span>
-//             </button>
-//           ) : (
-//             // Regular player management options
-//             <>
-//               <button
-//                 onClick={handleMuteToggle}
-//                 className={`w-full flex items-center justify-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-//                   isMuted 
-//                     ? 'bg-green-600/20 border border-green-500/30 text-green-400 hover:bg-green-600/30' 
-//                     : 'bg-yellow-600/20 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-600/30'
-//                 }`}
-//               >
-//                 {isMuted ? <Volume2 size={18} /> : <VolumeX size={18} />}
-//                 <span>{isMuted ? 'Unmute Player' : 'Mute Player'}</span>
-//               </button>
-
-//               <button
-//                 onClick={handleRemove}
-//                 className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
-//               >
-//                 <UserX size={18} />
-//                 <span>Remove from Room</span>
-//               </button>
-//             </>
-//           )}
-//         </div>
-
-//         <div className="mt-6 p-3 bg-gray-700/30 rounded-lg border border-gray-600/50">
-//           <div className="flex items-start space-x-2">
-//             <AlertTriangle size={16} className="text-yellow-400 mt-0.5 flex-shrink-0" />
-//             <p className="text-xs text-gray-400">
-//               {isHostSelf 
-//                 ? "Restarting the game will start a new round with the same players and spectators."
-//                 : "These actions are permanent. Removed players will need to rejoin the room."
-//               }
-//             </p>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
 
 
 
@@ -920,6 +804,33 @@ useEffect(() => {
     };
 
 
+  // const handleGameEnded = (data: any) => {
+  //   console.log("Game ended:", data);
+  //   setGameEnded(true);
+  //   setGameEndedMessage(data.message || 'The game has ended');
+  //   setGameState(prev => ({
+  //     ...prev,
+  //     gameStarted: false,
+  //     gameOver: true
+  //   }));
+  // };
+
+  const handleGameRestarted = (data: any) => {
+    console.log('Game restarted:', data);
+    setGameEnded(false);
+    setGameEndedMessage('');
+    
+    // If we received a gameState in the restart event, use it
+    if (data.gameState) {
+      setGameState(data.gameState);
+    } else {
+      // Otherwise, fetch the fresh game state
+      if (socket) {
+        socket.emit('getGameState', { roomId });
+      }
+    }
+  };
+  
   const handleGameEnded = (data: any) => {
     console.log("Game ended:", data);
     setGameEnded(true);
@@ -930,6 +841,21 @@ useEffect(() => {
       gameOver: true
     }));
   };
+  
+  // Add these to your socket listeners
+  socket.on("gameRestarted", handleGameRestarted);
+  socket.on("gameEnded", handleGameEnded);
+  
+  // Update the restart game handler
+  const handleRestartGame = () => {
+    if (!isHost || !socket || !roomId) return;
+    
+    const confirmRestart = window.confirm('Are you sure you want to restart the game? This will start a new round with all current players.');
+    if (confirmRestart) {
+      socket.emit('restartGame', { roomId, hostId: user?.id });
+    }
+  };
+  
 
     // ... all other existing socket handlers remain the same
     const handleChatMessage = (data: any) => {
@@ -1805,4 +1731,123 @@ const handleStartGame = () => {
 };
 
 
+
+
+
+
+
+
+// // Player Management Modal Component
+// const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
+//   isOpen,
+//   player,
+//   onClose,
+//   onRemovePlayer,
+//   onMutePlayer,
+//   onUnmutePlayer,
+//   isMuted,
+//   isHostSelf = false,
+//   onRestartGame
+// }) => {
+//   if (!isOpen || !player) return null;
+
+//   const handleRemove = () => {
+//     if (window.confirm(`Are you sure you want to remove ${player.name || player.id} from the game room?`)) {
+//       onRemovePlayer(player.id);
+//       onClose();
+//     }
+//   };
+
+//   const handleMuteToggle = () => {
+//     if (isMuted) {
+//       onUnmutePlayer(player.id);
+//     } else {
+//       onMutePlayer(player.id);
+//     }
+//     onClose();
+//   };
+
+//   const handleRestartGame = () => {
+//     if (onRestartGame) {
+//       onRestartGame();
+//       onClose();
+//     }
+//   };
+
+//   return (
+//     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+//       <div className="bg-gray-800 rounded-xl border border-gray-700 max-w-sm w-full p-6 shadow-2xl">
+//         <div className="flex items-center justify-between mb-6">
+//           <div className="flex items-center space-x-3">
+//             <img 
+//               src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`} 
+//               alt="Player avatar"
+//               className="w-10 h-10 rounded-full border border-gray-600"
+//             />
+//             <div>
+//               <h3 className="text-lg font-semibold text-white">{player.name || player.id}</h3>
+//               <p className="text-sm text-gray-400">
+//                 {isHostSelf ? 'Host Management' : 'Player Management'}
+//               </p>
+//             </div>
+//           </div>
+//           <button
+//             onClick={onClose}
+//             className="text-gray-400 hover:text-white transition-colors"
+//           >
+//             <XIcon size={20} />
+//           </button>
+//         </div>
+
+//         <div className="space-y-3">
+//           {isHostSelf ? (
+//             // Host self-management options
+//             <button
+//               onClick={handleRestartGame}
+//               className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-lg hover:bg-purple-600/30 transition-colors"
+//             >
+//               <RotateCcw size={18} />
+//               <span>Restart Game</span>
+//             </button>
+//           ) : (
+//             // Regular player management options
+//             <>
+//               <button
+//                 onClick={handleMuteToggle}
+//                 className={`w-full flex items-center justify-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+//                   isMuted 
+//                     ? 'bg-green-600/20 border border-green-500/30 text-green-400 hover:bg-green-600/30' 
+//                     : 'bg-yellow-600/20 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-600/30'
+//                 }`}
+//               >
+//                 {isMuted ? <Volume2 size={18} /> : <VolumeX size={18} />}
+//                 <span>{isMuted ? 'Unmute Player' : 'Mute Player'}</span>
+//               </button>
+
+//               <button
+//                 onClick={handleRemove}
+//                 className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
+//               >
+//                 <UserX size={18} />
+//                 <span>Remove from Room</span>
+//               </button>
+//             </>
+//           )}
+//         </div>
+
+//         <div className="mt-6 p-3 bg-gray-700/30 rounded-lg border border-gray-600/50">
+//           <div className="flex items-start space-x-2">
+//             <AlertTriangle size={16} className="text-yellow-400 mt-0.5 flex-shrink-0" />
+//             <p className="text-xs text-gray-400">
+//               {isHostSelf 
+//                 ? "Restarting the game will start a new round with the same players and spectators."
+//                 : "These actions are permanent. Removed players will need to rejoin the room."
+//               }
+//             </p>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
 
