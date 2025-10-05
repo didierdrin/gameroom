@@ -203,70 +203,6 @@ async createGame(createGameDto: CreateGameDto) {
   return gameRoom;
 }
 
-// // Update initializeGameState to accept trivia settings
-// private async initializeGameState(
-//   roomId: string, 
-//   hostId: string, 
-//   roomName: string, 
-//   gameType: string,
-//   triviaSettings?: any
-// ) {
-//   const colors = ['red', 'blue', 'green', 'yellow'];
-//   let initialGameState: GameState;
-
-//   switch (gameType.toLowerCase()) {
-//     case 'trivia':
-//       initialGameState = {
-//         roomId,
-//         players: [{ id: hostId, name: hostId, score: 0 }],
-//         currentTurn: hostId,
-//         currentPlayer: 0,
-//         gameStarted: false,
-//         gameOver: false,
-//         winner: null,
-//         roomName,
-//         gameType: gameType.toLowerCase(),
-//         host: hostId,
-//         triviaState: {
-//           currentQuestionIndex: 0,
-//           questions: [], // Questions will be loaded on startGame
-//           scores: { [hostId]: 0 },
-//           answers: { [hostId]: { answer: null, isCorrect: null } },
-//           questionTimer: 5,
-//         },
-//         // Store trivia settings in game state for frontend access
-//         triviaSettings: triviaSettings
-//       };
-//       break;
-
-//     default: // ludo, uno, pictionary, sudoku
-//       initialGameState = {
-//         roomId,
-//         players: [{ 
-//           id: hostId, 
-//           name: hostId, 
-//           color: colors[0], 
-//           coins: [0, 0, 0, 0] 
-//         }],
-//         currentTurn: hostId,
-//         currentPlayer: 0,
-//         diceValue: 0,
-//         diceRolled: false,
-//         consecutiveSixes: 0,
-//         coins: { [hostId]: [0, 0, 0, 0] },
-//         gameStarted: false,
-//         gameOver: false,
-//         winner: null,
-//         roomName,
-//         gameType: gameType.toLowerCase(),
-//         host: hostId,
-//       };
-//   }
-  
-//   await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
-// }
-
-// Update initializeGameState to properly reset all game states
 private async initializeGameState(
   roomId: string, 
   hostId: string, 
@@ -282,12 +218,18 @@ private async initializeGameState(
   const playerIds = currentRoom?.playerIds || [hostId];
   const spectatorIds = currentRoom?.spectatorIds || [];
 
+  console.log(`Initializing game state for ${gameType}:`, {
+    roomId,
+    playerIds: playerIds.length,
+    spectatorIds: spectatorIds.length
+  });
+
   switch (gameType.toLowerCase()) {
     case 'trivia':
       initialGameState = {
         roomId,
         players: playerIds.map(id => ({ id, name: id, score: 0 })),
-        currentTurn: hostId,
+        currentTurn: playerIds[0] || hostId,
         currentPlayer: 0,
         gameStarted: false,
         gameOver: false,
@@ -312,10 +254,9 @@ private async initializeGameState(
         players: playerIds.map(id => ({ 
           id, 
           name: id, 
-          // Reset chess colors - host will need to select players again
-          chessColor: undefined 
+          chessColor: undefined // Will be set when host selects players
         })),
-        currentTurn: hostId,
+        currentTurn: playerIds[0] || hostId,
         currentPlayer: 0,
         gameStarted: false,
         gameOver: false,
@@ -327,8 +268,7 @@ private async initializeGameState(
           board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
           moves: []
         },
-        // Reset chess players selection
-        chessPlayers: undefined
+        chessPlayers: undefined // Will be set when host selects players
       };
       break;
 
@@ -341,7 +281,7 @@ private async initializeGameState(
           color: colors[index % colors.length], 
           coins: [0, 0, 0, 0] 
         })),
-        currentTurn: hostId,
+        currentTurn: playerIds[0] || hostId,
         currentPlayer: 0,
         diceValue: 0,
         diceRolled: false,
@@ -356,7 +296,9 @@ private async initializeGameState(
       };
   }
   
+  // Store in Redis with clear logging
   await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
+  console.log(`Game state initialized and stored in Redis for room ${roomId}`);
 }
 
 
@@ -1092,58 +1034,48 @@ async startGame(roomId: string) {
   async getGameState(roomId: string): Promise<GameState> {
     try {
       const redisState = await this.redisService.get(`game:${roomId}`);
-    if (redisState) {
-      const parsedState: GameState = JSON.parse(redisState);
       
+      if (redisState) {
+        const parsedState: GameState = JSON.parse(redisState);
+        
+        // Enhance with player names
+        const enhancedPlayers = await Promise.all(
+          parsedState.players.map(async (player) => {
+            const playerName = await this.getPlayerName(player.id);
+            return {
+              ...player,
+              name: playerName
+            };
+          })
+        );
+        
+        const enhancedState = {
+          ...parsedState,
+          players: enhancedPlayers,
+          currentPlayer: parsedState.players.findIndex((p) => p.id === parsedState.currentTurn),
+          diceRolled: parsedState.diceValue ? parsedState.diceValue !== 0 : false,
+          diceValue: parsedState.diceValue,
+        };
+  
+        console.log(`Retrieved game state from Redis for room ${roomId}`);
+        return enhancedState;
+      }
       
-      const enhancedPlayers = await Promise.all(
-        parsedState.players.map(async (player) => {
-          const playerName = await this.getPlayerName(player.id);
-          return {
-            ...player,
-            name: playerName
-          };
-        })
-      );
-      
-      const enhancedState = {
-        ...parsedState,
-        players: enhancedPlayers,
-        currentPlayer: parsedState.players.findIndex((p) => p.id === parsedState.currentTurn),
-        diceRolled: parsedState.diceValue ? parsedState.diceValue !== 0 : false,
-        diceValue: parsedState.diceValue,
-      };
-
-      console.log(`Retrieved enhanced game state from Redis for room ${roomId}:`, {
-        currentTurn: enhancedState.currentTurn,
-        gameStarted: enhancedState.gameStarted,
-        gameOver: enhancedState.gameOver,
-        gameType: enhancedState.gameType,
-        chessStateExists: !!enhancedState.chessState,
-        players: enhancedState.players.map((p: any) => ({ 
-          id: p.id, 
-          name: p.name,
-          chessColor: p.chessColor,
-          color: p.color,
-          score: p.score
-        }))
-      });
-      
-      return enhancedState;
-    }
+      // No Redis state - reconstruct from database
+      console.log(`No Redis state found for ${roomId}, reconstructing from database`);
       const room = await this.getGameRoomById(roomId);
       if (!room) throw new Error('Room not found');
+      
       const colors = ['red', 'blue', 'green', 'yellow'];
       let defaultGameState: GameState;
-      switch (room.gameType) {
-       
       
+      switch (room.gameType) {
         case 'trivia':
           defaultGameState = {
             roomId,
             gameType: room.gameType,
             roomName: room.name,
-            host: room.host, // Add this line
+            host: room.host,
             gameStarted: false,
             gameOver: false,
             currentPlayer: 0,
@@ -1156,19 +1088,45 @@ async startGame(roomId: string) {
             winner: null,
             triviaState: {
               currentQuestionIndex: 0,
-              questions: [], // Empty until startGame
+              questions: [],
               scores: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}),
               answers: room.playerIds.reduce((acc, id) => ({ ...acc, [id]: { answer: null, isCorrect: null } }), {}),
               questionTimer: 30,
-            }
+            },
+            triviaSettings: room.triviaSettings
           };
           break;
+          
+        case 'chess':
+          defaultGameState = {
+            roomId,
+            gameType: room.gameType,
+            roomName: room.name,
+            host: room.host,
+            gameStarted: false,
+            gameOver: false,
+            currentPlayer: 0,
+            currentTurn: room.playerIds?.[0] || '',
+            players: room.playerIds.map((playerId) => ({
+              id: playerId,
+              name: playerId,
+              chessColor: undefined,
+            })),
+            winner: null,
+            chessState: {
+              board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+              moves: []
+            },
+            chessPlayers: undefined
+          };
+          break;
+          
         default:
           defaultGameState = {
             roomId,
             gameType: room.gameType,
             roomName: room.name,
-            host: room.host, // Add this line
+            host: room.host,
             gameStarted: false,
             gameOver: false,
             currentPlayer: 0,
@@ -1189,19 +1147,9 @@ async startGame(roomId: string) {
             winner: null,
           };
       }
+      
       await this.updateGameState(roomId, defaultGameState);
-              console.log('Default game state created and saved:', {
-          roomId,
-          gameType: defaultGameState.gameType,
-          currentTurn: defaultGameState.currentTurn,
-          players: defaultGameState.players.map((p: any) => ({ 
-            id: p.id, 
-            chessColor: p.chessColor,
-            color: p.color,
-            score: p.score
-          }))
-        });
-      return this.getGameState(roomId);
+      return defaultGameState;
     } catch (error) {
       console.error(`Error in getGameState for room ${roomId}:`, error);
       throw error;
@@ -1578,46 +1526,106 @@ async getAllGameRooms() {
   }
 }
 
-// Add this method to handle game restart properly
+// // Add this method to handle game restart properly
+// async restartGame(roomId: string, hostId: string) {
+//   const gameRoom = await this.gameRoomModel.findOne({ roomId });
+//   if (!gameRoom) throw new Error('Game room not found');
+//   if (gameRoom.host !== hostId) throw new Error('Only the host can restart the game');
+  
+//   // Reset room status to 'waiting' instead of keeping it as 'completed'
+//   gameRoom.status = 'waiting';
+//   await gameRoom.save();
+  
+//   // Reset game state but keep players
+//   await this.initializeGameState(roomId, hostId, gameRoom.name, gameRoom.gameType, gameRoom.triviaSettings);
+  
+//   // Get the fresh game state
+//   const gameState = await this.getGameState(roomId);
+  
+//   console.log(`Game restarted for room ${roomId}`, {
+//     status: gameRoom.status,
+//     players: gameState.players.length,
+//     gameStarted: gameState.gameStarted
+//   });
+  
+//   return gameState;
+// }
+
 async restartGame(roomId: string, hostId: string) {
   const gameRoom = await this.gameRoomModel.findOne({ roomId });
   if (!gameRoom) throw new Error('Game room not found');
   if (gameRoom.host !== hostId) throw new Error('Only the host can restart the game');
   
-  // Reset room status to 'waiting' instead of keeping it as 'completed'
+  console.log(`Restarting game for room ${roomId}, current status: ${gameRoom.status}`);
+  
+  // CRITICAL: Reset room status to 'waiting' and clear winner
   gameRoom.status = 'waiting';
+  gameRoom.winner = undefined;
   await gameRoom.save();
   
-  // Reset game state but keep players
-  await this.initializeGameState(roomId, hostId, gameRoom.name, gameRoom.gameType, gameRoom.triviaSettings);
+  // Get current players and spectators before reset
+  const currentPlayerIds = gameRoom.playerIds || [];
+  const currentSpectatorIds = gameRoom.spectatorIds || [];
+  
+  console.log(`Preserving players: ${currentPlayerIds.length}, spectators: ${currentSpectatorIds.length}`);
+  
+  // Completely reinitialize game state with preserved players
+  await this.initializeGameState(
+    roomId, 
+    hostId, 
+    gameRoom.name, 
+    gameRoom.gameType, 
+    gameRoom.triviaSettings
+  );
   
   // Get the fresh game state
   const gameState = await this.getGameState(roomId);
   
-  console.log(`Game restarted for room ${roomId}`, {
+  console.log(`Game restarted successfully for room ${roomId}`, {
     status: gameRoom.status,
     players: gameState.players.length,
-    gameStarted: gameState.gameStarted
+    gameStarted: gameState.gameStarted,
+    gameOver: gameState.gameOver,
+    winner: gameState.winner
   });
   
   return gameState;
 }
 
-// Update the endGame method to not delete Redis state immediately
+
 async endGame(roomId: string, hostId: string) {
   const gameRoom = await this.gameRoomModel.findOne({ roomId });
   if (!gameRoom) throw new Error('Game room not found');
   if (gameRoom.host !== hostId) throw new Error('Only the host can end the game');
   
-  // Update status to 'completed' but keep Redis state for potential restart
+  console.log(`Ending game for room ${roomId}`);
+  
+  // Mark as completed but keep game state in Redis for potential restart
   gameRoom.status = 'completed';
   await gameRoom.save();
   
-  // Don't delete Redis state immediately - let it expire naturally
-  // This allows for seamless restarts within a short time window
+  // Set a longer expiration on Redis state to allow restart within reasonable time
+  await this.redisService.expire(`game:${roomId}`, 3600); // 1 hour expiration
   
   return { success: true, message: 'Game ended successfully' };
 }
+
+
+// // Update the endGame method to not delete Redis state immediately
+// async endGame(roomId: string, hostId: string) {
+//   const gameRoom = await this.gameRoomModel.findOne({ roomId });
+//   if (!gameRoom) throw new Error('Game room not found');
+//   if (gameRoom.host !== hostId) throw new Error('Only the host can end the game');
+  
+//   // Update status to 'completed' but keep Redis state for potential restart
+//   gameRoom.status = 'completed';
+//   await gameRoom.save();
+  
+//   // Don't delete Redis state immediately - let it expire naturally
+//   // This allows for seamless restarts within a short time window
+  
+//   return { success: true, message: 'Game ended successfully' };
+// }
 
 
 private async getPlayerName(playerId: string): Promise<string> {

@@ -467,78 +467,51 @@ handleWebRTCError(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
   });
 }
 
-// @SubscribeMessage('endGame')
-// async handleEndGame(@MessageBody() data: { roomId: string; hostId: string }, @ConnectedSocket() client: Socket) {
-//   try {
-//     console.log('Ending game:', data);
-//     await this.gameService.endGame(data.roomId, data.hostId);
-    
-//     // Notify all players in the room
-//     this.server.to(data.roomId).emit('gameEnded', { 
-//       roomId: data.roomId,
-//       message: 'The host has ended the game'
-//     });
-    
-//     // Update the game rooms list
-//     const rooms = await this.gameService.getActiveGameRooms();
-//     this.server.emit('gameRoomsList', { rooms });
-//   } catch (error) {
-//     console.error('End game error:', error.message);
-//     client.emit('error', { message: error.message, type: 'endGameError' });
-//   }
-// }
-
-// @SubscribeMessage('restartGame')
-// async handleRestartGame(@MessageBody() data: { roomId: string; hostId: string }, @ConnectedSocket() client: Socket) {
-//   try {
-//     console.log('Restarting game:', data);
-//     const gameState = await this.gameService.restartGame(data.roomId, data.hostId);
-    
-//     // Notify all players in the room
-//     this.server.to(data.roomId).emit('gameRestarted', { 
-//       roomId: data.roomId,
-//       message: 'The host has started a new round'
-//     });
-    
-//     // Send fresh game state
-//     this.server.to(data.roomId).emit('gameState', gameState);
-//   } catch (error) {
-//     console.error('Restart game error:', error.message);
-//     client.emit('error', { message: error.message, type: 'restartGameError' });
-//   }
-// }
 
 @SubscribeMessage('restartGame')
-async handleRestartGame(@MessageBody() data: { roomId: string; hostId: string }, @ConnectedSocket() client: Socket) {
+async handleRestartGame(
+  @MessageBody() data: { roomId: string; hostId: string }, 
+  @ConnectedSocket() client: Socket
+) {
   try {
     console.log('Restarting game:', data);
+    
+    // Call service to restart game
     const gameState = await this.gameService.restartGame(data.roomId, data.hostId);
     
     // Notify all players in the room about the restart
     this.server.to(data.roomId).emit('gameRestarted', { 
       roomId: data.roomId,
       message: 'The host has started a new round',
-      gameState: gameState
+      gameState: gameState  // Send the fresh game state
     });
     
-    // Send fresh game state to all players
+    // Send fresh game state to ensure sync
     this.server.to(data.roomId).emit('gameState', gameState);
     
-    // Update the game rooms list
+    // Update the game rooms list for lobby
     const rooms = await this.gameService.getActiveGameRooms();
     this.server.emit('gameRoomsList', { rooms });
     
     console.log(`Game restarted successfully for room ${data.roomId}`);
   } catch (error) {
     console.error('Restart game error:', error.message);
-    client.emit('error', { message: error.message, type: 'restartGameError' });
+    client.emit('error', { 
+      message: error.message || 'Failed to restart game', 
+      type: 'restartGameError' 
+    });
   }
 }
 
 @SubscribeMessage('endGame')
-async handleEndGame(@MessageBody() data: { roomId: string; hostId: string }, @ConnectedSocket() client: Socket) {
+async handleEndGame(
+  @MessageBody() data: { roomId: string; hostId: string }, 
+  @ConnectedSocket() client: Socket
+) {
   try {
     console.log('Ending game:', data);
+    
+    // Call service to end game
     await this.gameService.endGame(data.roomId, data.hostId);
     
     // Notify all players in the room
@@ -547,12 +520,17 @@ async handleEndGame(@MessageBody() data: { roomId: string; hostId: string }, @Co
       message: 'The host has ended the game'
     });
     
-    // Update the game rooms list
+    // Update the game rooms list for lobby
     const rooms = await this.gameService.getActiveGameRooms();
     this.server.emit('gameRoomsList', { rooms });
+    
+    console.log(`Game ended successfully for room ${data.roomId}`);
   } catch (error) {
     console.error('End game error:', error.message);
-    client.emit('error', { message: error.message, type: 'endGameError' });
+    client.emit('error', { 
+      message: error.message || 'Failed to end game', 
+      type: 'endGameError' 
+    });
   }
 }
 
@@ -603,28 +581,3 @@ async handleGetRoomInfo(@MessageBody() data: { roomId: string }, @ConnectedSocke
 }
 
 
-
-
-
-  // @SubscribeMessage('startGame')
-  // async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
-  //   try {
-  //     console.log('Starting game:', data);
-  //     const gameState = await this.gameService.startGame(data.roomId, this.triviaService); // Pass triviaService to GameService
-  //     console.log('Game started, emitting state:', {
-  //       roomId: data.roomId,
-  //       gameType: gameState.gameType,
-  //       currentTurn: gameState.currentTurn,
-  //       gameStarted: gameState.gameStarted
-  //     });
-  //     this.server.to(data.roomId).emit('gameState', {
-  //       ...gameState,
-  //       gameStarted: true,
-  //     });
-  //     const rooms = await this.gameService.getActiveGameRooms();
-  //     this.server.emit('gameRoomsList', { rooms });
-  //   } catch (error) {
-  //     console.error('Start game error:', error.message);
-  //     client.emit('error', { message: error.message, type: 'startGameError' });
-  //   }
-  // }
