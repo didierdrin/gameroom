@@ -1287,7 +1287,7 @@ async updateGameState(roomId: string, gameState: GameState) {
         .exec();
       
       const roomsWithHostNames = await Promise.all(
-        rooms.map(async (room) => {
+        (rooms as any).map(async (room) => {
           let hostName = room.host;
           try {
             // Try to get the actual username from the user service

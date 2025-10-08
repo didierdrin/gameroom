@@ -1,23 +1,8 @@
 import React, { useState } from 'react';
 import { X, Users, Eye, Lock } from 'lucide-react';
 import  { Link } from 'react-router-dom'; 
+import { GameRoom } from '../../types/gameroom'; 
 
-interface GameRoom {
-  id: string;
-  roomId: string;
-  name: string;
-  gameType: string;
-  host: string;
-  hostName: string;
-  hostAvatar: string;
-  currentPlayers: number;
-  maxPlayers: number;
-  isPrivate: boolean;
-  isInviteOnly: boolean;
-  startTime?: string;
-  scheduledTimeCombined?: string;
-  playerIds: []; 
-}
 
 interface GameRoomJoinModalProps {
   isOpen: boolean;

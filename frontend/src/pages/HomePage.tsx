@@ -7,39 +7,8 @@ import { GameRoomJoinModal } from "../components/GameRoom/GameRoomJoinModal";
 import { SectionTitle } from "../components/UI/SectionTitle";
 import { useSocket } from "../SocketContext";
 import { useAuth } from "../context/AuthContext";
+import { GameRoom, Tournament, JoinRoomResponse } from '../types/gameroom'; 
 
-interface GameRoom {
-  id: string;
-  roomId: string; 
-  name: string;
-  gameType: string;
-  host: string; 
-  hostName: string;
-  hostAvatar: string;
-  currentPlayers: number;
-  maxPlayers: number;
-  isPrivate: boolean;
-  isInviteOnly: boolean;
-  startTime?: string;
-  scheduledTimeCombined?: string;
-}
-
-interface Tournament {
-  id: number;
-  name: string;
-  gameType: string;
-  participants: number;
-  startDate: string;
-  prize: string;
-  banner: string;
-}
-
-
-interface JoinRoomResponse {
-  roomId: string;
-  success: boolean;
-  message?: string;
-}
 
 
 const MOCK_TOURNAMENTS: Tournament[] = [
