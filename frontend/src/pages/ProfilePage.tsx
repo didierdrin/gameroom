@@ -1021,7 +1021,7 @@ const EditProfileModal = () => (
       {activeTab === 'settings' && isOwnProfile && (
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-8 text-center">
           <div className="flex justify-around"> 
-          <p className="text-gray-400">Profile settings would appear here.</p>
+          <p className="text-gray-400">We'd like to see you stay!</p>
           <button 
               onClick={logout}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors flex items-center"
