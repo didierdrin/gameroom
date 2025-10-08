@@ -36,6 +36,7 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
       const displayName = isLoading ? 'Loading...' : (username || player.id);
       return {
         name: `${displayName} (You)`,
+        displayName: displayName, // Add this for the actual username
         isYou: true
       };
     }
@@ -44,11 +45,12 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
     const displayName = isLoading ? 'Loading...' : (username || player.id);
     return {
       name: displayName,
+      displayName: displayName, // Add this for consistency
       isYou: false
     };
   };
 
-  const { name, isYou } = getPlayerDisplay();
+  const { name, displayName, isYou } = getPlayerDisplay();
 
   return (
     <div 
@@ -76,18 +78,14 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium truncate">
-          {isHost ? (
-            <span className="text-purple-400">
-              {name}
-            </span>
-          ) : (
+         
             <Link 
-            to={`/profile/${name}`} 
+            to={`/profile/${displayName}`} 
             className="text-purple-400 hover:underline"
           >
         {name}
         </Link>
-          ) }
+       
             </p>
           {isSpectator && (
             <EyeIcon size={14} className="text-gray-400 flex-shrink-0" />
