@@ -15,6 +15,24 @@ import { Chess } from 'chess.js';
 import { UserService } from '../user/user.service';
 import { ChessService } from 'src/chess/chess.service';
 
+type LeanGameRoom = {
+  _id: Types.ObjectId;
+  roomId: string;
+  name: string;
+  gameType: string;
+  host: string;
+  currentPlayers: number;
+  maxPlayers: number;
+  isPrivate: boolean;
+  status: 'waiting' | 'in-progress' | 'completed';
+  createdAt?: Date;
+  scheduledTimeCombined?: Date;
+  scores?: Record<string, number>;
+  playerIds: string[];
+  spectatorIds?: string[];
+  password?: string;
+};
+
 interface PublicGameRoom {
   id: string;
   roomId: string;
@@ -1526,31 +1544,6 @@ async getAllGameRooms() {
   }
 }
 
-// // Add this method to handle game restart properly
-// async restartGame(roomId: string, hostId: string) {
-//   const gameRoom = await this.gameRoomModel.findOne({ roomId });
-//   if (!gameRoom) throw new Error('Game room not found');
-//   if (gameRoom.host !== hostId) throw new Error('Only the host can restart the game');
-  
-//   // Reset room status to 'waiting' instead of keeping it as 'completed'
-//   gameRoom.status = 'waiting';
-//   await gameRoom.save();
-  
-//   // Reset game state but keep players
-//   await this.initializeGameState(roomId, hostId, gameRoom.name, gameRoom.gameType, gameRoom.triviaSettings);
-  
-//   // Get the fresh game state
-//   const gameState = await this.getGameState(roomId);
-  
-//   console.log(`Game restarted for room ${roomId}`, {
-//     status: gameRoom.status,
-//     players: gameState.players.length,
-//     gameStarted: gameState.gameStarted
-//   });
-  
-//   return gameState;
-// }
-
 async restartGame(roomId: string, hostId: string) {
   const gameRoom = await this.gameRoomModel.findOne({ roomId });
   if (!gameRoom) throw new Error('Game room not found');
@@ -1611,21 +1604,6 @@ async endGame(roomId: string, hostId: string) {
 }
 
 
-// // Update the endGame method to not delete Redis state immediately
-// async endGame(roomId: string, hostId: string) {
-//   const gameRoom = await this.gameRoomModel.findOne({ roomId });
-//   if (!gameRoom) throw new Error('Game room not found');
-//   if (gameRoom.host !== hostId) throw new Error('Only the host can end the game');
-  
-//   // Update status to 'completed' but keep Redis state for potential restart
-//   gameRoom.status = 'completed';
-//   await gameRoom.save();
-  
-//   // Don't delete Redis state immediately - let it expire naturally
-//   // This allows for seamless restarts within a short time window
-  
-//   return { success: true, message: 'Game ended successfully' };
-// }
 
 
 private async getPlayerName(playerId: string): Promise<string> {

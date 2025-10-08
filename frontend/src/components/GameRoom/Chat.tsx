@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SendIcon, SmileIcon } from 'lucide-react';
 import { useUserData } from '../../hooks/useUserData';
+import { Link } from 'react-router-dom'; 
 
 const MessageAvatar = ({ playerId }: { playerId: string }) => {
   if (playerId.startsWith('ai-')) {
@@ -95,8 +96,13 @@ export const Chat: React.FC<ChatProps> = ({
               <div className="flex items-center space-x-2">
                 <MessageAvatar playerId={msg.playerId} />
                 <span className="text-xs font-bold">
-                  {playerIdToUsername[msg.playerId] || 
-                   (msg.playerId.startsWith('ai-') ? `AI ${msg.playerId.split('-')[1]}` : msg.playerId)}
+                <Link 
+                to={`/profile/${playerIdToUsername[msg.playerId]}`} 
+                className="text-purple-400 hover:underline"
+              >
+                {playerIdToUsername[msg.playerId]}
+                </Link>
+                  
                 </span>
                 {msg.timestamp && (
                   <span className="text-xs text-gray-400">

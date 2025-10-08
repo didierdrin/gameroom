@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { XIcon, UsersIcon, CheckIcon } from 'lucide-react';
 import { useUserData } from '../../hooks/useUserData';
+import { Link } from 'react-router-dom'; 
 
 interface Player {
   id: string;
@@ -53,7 +54,14 @@ const PlayerSelectionItem: React.FC<{
             }}
           />
           <div className="flex flex-col items-start">
-            <span className="font-medium">{playerName}</span>
+            <span className="font-medium">
+            <Link 
+                to={`/profile/${playerName}`} 
+                className="text-purple-400 hover:underline"
+              >
+              {playerName}
+              </Link>
+              </span>
             <div className="flex items-center space-x-2 mt-1">
               {isHost && (
                 <span className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded-full border border-yellow-600/30">

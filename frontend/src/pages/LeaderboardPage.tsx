@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrophyIcon, MedalIcon, AwardIcon, UsersIcon, RefreshCwIcon } from 'lucide-react';
 import { SectionTitle } from '../components/UI/SectionTitle';
-
+import { Link } from 'react-router-dom'; 
 interface LeaderboardPlayer {
   _id: string;
   username: string;
@@ -132,7 +132,14 @@ export const LeaderboardPage = () => {
             />
           </div>
           <div className="mt-2 text-center">
-            <h3 className="font-bold">{second.username}</h3>
+            <h3 className="font-bold">
+            <Link 
+                to={`/profile/${second.username}`} 
+                className="text-purple-400 hover:underline"
+              >
+              {second.username}
+              </Link>
+              </h3>
             <p className="text-gray-400 text-sm">{second.score} pts</p>
           </div>
           <div className="w-full h-28 bg-gray-800/50 backdrop-blur-sm mt-2 rounded-t-lg flex items-center justify-center text-2xl font-bold border-t-4 border-gray-300">
@@ -157,7 +164,14 @@ export const LeaderboardPage = () => {
             />
           </div>
           <div className="mt-2 text-center">
-            <h3 className="font-bold text-lg">{first.username}</h3>
+            <h3 className="font-bold text-lg">
+            <Link 
+                to={`/profile/${first.username}`} 
+                className="text-purple-400 hover:underline"
+              >
+              {first.username}
+              </Link>
+              </h3>
             <p className="text-gray-300 font-medium">{first.score} pts</p>
           </div>
           <div className="w-full h-36 bg-gradient-to-b from-yellow-900/20 to-yellow-600/10 mt-2 rounded-t-lg flex items-center justify-center text-3xl font-bold border-t-4 border-yellow-500">
@@ -182,7 +196,14 @@ export const LeaderboardPage = () => {
             />
           </div>
           <div className="mt-2 text-center">
-            <h3 className="font-bold">{third.username}</h3>
+            <h3 className="font-bold">
+            <Link 
+                to={`/profile/${third.username}`} 
+                className="text-purple-400 hover:underline"
+              >
+              {third.username}
+              </Link>
+              </h3>
             <p className="text-gray-400 text-sm">{third.score} pts</p>
           </div>
           <div className="w-full h-24 bg-gray-800/50 backdrop-blur-sm mt-2 rounded-t-lg flex items-center justify-center text-2xl font-bold border-t-4 border-amber-700">
@@ -341,7 +362,14 @@ export const LeaderboardPage = () => {
                         }}
                       />
                       <div className="ml-3">
-                        <div className="font-medium">{player.username}</div>
+                        <div className="font-medium">
+                        <Link 
+                to={`/profile/${player.username}`} 
+                className="text-purple-400 hover:underline"
+              >
+                          {player.username}
+                          </Link>
+                          </div>
                       </div>
                     </div>
                   </td>
