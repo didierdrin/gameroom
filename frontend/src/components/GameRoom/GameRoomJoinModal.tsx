@@ -35,6 +35,11 @@ export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
 
   if (!isOpen || !gameRoom) return null;
 
+  const safeCurrentPlayers = typeof gameRoom.currentPlayers === 'number' ? gameRoom.currentPlayers : parseInt(gameRoom.currentPlayers) || 0;
+  const safeMaxPlayers = typeof gameRoom.maxPlayers === 'number' ? gameRoom.maxPlayers : parseInt(gameRoom.maxPlayers) || 0;
+
+
+
   const handleJoin = async (joinAsPlayer: boolean) => {
     if (gameRoom.isPrivate && !password.trim()) {
       alert('Please enter the 6-character room code');
@@ -89,7 +94,7 @@ export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
             <div className="flex items-center space-x-4 text-sm text-gray-400">
               <div className="flex items-center">
                 <Users size={16} className="mr-1" />
-                {gameRoom.currentPlayers}/{gameRoom.maxPlayers}
+                {safeCurrentPlayers}/{safeMaxPlayers}
               </div>
               {gameRoom.isPrivate && (
                 <div className="flex items-center text-yellow-400">
