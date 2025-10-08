@@ -76,7 +76,7 @@ export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
               <span className="text-2xl">{gameRoom.gameType === 'chess' ? '♟️' : gameRoom.gameType === 'ludo' ? '🎲' : '❓'}</span>
               <div>
                 <p className="text-white font-medium">{gameRoom.gameType.charAt(0).toUpperCase() + gameRoom.gameType.slice(1)}</p>
-                <p className="text-gray-400 text-sm">Hosted by 
+                <p className="text-gray-400 text-sm">Hosted by&nbsp;
                 <Link 
                 to={`/profile/${gameRoom.hostName}`} 
                 className="text-purple-400 hover:underline"
@@ -89,7 +89,7 @@ export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
             <div className="flex items-center space-x-4 text-sm text-gray-400">
               <div className="flex items-center">
                 <Users size={16} className="mr-1" />
-                {safeCurrentPlayers}/{safeMaxPlayers}
+                {safeCurrentPlayers}
               </div>
               {gameRoom.isPrivate && (
                 <div className="flex items-center text-yellow-400">

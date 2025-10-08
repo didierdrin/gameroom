@@ -166,7 +166,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
           <div className="flex items-center text-sm text-gray-400">
             <Users size={16} className="mr-1" />
             <span>
-              {safeCurrentPlayers}/{safeMaxPlayers} players
+              {safeCurrentPlayers} players
             </span>
           </div>
           <div
