@@ -1262,8 +1262,8 @@ async updateGameState(roomId: string, gameState: GameState) {
 
   async getActiveGameRooms(): Promise<PublicGameRoom[]> {
     try {
-      const rooms = await this.gameRoomModel
-        .find({ status: { $ne: 'completed' } }) // Exclude completed games
+      var rooms = await this.gameRoomModel
+        .find({ status: { $ne: 'completed' } }) 
         .sort({ createdAt: -1 })
         .lean()
         .exec();

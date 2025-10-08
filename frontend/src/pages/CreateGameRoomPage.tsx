@@ -80,9 +80,6 @@ const TRIVIA_CATEGORIES = [
   { value: 'mythology', label: 'Mythology' },
 ];
 
-// Question count options
-const QUESTION_OPTIONS = [5, 10, 15, 20, 25, 30];
-
 export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) => {
   const [gameType, setGameType] = useState('');
   const [gameMode, setGameMode] = useState('playNow');
@@ -103,7 +100,6 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   const [triviaQuestionCount, setTriviaQuestionCount] = useState(10);
   const [triviaDifficulty, setTriviaDifficulty] = useState('medium');
   const [triviaCategory, setTriviaCategory] = useState('general');
-  const questionScrollRef = useRef<HTMLDivElement>(null);
   
   // Add new state for invite modal
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -154,17 +150,6 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
       setPlayerLimit(10);
     }
   }, [gameType]);
-
-  // Scroll handlers for question count
-  const scrollQuestions = (direction: 'left' | 'right') => {
-    if (questionScrollRef.current) {
-      const scrollAmount = 100;
-      questionScrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
 
   // Copy URL to clipboard
   const copyInviteUrl = async () => {
@@ -282,152 +267,6 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
       return false;
     }
   };
-
-  // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  //   e.preventDefault();
-
-  //   // Validate required fields
-  //   if (!gameType) {
-  //     alert('Please select a game type');
-  //     return;
-  //   }
-
-  //   if (!roomName.trim()) {
-  //     alert('Please enter a room name');
-  //     return;
-  //   }
-
-  //   if (!user) {
-  //     alert('Please login to create a game room');
-  //     navigate('/login');
-  //     return;
-  //   }
-
-  //   if (privacy === 'private' && !password.trim()) {
-  //     alert('Please enter a password for private room');
-  //     return;
-  //   }
-
-  //   if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
-  //     alert('Please select both date and time for scheduled games');
-  //     return;
-  //   }
-
-  //   if (!socket) {
-  //     alert("Connection error. Please refresh and try again.");
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-
-  //   const scheduledTimeCombined = (scheduledDate && scheduledTime)
-  //     ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
-  //     : undefined;
-
-  //   const gameRoomData: GameRoomData = {
-  //     name: roomName,
-  //     gameType: gameType.trim().toLowerCase(),
-  //     maxPlayers: playerLimit,
-  //     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
-  //     password: privacy === 'private' ? password : undefined,
-  //     hostId: String(user.id),
-  //     hostName: user.username,
-  //     scheduledTimeCombined,
-  //     description: description.trim() || undefined,
-  //     enableVideoChat,
-  //     enableVoiceChat,
-  //     allowSpectators,
-  //   };
-
-  //   // Add trivia settings if game type is trivia
-  //   if (gameType === 'trivia') {
-  //     gameRoomData.triviaSettings = {
-  //       questionCount: triviaQuestionCount,
-  //       difficulty: triviaDifficulty,
-  //       category: triviaCategory,
-  //     };
-  //   }
-
-  //   try {
-  //     if (!socket) {
-  //       throw new Error("Connection error. Please refresh and try again.");
-  //     }
-
-  //     let responded = false;
-  //     const timeout = setTimeout(() => {
-  //       if (responded || !isMountedRef.current) return;
-  //       responded = true;
-  //       setIsLoading(false);
-  //       alert('Request timed out. Please try again.');
-  //     }, 15000);
-
-  //     const handleGameCreated = async (game: any) => {
-  //       if (responded || !isMountedRef.current) return;
-  //       responded = true;
-  //       clearTimeout(timeout);
-  //       setIsLoading(false);
-        
-  //       console.log('Game created successfully:', game);
-        
-  //       setCreatedGameData(game);
-        
-  //       // Automatically join the host as a player for all games
-  //       if (game?.roomId) {
-  //         console.log('Attempting to auto-join host as player...');
-          
-  //         await new Promise(resolve => setTimeout(resolve, 3000));
-          
-  //         const joinSuccess = await joinHostAsPlayer(
-  //           game.roomId, 
-  //           privacy === 'private' ? password : undefined
-  //         );
-          
-  //         if (!joinSuccess) {
-  //           console.warn('Host auto-join failed, but continuing with game creation');
-  //         } else {
-  //           console.log('Host successfully joined as player');
-  //         }
-  //       }
-        
-  //       // Check if this is an invite-only room for playNow mode
-  //       if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
-  //         const baseUrl = window.location.origin;
-  //         const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
-  //         setInviteUrl(gameUrl);
-  //         setShowInviteModal(true);
-  //       } else {
-  //         if (gameMode === 'playNow' && game?.roomId) {
-  //           navigate(`/game-room/${game.roomId}`);
-  //         } else {
-  //           navigate('/my-game-rooms');
-  //           console.log('Game scheduled successfully!');
-  //         }
-          
-  //         if (onGameCreated) onGameCreated();
-  //       }
-  //     };
-
-  //     const handleError = (error: any) => {
-  //       if (responded || !isMountedRef.current) return;
-  //       responded = true;
-  //       clearTimeout(timeout);
-  //       setIsLoading(false);
-  //       console.error('Game creation error:', error);
-  //       alert(error.message || 'Failed to create game room');
-  //     };
-
-  //     socket.once('gameCreated', handleGameCreated);
-  //     socket.once('error', handleError);
-  //     socket.emit('createGame', gameRoomData);
-
-  //   } catch (error) {
-  //     if (isMountedRef.current) {
-  //       setIsLoading(false);
-  //       alert('Failed to create game room. Please try again.');
-  //       console.error('Create game error:', error);
-  //     }
-  //   }
-  // };
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
@@ -617,46 +456,24 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           <div className="mb-8 p-4 bg-purple-700/10 rounded-xl border border-purple-600/30">
             <h3 className="text-white font-medium mb-4">Trivia Settings</h3>
             
-            {/* Question Count Selector with Horizontal Scroll */}
+            {/* Question Count Selector */}
             <div className="mb-6">
-              <label className="block text-gray-300 mb-3 text-sm">Number of Questions</label>
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => scrollQuestions('left')}
-                  className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                
-                <div 
-                  ref={questionScrollRef}
-                  className="flex-1 flex space-x-3 overflow-x-auto scrollbar-hide"
-                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                  {QUESTION_OPTIONS.map(count => (
-                    <button
-                      key={count}
-                      type="button"
-                      onClick={() => setTriviaQuestionCount(count)}
-                      className={`min-w-[80px] px-6 py-3 rounded-lg font-medium transition-all ${
-                        triviaQuestionCount === count
-                          ? 'bg-purple-600 text-white shadow-lg'
-                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                      }`}
-                    >
-                      {count}
-                    </button>
-                  ))}
-                </div>
-                
-                <button
-                  type="button"
-                  onClick={() => scrollQuestions('right')}
-                  className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                  <ChevronRight size={20} />
-                </button>
+              <label className="flex items-center justify-between text-gray-300 mb-2 text-sm">
+                <span>Number of Questions</span>
+                <span className="bg-gray-700 px-2 py-1 rounded text-xs">
+                  {triviaQuestionCount} questions
+                </span>
+              </label>
+              <div className="relative flex items-center">
+                <input 
+                  type="range" 
+                  min="5" 
+                  max="30" 
+                  step="5"
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  value={triviaQuestionCount} 
+                  onChange={e => setTriviaQuestionCount(parseInt(e.target.value))}
+                />
               </div>
             </div>
 
@@ -852,7 +669,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   }`}
                   value={playerLimit} 
                   onChange={e => setPlayerLimit(parseInt(e.target.value))}
-                  disabled={gameType === 'chess'}
+                  
                 />
               </div>
             </div>
@@ -1080,12 +897,44 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   );
 };
 
+
+// // CreateGameRoomPage.tsx
 // import React, { useState, useEffect, useRef } from 'react';
 // import { SectionTitle } from '../components/UI/SectionTitle';
-// import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink } from 'lucide-react';
+// import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 // import { useSocket } from '../SocketContext';
 // import { useNavigate } from 'react-router-dom';
 // import { useAuth } from '../context/AuthContext';
+
+
+// export const createTriviaGame = (
+//   socket: any, 
+//   user: any, 
+//   triviaSettings: {
+//     questionCount: number;
+//     difficulty: string;
+//     category: string;
+//   },
+//   roomName: string = 'Trivia Game',
+//   isPrivate: boolean = false
+// ) => {
+//   if (!socket || !user) {
+//     console.error('Socket or user not available');
+//     return;
+//   }
+
+//   const gameRoomData = {
+//     name: roomName,
+//     gameType: 'trivia',
+//     hostId: user.id,
+//     isPrivate: isPrivate,
+//     triviaSettings: triviaSettings
+//   };
+
+//   console.log('Creating trivia game:', gameRoomData);
+//   socket.emit('createGame', gameRoomData);
+// };
+
 
 // interface CreateGameRoomPageProps {
 //   onGameCreated?: () => void;
@@ -1104,7 +953,35 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //   allowSpectators: boolean;
 //   hostId: string;
 //   hostName: string;
+//   // Add trivia specific fields
+//   triviaSettings?: {
+//     questionCount: number;
+//     difficulty: string;
+//     category: string;
+//   };
 // }
+
+// // Trivia categories available
+// const TRIVIA_CATEGORIES = [
+//   { value: 'general', label: 'General Knowledge' },
+//   { value: 'science', label: 'Science' },
+//   { value: 'history', label: 'History' },
+//   { value: 'geography', label: 'Geography' },
+//   { value: 'entertainment', label: 'Entertainment' },
+//   { value: 'sports', label: 'Sports' },
+//   { value: 'technology', label: 'Technology' },
+//   { value: 'literature', label: 'Literature' },
+//   { value: 'music', label: 'Music' },
+//   { value: 'art', label: 'Art & Design' },
+//   { value: 'politics', label: 'Politics' },
+//   { value: 'nature', label: 'Nature & Animals' },
+//   { value: 'movies', label: 'Movies & TV' },
+//   { value: 'food', label: 'Food & Cooking' },
+//   { value: 'mythology', label: 'Mythology' },
+// ];
+
+// // Question count options
+// const QUESTION_OPTIONS = [5, 10, 15, 20, 25, 30];
 
 // export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) => {
 //   const [gameType, setGameType] = useState('');
@@ -1122,6 +999,12 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //   const [generatedCode, setGeneratedCode] = useState('');
 //   const [isLoading, setIsLoading] = useState(false);
   
+//   // Trivia specific settings
+//   const [triviaQuestionCount, setTriviaQuestionCount] = useState(10);
+//   const [triviaDifficulty, setTriviaDifficulty] = useState('medium');
+//   const [triviaCategory, setTriviaCategory] = useState('general');
+//   const questionScrollRef = useRef<HTMLDivElement>(null);
+  
 //   // Add new state for invite modal
 //   const [showInviteModal, setShowInviteModal] = useState(false);
 //   const [inviteUrl, setInviteUrl] = useState('');
@@ -1130,16 +1013,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //   const navigate = useNavigate();
 //   const socket = useSocket();
 //   const { user } = useAuth(); 
-//   const isMountedRef = useRef(true); 
+//   const isMountedRef = useRef(true);
 
 //   const gameTypes = [
-//     // { id: 'kahoot', name: 'Kahoot', icon: '🎯' },
-//     // { id: 'ludo', name: 'Ludo', icon: '🎲' },
 //     { id: 'chess', name: 'Chess', icon: '♟️' },
-//     // { id: 'uno', name: 'UNO', icon: '🃏' },
 //     { id: 'trivia', name: 'Trivia', icon: '❓' },
-//     // { id: 'pictionary', name: 'Pictionary', icon: '🎨' },
-//     // { id: 'sudoku', name: 'Sudoku', icon: '🔢' }
 //   ];
 
 //   useEffect(() => {
@@ -1148,7 +1026,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //     };
 //   }, []);
 
-//   // Add function to generate 6-character code
+//   // Function to generate 6-character code
 //   const generateRoomCode = () => {
 //     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 //     let result = '';
@@ -1170,21 +1048,31 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //     }
 //   }, [privacy]);
 
-//   // Set player limit to 10 for chess games - the host can make 2 players the ones to attend and the others later
+//   // Set player limit to 10 for chess games
 //   useEffect(() => {
-//     if (gameType === 'chess') {
+//     if (gameType === '') { // it was chess
 //       setPlayerLimit(10);
 //     }
 //   }, [gameType]);
 
-//   // Add function to copy URL to clipboard
+//   // Scroll handlers for question count
+//   const scrollQuestions = (direction: 'left' | 'right') => {
+//     if (questionScrollRef.current) {
+//       const scrollAmount = 100;
+//       questionScrollRef.current.scrollBy({
+//         left: direction === 'left' ? -scrollAmount : scrollAmount,
+//         behavior: 'smooth'
+//       });
+//     }
+//   };
+
+//   // Copy URL to clipboard
 //   const copyInviteUrl = async () => {
 //     try {
 //       await navigator.clipboard.writeText(inviteUrl);
 //       alert('Invite URL copied to clipboard!');
 //     } catch (err) {
 //       console.error('Failed to copy URL:', err);
-//       // Fallback for older browsers
 //       const textArea = document.createElement('textarea');
 //       textArea.value = inviteUrl;
 //       document.body.appendChild(textArea);
@@ -1195,7 +1083,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //     }
 //   };
 
-//   // Add function to handle modal close and navigation
+//   // Handle modal close and navigation
 //   const handleInviteModalClose = () => {
 //     setShowInviteModal(false);
 //     if (createdGameData) {
@@ -1208,7 +1096,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //     if (onGameCreated) onGameCreated();
 //   };
 
-//   // Enhanced function to join host as player (consistent with GameRoomJoinModal approach)
+//   // Join host as player
 //   const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Promise<boolean> => {
 //     if (!socket || !user) {
 //       console.error('Missing socket or user for auto-join');
@@ -1217,16 +1105,15 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
 //     try {
 //       console.log('Auto-joining host as player to room:', gameRoomId);
-
-//       const myId = String(user.id); 
+//       const myId = String(user.id);
       
 //       const joinPayload = {
 //         roomId: gameRoomId,
-//         playerId: myId, 
+//         playerId: myId,
 //         playerName: user.username,
-//         joinAsPlayer: true, // Explicitly set this flag
-//         isHost: true, // Add host flag for better identification
-//         password: roomPassword // Include password for private rooms
+//         joinAsPlayer: true,
+//         isHost: true,
+//         password: roomPassword
 //       };
 
 //       console.log('Join payload:', joinPayload);
@@ -1236,7 +1123,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //           console.warn('Host auto-join timed out');
 //           cleanupListeners();
 //           resolve(false);
-//         }, 30000); // Increased timeout
+//         }, 30000);
 
 //         const handleJoinSuccess = (data: any) => {
 //           console.log('Host successfully joined as player:', data);
@@ -1246,8 +1133,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //         };
 
 //         const handlePlayerJoined = (data: any) => {
-//           // Check if this is our join event
-//           if (data.playerId === myId || data.playerId === myId) {
+//           if (data.playerId === myId) {
 //             console.log('Host player joined event received:', data);
 //             clearTimeout(timeout);
 //             cleanupListeners();
@@ -1276,13 +1162,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //           socket.off('error', handleError);
 //         };
 
-//         // Listen for multiple possible success events
 //         socket.on('joinGameSuccess', handleJoinSuccess);
 //         socket.on('playerJoined', handlePlayerJoined);
 //         socket.on('joinGameError', handleJoinError);
 //         socket.on('error', handleError);
 
-//         // Emit the join request
 //         socket.emit('joinGame', joinPayload);
 //       });
 
@@ -1299,148 +1183,156 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //     }
 //   };
 
-//   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-//     e.preventDefault();
+// const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+//   e.preventDefault();
 
-//     // Validate required fields
-//     if (!gameType) {
-//       alert('Please select a game type');
-//       return;
-//     }
+//   // Validate required fields
+//   if (!gameType) {
+//     alert('Please select a game type');
+//     return;
+//   }
 
-//     if (!roomName.trim()) {
-//       alert('Please enter a room name');
-//       return;
-//     }
+//   if (!roomName.trim()) {
+//     alert('Please enter a room name');
+//     return;
+//   }
 
-//     if (!user) {
-//       alert('Please login to create a game room');
-//       navigate('/login');
-//       return;
-//     }
+//   if (!user) {
+//     alert('Please login to create a game room');
+//     navigate('/login');
+//     return;
+//   }
 
-//     if (privacy === 'private' && !password.trim()) {
-//       alert('Please enter a password for private room');
-//       return;
-//     }
+//   if (privacy === 'private' && !password.trim()) {
+//     alert('Please enter a password for private room');
+//     return;
+//   }
 
-//     if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
-//       alert('Please select both date and time for scheduled games');
-//       return;
-//     }
+//   if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
+//     alert('Please select both date and time for scheduled games');
+//     return;
+//   }
 
+//   if (!socket) {
+//     alert("Connection error. Please refresh and try again.");
+//     return;
+//   }
+
+//   setIsLoading(true);
+
+//   const scheduledTimeCombined = (scheduledDate && scheduledTime)
+//     ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+//     : undefined;
+
+//   // Create the base game room data
+//   const gameRoomData: any = {
+//     name: roomName,
+//     gameType: gameType.trim().toLowerCase(),
+//     maxPlayers: playerLimit,
+//     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
+//     password: privacy === 'private' ? password : undefined,
+//     hostId: String(user.id),
+//     hostName: user.username,
+//     scheduledTimeCombined,
+//     description: description.trim() || undefined,
+//     enableVideoChat,
+//     enableVoiceChat,
+//     allowSpectators,
+//   };
+
+//   // Add trivia settings if game type is trivia - FIXED VERSION
+//   if (gameType === 'trivia') {
+//     gameRoomData.triviaSettings = {
+//       questionCount: triviaQuestionCount,
+//       difficulty: triviaDifficulty,
+//       category: triviaCategory,
+//     };
+    
+//     console.log('Creating trivia game with settings:', gameRoomData.triviaSettings);
+//   }
+
+//   try {
 //     if (!socket) {
-//       alert("Connection error. Please refresh and try again.");
-//       return;
+//       throw new Error("Connection error. Please refresh and try again.");
 //     }
 
-//     setIsLoading(true);
+//     let responded = false;
+//     const timeout = setTimeout(() => {
+//       if (responded || !isMountedRef.current) return;
+//       responded = true;
+//       setIsLoading(false);
+//       alert('Request timed out. Please try again.');
+//     }, 15000);
 
-//     const scheduledTimeCombined = (scheduledDate && scheduledTime)
-//       ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
-//       : undefined;
-
-//     const gameRoomData: GameRoomData = {
-//       name: roomName,
-//       gameType: gameType.trim().toLowerCase(),
-//       maxPlayers: playerLimit,
-//       isPrivate: privacy === 'private' || privacy === 'inviteOnly',
-//       // isInviteOnly: privacy === 'inviteOnly',
-//       password: privacy === 'private' ? password : undefined,
-//       hostId: String(user.id), 
-//       hostName: user.username,
-//       scheduledTimeCombined,
-//       description: description.trim() || undefined,
-//       enableVideoChat,
-//       enableVoiceChat,
-//       allowSpectators,
+//     const handleGameCreated = async (game: any) => {
+//       if (responded || !isMountedRef.current) return;
+//       responded = true;
+//       clearTimeout(timeout);
+//       setIsLoading(false);
+      
+//       console.log('Game created successfully:', game);
+      
+//       setCreatedGameData(game);
+      
+//       // Automatically join the host as a player for all games
+//       if (game?.roomId) {
+//         console.log('Attempting to auto-join host as player...');
+        
+//         await new Promise(resolve => setTimeout(resolve, 3000));
+        
+//         const joinSuccess = await joinHostAsPlayer(
+//           game.roomId, 
+//           privacy === 'private' ? password : undefined
+//         );
+        
+//         if (!joinSuccess) {
+//           console.warn('Host auto-join failed, but continuing with game creation');
+//         } else {
+//           console.log('Host successfully joined as player');
+//         }
+//       }
+      
+//       // Check if this is an invite-only room for playNow mode
+//       if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
+//         const baseUrl = window.location.origin;
+//         const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
+//         setInviteUrl(gameUrl);
+//         setShowInviteModal(true);
+//       } else {
+//         if (gameMode === 'playNow' && game?.roomId) {
+//           navigate(`/game-room/${game.roomId}`);
+//         } else {
+//           navigate('/my-game-rooms');
+//           console.log('Game scheduled successfully!');
+//         }
+        
+//         if (onGameCreated) onGameCreated();
+//       }
 //     };
 
-//     try {
-//       if (!socket) {
-//         throw new Error("Connection error. Please refresh and try again.");
-//       }
+//     const handleError = (error: any) => {
+//       if (responded || !isMountedRef.current) return;
+//       responded = true;
+//       clearTimeout(timeout);
+//       setIsLoading(false);
+//       console.error('Game creation error:', error);
+//       alert(error.message || 'Failed to create game room');
+//     };
 
-//       let responded = false;
-//       const timeout = setTimeout(() => {
-//         if (responded || !isMountedRef.current) return;
-//         responded = true;
-//         setIsLoading(false);
-//         alert('Request timed out. Please try again.');
-//       }, 15000); // Increased timeout
+//     socket.once('gameCreated', handleGameCreated);
+//     socket.once('error', handleError);
+    
+//     console.log('Emitting createGame with data:', gameRoomData);
+//     socket.emit('createGame', gameRoomData);
 
-//       const handleGameCreated = async (game: any) => {
-//         if (responded || !isMountedRef.current) return;
-//         responded = true;
-//         clearTimeout(timeout);
-//         setIsLoading(false);
-        
-//         console.log('Game created successfully:', game);
-        
-//         // Store the created game data
-//         setCreatedGameData(game);
-        
-//         // Automatically join the host as a player for all games
-//         if (game?.roomId) {
-//           console.log('Attempting to auto-join host as player...');
-          
-//           // Add a small delay to ensure the room is fully created
-//           await new Promise(resolve => setTimeout(resolve, 3000));
-          
-//           const joinSuccess = await joinHostAsPlayer(
-//             game.roomId, 
-//             privacy === 'private' ? password : undefined
-//           );
-          
-//           if (!joinSuccess) {
-//             console.warn('Host auto-join failed, but continuing with game creation');
-//             // Don't fail the entire flow, just log the warning
-//           } else {
-//             console.log('Host successfully joined as player');
-//           }
-//         }
-        
-//         // Check if this is an invite-only room for playNow mode
-//         if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
-//           // Generate invite URL and show modal
-//           const baseUrl = window.location.origin;
-//           const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
-//           setInviteUrl(gameUrl);
-//           setShowInviteModal(true);
-//         } else {
-//           // Normal flow for other privacy settings
-//           if (gameMode === 'playNow' && game?.roomId) {
-//             navigate(`/game-room/${game.roomId}`);
-//           } else {
-//             navigate('/my-game-rooms');
-//             console.log('Game scheduled successfully!');
-//           }
-          
-//           if (onGameCreated) onGameCreated();
-//         }
-//       };
-
-//       const handleError = (error: any) => {
-//         if (responded || !isMountedRef.current) return;
-//         responded = true;
-//         clearTimeout(timeout);
-//         setIsLoading(false);
-//         console.error('Game creation error:', error);
-//         alert(error.message || 'Failed to create game room');
-//       };
-
-//       socket.once('gameCreated', handleGameCreated);
-//       socket.once('error', handleError);
-//       socket.emit('createGame', gameRoomData);
-
-//     } catch (error) {
-//       if (isMountedRef.current) {
-//         setIsLoading(false);
-//         alert('Failed to create game room. Please try again.');
-//         console.error('Create game error:', error);
-//       }
+//   } catch (error) {
+//     if (isMountedRef.current) {
+//       setIsLoading(false);
+//       alert('Failed to create game room. Please try again.');
+//       console.error('Create game error:', error);
 //     }
-//   };
+//   }
+// };
 
 //   return (
 //     <div className="p-6 overflow-y-auto h-screen pb-20">
@@ -1473,6 +1365,112 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //             ))}
 //           </div>
 //         </div>
+
+//         {/* Trivia Specific Settings */}
+//         {gameType === 'trivia' && (
+//           <div className="mb-8 p-4 bg-purple-700/10 rounded-xl border border-purple-600/30">
+//             <h3 className="text-white font-medium mb-4">Trivia Settings</h3>
+            
+//             {/* Question Count Selector */}
+//             <div className="mb-6">
+//               <label className="block text-gray-300 mb-3 text-sm">Number of Questions</label>
+//               <div className="flex items-center space-x-2">
+//                 <button
+//                   type="button"
+//                   onClick={() => scrollQuestions('left')}
+//                   className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+//                 >
+//                   <ChevronLeft size={20} />
+//                 </button>
+                
+//                 <div 
+//                   ref={questionScrollRef}
+//                   className="flex-1 flex space-x-3 overflow-x-auto scrollbar-hide"
+//                   style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+//                 >
+//                   {QUESTION_OPTIONS.map(count => (
+//                     <button
+//                       key={count}
+//                       type="button"
+//                       onClick={() => setTriviaQuestionCount(count)}
+//                       className={`min-w-[80px] px-6 py-3 rounded-lg font-medium transition-all ${
+//                         triviaQuestionCount === count
+//                           ? 'bg-purple-600 text-white shadow-lg'
+//                           : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+//                       }`}
+//                     >
+//                       {count}
+//                     </button>
+//                   ))}
+//                 </div>
+                
+//                 <button
+//                   type="button"
+//                   onClick={() => scrollQuestions('right')}
+//                   className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+//                 >
+//                   <ChevronRight size={20} />
+//                 </button>
+//               </div>
+//             </div>
+
+//             {/* Difficulty Level */}
+//             <div className="mb-6">
+//               <label className="block text-gray-300 mb-3 text-sm">Difficulty Level</label>
+//               <div className="grid grid-cols-3 gap-3">
+//                 <button
+//                   type="button"
+//                   onClick={() => setTriviaDifficulty('easy')}
+//                   className={`p-3 rounded-lg font-medium transition-all ${
+//                     triviaDifficulty === 'easy'
+//                       ? 'bg-green-600 text-white'
+//                       : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+//                   }`}
+//                 >
+//                   Easy
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => setTriviaDifficulty('medium')}
+//                   className={`p-3 rounded-lg font-medium transition-all ${
+//                     triviaDifficulty === 'medium'
+//                       ? 'bg-yellow-600 text-white'
+//                       : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+//                   }`}
+//                 >
+//                   Medium
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => setTriviaDifficulty('hard')}
+//                   className={`p-3 rounded-lg font-medium transition-all ${
+//                     triviaDifficulty === 'hard'
+//                       ? 'bg-red-600 text-white'
+//                       : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+//                   }`}
+//                 >
+//                   Hard
+//                 </button>
+//               </div>
+//             </div>
+
+//             {/* Category Dropdown */}
+//             <div>
+//               <label className="block text-gray-300 mb-3 text-sm">Category</label>
+//               <select
+//                 value={triviaCategory}
+//                 onChange={(e) => setTriviaCategory(e.target.value)}
+//                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
+//               >
+//                 {TRIVIA_CATEGORIES.map(cat => (
+//                   <option key={cat.value} value={cat.value}>
+//                     {cat.label}
+//                   </option>
+//                 ))}
+//               </select>
+//             </div>
+//           </div>
+//         )}
 
 //         {/* Game Mode */}
 //         <div className="mb-8">
@@ -1608,7 +1606,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //                   }`}
 //                   value={playerLimit} 
 //                   onChange={e => setPlayerLimit(parseInt(e.target.value))}
-//                   disabled={gameType === 'chess'}
+                  
 //                 />
 //               </div>
 //             </div>

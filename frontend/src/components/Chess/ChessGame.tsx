@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Chessboard from 'chessboardjsx';
-import { Chess } from 'chess.js';
+import { Chess, Square } from 'chess.js';
 
 interface GameRenderProps {
   socket: any;
@@ -190,11 +190,13 @@ export const ChessGame: React.FC<GameRenderProps> = ({
 
     // If no square is selected, select this one (if it has a piece of the player's color)
     if (!selectedSquare) {
-      const piece = gameRef.current.get(square);
+      // const piece = gameRef.current.get(square);
+      const sq = square as Square;
+    const piece = gameRef.current.get(sq);
       
       if (piece && piece.color === expectedColor) {
         // Get all valid moves for this piece
-        const moves = gameRef.current.moves({ square, verbose: true });
+        const moves = gameRef.current.moves({ square: sq, verbose: true });
         const targetSquares = moves.map(m => m.to);
         
         if (targetSquares.length > 0) {
@@ -251,9 +253,11 @@ export const ChessGame: React.FC<GameRenderProps> = ({
         }
       } else {
         // Clicked another piece of the player's color - switch selection
-        const piece = gameRef.current.get(square);
+        // const piece = gameRef.current.get(square);
+        const sq = square as Square;
+  const piece = gameRef.current.get(sq);
         if (piece && piece.color === expectedColor) {
-          const moves = gameRef.current.moves({ square, verbose: true });
+          const moves = gameRef.current.moves({ square: sq, verbose: true });
           const targetSquares = moves.map(m => m.to);
           
           if (targetSquares.length > 0) {
