@@ -16,6 +16,7 @@ interface GameRoom {
   isInviteOnly: boolean;
   startTime?: string;
   scheduledTimeCombined?: string;
+  playerIds: []; 
 }
 
 interface GameRoomJoinModalProps {
@@ -36,7 +37,8 @@ export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
 
   if (!isOpen || !gameRoom) return null;
 
-  const safeCurrentPlayers = typeof gameRoom.currentPlayers === 'number' ? gameRoom.currentPlayers : parseInt(gameRoom.currentPlayers) || 0;
+  const actualCurrentPlayers = gameRoom.playerIds?.length;
+  const safeCurrentPlayers = actualCurrentPlayers; 
   const safeMaxPlayers = typeof gameRoom.maxPlayers === 'number' ? gameRoom.maxPlayers : parseInt(gameRoom.maxPlayers) || 0;
 
 
