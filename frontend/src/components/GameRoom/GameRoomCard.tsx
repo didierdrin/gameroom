@@ -29,8 +29,8 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
   const { username: hostDisplayName, isLoading: isLoadingHost } = useUsername(host);
   const { avatarUrl: resolvedHostAvatar, isLoading: isLoadingAvatar } = useAvatar(host, hostDisplayName || host);
 
-  const actualCurrentPlayers = gameRoom.playerIds?.length || currentPlayers;
-  const safeCurrentPlayers = actualCurrentPlayers; 
+  const actualCurrentPlayers = currentPlayers;
+  const safeCurrentPlayers = actualCurrentPlayers;
   const safeMaxPlayers = typeof maxPlayers === 'number' ? maxPlayers : parseInt(maxPlayers) || 0;
 
   const getAvatarUrl = () => {

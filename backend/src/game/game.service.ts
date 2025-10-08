@@ -1298,6 +1298,8 @@ async updateGameState(roomId: string, gameState: GameState) {
           } catch (error) {
             console.log(`Could not fetch username for host ${room.host}, using ID as fallback`);
           }
+
+          const actualCurrentPlayers = room.playerIds?.length || 0;
           
           return {
             id: room.roomId,
@@ -1306,7 +1308,7 @@ async updateGameState(roomId: string, gameState: GameState) {
             gameType: room.gameType,
             hostName: hostName,
             hostAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(room.host)}`,
-            currentPlayers: room.currentPlayers,
+            currentPlayers: actualCurrentPlayers, //room.currentPlayers,
             maxPlayers: room.maxPlayers,
             isPrivate: room.isPrivate,
             isInviteOnly: room.isPrivate,
