@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Users, Eye, Lock } from 'lucide-react';
+import  { Link } from 'react-router-dom'; 
 
 interface GameRoom {
   id: string;
@@ -88,7 +89,14 @@ export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
               <span className="text-2xl">{gameRoom.gameType === 'chess' ? '♟️' : gameRoom.gameType === 'ludo' ? '🎲' : '❓'}</span>
               <div>
                 <p className="text-white font-medium">{gameRoom.gameType.charAt(0).toUpperCase() + gameRoom.gameType.slice(1)}</p>
-                <p className="text-gray-400 text-sm">Hosted by {gameRoom.hostName}</p>
+                <p className="text-gray-400 text-sm">Hosted by 
+                <Link 
+                to={`/profile/${gameRoom.hostName}`} 
+                className="text-purple-400 hover:underline"
+              >
+                {gameRoom.hostName}
+                </Link>
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4 text-sm text-gray-400">

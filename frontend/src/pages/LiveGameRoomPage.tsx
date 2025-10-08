@@ -34,6 +34,7 @@ import { useSocket, useSocketConnection } from "../SocketContext";
 import { useAuth } from "../context/AuthContext";
 import { SocketType } from "../SocketContext";
 import { useUserData } from "../hooks/useUserData"; 
+import { Link } from 'react-router-dom'; 
 
 interface Participant {
   id: string;
@@ -127,7 +128,14 @@ const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
           <div className="flex items-center space-x-3">
             <PlayerAvatar playerId={player.id} />
             <div>
-              <h3 className="text-lg font-semibold text-white">{player.name || player.id}</h3>
+              <h3 className="text-lg font-semibold text-white">
+              <Link 
+                to={`/profile/${player.name}`} 
+                className="text-purple-400 hover:underline"
+              >
+                {player.name}
+                </Link>
+                </h3>
               <p className="text-sm text-gray-400">
                 {isHostSelf ? 'Host Management' : 'Player Management'}
               </p>

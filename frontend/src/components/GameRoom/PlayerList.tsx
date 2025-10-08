@@ -76,12 +76,18 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium truncate">
-          <Link 
-                to={`/profile/${name}`} 
-                className="text-purple-400 hover:underline"
-              >
-            {name}
-            </Link>
+          {isHost ? (
+            <span className="text-purple-400">
+              {name}
+            </span>
+          ) : (
+            <Link 
+            to={`/profile/${name}`} 
+            className="text-purple-400 hover:underline"
+          >
+        {name}
+        </Link>
+          ) }
             </p>
           {isSpectator && (
             <EyeIcon size={14} className="text-gray-400 flex-shrink-0" />
