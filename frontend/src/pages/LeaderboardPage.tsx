@@ -149,7 +149,7 @@ export const LeaderboardPage = () => {
           {/* First Place - Mobile: Center, Desktop: Middle */}
           <div className="flex flex-col items-center order-1 lg:order-2 -mt-4 sm:-mt-8 z-10">
             <div className="relative">
-              <div className="relative -top-4 sm:-top-6 left-1/2 transform -translate-x-1/2">
+              <div className="relative -top-0 sm:-top-6 left-1/2 transform -translate-x-1/2">
                 <TrophyIcon size={24} className="sm:size-24 text-yellow-500" />
               </div>
               <img 
