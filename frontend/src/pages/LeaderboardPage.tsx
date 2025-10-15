@@ -116,7 +116,7 @@ export const LeaderboardPage = () => {
     return (
       <div className="flex flex-col md:flex-row justify-center items-end mb-8 lg:mb-12 gap-4 lg:gap-8 px-4">
         {/* Mobile: Stack vertically, Desktop: Side by side */}
-        <div className="flex flex-row lg:flex-col justify-center items-center lg:items-end gap-4 lg:gap-0 w-full lg:w-auto">
+        <div className="flex flex-row md:flex-row justify-center items-center lg:items-end gap-4 lg:gap-0 w-full lg:w-auto">
           {/* Second Place */}
           <div className="flex flex-col items-center order-2 lg:order-1">
             <div className="relative">
