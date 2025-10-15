@@ -73,7 +73,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     }
   }, [timer, loading, questions, hasAnswered]);
 
- // In TriviaGame.tsx - update the submitAnswer function
+// In TriviaGame.tsx - update the submitAnswer function
 const submitAnswer = () => {
   if (hasAnswered) return; // Prevent double submission
   
@@ -141,17 +141,19 @@ const nextQuestion = () => {
     nextQuestion();
   };
 
-  // Prepare leaderboard data from game state scores
-  const getLeaderboardData = () => {
-    const scores = gameState.triviaState?.scores || {};
-    
-    return Object.entries(scores)
-      .map(([playerId, playerScore]) => ({
-        _id: playerId,
-        score: playerScore as number
-      }))
-      .sort((a, b) => b.score - a.score);
-  };
+ // In TriviaGame.tsx - update the getLeaderboardData function
+const getLeaderboardData = () => {
+  const scores = gameState.triviaState?.scores || {};
+  
+  console.log('Building leaderboard with scores:', scores);
+  
+  return Object.entries(scores)
+    .map(([playerId, playerScore]) => ({
+      _id: playerId,
+      score: playerScore as number
+    }))
+    .sort((a, b) => b.score - a.score);
+};
 
   const leaderboardData = gameState.gameOver ? getLeaderboardData() : [];
   const { username: currentUsername } = useUserData(currentPlayer);

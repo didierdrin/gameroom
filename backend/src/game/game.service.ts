@@ -913,7 +913,7 @@ async startGame(roomId: string) {
     }
   }
 
- // In GameService class in game.service.ts - ensure submitTriviaAnswer is correct
+// In GameService class in game.service.ts - ensure submitTriviaAnswer is correct
 async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }) {
   const gameState = await this.getGameState(data.roomId);
   if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
@@ -1072,7 +1072,7 @@ async completeTriviaGame(data: { roomId: string; playerId: string; score: number
   };
 }
 
-  // In GameService class in game.service.ts
+// In GameService class in game.service.ts
 async processTriviaQuestion(roomId: string) {
   const gameState = await this.getGameState(roomId);
   if (!gameState.triviaState) throw new Error('Trivia state not initialized');
