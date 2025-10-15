@@ -73,66 +73,69 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     }
   }, [timer, loading, questions, hasAnswered]);
 
-  const submitAnswer = () => {
-    if (hasAnswered) return; // Prevent double submission
+ // In TriviaGame.tsx - update the submitAnswer function
+const submitAnswer = () => {
+  if (hasAnswered) return; // Prevent double submission
+  
+  setHasAnswered(true);
+  setShowAnswerResult(true);
+  
+  const currentQuestion = questions[currentQ];
+  const isCorrect = selected === currentQuestion.correctAnswer;
+  
+  // Emit answer to backend with correctness
+  socket.emit('triviaAnswer', { 
+    roomId, 
+    playerId: currentPlayer, 
+    qId: currentQuestion.id, 
+    answer: selected,
+    correct: currentQuestion.correctAnswer,
+    isCorrect
+  });
+  
+  console.log('Submitted answer:', {
+    questionId: currentQuestion.id,
+    selected,
+    correct: currentQuestion.correctAnswer,
+    isCorrect,
+    currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0
+  });
+
+  // Automatically move to next question after 2 seconds of showing result
+  setTimeout(() => {
+    nextQuestion();
+  }, 2000);
+};
+
+// Update the nextQuestion function to handle game completion properly
+const nextQuestion = () => {
+  if (currentQ + 1 < questions.length) {
+    setCurrentQ(currentQ + 1);
+    setTimer(5);
+    setSelected(null);
+    setHasAnswered(false);
+    setShowAnswerResult(false);
+  } else {
+    setShowFireworks(true);
     
-    setHasAnswered(true);
-    setShowAnswerResult(true);
+    // Get final score from gameState - this should now be properly calculated
+    const finalScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
     
-    const currentQuestion = questions[currentQ];
-    const isCorrect = selected === currentQuestion.correctAnswer;
+    console.log('Game complete - sending final score:', {
+      playerId: currentPlayer,
+      finalScore,
+      totalQuestions: questions.length,
+      allScores: gameState.triviaState?.scores
+    });
     
-    // Emit answer to backend with correctness
-    socket.emit('triviaAnswer', { 
+    socket.emit('triviaComplete', { 
       roomId, 
       playerId: currentPlayer, 
-      qId: currentQuestion.id, 
-      answer: selected,
-      correct: currentQuestion.correctAnswer,
-      isCorrect
+      score: finalScore,
+      total: questions.length 
     });
-    
-    console.log('Submitted answer:', {
-      questionId: currentQuestion.id,
-      selected,
-      correct: currentQuestion.correctAnswer,
-      isCorrect,
-      currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0
-    });
-
-    // Automatically move to next question after 2 seconds of showing result
-    setTimeout(() => {
-      nextQuestion();
-    }, 2000);
-  };
-
-  const nextQuestion = () => {
-    if (currentQ + 1 < questions.length) {
-      setCurrentQ(currentQ + 1);
-      setTimer(5);
-      setSelected(null);
-      setHasAnswered(false);
-      setShowAnswerResult(false);
-    } else {
-      setShowFireworks(true);
-      
-      // Get final score from gameState
-      const finalScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
-      
-      socket.emit('triviaComplete', { 
-        roomId, 
-        playerId: currentPlayer, 
-        score: finalScore,
-        total: questions.length 
-      });
-      
-      console.log('Game complete:', {
-        playerId: currentPlayer,
-        finalScore,
-        totalQuestions: questions.length
-      });
-    }
-  };
+  }
+};
 
   const handleNextQuestion = () => {
     nextQuestion();

@@ -79,44 +79,85 @@ async handleStartChessGame(@MessageBody() data: { roomId: string }) {
   }
 }
 
-  @SubscribeMessage('makeChessMove')
-  async handleMakeMove(@MessageBody() dto: MakeChessMoveDto, client: Socket) {
-    try {
-      const result = await this.chessService.makeMove(dto);
+// In ChessGateway class in chess.gateway.ts - update handleMakeMove
+@SubscribeMessage('makeChessMove')
+async handleMakeMove(@MessageBody() dto: MakeChessMoveDto, client: Socket) {
+  try {
+    const result = await this.chessService.makeMove(dto);
+    
+    // Update the main game state in Redis
+    const gameState = await this.gameService.getGameState(dto.roomId);
+    gameState.currentTurn = result.game.currentTurn;
+    gameState.currentPlayer = gameState.players.findIndex(
+      p => p.id === result.game.currentTurn
+    );
+    gameState.chessState = { 
+      board: result.game.chessState.board, 
+      moves: result.game.chessState.moves 
+    };
+    gameState.gameOver = result.game.gameOver;
+    gameState.winner = result.game.winner!;
+    gameState.winCondition = result.game.winCondition;
+    
+    await this.gameService.updateGameState(dto.roomId, gameState);
+    
+    // If game is over, save the session to trigger scoring
+    if (result.game.gameOver) {
+      await this.gameService.saveGameSession(dto.roomId, gameState);
+    }
+    
+    // Emit move and updated game state
+    this.server.to(dto.roomId).emit('chessMove', {
+      move: dto.move,
+      playerId: dto.playerId,
+      success: true,
+      timestamp: Date.now(),
+      board: result.game.chessState.board,
+      currentTurn: result.game.currentTurn,
+      gameOver: result.game.gameOver,
+      winner: result.game.winner,
+      winCondition: result.game.winCondition
+    });
+    
+    this.server.to(dto.roomId).emit('gameState', gameState);
+    
+  } catch (error) {
+    client.emit('chessMoveError', {
+      message: error.message,
+      move: dto.move,
+      playerId: dto.playerId,
+      timestamp: Date.now(),
+    });
+  }
+}
+
+
+// In ChessGateway class
+@SubscribeMessage('endChessGame')
+async handleEndChessGame(@MessageBody() data: { roomId: string }) {
+  try {
+    const gameState = await this.gameService.getGameState(data.roomId);
+    
+    if (gameState.gameType === 'chess' && gameState.gameOver) {
+      // Ensure scoring is processed
+      await this.gameService.saveGameSession(data.roomId, gameState);
       
-      // Update the main game state in Redis
-      const gameState = await this.gameService.getGameState(dto.roomId);
-      gameState.currentTurn = result.game.currentTurn;
-      gameState.currentPlayer = gameState.players.findIndex(
-        p => p.id === result.game.currentTurn
-      );
-      gameState.chessState = { 
-        board: result.game.chessState.board, 
-        moves: result.game.chessState.moves 
-      };
-      gameState.gameOver = result.game.gameOver;
-      gameState.winner = result.game.winner!;
-      gameState.winCondition = result.game.winCondition;
-      
-      await this.gameService.updateGameState(dto.roomId, gameState);
-      
-      // Emit move and updated game state
-      this.server.to(dto.roomId).emit('chessMove', {
-        move: dto.move,
-        playerId: dto.playerId,
-        success: true,
-        timestamp: Date.now(),
-      });
-      this.server.to(dto.roomId).emit('gameState', gameState);
-    } catch (error) {
-      client.emit('chessMoveError', {
-        message: error.message,
-        move: dto.move,
-        playerId: dto.playerId,
-        timestamp: Date.now(),
+      this.server.to(data.roomId).emit('chessGameEnded', {
+        winner: gameState.winner,
+        winCondition: gameState.winCondition,
+        scores: gameState.players.reduce((acc, player) => {
+          acc[player.id] = gameState.winner === player.id ? 20 : 2;
+          return acc;
+        }, {})
       });
     }
+  } catch (error) {
+    console.error('Error ending chess game:', error);
   }
+}
+
+
+
 }
 
 // // chess.gateway.ts

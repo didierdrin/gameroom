@@ -7,6 +7,7 @@ import { ChessGame, ChessGameDocument } from './interfaces/chess.interface';
 import { SelectChessPlayersDto, MakeChessMoveDto } from './dto/chess.dto';
 import { ChessPlayer } from './interfaces/chess.interface';
 import { GameRoom } from '../game/schemas/game-room.schema';
+import { UserService } from 'src/user/user.service';
 
 @Injectable()
 export class ChessService {
@@ -15,6 +16,7 @@ export class ChessService {
   constructor(
     @InjectModel('ChessGame') private chessModel: Model<ChessGame>,
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoom>,
+    private readonly userService: UserService,
   ) {}
 
   async initializeChessRoom(roomId: string): Promise<ChessGameDocument> {
@@ -243,20 +245,32 @@ export class ChessService {
         console.error('ERROR: Could not find next player!');
       }
   
-      // Check game over conditions
-      if (chess.isGameOver()) {
-        game.gameOver = true;
-        if (chess.isCheckmate()) {
-          game.winner = dto.playerId; // Current player wins if they delivered checkmate
-          game.winCondition = 'checkmate';
-        } else if (chess.isStalemate()) {
-          game.winner = 'draw';
-          game.winCondition = 'stalemate';
-        } else if (chess.isDraw()) {
-          game.winner = 'draw';
-          game.winCondition = 'draw';
-        }
-      }
+
+
+      // In the makeMove method, inside the game over condition
+if (chess.isGameOver()) {
+  game.gameOver = true;
+  let winnerId: string | null = null;
+  let loserId: string | null = null;
+  
+  if (chess.isCheckmate()) {
+    winnerId = dto.playerId; // Current player wins if they delivered checkmate
+    loserId = game.players.find(p => p.id !== dto.playerId)?.id || null;
+    game.winner = winnerId;
+    game.winCondition = 'checkmate';
+  } else if (chess.isStalemate()) {
+    winnerId = 'draw';
+    game.winner = 'draw';
+    game.winCondition = 'stalemate';
+  } else if (chess.isDraw()) {
+    winnerId = 'draw';
+    game.winner = 'draw';
+    game.winCondition = 'draw';
+  }
+  
+  // Handle scoring when game ends
+  await this.handleChessScoring(dto.roomId, winnerId, loserId);
+}
   
       // Save to database BEFORE any additional updates
       await game.save();
@@ -328,149 +342,34 @@ export class ChessService {
 
     return game;
   }
+
+
+  // In ChessService class in chess.service.ts
+private async handleChessScoring(roomId: string, winnerId: string | null, loserId: string | null) {
+  try {
+    console.log(`Processing chess scoring for room ${roomId}:`, { winnerId, loserId });
+    
+    if (winnerId && winnerId !== 'draw') {
+      // Award 20 points to winner
+      await this.userService.updateGameStats(winnerId, 'chess', 20, true);
+      console.log(`Awarded 20 points to winner: ${winnerId}`);
+    }
+    
+    if (loserId && loserId !== 'draw' && winnerId !== 'draw') {
+      // Award 2 points to loser
+      await this.userService.updateGameStats(loserId, 'chess', 2, false);
+      console.log(`Awarded 2 points to loser: ${loserId}`);
+    }
+    
+    // For draws, you might want to handle differently
+    if (winnerId === 'draw') {
+      console.log('Game ended in draw, no points awarded');
+    }
+  } catch (error) {
+    console.error('Error in chess scoring:', error);
+  }
 }
 
 
-  // async makeMove(dto: MakeChessMoveDto): Promise<{ 
-//   success: boolean; 
-//   game: ChessGameDocument;
-//   moveDetails?: any;
-//   nextTurn?: string;
-// }> {
-//   const game = await this.chessModel.findOne({ roomId: dto.roomId });
-
-//   if (!game) {
-//     throw new BadRequestException('Game not found');
-//   }
-
-//   if (!game.gameStarted || game.gameOver) {
-//     throw new BadRequestException('Game not active');
-//   }
-
-//   // Log current state
-//   console.log('===== CHESS MOVE START =====');
-//   console.log('Current game state:', {
-//     currentTurn: game.currentTurn,
-//     playerId: dto.playerId,
-//     players: game.players.map(p => ({ id: p.id, color: p.chessColor }))
-//   });
-
-//   // CRITICAL FIX: Verify it's the correct player's turn
-//   if (game.currentTurn !== dto.playerId) {
-//     console.log(`Turn validation failed: currentTurn=${game.currentTurn}, playerId=${dto.playerId}`);
-//     throw new BadRequestException('Not your turn');
-//   }
-
-//   // Always create chess instance from current board state
-//   let chess = new Chess(game.chessState.board);
-  
-//   // ADDITIONAL VALIDATION: Check if it's the right color's turn
-//   const playerData = game.players.find(p => p.id === dto.playerId);
-//   if (!playerData) {
-//     throw new BadRequestException('Player not in game');
-//   }
-  
-//   const chessTurn = chess.turn(); // 'w' or 'b'
-//   const expectedColor = playerData.chessColor === 'white' ? 'w' : 'b';
-  
-//   if (chessTurn !== expectedColor) {
-//     console.log(`Chess turn mismatch: chessTurn=${chessTurn}, expectedColor=${expectedColor}`);
-//     throw new BadRequestException('Not your color\'s turn in chess position');
-//   }
-
-//   try {
-//     // Parse the move format from frontend (e.g., "e2e4" to {from: "e2", to: "e4"})
-//     const from = dto.move.substring(0, 2);
-//     const to = dto.move.substring(2, 4);
-//     const promotion = dto.move.length > 4 ? dto.move[4] : undefined;
-    
-//     console.log('Attempting move:', { from, to, promotion });
-    
-//     const moveResult = chess.move({
-//       from,
-//       to,
-//       promotion: promotion || 'q'
-//     });
-    
-//     if (!moveResult) {
-//       throw new Error('Invalid move');
-//     }
-
-//     console.log('Move successful:', moveResult.san);
-
-//     // Update game state with new board position
-//     game.chessState.board = chess.fen();
-//     game.chessState.moves.push(dto.move);
-
-//     // CRITICAL FIX: Properly switch turn to the other player
-//     const currentPlayerIndex = game.players.findIndex(p => p.id === dto.playerId);
-//     const nextPlayerIndex = currentPlayerIndex === 0 ? 1 : 0;
-//     const nextPlayer = game.players[nextPlayerIndex];
-    
-//     if (nextPlayer) {
-//       const previousTurn = game.currentTurn;
-//       game.currentTurn = nextPlayer.id;
-      
-//       console.log('===== TURN SWITCH =====');
-//       console.log(`Previous turn: ${previousTurn}`);
-//       console.log(`Next turn: ${game.currentTurn}`);
-//       console.log(`Player 0: ${game.players[0].id} (${game.players[0].chessColor})`);
-//       console.log(`Player 1: ${game.players[1].id} (${game.players[1].chessColor})`);
-//       console.log('=======================');
-//     } else {
-//       console.error('ERROR: Could not find next player!');
-//       console.error('Current player index:', currentPlayerIndex);
-//       console.error('Players:', game.players);
-//     }
-
-//     // Check game over conditions
-//     if (chess.isGameOver()) {
-//       game.gameOver = true;
-//       if (chess.isCheckmate()) {
-//         game.winner = dto.playerId; // Current player wins if they delivered checkmate
-//         game.winCondition = 'checkmate';
-//       } else if (chess.isStalemate()) {
-//         game.winner = 'draw';
-//         game.winCondition = 'stalemate';
-//       } else if (chess.isDraw()) {
-//         game.winner = 'draw';
-//         game.winCondition = 'draw';
-//       }
-//     }
-
-//     // Save to database
-//     await game.save();
-//     console.log('Game saved to database with new turn:', game.currentTurn);
-
-//     // Update the chess instance in memory
-//     this.chessInstances.set(dto.roomId, chess);
-
-//     console.log('===== CHESS MOVE END =====');
-//     console.log(`Move completed: ${dto.move} by ${dto.playerId}`);
-//     console.log(`Next turn is now: ${game.currentTurn}`);
-//     console.log('=========================');
-
-//     return { 
-//       success: true, 
-//       game,
-//       nextTurn: game.currentTurn, // Explicitly return next turn
-//       moveDetails: {
-//         from: moveResult.from,
-//         to: moveResult.to,
-//         piece: moveResult.piece,
-//         captured: moveResult.captured,
-//         promotion: moveResult.promotion,
-//         san: moveResult.san,
-//         fen: chess.fen(),
-//         isCheck: chess.isCheck(),
-//         isCheckmate: chess.isCheckmate(),
-//         isDraw: chess.isDraw(),
-//         isStalemate: chess.isStalemate()
-//       }
-//     };
-//   } catch (error) {
-//     console.error(`Move error for ${dto.playerId}: ${error.message}`);
-//     throw new BadRequestException(`Invalid move: ${error.message}`);
-//   }
-// }
+}
 
