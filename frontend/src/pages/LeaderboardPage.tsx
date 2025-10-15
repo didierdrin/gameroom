@@ -114,7 +114,7 @@ export const LeaderboardPage = () => {
     
     const [first, second, third] = topThree;
     return (
-      <div className="flex flex-row md:flex-row justify-center items-end mb-8 md:gap-4  lg:mb-12 gap-4 lg:gap-8 px-4">
+      <div className="flex flex-row md:flex-row justify-center items-end mb-8 sm:gap-4  lg:mb-12 gap-4 lg:gap-8 px-4">
         {/* Mobile: Stack vertically, Desktop: Side by side */}
         <div className="flex flex-row  justify-center items-center lg:items-end gap-4 lg:gap-0 w-full lg:w-auto">
           {/* Second Place */}
@@ -149,7 +149,7 @@ export const LeaderboardPage = () => {
           {/* First Place - Mobile: Center, Desktop: Middle */}
           <div className="flex flex-col items-center order-1 lg:order-2 -mt-4 sm:-mt-8 z-10">
             <div className="relative">
-              <div className="absolute -top-4 sm:-top-6 left-1/2 transform -translate-x-1/2">
+              <div className="relative -top-4 sm:-top-6 left-1/2 transform -translate-x-1/2">
                 <TrophyIcon size={24} className="sm:size-24 text-yellow-500" />
               </div>
               <img 

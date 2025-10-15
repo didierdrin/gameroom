@@ -26,6 +26,9 @@ const MessageAvatar = ({ playerId }: { playerId: string }) => {
         target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(playerId)}`;
       }}
     />
+
+ 
+
   );
 };
 
