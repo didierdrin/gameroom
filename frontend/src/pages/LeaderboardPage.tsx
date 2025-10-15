@@ -114,7 +114,7 @@ export const LeaderboardPage = () => {
     
     const [first, second, third] = topThree;
     return (
-      <div className="flex flex-col lg:flex-row justify-center items-end mb-8 lg:mb-12 gap-4 lg:gap-8 px-4">
+      <div className="flex flex-col md:flex-row justify-center items-end mb-8 lg:mb-12 gap-4 lg:gap-8 px-4">
         {/* Mobile: Stack vertically, Desktop: Side by side */}
         <div className="flex flex-row lg:flex-col justify-center items-center lg:items-end gap-4 lg:gap-0 w-full lg:w-auto">
           {/* Second Place */}
