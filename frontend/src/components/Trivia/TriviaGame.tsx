@@ -55,6 +55,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   const [loading, setLoading] = useState(true);
   const [showFireworks, setShowFireworks] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
+  const [showAnswerResult, setShowAnswerResult] = useState(false);
 
   useEffect(() => {
     if (gameState.triviaState?.questions) {
@@ -76,6 +77,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     if (hasAnswered) return; // Prevent double submission
     
     setHasAnswered(true);
+    setShowAnswerResult(true);
     
     const currentQuestion = questions[currentQ];
     const isCorrect = selected === currentQuestion.correctAnswer;
@@ -97,6 +99,11 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       isCorrect,
       currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0
     });
+
+    // Automatically move to next question after 2 seconds of showing result
+    setTimeout(() => {
+      nextQuestion();
+    }, 2000);
   };
 
   const nextQuestion = () => {
@@ -105,6 +112,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       setTimer(5);
       setSelected(null);
       setHasAnswered(false);
+      setShowAnswerResult(false);
     } else {
       setShowFireworks(true);
       
@@ -165,6 +173,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 
   const currentQuestion = questions[currentQ];
   const currentPlayerScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
+  const isCorrect = selected === currentQuestion.correctAnswer;
 
   return (
     <div className="flex flex-col h-full">
@@ -236,6 +245,19 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                 Difficulty: {currentQuestion.difficulty}
               </div>
             )}
+            
+            {/* Show result feedback for 2 seconds after answering */}
+            {showAnswerResult && (
+              <div className={`p-4 mb-4 rounded-lg text-center text-xl font-bold ${
+                isCorrect ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
+              }`}>
+                {isCorrect ? '✓ Correct!' : '✗ Incorrect!'}
+                <div className="text-sm mt-2 font-normal">
+                  Moving to next question...
+                </div>
+              </div>
+            )}
+            
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">
               {currentQuestion.text}
             </h2>
@@ -279,7 +301,8 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
               </button>
             </div>
           )}
-          {hasAnswered && (
+          {/* Keep the manual next button as backup */}
+          {hasAnswered && !showAnswerResult && (
             <div className="p-4">
               <button
                 className="w-full p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
@@ -294,6 +317,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     </div>
   );
 };
+
 
 // // /components/TriviaGame.tsx 
 // import React, { useEffect, useState } from 'react';
