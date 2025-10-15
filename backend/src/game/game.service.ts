@@ -933,7 +933,7 @@ async startGame(roomId: string) {
 
     // Update score if correct
     if (isCorrect) {
-      gameState.triviaState.scores[data.playerId] = (gameState.triviaState.scores[data.playerId] || 0) + 1;
+      gameState.triviaState.scores[data.playerId] = (gameState.triviaState.scores[data.playerId] || 0) + 5;
     }
     
     await this.updateGameState(data.roomId, gameState);
