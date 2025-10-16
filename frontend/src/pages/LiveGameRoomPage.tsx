@@ -234,8 +234,14 @@ export const LiveGameRoomPage = () => {
     { playerId: string; message: string }[]
   >([]);
   const [message, setMessage] = useState("");
-  const [showChat, setShowChat] = useState(true);
-  const [showPlayers, setShowPlayers] = useState(true);
+  // const [showChat, setShowChat] = useState(true);
+  // const [showPlayers, setShowPlayers] = useState(true);
+  const [showChat, setShowChat] = useState(() => 
+    typeof window !== 'undefined' ? window.innerWidth >= 640 : true
+  );
+  const [showPlayers, setShowPlayers] = useState(() => 
+    typeof window !== 'undefined' ? window.innerWidth >= 640 : true
+  );
   const [fullscreen, setFullscreen] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
