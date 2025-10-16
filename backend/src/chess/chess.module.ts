@@ -7,10 +7,12 @@ import { ChessGame, ChessGameSchema } from './schemas/chess.schema';
 import { GameRoom, GameRoomSchema } from '../game/schemas/game-room.schema';
 import { forwardRef } from '@nestjs/common';
 import { GameModule } from '../game/game.module';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
     forwardRef(() => GameModule),
+    UserModule,
     MongooseModule.forFeature([
       { name: ChessGame.name, schema: ChessGameSchema },
       { name: GameRoom.name, schema: GameRoomSchema },
