@@ -157,7 +157,7 @@ export const LeaderboardPage = () => {
       <img 
         src={first.avatar} 
         alt={first.username} 
-        className="w-20 h-20 sm:w-28 sm:h-28 rounded-full border-4 border-yellow-500"
+        className="w-20 h-20 sm:w-20 sm:h-20 rounded-full border-4 border-yellow-500"
         onError={(e) => {
           const target = e.target as HTMLImageElement;
           target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${first.username}`;
