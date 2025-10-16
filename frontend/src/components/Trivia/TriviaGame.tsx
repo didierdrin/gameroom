@@ -73,9 +73,10 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     }
   }, [timer, loading, questions, hasAnswered]);
 
-// In TriviaGame.tsx - update the submitAnswer function
+
+// Update the submitAnswer function to ensure proper score calculation
 const submitAnswer = () => {
-  if (hasAnswered) return; // Prevent double submission
+  if (hasAnswered) return;
   
   setHasAnswered(true);
   setShowAnswerResult(true);
@@ -83,7 +84,15 @@ const submitAnswer = () => {
   const currentQuestion = questions[currentQ];
   const isCorrect = selected === currentQuestion.correctAnswer;
   
-  // Emit answer to backend with correctness
+  console.log('Submitting answer:', {
+    questionId: currentQuestion.id,
+    selected,
+    correct: currentQuestion.correctAnswer,
+    isCorrect,
+    currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0
+  });
+  
+  // Emit answer to backend
   socket.emit('triviaAnswer', { 
     roomId, 
     playerId: currentPlayer, 
@@ -93,19 +102,19 @@ const submitAnswer = () => {
     isCorrect
   });
   
-  console.log('Submitted answer:', {
-    questionId: currentQuestion.id,
-    selected,
-    correct: currentQuestion.correctAnswer,
-    isCorrect,
-    currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0
-  });
+  // Update local state immediately for better UX
+  if (isCorrect) {
+    const currentScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
+    const newScore = currentScore + 5;
+    console.log(`Updating local score: ${currentScore} -> ${newScore}`);
+  }
 
-  // Automatically move to next question after 2 seconds of showing result
+  // Move to next question after delay
   setTimeout(() => {
     nextQuestion();
   }, 2000);
 };
+
 
 // Update the nextQuestion function to handle game completion properly
 const nextQuestion = () => {
@@ -141,19 +150,26 @@ const nextQuestion = () => {
     nextQuestion();
   };
 
- // In TriviaGame.tsx - update the getLeaderboardData function
-const getLeaderboardData = () => {
-  const scores = gameState.triviaState?.scores || {};
-  
-  console.log('Building leaderboard with scores:', scores);
-  
-  return Object.entries(scores)
-    .map(([playerId, playerScore]) => ({
-      _id: playerId,
-      score: playerScore as number
-    }))
-    .sort((a, b) => b.score - a.score);
-};
+
+  const getLeaderboardData = () => {
+    const scores = gameState.triviaState?.scores || {};
+    
+    console.log('Building leaderboard with scores:', scores);
+    console.log('Current players:', gameState.players);
+    
+    // Create leaderboard data with proper player info
+    return Object.entries(scores)
+      .map(([playerId, playerScore]) => {
+        // Find player info from gameState.players
+        const playerInfo = gameState.players.find((p:any) => p.id === playerId);
+        return {
+          _id: playerId,
+          score: playerScore as number,
+          name: playerInfo?.name || playerId
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+  };
 
   const leaderboardData = gameState.gameOver ? getLeaderboardData() : [];
   const { username: currentUsername } = useUserData(currentPlayer);
@@ -209,25 +225,28 @@ const getLeaderboardData = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {leaderboardData.map((player, index) => (
-                    <tr key={player._id} className={index < 3 ? 'bg-gray-800/30' : ''}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
-                          index === 0 ? 'bg-yellow-500/20 text-yellow-300' : 
-                          index === 1 ? 'bg-gray-400/20 text-gray-300' : 
-                          index === 2 ? 'bg-amber-700/20 text-amber-500' : 'bg-gray-700/50 text-gray-400'
-                        }`}>
-                          {index + 1}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <PlayerDisplay playerId={player._id} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-lg font-bold">{player.score} points</div>
-                      </td>
-                    </tr>
-                  ))}
+                {leaderboardData.map((player, index) => (
+  <tr key={player._id} className={index < 3 ? 'bg-gray-800/30' : ''}>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
+        index === 0 ? 'bg-yellow-500/20 text-yellow-300' : 
+        index === 1 ? 'bg-gray-400/20 text-gray-300' : 
+        index === 2 ? 'bg-amber-700/20 text-amber-500' : 'bg-gray-700/50 text-gray-400'
+      }`}>
+        {index + 1}
+      </div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <PlayerDisplay playerId={player._id} />
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="text-lg font-bold">{player.score} points</div>
+      <div className="text-sm text-gray-400">
+        {Math.floor(player.score / 5)} correct answers
+      </div>
+    </td>
+  </tr>
+))}
                 </tbody>
               </table>
             </div>
