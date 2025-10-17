@@ -109,6 +109,8 @@ export const ProfilePage = () => {
   const avatarOptions = ['adventurer', 'adventurer-neutral', 'avataaars', 'avataaars-neutral', 'big-ears', 'big-ears-neutral', 'big-smile', 'bottts', 'bottts-neutral', 'croodles', 'croodles-neutral', 'fun-emoji', 'icons', 'identicon', 'initials', 'lorelei'];
 
   const { username: paramUsername } = useParams<{ username?: string }>();
+  // Add this with your other state declarations
+const [currentPage, setCurrentPage] = useState(1);
 
   // Function to fetch gamerooms data
   const fetchGameroomsData = async () => {
@@ -360,6 +362,11 @@ export const ProfilePage = () => {
     fetchUserProfile(paramUsername);
   }, [authUser, paramUsername]);
 
+  // Add this useEffect to reset pagination when data changes
+useEffect(() => {
+  setCurrentPage(1);
+}, [userData?.recentGames]);
+
   const handleRefresh = () => {
     setRefreshing(true);
     fetchUserProfile(paramUsername, false);
@@ -460,45 +467,85 @@ export const ProfilePage = () => {
             )}
           </div>
           
-          {/* Recent Games - NOW POPULATED WITH REAL DATA */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
-            <h3 className="text-lg font-medium mb-4">Recent Games</h3>
-            {userData.recentGames.length > 0 ? (
-              <div className="space-y-3">
-                {userData.recentGames.map((game) => (
-                  <div key={game.id} className="flex items-center p-2 hover:bg-gray-700/30 rounded-lg transition-colors">
-                    <div className="w-10 h-10 rounded-lg bg-gray-700/50 flex items-center justify-center text-xl mr-3">
-                      {game.type === 'trivia' ? '🎯' : 
-                       game.type === 'chess' ? '♟️' : 
-                       game.type === 'uno' ? '🃏' : 
-                       game.type === 'kahoot' ? '❓' : 
-                       game.type === 'pictionary' ? '🎨' : 
-                       game.type === 'ludo' ? '🎲' : '🎮'}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between">
-                        <span className="font-medium">{game.name}</span>
-                        <span className="text-sm text-gray-400">{game.date}</span>
-                      </div>
-                      <div className="flex justify-between mt-1">
-                        <span className="text-sm text-gray-400 capitalize">{game.type}</span>
-                        <span className={`text-sm ${
-                          game.result === 'Won' ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                          {game.result} {game.score > 0 && `(${game.score} pts)`}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {game.totalPlayers} players • {game.duration > 0 ? `${Math.round(game.duration / 60000)}m` : 'Quick game'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          
+          {/* Recent Games - NOW POPULATED WITH REAL DATA WITH PAGINATION */}
+<div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
+  <h3 className="text-lg font-medium mb-4">Recent Games</h3>
+  {userData.recentGames.length > 0 ? (
+    <>
+      <div className="space-y-3 mb-4">
+        {userData.recentGames
+          .slice((currentPage - 1) * 5, currentPage * 5)
+          .map((game) => (
+            <div key={game.id} className="flex items-center p-2 hover:bg-gray-700/30 rounded-lg transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-gray-700/50 flex items-center justify-center text-xl mr-3">
+                {game.type === 'trivia' ? '🎯' : 
+                 game.type === 'chess' ? '♟️' : 
+                 game.type === 'uno' ? '🃏' : 
+                 game.type === 'kahoot' ? '❓' : 
+                 game.type === 'pictionary' ? '🎨' : 
+                 game.type === 'ludo' ? '🎲' : '🎮'}
               </div>
-            ) : (
-              <p className="text-gray-400">No recent games played. Join a game to get started!</p>
-            )}
-          </div>
+              <div className="flex-1">
+                <div className="flex justify-between">
+                  <span className="font-medium">{game.name}</span>
+                  <span className="text-sm text-gray-400">{game.date}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-sm text-gray-400 capitalize">{game.type}</span>
+                  <span className={`text-sm ${
+                    game.result === 'Won' ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {game.result} {game.score > 0 && `(${game.score} pts)`}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {game.totalPlayers} players • {game.duration > 0 ? `${Math.round(game.duration / 60000)}m` : 'Quick game'}
+                </div>
+              </div>
+            </div>
+          ))}
+      </div>
+      
+      {/* Pagination */}
+      {Math.ceil(userData.recentGames.length / 5) > 1 && (
+        <div className="flex justify-center items-center space-x-2 mt-4">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeftIcon size={16} />
+          </button>
+          
+          {Array.from({ length: Math.ceil(userData.recentGames.length / 5) }, (_, i) => i + 1).map(page => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`w-8 h-8 rounded-lg transition-colors ${
+                currentPage === page
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-700/50 hover:bg-gray-600/50'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(userData.recentGames.length / 5)))}
+            disabled={currentPage === Math.ceil(userData.recentGames.length / 5)}
+            className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRightIcon size={16} />
+          </button>
+        </div>
+      )}
+    </>
+  ) : (
+    <p className="text-gray-400">No recent games played. Join a game to get started!</p>
+  )}
+</div>
         </div>
         
         {/* Favorite Games */}
