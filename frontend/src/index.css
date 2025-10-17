@@ -113,3 +113,12 @@ body {
 .shadow-glow:hover {
   box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1), 0 0 10px 10px rgba(0, 255, 0, 0.7); /* Adjust colors and opacity as needed */
 }
+
+.shadow-red-glow {
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1), 0 0 5px 5px rgba(255, 17, 0, 0.5); /* Adjust colors and opacity as needed */
+  transition: box-shadow 0.3s ease;
+}
+
+.shadow-red-glow:hover {
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1), 0 0 10px 10px rgba(255, 115, 0, 0.7); /* Adjust colors and opacity as needed */
+}
