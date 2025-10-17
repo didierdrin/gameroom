@@ -311,22 +311,37 @@ async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket(
     }
   }
 
-  @SubscribeMessage('triviaComplete')
-  async handleTriviaComplete(@MessageBody() data: { roomId: string; playerId: string; score: number; total: number }, @ConnectedSocket() client: Socket) {
-    try {
-      console.log('Trivia complete:', data);
-      const result = await this.gameService.completeTriviaGame(data);
-      this.server.to(data.roomId).emit('triviaComplete', result);
-      const gameState = await this.gameService.getGameState(data.roomId);
-      this.server.to(data.roomId).emit('gameState', gameState);
-      if (gameState.gameOver) {
-        this.server.to(data.roomId).emit('gameOver', { winner: gameState.winner });
-      }
-    } catch (error) {
-      console.error('Trivia complete error:', error.message);
-      client.emit('error', { message: error.message, type: 'triviaCompleteError' });
+  
+@SubscribeMessage('triviaComplete')
+async handleTriviaComplete(@MessageBody() data: { roomId: string; playerId: string; score: number; total: number }, @ConnectedSocket() client: Socket) {
+  try {
+    console.log('Trivia complete:', data);
+    const result = await this.gameService.completeTriviaGame(data);
+    
+    // Emit the completion result
+    this.server.to(data.roomId).emit('triviaComplete', result);
+    
+    // Get and emit updated game state
+    const gameState = await this.gameService.getGameState(data.roomId);
+    this.server.to(data.roomId).emit('gameState', gameState);
+    
+    // If game is over, emit game over event
+    if (gameState.gameOver) {
+      this.server.to(data.roomId).emit('gameOver', { 
+        winner: gameState.winner,
+        scores: gameState.triviaState?.scores,
+        message: 'Trivia game completed!'
+      });
+      
+      // Update game rooms list
+      const rooms = await this.gameService.getActiveGameRooms();
+      this.server.emit('gameRoomsList', { rooms });
     }
+  } catch (error) {
+    console.error('Trivia complete error:', error.message);
+    client.emit('error', { message: error.message, type: 'triviaCompleteError' });
   }
+}
 
   // audio functionality
   @SubscribeMessage('joinAudio')
