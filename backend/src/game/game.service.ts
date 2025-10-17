@@ -915,79 +915,215 @@ async startGame(roomId: string) {
     }
   }
 
-  async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }) {
-    const gameState = await this.getGameState(data.roomId);
-    if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
-    if (!gameState.triviaState) throw new Error('Trivia state not initialized');
+
+
+  // Add this to game.service.ts - Replace the existing submitTriviaAnswer and completeTriviaGame methods
+
+async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }) {
+  const gameState = await this.getGameState(data.roomId);
+  if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
+  if (!gameState.triviaState) throw new Error('Trivia state not initialized');
+
+  const currentQuestion = gameState.triviaState.questions[gameState.triviaState.currentQuestionIndex];
+  if (currentQuestion.id !== data.qId) {
+    throw new Error('Invalid question ID');
+  }
+
+  const isCorrect = data.answer === currentQuestion.correctAnswer;
   
-    // Find the current question
-    const currentQuestion = gameState.triviaState.questions[gameState.triviaState.currentQuestionIndex];
-    if (currentQuestion.id !== data.qId) {
-      throw new Error('Invalid question ID');
-    }
-  
-    // Calculate correctness
-    const isCorrect = data.answer === currentQuestion.correctAnswer;
+  // Update answer
+  gameState.triviaState.answers[data.playerId] = { 
+    answer: data.answer, 
+    isCorrect: isCorrect 
+  };
+
+  // CRITICAL FIX: Always update score immediately
+  if (isCorrect) {
+    const currentScore = gameState.triviaState.scores[data.playerId] || 0;
+    gameState.triviaState.scores[data.playerId] = currentScore + 5;
     
-    // Update answer and correctness
-    gameState.triviaState!.answers[data.playerId] = { 
-      answer: data.answer, 
-      isCorrect: isCorrect 
-    };
+    // Sync with player object
+    const player = gameState.players.find(p => p.id === data.playerId);
+    if (player) {
+      player.score = gameState.triviaState.scores[data.playerId];
+    }
+    
+    console.log(`✅ Score updated: ${data.playerId} ${currentScore} → ${gameState.triviaState.scores[data.playerId]}`);
+  }
   
-    // CRITICAL: Update score if correct - add 5 points per correct answer
-    if (isCorrect) {
-      const currentScore = gameState.triviaState.scores[data.playerId] || 0;
-      gameState.triviaState.scores[data.playerId] = currentScore + 5;
-      
-      // Also update the player's score in the players array
-      const player = gameState.players.find(p => p.id === data.playerId);
-      if (player) {
-        player.score = gameState.triviaState.scores[data.playerId];
+  // Save immediately to Redis
+  await this.updateGameState(data.roomId, gameState);
+  
+  const result = {
+    roomId: data.roomId,
+    playerId: data.playerId,
+    qId: data.qId,
+    answer: data.answer,
+    correct: currentQuestion.correctAnswer,
+    isCorrect: isCorrect,
+    scores: gameState.triviaState.scores,
+    currentScore: gameState.triviaState.scores[data.playerId] || 0
+  };
+
+  console.log('Answer processed:', result);
+  return result;
+}
+
+async completeTriviaGame(data: { roomId: string; playerId: string; score: number; total: number }) {
+  const gameState = await this.getGameState(data.roomId);
+  if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
+  if (!gameState.triviaState) throw new Error('Trivia state not initialized');
+  
+  console.log('=== PLAYER COMPLETING TRIVIA ===');
+  console.log(`Player: ${data.playerId}`);
+  console.log('Current scores:', gameState.triviaState.scores);
+  
+  // Get actual score from triviaState (source of truth)
+  const playerScore = gameState.triviaState.scores[data.playerId] || 0;
+  
+  // Update player object
+  const player = gameState.players.find(p => p.id === data.playerId);
+  if (player) {
+    player.score = playerScore;
+  }
+  
+  // Track completed players
+  if (!gameState.triviaState.completedPlayers) {
+    gameState.triviaState.completedPlayers = [];
+  }
+  if (!gameState.triviaState.completedPlayers.includes(data.playerId)) {
+    gameState.triviaState.completedPlayers.push(data.playerId);
+  }
+  
+  const totalPlayers = gameState.players.length;
+  const completedCount = gameState.triviaState.completedPlayers.length;
+  
+  console.log(`Progress: ${completedCount}/${totalPlayers} players completed`);
+  
+  // Check if ALL players have completed
+  const allPlayersCompleted = completedCount === totalPlayers;
+  
+  if (allPlayersCompleted) {
+    console.log('=== ALL PLAYERS COMPLETED ===');
+    
+    // Determine winner
+    const scores = gameState.triviaState.scores;
+    const sortedScores = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const highestScore = sortedScores[0]?.[1] || 0;
+    const winner = highestScore > 0 ? sortedScores[0][0] : 'draw';
+    
+    // CRITICAL: Set game over flags
+    gameState.winner = winner;
+    gameState.gameOver = true;
+    
+    console.log('🏆 WINNER:', winner, 'Score:', highestScore);
+    console.log('Final scores:', scores);
+    
+    // Update database
+    await this.gameRoomModel.updateOne(
+      { roomId: data.roomId }, 
+      { 
+        status: 'completed', 
+        winner: winner,
+        scores: scores
       }
-      
-      console.log(`Player ${data.playerId} answered correctly! Score: ${currentScore} -> ${gameState.triviaState.scores[data.playerId]}`);
-    } else {
-      console.log(`Player ${data.playerId} answered incorrectly. Current score: ${gameState.triviaState.scores[data.playerId] || 0}`);
-    }
-    
-    await this.updateGameState(data.roomId, gameState);
-    
-    // Check if all players have answered
-    const allAnswered = gameState.players.every(p => 
-      gameState.triviaState!.answers[p.id]?.answer !== null && 
-      gameState.triviaState!.answers[p.id]?.answer !== undefined
     );
     
-    const result = {
-      roomId: data.roomId,
-      playerId: data.playerId,
-      qId: data.qId,
-      answer: data.answer,
-      correct: currentQuestion.correctAnswer,
-      isCorrect: isCorrect,
-      scores: gameState.triviaState.scores,
-      currentScore: gameState.triviaState.scores[data.playerId] || 0,
-      allAnswered: allAnswered
-    };
-  
-    console.log('Trivia answer processed:', result);
-  
-    if (allAnswered) {
-      console.log('All players have answered, moving to next question automatically');
-      setTimeout(async () => {
-        try {
-          await this.processTriviaQuestion(data.roomId);
-          const updatedGameState = await this.getGameState(data.roomId);
-          this.server.to(data.roomId).emit('gameState', updatedGameState);
-        } catch (error) {
-          console.error('Error processing next question:', error);
-        }
-      }, 3000);
-    }
-  
-    return result;
+    // CRITICAL: Save to gamesessionentities collection
+    await this.saveGameSession(data.roomId, gameState);
+    console.log('✅ Game session saved to database');
   }
+  
+  // Save state to Redis
+  await this.updateGameState(data.roomId, gameState);
+  
+  return { 
+    roomId: data.roomId, 
+    playerId: data.playerId, 
+    score: playerScore, 
+    total: data.total,
+    gameOver: gameState.gameOver,
+    winner: gameState.winner,
+    scores: gameState.triviaState.scores,
+    completedPlayers: gameState.triviaState.completedPlayers,
+    message: allPlayersCompleted ? 'All players finished!' : `Waiting for ${totalPlayers - completedCount} more player(s)`
+  };
+}
+
+
+  // async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }) {
+  //   const gameState = await this.getGameState(data.roomId);
+  //   if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
+  //   if (!gameState.triviaState) throw new Error('Trivia state not initialized');
+  
+  //   // Find the current question
+  //   const currentQuestion = gameState.triviaState.questions[gameState.triviaState.currentQuestionIndex];
+  //   if (currentQuestion.id !== data.qId) {
+  //     throw new Error('Invalid question ID');
+  //   }
+  
+  //   // Calculate correctness
+  //   const isCorrect = data.answer === currentQuestion.correctAnswer;
+    
+  //   // Update answer and correctness
+  //   gameState.triviaState!.answers[data.playerId] = { 
+  //     answer: data.answer, 
+  //     isCorrect: isCorrect 
+  //   };
+  
+  //   // CRITICAL: Update score if correct - add 5 points per correct answer
+  //   if (isCorrect) {
+  //     const currentScore = gameState.triviaState.scores[data.playerId] || 0;
+  //     gameState.triviaState.scores[data.playerId] = currentScore + 5;
+      
+  //     // Also update the player's score in the players array
+  //     const player = gameState.players.find(p => p.id === data.playerId);
+  //     if (player) {
+  //       player.score = gameState.triviaState.scores[data.playerId];
+  //     }
+      
+  //     console.log(`Player ${data.playerId} answered correctly! Score: ${currentScore} -> ${gameState.triviaState.scores[data.playerId]}`);
+  //   } else {
+  //     console.log(`Player ${data.playerId} answered incorrectly. Current score: ${gameState.triviaState.scores[data.playerId] || 0}`);
+  //   }
+    
+  //   await this.updateGameState(data.roomId, gameState);
+    
+  //   // Check if all players have answered
+  //   const allAnswered = gameState.players.every(p => 
+  //     gameState.triviaState!.answers[p.id]?.answer !== null && 
+  //     gameState.triviaState!.answers[p.id]?.answer !== undefined
+  //   );
+    
+  //   const result = {
+  //     roomId: data.roomId,
+  //     playerId: data.playerId,
+  //     qId: data.qId,
+  //     answer: data.answer,
+  //     correct: currentQuestion.correctAnswer,
+  //     isCorrect: isCorrect,
+  //     scores: gameState.triviaState.scores,
+  //     currentScore: gameState.triviaState.scores[data.playerId] || 0,
+  //     allAnswered: allAnswered
+  //   };
+  
+  //   console.log('Trivia answer processed:', result);
+  
+  //   if (allAnswered) {
+  //     console.log('All players have answered, moving to next question automatically');
+  //     setTimeout(async () => {
+  //       try {
+  //         await this.processTriviaQuestion(data.roomId);
+  //         const updatedGameState = await this.getGameState(data.roomId);
+  //         this.server.to(data.roomId).emit('gameState', updatedGameState);
+  //       } catch (error) {
+  //         console.error('Error processing next question:', error);
+  //       }
+  //     }, 3000);
+  //   }
+  
+  //   return result;
+  // }
 
   // async completeTriviaGame(data: { roomId: string; playerId: string; score: number; total: number }) {
   //   const gameState = await this.getGameState(data.roomId);
@@ -1114,123 +1250,6 @@ async startGame(roomId: string) {
   //     scores: gameState.triviaState.scores 
   //   };
   // }
-
-
-  async completeTriviaGame(data: { roomId: string; playerId: string; score: number; total: number }) {
-    const gameState = await this.getGameState(data.roomId);
-    if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
-    
-    
-    if (!gameState.triviaState) {
-      throw new Error('Trivia state not initialized');
-    }
-    
-    console.log('Completing trivia game for player:', {
-      playerId: data.playerId,
-      currentScores: gameState.triviaState.scores,
-      players: gameState.players
-    });
-    
-    
-    const playerScore = gameState.triviaState.scores[data.playerId] || 0;
-    
-    console.log(`Final score calculation for ${data.playerId}:`, {
-      triviaStateScore: gameState.triviaState.scores[data.playerId],
-      playerScore: playerScore
-    });
-    
-    // Update the player's score in the players array
-    const player = gameState.players.find(p => p.id === data.playerId);
-    if (player) {
-      player.score = playerScore;
-    }
-    
-    
-    if (!gameState.triviaState.completedPlayers) {
-      gameState.triviaState.completedPlayers = [];
-    }
-    if (!gameState.triviaState.completedPlayers.includes(data.playerId)) {
-      gameState.triviaState.completedPlayers.push(data.playerId);
-    }
-    
-    
-    const allPlayersCompleted = gameState.players.every(player => 
-      gameState.triviaState?.completedPlayers?.includes(player.id) ?? false
-    );
-    
-    
-    console.log('Completion status:', {
-      allPlayersCompleted,
-      completedPlayers: gameState.triviaState.completedPlayers,
-      totalPlayers: gameState.players.length,
-      players: gameState.players.map(p => p.id)
-    });
-    
-    if (allPlayersCompleted) {
-      console.log('All players have completed the trivia game, determining winner...');
-      
-      // Determine winner based on highest score
-      let highestScore = -1;
-      let winner = '';
-      
-      Object.entries(gameState.triviaState.scores).forEach(([playerId, score]) => {
-        console.log(`Player ${playerId} score: ${score}`);
-        if (score > highestScore) {
-          highestScore = score;
-          winner = playerId;
-        } else if (score === highestScore && highestScore > 0) {
-          if (!winner) {
-            winner = playerId;
-          }
-        }
-      });
-      
-      if (highestScore <= 0) {
-        winner = 'draw';
-      } else if (!winner && highestScore > 0) {
-        winner = Object.entries(gameState.triviaState.scores)
-          .find(([_, score]) => score === highestScore)?.[0] || 'draw';
-      }
-      
-      gameState.winner = winner;
-      gameState.gameOver = true;
-      
-      console.log('Trivia game completed - FINAL RESULTS:', {
-        winner,
-        highestScore,
-        allScores: gameState.triviaState.scores,
-        players: gameState.players.map(p => ({
-          id: p.id,
-          name: p.name,
-          score: gameState.triviaState?.scores[p.id] || 0
-        }))
-      });
-      
-      await this.gameRoomModel.updateOne(
-        { roomId: data.roomId }, 
-        { 
-          status: 'completed', 
-          winner,
-          scores: gameState.triviaState.scores
-        }
-      );
-      
-      await this.saveGameSession(data.roomId, gameState);
-      console.log('Game session saved with scores:', gameState.triviaState.scores);
-    }
-    
-    await this.updateGameState(data.roomId, gameState);
-    
-    return { 
-      roomId: data.roomId, 
-      playerId: data.playerId, 
-      score: playerScore, 
-      total: data.total,
-      gameOver: gameState.gameOver,
-      winner: gameState.winner,
-      scores: gameState.triviaState.scores 
-    };
-  }
 
 
 

@@ -1292,7 +1292,7 @@ const handleStartGame = () => {
             )}
           </p>
           {isSocketConnected && (
-            <div className="text-green-400 mb-4">✅ Connected to room</div>
+            <div className="text-green-400 mb-4">✅ Connected</div>
           )}
           
           {isHost ? (
