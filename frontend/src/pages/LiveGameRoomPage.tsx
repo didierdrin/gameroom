@@ -1489,19 +1489,19 @@ const handleStartGame = () => {
         
         {isHost && gameState?.gameOver && (
           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-3">
-            <button
-              onClick={handleRestartGame}
-              className="px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Start New Round
-            </button>
-            <button
-              onClick={handleEndGame}
-              className="px-6 py-3 bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-            >
-              End Game
-            </button>
-          </div>
+          <button
+            onClick={handleRestartGame}
+            className="px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-glow"
+          >
+            Start New Round
+          </button>
+          <button
+            onClick={handleEndGame}
+            className="px-6 py-3 bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-glow"
+          >
+            End Game
+          </button>
+        </div>
         )}
       </div>
     );
