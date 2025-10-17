@@ -72,7 +72,8 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     }
   }, [timer, loading, questions, hasAnswered]);
 
-  // Update the submitAnswer function
+  
+// Update the submitAnswer function to ensure proper score tracking
 const submitAnswer = () => {
   if (hasAnswered) return;
   
@@ -82,12 +83,18 @@ const submitAnswer = () => {
   const currentQuestion = questions[currentQ];
   const isCorrect = selected === currentQuestion.correctAnswer;
   
-  console.log('Submitting answer:', {
+  // Get current score BEFORE submission for debugging
+  const scoreBefore = gameState.triviaState?.scores?.[currentPlayer] || 0;
+  
+  console.log('🎯 SUBMITTING ANSWER:', {
+    question: currentQ + 1,
+    totalQuestions: questions.length,
     questionId: currentQuestion.id,
     selected,
     correct: currentQuestion.correctAnswer,
     isCorrect,
-    currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0
+    scoreBefore: scoreBefore,
+    expectedNewScore: isCorrect ? scoreBefore + 5 : scoreBefore
   });
   
   socket.emit('triviaAnswer', { 
@@ -106,15 +113,19 @@ const submitAnswer = () => {
     // Check if this was the last question
     if (currentQ + 1 >= questions.length) {
       // Last question - wait for all players to finish
-      console.log('Last question answered, waiting for game completion...');
+      console.log('🎯 LAST QUESTION ANSWERED - COMPLETING GAME');
       
       // Get final score from gameState after server updates
       const finalScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
       
-      console.log('Sending completion with final score:', {
+      console.log('🎯 SENDING COMPLETION:', {
         playerId: currentPlayer,
-        finalScore,
-        totalQuestions: questions.length
+        finalScore: finalScore,
+        totalQuestions: questions.length,
+        expectedScore: (questions.filter((q, idx) => {
+          // This is just for debugging - track expected correct answers
+          return true; // We can't track actual correct answers here, but this helps debug
+        }).length * 5)
       });
       
       // Notify server this player completed
@@ -129,25 +140,30 @@ const submitAnswer = () => {
       setShowFireworks(true);
     } else {
       // Not last question - move to next
+      console.log(`🎯 MOVING TO QUESTION ${currentQ + 2} of ${questions.length}`);
       nextQuestion();
     }
   }, 2000);
 };
 
-// Add this useEffect to listen for game over state
+// Add a useEffect to monitor score changes
 useEffect(() => {
-  if (gameState.gameOver) {
-    console.log('Game over detected, showing results');
-    setShowFireworks(true);
-  }
-}, [gameState.gameOver]);
+  console.log('🎯 SCORE UPDATED:', {
+    player: currentPlayer,
+    currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0,
+    allScores: gameState.triviaState?.scores
+  });
+}, [gameState.triviaState?.scores?.[currentPlayer]]);
 
-// Update the getLeaderboardData function to handle empty scores
+// Update the leaderboard display to show more detailed information
 const getLeaderboardData = () => {
   const scores = gameState.triviaState?.scores || {};
   
-  console.log('Building leaderboard with scores:', scores);
-  console.log('Current players:', gameState.players);
+  console.log('🏆 BUILDING LEADERBOARD:', {
+    scores: scores,
+    players: gameState.players,
+    gameOver: gameState.gameOver
+  });
   
   // If no scores, create default scores from players
   if (Object.keys(scores).length === 0) {
@@ -158,16 +174,24 @@ const getLeaderboardData = () => {
     })).sort((a:any, b:any) => b.score - a.score);
   }
   
-  return Object.entries(scores)
+  const leaderboard = Object.entries(scores)
     .map(([playerId, playerScore]) => {
       const playerInfo = gameState.players.find((p: any) => p.id === playerId);
+      const correctAnswers = Math.floor((playerScore as number) / 5);
+      
+      console.log(`🏆 PLAYER SCORE: ${playerId} = ${playerScore} (${correctAnswers} correct)`);
+      
       return {
         _id: playerId,
         score: playerScore as number,
-        name: playerInfo?.name || playerId
+        name: playerInfo?.name || playerId,
+        correctAnswers: correctAnswers
       };
     })
     .sort((a, b) => b.score - a.score);
+
+  console.log('🏆 FINAL LEADERBOARD:', leaderboard);
+  return leaderboard;
 };
   
 
