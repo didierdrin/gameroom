@@ -1115,8 +1115,8 @@ async startGame(roomId: string) {
     };
   }
 
-  
-// In GameService class in game.service.ts
+
+
 async processTriviaQuestion(roomId: string) {
   const gameState = await this.getGameState(roomId);
   if (!gameState.triviaState) throw new Error('Trivia state not initialized');
