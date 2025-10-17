@@ -164,7 +164,7 @@ export const LeaderboardPage = () => {
         }}
       />
     </div>
-    <div className="mt-2 text-center">
+    <div className="mt-4 text-center">
       <h3 className="font-bold text-base sm:text-lg">
         <Link to={`/profile/${first.username}`} className="text-purple-400 hover:underline">
           {first.username}
