@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { SocketType } from '../../SocketContext';
 import { Fireworks } from '../UI/Fireworks';
 import { useUserData } from '../../hooks/useUserData';
+import { shuffleArray } from '../../utils/arrayUtils';
 
 interface Question {
   id: string;
@@ -58,10 +59,26 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 
   useEffect(() => {
     if (gameState.triviaState?.questions) {
-      setQuestions(gameState.triviaState.questions);
+      const questions = gameState.triviaState.questions;
+      
+      // Shuffle the questions array to randomize order
+      const shuffledQuestions = shuffleArray(questions).map(question => ({
+        ...question,
+        // Also shuffle the options for each question
+        options: shuffleArray([...question.options])
+      }));
+      
+      setQuestions(shuffledQuestions);
       setLoading(false);
+      
+      console.log('Questions loaded and shuffled:', {
+        originalCount: questions.length,
+        shuffledCount: shuffledQuestions.length,
+        firstQuestion: shuffledQuestions[0]?.text.substring(0, 50) + '...'
+      });
     }
   }, [gameState]);
+  
 
   useEffect(() => {
     if (timer > 0 && !loading && questions.length > 0 && !hasAnswered) {
@@ -71,6 +88,18 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       submitAnswer();
     }
   }, [timer, loading, questions, hasAnswered]);
+
+  useEffect(() => {
+    // Reset game state when gameState indicates a restart
+    if (gameState.gameStarted && !gameState.gameOver) {
+      setCurrentQ(0);
+      setSelected(null);
+      setTimer(10);
+      setHasAnswered(false);
+      setShowAnswerResult(false);
+      setShowFireworks(false);
+    }
+  }, [gameState.gameStarted, gameState.gameOver]);
 
   
 // Update the submitAnswer function to ensure proper score tracking
@@ -377,6 +406,7 @@ console.log('Current game state:', {
 
 
 
+
 // // /components/TriviaGame.tsx 
 // import React, { useEffect, useState } from 'react';
 // import { SocketType } from '../../SocketContext';
@@ -451,87 +481,128 @@ console.log('Current game state:', {
 //     }
 //   }, [timer, loading, questions, hasAnswered]);
 
-//   const submitAnswer = () => {
-//     if (hasAnswered) return;
-    
-//     setHasAnswered(true);
-//     setShowAnswerResult(true);
-    
-//     const currentQuestion = questions[currentQ];
-//     const isCorrect = selected === currentQuestion.correctAnswer;
-    
-//     console.log('Submitting answer:', {
-//       questionId: currentQuestion.id,
-//       selected,
-//       correct: currentQuestion.correctAnswer,
-//       isCorrect,
-//       currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0
-//     });
-    
-//     socket.emit('triviaAnswer', { 
-//       roomId, 
-//       playerId: currentPlayer, 
-//       qId: currentQuestion.id, 
-//       answer: selected,
-//       correct: currentQuestion.correctAnswer,
-//       isCorrect
-//     });
+  
+// // Update the submitAnswer function to ensure proper score tracking
+// const submitAnswer = () => {
+//   if (hasAnswered) return;
+  
+//   setHasAnswered(true);
+//   setShowAnswerResult(true);
+  
+//   const currentQuestion = questions[currentQ];
+//   const isCorrect = selected === currentQuestion.correctAnswer;
+  
+//   // Get current score BEFORE submission for debugging
+//   const scoreBefore = gameState.triviaState?.scores?.[currentPlayer] || 0;
+  
+//   console.log('🎯 SUBMITTING ANSWER:', {
+//     question: currentQ + 1,
+//     totalQuestions: questions.length,
+//     questionId: currentQuestion.id,
+//     selected,
+//     correct: currentQuestion.correctAnswer,
+//     isCorrect,
+//     scoreBefore: scoreBefore,
+//     expectedNewScore: isCorrect ? scoreBefore + 5 : scoreBefore
+//   });
+  
+//   socket.emit('triviaAnswer', { 
+//     roomId, 
+//     playerId: currentPlayer, 
+//     qId: currentQuestion.id, 
+//     answer: selected,
+//     correct: currentQuestion.correctAnswer,
+//     isCorrect
+//   });
 
-//     // Wait for server response before moving to next question
-//     setTimeout(() => {
-//       setShowAnswerResult(false);
+//   // Wait for server response before moving to next question
+//   setTimeout(() => {
+//     setShowAnswerResult(false);
+    
+//     // Check if this was the last question
+//     if (currentQ + 1 >= questions.length) {
+//       // Last question - wait for all players to finish
+//       console.log('🎯 LAST QUESTION ANSWERED - COMPLETING GAME');
       
-//       // Check if this was the last question
-//       if (currentQ + 1 >= questions.length) {
-//         // Last question - wait for all players to finish
-//         console.log('Last question answered, waiting for game completion...');
-        
-//         // Get final score from gameState after server updates
-//         const finalScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
-        
-//         console.log('Sending completion with final score:', {
-//           playerId: currentPlayer,
-//           finalScore,
-//           totalQuestions: questions.length
-//         });
-        
-//         // Notify server this player completed
-//         socket.emit('triviaComplete', { 
-//           roomId, 
-//           playerId: currentPlayer, 
-//           score: finalScore,
-//           total: questions.length 
-//         });
-        
-//         // Show fireworks while waiting
-//         setShowFireworks(true);
-//       } else {
-//         // Not last question - move to next
-//         nextQuestion();
-//       }
-//     }, 2000);
-//   };
+//       // Get final score from gameState after server updates
+//       const finalScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
+      
+//       console.log('🎯 SENDING COMPLETION:', {
+//         playerId: currentPlayer,
+//         finalScore: finalScore,
+//         totalQuestions: questions.length,
+//         expectedScore: (questions.filter((q, idx) => {
+//           // This is just for debugging - track expected correct answers
+//           return true; // We can't track actual correct answers here, but this helps debug
+//         }).length * 5)
+//       });
+      
+//       // Notify server this player completed
+//       socket.emit('triviaComplete', { 
+//         roomId, 
+//         playerId: currentPlayer, 
+//         score: finalScore,
+//         total: questions.length 
+//       });
+      
+//       // Show fireworks while waiting
+//       setShowFireworks(true);
+//     } else {
+//       // Not last question - move to next
+//       console.log(`🎯 MOVING TO QUESTION ${currentQ + 2} of ${questions.length}`);
+//       nextQuestion();
+//     }
+//   }, 2000);
+// };
 
+// // Add a useEffect to monitor score changes
+// useEffect(() => {
+//   console.log('🎯 SCORE UPDATED:', {
+//     player: currentPlayer,
+//     currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0,
+//     allScores: gameState.triviaState?.scores
+//   });
+// }, [gameState.triviaState?.scores?.[currentPlayer]]);
 
-//   const getLeaderboardData = () => {
-//     const scores = gameState.triviaState?.scores || {};
-    
-//     console.log('Building leaderboard with scores:', scores);
-//     console.log('Current players:', gameState.players);
-    
-//     return Object.entries(scores)
-//       .map(([playerId, playerScore]) => {
-//         const playerInfo = gameState.players.find((p:any) => p.id === playerId);
-//         return {
-//           _id: playerId,
-//           score: playerScore as number,
-//           name: playerInfo?.name || playerId
-//         };
-//       })
-//       .sort((a, b) => b.score - a.score);
-//   };
+// // Update the leaderboard display to show more detailed information
+// const getLeaderboardData = () => {
+//   const scores = gameState.triviaState?.scores || {};
+  
+//   console.log('🏆 BUILDING LEADERBOARD:', {
+//     scores: scores,
+//     players: gameState.players,
+//     gameOver: gameState.gameOver
+//   });
+  
+//   // If no scores, create default scores from players
+//   if (Object.keys(scores).length === 0) {
+//     return gameState.players.map((player: any) => ({
+//       _id: player.id,
+//       score: player.score || 0,
+//       name: player.name || player.id
+//     })).sort((a:any, b:any) => b.score - a.score);
+//   }
+  
+//   const leaderboard = Object.entries(scores)
+//     .map(([playerId, playerScore]) => {
+//       const playerInfo = gameState.players.find((p: any) => p.id === playerId);
+//       const correctAnswers = Math.floor((playerScore as number) / 5);
+      
+//       console.log(`🏆 PLAYER SCORE: ${playerId} = ${playerScore} (${correctAnswers} correct)`);
+      
+//       return {
+//         _id: playerId,
+//         score: playerScore as number,
+//         name: playerInfo?.name || playerId,
+//         correctAnswers: correctAnswers
+//       };
+//     })
+//     .sort((a, b) => b.score - a.score);
 
-
+//   console.log('🏆 FINAL LEADERBOARD:', leaderboard);
+//   return leaderboard;
+// };
+  
 
 //   const nextQuestion = () => {
 //     if (currentQ + 1 < questions.length) {
@@ -570,6 +641,15 @@ console.log('Current game state:', {
 //   const currentPlayerScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
 //   const isCorrect = selected === currentQuestion.correctAnswer;
 
+
+// console.log('Current game state:', {
+//   gameOver: gameState.gameOver,
+//   scores: gameState.triviaState?.scores,
+//   completedPlayers: gameState.triviaState?.completedPlayers,
+//   totalPlayers: gameState.players.length
+// });
+
+
 //   return (
 //     <div className="flex flex-col h-full">
 //       <Fireworks 
@@ -599,7 +679,7 @@ console.log('Current game state:', {
 //                   </tr>
 //                 </thead>
 //                 <tbody className="divide-y divide-gray-700">
-//                   {leaderboardData.map((player, index) => (
+//                   {leaderboardData.map((player:any, index:any) => (
 //                     <tr key={player._id} className={index < 3 ? 'bg-gray-800/30' : ''}>
 //                       <td className="px-6 py-4 whitespace-nowrap">
 //                         <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
@@ -703,4 +783,5 @@ console.log('Current game state:', {
 //     </div>
 //   );
 // };
+
 

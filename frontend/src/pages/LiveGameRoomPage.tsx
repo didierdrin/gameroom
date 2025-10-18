@@ -973,6 +973,20 @@ const handleChessMove = (data: any) => {
       setMessages(history);
     };
 
+
+    // In the socket event handlers section, add:
+const handleTriviaQuestionsRegenerated = (data: any) => {
+  console.log('Trivia questions regenerated:', data);
+  // This will trigger a re-fetch of game state which will update the questions
+  if (socket && roomId) {
+    socket.emit('getGameState', { roomId });
+  }
+};
+
+
+
+
+
     socket.on("chatHistory", handleChatHistory);
     socket.emit("getChatHistory", { roomId });
     socket.on("gameState", handleGameState);
@@ -993,7 +1007,7 @@ const handleChessMove = (data: any) => {
     socket.on("error", handleError);
     socket.on("gameRestarted", handleGameRestarted);
     socket.on("gameEnded", handleGameEnded);
-    
+    socket.on('triviaQuestionsRegenerated', handleTriviaQuestionsRegenerated);    
 
 
     return () => {
@@ -1017,6 +1031,7 @@ const handleChessMove = (data: any) => {
       socket.off("gameEnded", handleGameEnded);
       socket.off("gameRestarted", handleGameRestarted);
       socket.off("gameEnded", handleGameEnded);
+      socket.off('triviaQuestionsRegenerated', handleTriviaQuestionsRegenerated);
     };
   }, [socket, roomId, user, navigate, isSocketConnected]);
 
@@ -1239,6 +1254,11 @@ const handleRestartGame = () => {
       diceValue: 0,
       diceRolled: false
     }));
+
+    if (gameType === 'trivia') {
+      // First regenerate questions, then restart game
+      socket.emit('regenerateTriviaQuestions', { roomId, hostId: user?.id });
+    }
     
     socket.emit('restartGame', { roomId, hostId: user?.id });
   }

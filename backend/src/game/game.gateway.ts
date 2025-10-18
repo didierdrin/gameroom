@@ -629,6 +629,42 @@ async handleGetRoomInfo(@MessageBody() data: { roomId: string }, @ConnectedSocke
   }
 }
 
+
+@SubscribeMessage('regenerateTriviaQuestions')
+async handleRegenerateTriviaQuestions(
+  @MessageBody() data: { roomId: string; hostId: string }, 
+  @ConnectedSocket() client: Socket
+) {
+  try {
+    const room = await this.gameService.getGameRoomById(data.roomId);
+    if (!room) throw new Error('Room not found');
+    if (room.host !== data.hostId) throw new Error('Only the host can regenerate questions');
+    
+    await this.gameService.regenerateTriviaQuestions(data.roomId);
+    
+    // Get the updated game state
+    const gameState = await this.gameService.getGameState(data.roomId);
+    
+    // Notify all players about the new questions
+    this.server.to(data.roomId).emit('triviaQuestionsRegenerated', {
+      roomId: data.roomId,
+      questionCount: gameState.triviaState?.questions.length || 0
+    });
+    
+    // Send the fresh game state
+    this.server.to(data.roomId).emit('gameState', gameState);
+    
+    console.log(`Trivia questions regenerated for room ${data.roomId}`);
+    
+  } catch (error) {
+    console.error('Regenerate trivia questions error:', error.message);
+    client.emit('error', { 
+      message: error.message || 'Failed to regenerate questions', 
+      type: 'regenerateQuestionsError' 
+    });
+  }
+}
+
 }
 
 

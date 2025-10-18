@@ -1718,6 +1718,17 @@ async restartGame(roomId: string, hostId: string) {
       // Continue with general reset even if chess reset fails
     }
   }
+
+  
+if (gameRoom.gameType === 'trivia') {
+  try {
+    await this.regenerateTriviaQuestions(roomId);
+    console.log('Trivia questions regenerated for restart');
+  } catch (error) {
+    console.error('Error regenerating trivia questions:', error);
+    // Continue with restart even if question regeneration fails
+  }
+}
   
   // Completely reinitialize game state with preserved players
   await this.initializeGameState(
@@ -1742,9 +1753,11 @@ async restartGame(roomId: string, hostId: string) {
     gameState.diceRolled = false;
     gameState.consecutiveSixes = 0;
     // Reset coins for all players
-    Object.keys(gameState.coins || {}).forEach(playerId => {
-      gameState.coins[playerId] = [0, 0, 0, 0];
-    });
+    if (gameState.coins) {
+      Object.keys(gameState.coins).forEach(playerId => {
+        gameState.coins![playerId] = [0, 0, 0, 0];
+      });
+    }
   } else if (gameState.gameType === 'trivia' && gameState.triviaState) {
     gameState.triviaState.currentQuestionIndex = 0;
     gameState.triviaState.scores = {};
@@ -1752,8 +1765,10 @@ async restartGame(roomId: string, hostId: string) {
     gameState.triviaState.completedPlayers = [];
     // Reset player scores
     gameState.players.forEach(player => {
-      gameState.triviaState.scores[player.id] = 0;
-      player.score = 0;
+      if (gameState.triviaState) {
+        gameState.triviaState.scores[player.id] = 0;
+        player.score = 0;
+      }
     });
   }
   
@@ -1805,6 +1820,49 @@ private async getPlayerName(playerId: string): Promise<string> {
     return playerId;
   }
 }
+
+
+// Add this method to the GameService class
+async regenerateTriviaQuestions(roomId: string): Promise<void> {
+  const gameState = await this.getGameState(roomId);
+  const room = await this.getGameRoomById(roomId);
+  
+  if (room?.gameType !== 'trivia' || !gameState.triviaSettings) {
+    return;
+  }
+
+  try {
+    console.log('Regenerating trivia questions for room:', roomId);
+    
+    // Fetch new questions with the same settings
+    const newQuestions = await this.triviaService.getQuestions(gameState.triviaSettings);
+    
+    if (gameState.triviaState) {
+      // Replace questions with new ones
+      gameState.triviaState.questions = newQuestions;
+      gameState.triviaState.currentQuestionIndex = 0;
+      
+      // Reset all game state for trivia
+      gameState.triviaState.scores = {};
+      gameState.triviaState.answers = {};
+      gameState.triviaState.completedPlayers = [];
+      
+      // Initialize scores and answers for all players
+      gameState.players.forEach(player => {
+        gameState.triviaState!.scores[player.id] = 0;
+        gameState.triviaState!.answers[player.id] = { answer: null, isCorrect: null };
+        player.score = 0;
+      });
+      
+      await this.updateGameState(roomId, gameState);
+      console.log('Trivia questions regenerated successfully');
+    }
+  } catch (error) {
+    console.error('Error regenerating trivia questions:', error);
+    throw error;
+  }
+}
+
 
 }
 

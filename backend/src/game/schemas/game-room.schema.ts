@@ -33,10 +33,10 @@ export class GameRoom {
   @Prop({ default: 'waiting' })
   status: 'waiting' | 'in-progress' | 'completed';
 
-  // @Prop({ type: Map, of: Number, default: {} })
-  // scores: Map<string, number>;
-  @Prop({ type: { type: Map, of: Number } })
-  scores: Map<string, number>;
+  
+  
+  @Prop({ type: Object, default: {} })
+  scores: Record<string, number>;
 
   @Prop()
   winner?: string;
