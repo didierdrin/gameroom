@@ -362,6 +362,48 @@ export const ChessGame: React.FC<GameRenderProps> = ({
     return styles;
   };
 
+
+
+  // Add this useEffect to handle game restarts specifically
+useEffect(() => {
+  if (!socket) return;
+
+  const handleGameRestarted = (data: any) => {
+    console.log('===== CHESS GAME RESTARTED =====');
+    
+    // Reset all local state
+    gameRef.current = new Chess();
+    setFen('start');
+    setSelectedSquare(null);
+    setValidMoves([]);
+    setLastProcessedMove(0);
+    
+    // If we have new game state, apply it
+    if (data.gameState) {
+      try {
+        if (data.gameState.chessState?.board) {
+          gameRef.current = new Chess(data.gameState.chessState.board);
+          setFen(data.gameState.chessState.board);
+        }
+      } catch (e) {
+        console.error('Failed to load chess position after restart:', e);
+        gameRef.current = new Chess();
+        setFen(gameRef.current.fen());
+      }
+    }
+    
+    setGameStatus('Game restarted!');
+    setTimeout(() => setGameStatus(''), 3000);
+  };
+
+  socket.on('gameRestarted', handleGameRestarted);
+
+  return () => {
+    socket.off('gameRestarted', handleGameRestarted);
+  };
+}, [socket]);
+
+
   return (
     <div className="flex flex-col items-center justify-center h-full">
       <div className="mb-4 text-center">

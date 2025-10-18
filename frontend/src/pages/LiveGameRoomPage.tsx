@@ -276,6 +276,7 @@ export const LiveGameRoomPage = () => {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [gameEnded, setGameEnded] = useState(false);
   const [gameEndedMessage, setGameEndedMessage] = useState("");
+  const [gameStatus, setGameStatus] = useState(''); 
 
   // TURN/STUN config
   const rtcConfig: RTCConfiguration = React.useMemo(() => ({
@@ -818,35 +819,34 @@ useEffect(() => {
 
 
 
-    const handleGameRestarted = (data: any) => {
-      console.log('Game restarted:', data);
-      
-      // CRITICAL: Reset all game-ended flags
-      setGameEnded(false);
-      setGameEndedMessage('');
-      
-      // Use the gameState from the event if available
-      if (data.gameState) {
-        console.log('Applying restarted game state:', data.gameState);
-        setGameState({
-          ...data.gameState,
-          gameStarted: false,
-          gameOver: false,
-          winner: null,
-          diceValue: 0,
-          diceRolled: false
-        });
-      } else {
-        // Fallback: request fresh game state
-        console.log('Requesting fresh game state after restart');
-        if (socket) {
-          socket.emit('getGameState', { roomId });
-        }
-      }
-      
-      // Show success message
-      alert(data.message || 'Game has been restarted! Get ready for a new round.');
-    };
+    
+const handleGameRestarted = (data: any) => {
+  console.log('Game restarted:', data);
+  
+  // CRITICAL: Reset all game-ended flags
+  setGameEnded(false);
+  setGameEndedMessage('');
+  
+  // Use the gameState from the event if available
+  if (data.gameState) {
+    console.log('Applying restarted game state:', data.gameState);
+    setGameState(data.gameState);
+  } else {
+    // Fallback: request fresh game state
+    console.log('Requesting fresh game state after restart');
+    if (socket) {
+      socket.emit('getGameState', { roomId });
+    }
+  }
+  
+  // Clear any selections or local UI state
+  setSelectedPlayer(null);
+  setShowChessPlayerModal(false);
+  
+  // Show success message
+  setGameStatus('Game restarted! Get ready for a new round.');
+  setTimeout(() => setGameStatus(''), 3000);
+};
   
     const handleGameEnded = (data: any) => {
       console.log("Game ended:", data);
@@ -861,26 +861,6 @@ useEffect(() => {
     
 
  
-  
-  const handleRestartGame = () => {
-    if (!isHost || !socket || !roomId) {
-      console.error('Cannot restart: not host or missing socket/roomId');
-      return;
-    }
-    
-    const confirmRestart = window.confirm(
-      'Are you sure you want to restart the game? This will start a fresh new round with all current players.'
-    );
-    
-    if (confirmRestart) {
-      console.log('Emitting restartGame event');
-      socket.emit('restartGame', { roomId, hostId: user?.id });
-      
-      // Optimistically reset local state
-      setGameEnded(false);
-      setGameEndedMessage('');
-    }
-  };
   
 
     
@@ -1234,14 +1214,37 @@ const handleStartGame = () => {
     }
   };
 
-  const handleRestartGame = () => {
-    if (!isHost || !socket || !roomId) return;
+  // Update the handleRestartGame function
+const handleRestartGame = () => {
+  if (!isHost || !socket || !roomId) {
+    console.error('Cannot restart: not host or missing socket/roomId');
+    return;
+  }
+  
+  const confirmRestart = window.confirm(
+    'Are you sure you want to restart the game? This will start a fresh new round with all current players.'
+  );
+  
+  if (confirmRestart) {
+    console.log('Emitting restartGame event');
     
-    const confirmRestart = window.confirm('Are you sure you want to restart the game? This will start a new round.');
-    if (confirmRestart) {
-      socket.emit('restartGame', { roomId, hostId: user?.id });
-    }
-  };
+    // Optimistically reset local state immediately
+    setGameEnded(false);
+    setGameEndedMessage('');
+    setGameState(prev => ({
+      ...prev,
+      gameStarted: false,
+      gameOver: false,
+      winner: null,
+      diceValue: 0,
+      diceRolled: false
+    }));
+    
+    socket.emit('restartGame', { roomId, hostId: user?.id });
+  }
+};
+
+
 
   const sendMessage = (text: string) => {
     if (socket && roomId && user?.id) {

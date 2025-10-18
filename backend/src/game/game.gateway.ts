@@ -510,6 +510,22 @@ async handleRestartGame(
     // Call service to restart game
     const gameState = await this.gameService.restartGame(data.roomId, data.hostId);
     
+    // For chess games, ensure chess state is also reset
+    if (gameState.gameType === 'chess') {
+      try {
+        await this.chessService.resetGame(data.roomId);
+        // Get updated chess state
+        const chessState = await this.chessService.getChessState(data.roomId);
+        gameState.chessState = {
+          board: chessState.board,
+          moves: chessState.moves
+        };
+        gameState.currentTurn = chessState.currentTurn;
+      } catch (error) {
+        console.error('Error resetting chess game:', error);
+      }
+    }
+    
     // Notify all players in the room about the restart
     this.server.to(data.roomId).emit('gameRestarted', { 
       roomId: data.roomId,
@@ -524,7 +540,11 @@ async handleRestartGame(
     const rooms = await this.gameService.getActiveGameRooms();
     this.server.emit('gameRoomsList', { rooms });
     
-    console.log(`Game restarted successfully for room ${data.roomId}`);
+    console.log(`Game restarted successfully for room ${data.roomId}`, {
+      gameType: gameState.gameType,
+      gameStarted: gameState.gameStarted,
+      currentTurn: gameState.currentTurn
+    });
   } catch (error) {
     console.error('Restart game error:', error.message);
     client.emit('error', { 

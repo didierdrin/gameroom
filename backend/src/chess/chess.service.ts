@@ -321,25 +321,38 @@ if (chess.isGameOver()) {
 
   async resetGame(roomId: string): Promise<ChessGameDocument> {
     const game = await this.chessModel.findOne({ roomId });
-
+  
     if (!game) {
       throw new BadRequestException('Game not found');
     }
-
+  
+    // CRITICAL: Reset all game state completely
     game.chessState = { 
       board: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', 
       moves: [] 
     };
-    game.currentTurn = game.players.find(p => p.chessColor === 'white')?.id || '';
+    
+    // Reset turn to white player
+    const whitePlayer = game.players.find(p => p.chessColor === 'white');
+    game.currentTurn = whitePlayer?.id || '';
+    
+    // Reset game flags
     game.gameStarted = false;
     game.gameOver = false;
     game.winner = undefined;
     game.winCondition = undefined;
-
+  
     await game.save();
-
-    this.chessInstances.delete(roomId);
-
+  
+    // Reinitialize chess instance
+    this.chessInstances.set(roomId, new Chess());
+  
+    console.log(`Chess game reset for room ${roomId}:`, {
+      currentTurn: game.currentTurn,
+      players: game.players,
+      gameStarted: game.gameStarted
+    });
+  
     return game;
   }
 
