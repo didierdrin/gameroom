@@ -985,11 +985,15 @@ const handleTriviaQuestionsRegenerated = (data: any) => {
 
 
 
-
-// Add these inside your main useEffect with socket event listeners:
-
+// In LiveGameRoomPage.tsx - Fix the socket event handlers
 const handleUnoGameState = (newGameState: GameState) => {
   console.log("UNO game state received:", newGameState);
+  
+  // Ensure deck is properly set
+  if (!newGameState.deck) {
+    newGameState.deck = [];
+  }
+  
   setGameState(newGameState);
 };
 

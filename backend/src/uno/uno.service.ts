@@ -247,6 +247,17 @@ export class UnoService {
     
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
+
+    // Ensure deck exists and has cards
+  if (!gameState.deck || gameState.deck.length === 0) {
+    this.reshuffleDeck(gameState);
+  }
+  
+  // If still no cards after reshuffle, throw error
+  if (!gameState.deck || gameState.deck.length === 0) {
+    throw new Error('No cards available to draw');
+  }
+
     
     // Handle pending draws first
     if (gameState.pendingDraw > 0) {

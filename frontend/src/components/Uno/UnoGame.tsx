@@ -49,7 +49,10 @@ interface UnoGameProps {
 
 // Add type guard to check if it's a UNO game state
 const isUnoGameState = (state: any): state is UnoGameState => {
-  return state && state.gameType === 'uno' && state.deck !== undefined;
+  return state && 
+         state.gameType === 'uno' && 
+         Array.isArray(state.deck) && 
+         Array.isArray(state.players);
 };
 
 export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer, gameState }) => {
@@ -57,40 +60,41 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   
-  // Convert generic gameState to UnoGameState if needed
-  const unoGameState: UnoGameState = React.useMemo(() => {
-    if (isUnoGameState(gameState)) {
-      return gameState;
-    }
-    
-    // Convert from generic GameState to UnoGameState
-    return {
-      roomId: gameState.roomId,
-      players: gameState.players.map((p:any) => ({
-        id: p.id,
-        name: p.name,
-        cards: [], // You'll need to get this from your actual game state
-        hasUno: false,
-        score: 0
-      })),
-      currentTurn: gameState.currentTurn,
-      currentPlayerIndex: gameState.currentPlayer,
-      gameStarted: gameState.gameStarted,
-      gameOver: gameState.gameOver,
-      winner: gameState.winner,
-      roomName: gameState.roomName,
-      gameType: 'uno',
-      deck: [],
-      discardPile: [],
-      currentColor: 'red',
-      currentValue: '',
-      direction: 1,
-      pendingDraw: 0,
-      pendingColorChoice: false,
-      lastPlayer: null,
-      consecutivePasses: 0
-    };
-  }, [gameState]);
+  
+const unoGameState: UnoGameState = React.useMemo(() => {
+  if (isUnoGameState(gameState)) {
+    return gameState;
+  }
+  
+  // Properly convert from generic GameState to UnoGameState
+  return {
+    roomId: gameState.roomId,
+    players: gameState.players?.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      cards: p.cards || [], // Use actual cards if available
+      hasUno: p.hasUno || false,
+      score: p.score || 0
+    })) || [],
+    currentTurn: gameState.currentTurn,
+    currentPlayerIndex: gameState.currentPlayerIndex || 0,
+    gameStarted: gameState.gameStarted || false,
+    gameOver: gameState.gameOver || false,
+    winner: gameState.winner || null,
+    roomName: gameState.roomName || '',
+    gameType: 'uno',
+    deck: gameState.deck || [], 
+    discardPile: gameState.discardPile || [],
+    currentColor: gameState.currentColor || 'red',
+    currentValue: gameState.currentValue || '',
+    direction: gameState.direction || 1,
+    pendingDraw: gameState.pendingDraw || 0,
+    pendingColorChoice: gameState.pendingColorChoice || false,
+    lastPlayer: gameState.lastPlayer || null,
+    consecutivePasses: gameState.consecutivePasses || 0
+  };
+}, [gameState]);
+
 
   // Rest of your component remains the same...
   const [localGameState, setLocalGameState] = useState<UnoGameState>(unoGameState);
@@ -167,9 +171,17 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
     setSelectedCard(null);
   };
 
-  const handleDrawCard = () => {
+  
+const handleDrawCard = () => {
+  if (!socket || !localGameState) return;
+  
+  // Ensure we have a valid deck before drawing
+  if (localGameState.deck && localGameState.deck.length >= 0) {
     socket.emit('unoDrawCard', { roomId, playerId: currentPlayer });
-  };
+  } else {
+    console.error('Cannot draw card: Deck is not properly initialized');
+  }
+};
 
   const handleSayUno = () => {
     socket.emit('unoSayUno', { roomId, playerId: currentPlayer });
@@ -252,10 +264,11 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
       {/* Game Board */}
       <div className="uno-board">
         {/* Draw Pile */}
-        <div className="uno-pile draw-pile" onClick={canPlay ? handleDrawCard : undefined}>
-          <div className="uno-card-back"></div>
-          <div className="pile-label">Draw ({localGameState.deck.length})</div>
-        </div>
+      
+<div className="uno-pile draw-pile" onClick={canPlay ? handleDrawCard : undefined}>
+  <div className="uno-card-back"></div>
+  <div className="pile-label">Draw ({localGameState.deck?.length || 0})</div>
+</div>
 
         {/* Discard Pile */}
         <div className="uno-pile discard-pile">

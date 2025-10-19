@@ -42,4 +42,5 @@ export interface Player {
     chessPlayers?: { player1Id: string; player2Id: string };
     kahootState?: KahootState;
     host?: string;
+    deck?: []; 
   }
