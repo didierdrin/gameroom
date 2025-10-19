@@ -177,7 +177,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   const getCellColor = (row: number, col: number): string => {
     // Safe star positions
     // const safeStars = [[1, 6], [6, 1], [8, 1], [13, 6], [13, 8], [8, 13], [6, 13], [1, 8]];
-    const safeStars = [[2, 6], [6, 1], [8, 1], [13, 6], [13, 8], [8, 13], [6, 13], [2, 8]];
+    const safeStars = [[2, 6], [6, 1], [8, 2], [13, 6], [13, 8], [8, 13], [6, 13], [1, 8]];
 
     
     // Center home area
