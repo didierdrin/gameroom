@@ -391,7 +391,7 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
   );
 
   return (
-    <div className="flex flex-col items-center p-4 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 min-h-screen text-white">
+    <div className="flex flex-col items-center p-4  min-h-screen text-white">
       <Fireworks 
         show={showFireworks} 
         onComplete={() => setShowFireworks(false)} 
@@ -402,9 +402,9 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
       {/* Header */}
       <div className="text-center mb-6">
         <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 bg-clip-text text-transparent">
-          Ludo Master
+          Ludo 
         </h1>
-        <p className="text-purple-200 text-lg">Classic Board Game - Modern Experience</p>
+        
       </div>
       
       {/* Winner announcement */}
@@ -572,6 +572,10 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
     </div>
   );
 };
+
+
+
+
 
 // import React, { useEffect, useState } from 'react';
 // import { GameState } from '../Ludo/types/game';

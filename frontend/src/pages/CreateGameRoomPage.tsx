@@ -115,7 +115,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
     { id: 'chess', name: 'Chess', icon: '♟️' },
     { id: 'trivia', name: 'Trivia', icon: '❓' },
     { id: 'ludo', name: 'Ludo', icon: '🎲' },
-    // { id: 'uno', name: 'UNO', icon: '🃏' },
+    { id: 'uno', name: 'UNO', icon: '🃏' },
   ];
 
 

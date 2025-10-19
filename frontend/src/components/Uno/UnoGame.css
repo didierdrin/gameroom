@@ -1,0 +1,366 @@
+.uno-game {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border-radius: 15px;
+    color: white;
+    min-height: 600px;
+    position: relative;
+  }
+  
+  .uno-game-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 400px;
+    font-size: 1.5rem;
+    color: white;
+  }
+  
+  .uno-game-info {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 10px 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  
+  .uno-current-color .color-red { color: #ff4444; }
+  .uno-current-color .color-blue { color: #4444ff; }
+  .uno-current-color .color-green { color: #44ff44; }
+  .uno-current-color .color-yellow { color: #ffff44; }
+  
+  .uno-pending-draw {
+    background: #ff4444;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+  }
+  
+  .uno-players-area {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  
+  .uno-player {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    min-width: 200px;
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+  
+  .uno-player.active {
+    background: rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 15px gold;
+    border: 2px solid gold;
+  }
+  
+  .uno-player.current-user {
+    background: rgba(0, 255, 255, 0.2);
+    border: 2px solid cyan;
+  }
+  
+  .player-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .player-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+  
+  .uno-indicator {
+    background: #ff4444;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+  
+  .card-count, .player-score {
+    font-size: 0.9rem;
+    opacity: 0.8;
+  }
+  
+  .opponent-cards {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    gap: 2px;
+  }
+  
+  .uno-card-back {
+    width: 40px;
+    height: 60px;
+    background: linear-gradient(45deg, #1e3c72, #2a5298);
+    border: 2px solid white;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .uno-board {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 50px;
+    margin-bottom: 30px;
+    position: relative;
+    min-height: 200px;
+  }
+  
+  .uno-pile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  
+  .uno-pile:hover {
+    transform: translateY(-5px);
+  }
+  
+  .uno-card-image {
+    width: 80px;
+    height: 120px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    border: 2px solid white;
+  }
+  
+  .uno-card-placeholder {
+    width: 80px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px dashed white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.9rem;
+  }
+  
+  .pile-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+  }
+  
+  .uno-center-info {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  
+  .uno-start-btn, .uno-restart-btn {
+    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  .uno-start-btn:hover, .uno-restart-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .uno-game-over {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 15px;
+    border: 2px solid gold;
+  }
+  
+  .uno-game-over h2 {
+    color: gold;
+    margin-bottom: 10px;
+  }
+  
+  .uno-player-hand {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 15px;
+    margin-top: 20px;
+  }
+  
+  .hand-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+  
+  .uno-say-btn {
+    background: #ff4444;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  
+  .card-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .uno-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+  
+  .uno-card.playable:hover {
+    transform: translateY(-15px) scale(1.05);
+  }
+  
+  .uno-card.selected {
+    transform: translateY(-20px) scale(1.1);
+    box-shadow: 0 0 20px gold;
+  }
+  
+  .uno-color-picker-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .color-picker-content {
+    background: #2a5298;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    border: 3px solid white;
+  }
+  
+  .color-picker-content h3 {
+    margin-bottom: 20px;
+    color: white;
+  }
+  
+  .color-options {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .color-option {
+    padding: 15px 25px;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 80px;
+  }
+  
+  .color-option.red { background: #ff4444; }
+  .color-option.blue { background: #4444ff; }
+  .color-option.green { background: #44aa44; }
+  .color-option.yellow { background: #ffaa00; color: black; }
+  
+  .color-option:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px white;
+  }
+  
+  .cancel-btn {
+    background: #666;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .uno-pending-color {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(42, 82, 152, 0.95);
+    padding: 30px;
+    border-radius: 15px;
+    border: 3px solid gold;
+    z-index: 1000;
+    text-align: center;
+  }
+  
+  .uno-pending-color h3 {
+    margin-bottom: 20px;
+    color: white;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .uno-game-info {
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .uno-players-area {
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .uno-player {
+      min-width: 100%;
+    }
+    
+    .uno-board {
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .card-container {
+      gap: 5px;
+    }
+    
+    .uno-card-image {
+      width: 60px;
+      height: 90px;
+    }
+  }

@@ -11,6 +11,7 @@ import { TriviaService } from '../trivia/trivia.service';
 import { UserModule } from '../user/user.module';
 import { ChessModule } from '../chess/chess.module';
 import { TriviaModule } from '../trivia/trivia.module'; 
+import { UnoModule } from 'src/uno/uno.module';
 
 @Module({
   imports: [    
@@ -22,6 +23,7 @@ import { TriviaModule } from '../trivia/trivia.module';
     RedisModule,
     UserModule, 
     ChessModule,
+    UnoModule, 
   ],
   controllers: [GameController],
   providers: [

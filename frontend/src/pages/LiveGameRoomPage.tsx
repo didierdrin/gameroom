@@ -5,7 +5,7 @@ import { LudoGame } from "../components/Ludo/LudoGame";
 import { TriviaGame } from "../components/Trivia/TriviaGame";
 import { ChessGame } from "../components/Chess/ChessGame";
 import { ChessPlayerSelectionModal } from "../components/Chess/ChessPlayerSelectionModal";
-import { renderUnoGame } from "../components/Uno/UnoGame";
+import { UnoGame } from "../components/Uno/UnoGame";
 import KahootGame from "../components/Kahoot/KahootGame";
 import { renderPictionaryGame } from "../components/Pictionary/PictionaryGame";
 import { GameRoomInfo } from "../components/GameRoom/GameRoomInfo";
@@ -986,6 +986,29 @@ const handleTriviaQuestionsRegenerated = (data: any) => {
 
 
 
+// Add these inside your main useEffect with socket event listeners:
+
+const handleUnoGameState = (newGameState: GameState) => {
+  console.log("UNO game state received:", newGameState);
+  setGameState(newGameState);
+};
+
+const handleUnoGameOver = (data: any) => {
+  console.log("UNO game over:", data);
+  setGameEnded(true);
+  setGameEndedMessage(data.message || 'UNO game completed!');
+};
+
+const handleUnoError = (error: any) => {
+  console.error("UNO error:", error);
+  alert(`UNO Error: ${error.message}`);
+};
+
+
+
+
+
+
 
     socket.on("chatHistory", handleChatHistory);
     socket.emit("getChatHistory", { roomId });
@@ -1008,6 +1031,9 @@ const handleTriviaQuestionsRegenerated = (data: any) => {
     socket.on("gameRestarted", handleGameRestarted);
     socket.on("gameEnded", handleGameEnded);
     socket.on('triviaQuestionsRegenerated', handleTriviaQuestionsRegenerated);    
+    socket.on("unoGameState", handleUnoGameState);
+socket.on("unoGameOver", handleUnoGameOver);
+socket.on("unoError", handleUnoError);
 
 
     return () => {
@@ -1032,6 +1058,9 @@ const handleTriviaQuestionsRegenerated = (data: any) => {
       socket.off("gameRestarted", handleGameRestarted);
       socket.off("gameEnded", handleGameEnded);
       socket.off('triviaQuestionsRegenerated', handleTriviaQuestionsRegenerated);
+      socket.off("unoGameState", handleUnoGameState);
+      socket.off("unoGameOver", handleUnoGameOver);
+      socket.off("unoError", handleUnoError);
     };
   }, [socket, roomId, user, navigate, isSocketConnected]);
 
@@ -1426,12 +1455,12 @@ const handleRestartGame = () => {
         case "uno":
           return (
             <div className="relative">
-              {renderUnoGame({
-                socket,
-                roomId: roomId!,
-                currentPlayer: String(user!.id),
-                gameState,
-              })}
+              <UnoGame
+              socket={socket}
+              roomId={roomId!}
+              currentPlayer={String(user!.id)}
+              gameState={gameState}
+            />
               
               {/* Show spectator message for host */}
               {isHost && !isActivePlayer() && (
