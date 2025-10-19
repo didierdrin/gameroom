@@ -169,7 +169,8 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     
     // Regular board positions (1-51)
     // const adjusted = (position - 1 + startPositions[playerIndex]) % 52;
-    const adjusted = (position + startPositions[playerIndex] - 1) % 52;
+    const adjusted = (position + startPositions[playerIndex]) % 52;
+    // const adjusted = (position + startPositions[playerIndex] - 1) % 52;
     return boardPath[adjusted];
   };
 
