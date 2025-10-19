@@ -110,6 +110,14 @@ interface GameState {
   winCondition?: string; 
 }
 
+export interface PlayerPoints {
+  playerId: string;
+  name: string;
+  color: string;
+  position: number;
+  points: number;
+}
+
 @Injectable()
 export class GameService {
   private server: Server;
@@ -1861,6 +1869,58 @@ async regenerateTriviaQuestions(roomId: string): Promise<void> {
     console.error('Error regenerating trivia questions:', error);
     throw error;
   }
+}
+
+
+// Add to GameService class in game.service.ts
+private calculatePlayerPoints(gameState: GameState): PlayerPoints[] {
+  if (!gameState.players || !gameState.coins) return [];
+
+  // Calculate player progress (coins in home)
+  const playerProgress = gameState.players.map(player => {
+    const playerCoins = gameState.coins![player.id] || [0, 0, 0, 0];
+    const coinsHome = playerCoins.filter(pos => pos === 57).length;
+    return {
+      playerId: player.id,
+      name: player.name,
+      color: player.color || 'gray',
+      coinsHome,
+      totalProgress: playerCoins.reduce((sum, pos) => sum + pos, 0)
+    };
+  });
+
+  // Sort by coins home (descending), then by total progress (descending)
+  const sortedPlayers = [...playerProgress].sort((a, b) => {
+    if (b.coinsHome !== a.coinsHome) {
+      return b.coinsHome - a.coinsHome;
+    }
+    return b.totalProgress - a.totalProgress;
+  });
+
+  // Assign points based on position
+  const pointsMap: { [key: number]: number } = {
+    1: 10, // Winner
+    2: 5,  // Second
+    3: 2,  // Third
+    4: 1   // Last
+  };
+
+  return sortedPlayers.map((player, index) => ({
+    ...player,
+    position: index + 1,
+    points: pointsMap[index + 1] || 0
+  }));
+}
+
+// Update the game over handling to include points
+async handleGameOver(roomId: string, winnerId: string) {
+  const gameState = await this.getGameState(roomId);
+  const playerPoints = this.calculatePlayerPoints(gameState);
+  
+  // Store points in Redis for persistence
+  await this.redisService.set(`game:${roomId}:points`, JSON.stringify(playerPoints));
+  
+  return playerPoints;
 }
 
 
