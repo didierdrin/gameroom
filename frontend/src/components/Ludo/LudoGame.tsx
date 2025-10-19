@@ -140,6 +140,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   // Starting positions for each player (Red: 0, Blue: 1, Green: 2, Yellow: 3)
   const startPositions: number[] = [1, 14, 27, 40];
   
+  
   // Home stretch positions for each player (positions 52-57)
   const homeStretch: { [key: number]: number[][] } = {
     0: [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6]], // Red
@@ -169,14 +170,24 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     
     // Regular board positions (1-51)
     // const adjusted = (position - 1 + startPositions[playerIndex]) % 52;
-    const adjusted = (position + startPositions[playerIndex]) % 52;
-    // const adjusted = (position + startPositions[playerIndex] - 1) % 52;
+    const adjusted = (position + 1 + startPositions[playerIndex]) % 52;
     return boardPath[adjusted];
   };
 
   const getCellColor = (row: number, col: number): string => {
     // Safe star positions
-    const safeStars = [[1, 6], [6, 1], [8, 1], [13, 6], [13, 8], [8, 13], [6, 13], [1, 8]];
+    // const safeStars = [[1, 6], [6, 1], [8, 1], [13, 6], [13, 8], [8, 13], [6, 13], [1, 8]];
+    // Safe star positions moved back 1 step in the board path
+const safeStars = [
+  [6, 0],  // Original [1, 6] -> moved back to [6, 0]
+  [5, 6],  // Original [6, 1] -> moved back to [5, 6]  
+  [8, 0],  // Original [8, 1] -> moved back to [8, 0]
+  [14, 6], // Original [13, 6] -> moved back to [14, 6]
+  [14, 7], // Original [13, 8] -> moved back to [14, 7]
+  [8, 14], // Original [8, 13] -> moved back to [8, 14]
+  [7, 14], // Original [6, 13] -> moved back to [7, 14]
+  [0, 6]   // Original [1, 8] -> moved back to [0, 6]
+];
     
     // Center home area
     if (row === 7 && col === 7) return 'bg-gradient-to-br from-purple-600 to-pink-600';
