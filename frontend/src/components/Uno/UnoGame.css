@@ -1,8 +1,9 @@
+/* linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); */
 .uno-game {
     padding: 20px;
     max-width: 1200px;
     margin: 0 auto;
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    background: transparent; 
     border-radius: 15px;
     color: white;
     min-height: 600px;
