@@ -57,14 +57,22 @@ export class UnoGateway {
   }
 
   @SubscribeMessage('unoDrawCard')
-  async handleDrawCard(@MessageBody() data: { roomId: string; playerId: string }, @ConnectedSocket() client: Socket) {
+async handleDrawCard(@MessageBody() data: { roomId: string; playerId: string }, @ConnectedSocket() client: Socket) {
+  try {
+    const gameState = await this.unoService.drawCard(data.roomId, data.playerId);
+    this.server.to(data.roomId).emit('unoGameState', gameState);
+  } catch (error) {
+    console.error('Draw card error:', error);
+    
+    // Try to recover game state
     try {
-      const gameState = await this.unoService.drawCard(data.roomId, data.playerId);
-      this.server.to(data.roomId).emit('unoGameState', gameState);
-    } catch (error) {
-      client.emit('unoError', { message: error.message });
+      const recoveredState = await this.unoService.recoverGameState(data.roomId);
+      this.server.to(data.roomId).emit('unoGameState', recoveredState);
+    } catch (recoveryError) {
+      client.emit('unoError', { message: 'Game state corrupted. Please restart the game.' });
     }
   }
+}
 
   @SubscribeMessage('unoSayUno')
   async handleSayUno(@MessageBody() data: { roomId: string; playerId: string }, @ConnectedSocket() client: Socket) {

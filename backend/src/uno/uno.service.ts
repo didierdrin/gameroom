@@ -53,7 +53,7 @@ export class UnoService {
   async initializeGameState(roomId: string, hostId: string, roomName: string) {
     const initialDeck = this.createDeck();
     const shuffledDeck = this.shuffleDeck([...initialDeck]);
-
+  
     const initialGameState: UnoState = {
       roomId,
       players: [],
@@ -65,8 +65,8 @@ export class UnoService {
       roomName,
       gameType: 'uno',
       host: hostId,
-      deck: shuffledDeck,
-      discardPile: [],
+      deck: shuffledDeck, // Ensure deck is always an array
+      discardPile: [], // Ensure discardPile is always an array
       currentColor: '',
       currentValue: '',
       direction: 1,
@@ -75,7 +75,7 @@ export class UnoService {
       lastPlayer: null,
       consecutivePasses: 0,
     };
-
+  
     await this.redisService.set(`game:${roomId}`, JSON.stringify(initialGameState));
     return initialGameState;
   }
@@ -247,28 +247,33 @@ export class UnoService {
     
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
-
-    // Ensure deck exists and has cards
-  if (!gameState.deck || gameState.deck.length === 0) {
-    this.reshuffleDeck(gameState);
-  }
   
-  // If still no cards after reshuffle, throw error
-  if (!gameState.deck || gameState.deck.length === 0) {
-    throw new Error('No cards available to draw');
-  }
-
-    
+    // CRITICAL FIX: Ensure deck exists and is properly initialized
+    if (!gameState.deck) {
+      console.warn('Deck was undefined, initializing new deck');
+      gameState.deck = this.createDeck();
+    }
+  
     // Handle pending draws first
     if (gameState.pendingDraw > 0) {
+      // Ensure we have enough cards for pending draw
+      if (gameState.deck.length < gameState.pendingDraw) {
+        this.reshuffleDeck(gameState);
+      }
+      
       const drawnCards = gameState.deck.splice(0, gameState.pendingDraw);
       player.cards.push(...drawnCards);
       gameState.pendingDraw = 0;
       this.nextTurn(gameState);
     } else {
-      // Normal draw
+      // Normal draw - ensure we have cards
       if (gameState.deck.length === 0) {
         this.reshuffleDeck(gameState);
+      }
+      
+      // Double-check we have cards after reshuffle
+      if (gameState.deck.length === 0) {
+        throw new Error('No cards available to draw');
       }
       
       const drawnCard = gameState.deck.pop()!;
@@ -277,8 +282,6 @@ export class UnoService {
       
       // If player can play the drawn card, allow them to play it immediately
       if (this.canPlayCard(drawnCard, gameState)) {
-        // Player can choose to play the drawn card on their next turn
-        // For now, just move to next turn
         this.nextTurn(gameState);
       } else {
         this.nextTurn(gameState);
@@ -384,6 +387,15 @@ export class UnoService {
   }
 
   private reshuffleDeck(gameState: UnoState) {
+    // Ensure discard pile exists and has cards to reshuffle
+    if (!gameState.discardPile || gameState.discardPile.length <= 1) {
+      // If no cards to reshuffle, create a new deck
+      console.warn('No cards to reshuffle, creating new deck');
+      gameState.deck = this.shuffleDeck(this.createDeck());
+      gameState.discardPile = [];
+      return;
+    }
+    
     const currentDiscard = gameState.discardPile.pop(); // Keep top card
     gameState.deck = this.shuffleDeck([...gameState.discardPile]);
     gameState.discardPile = currentDiscard ? [currentDiscard] : [];
@@ -429,4 +441,32 @@ export class UnoService {
     await this.updateGameState(roomId, newGameState);
     return newGameState;
   }
+
+
+  async recoverGameState(roomId: string) {
+    try {
+      let gameState = await this.getGameState(roomId);
+      
+      // Fix any undefined properties
+      if (!gameState.deck) gameState.deck = [];
+      if (!gameState.discardPile) gameState.discardPile = [];
+      if (!gameState.players) gameState.players = [];
+      
+      // Ensure all players have required properties
+      gameState.players.forEach(player => {
+        if (!player.cards) player.cards = [];
+        if (player.hasUno === undefined) player.hasUno = false;
+        if (!player.score) player.score = 0;
+      });
+      
+      await this.updateGameState(roomId, gameState);
+      return gameState;
+    } catch (error) {
+      // If recovery fails, reinitialize the game
+      console.error('Game state recovery failed, reinitializing:', error);
+      return this.initializeGameState(roomId, '', 'Recovered Game');
+    }
+  }
+
+  
 }

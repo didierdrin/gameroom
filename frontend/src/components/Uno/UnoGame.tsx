@@ -172,16 +172,18 @@ const unoGameState: UnoGameState = React.useMemo(() => {
   };
 
   
-const handleDrawCard = () => {
-  if (!socket || !localGameState) return;
-  
-  // Ensure we have a valid deck before drawing
-  if (localGameState.deck && localGameState.deck.length >= 0) {
-    socket.emit('unoDrawCard', { roomId, playerId: currentPlayer });
-  } else {
-    console.error('Cannot draw card: Deck is not properly initialized');
-  }
-};
+  const handleDrawCard = () => {
+    if (!socket || !localGameState) return;
+    
+    // More defensive check for deck
+    if (localGameState.deck && Array.isArray(localGameState.deck)) {
+      socket.emit('unoDrawCard', { roomId, playerId: currentPlayer });
+    } else {
+      console.error('Cannot draw card: Deck is not properly initialized');
+      // Optionally, you can trigger a game state refresh
+      socket.emit('unoGetState', { roomId });
+    }
+  };
 
   const handleSayUno = () => {
     socket.emit('unoSayUno', { roomId, playerId: currentPlayer });
