@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSocket } from '../../SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import './UnoGame.css';
 
@@ -43,9 +44,10 @@ interface UnoGameProps {
   socket: any;
   roomId: string;
   currentPlayer: string;
-  gameState: any;
+  gameState: any; // Use any or a more generic type
 }
 
+// Add type guard to check if it's a UNO game state
 const isUnoGameState = (state: any): state is UnoGameState => {
   return state && 
          state.gameType === 'uno' && 
@@ -57,41 +59,44 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
   const { user } = useAuth();
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   
-  const unoGameState: UnoGameState = React.useMemo(() => {
-    if (isUnoGameState(gameState)) {
-      return gameState;
-    }
-    
-    return {
-      roomId: gameState.roomId,
-      players: gameState.players?.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        cards: p.cards || [],
-        hasUno: p.hasUno || false,
-        score: p.score || 0
-      })) || [],
-      currentTurn: gameState.currentTurn,
-      currentPlayerIndex: gameState.currentPlayerIndex || 0,
-      gameStarted: gameState.gameStarted || false,
-      gameOver: gameState.gameOver || false,
-      winner: gameState.winner || null,
-      roomName: gameState.roomName || '',
-      gameType: 'uno',
-      deck: gameState.deck || [], 
-      discardPile: gameState.discardPile || [],
-      currentColor: gameState.currentColor || 'red',
-      currentValue: gameState.currentValue || '',
-      direction: gameState.direction || 1,
-      pendingDraw: gameState.pendingDraw || 0,
-      pendingColorChoice: gameState.pendingColorChoice || false,
-      lastPlayer: gameState.lastPlayer || null,
-      consecutivePasses: gameState.consecutivePasses || 0
-    };
-  }, [gameState]);
+  
+const unoGameState: UnoGameState = React.useMemo(() => {
+  if (isUnoGameState(gameState)) {
+    return gameState;
+  }
+  
+  // Properly convert from generic GameState to UnoGameState
+  return {
+    roomId: gameState.roomId,
+    players: gameState.players?.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      cards: p.cards || [], // Use actual cards if available
+      hasUno: p.hasUno || false,
+      score: p.score || 0
+    })) || [],
+    currentTurn: gameState.currentTurn,
+    currentPlayerIndex: gameState.currentPlayerIndex || 0,
+    gameStarted: gameState.gameStarted || false,
+    gameOver: gameState.gameOver || false,
+    winner: gameState.winner || null,
+    roomName: gameState.roomName || '',
+    gameType: 'uno',
+    deck: gameState.deck || [], 
+    discardPile: gameState.discardPile || [],
+    currentColor: gameState.currentColor || 'red',
+    currentValue: gameState.currentValue || '',
+    direction: gameState.direction || 1,
+    pendingDraw: gameState.pendingDraw || 0,
+    pendingColorChoice: gameState.pendingColorChoice || false,
+    lastPlayer: gameState.lastPlayer || null,
+    consecutivePasses: gameState.consecutivePasses || 0
+  };
+}, [gameState]);
 
+
+  // Rest of your component remains the same...
   const [localGameState, setLocalGameState] = useState<UnoGameState>(unoGameState);
 
   useEffect(() => {
@@ -104,12 +109,6 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
     if (!socket) return;
 
     const handleUnoGameState = (newState: UnoGameState) => {
-      console.log('UNO Game State Update:', {
-        deckLength: newState.deck?.length,
-        discardPileLength: newState.discardPile?.length,
-        playersCount: newState.players?.length,
-        firstPlayerCards: newState.players[0]?.cards?.length
-      });
       setLocalGameState(newState);
       setShowColorPicker(false);
       setSelectedCard(null);
@@ -172,13 +171,16 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
     setSelectedCard(null);
   };
 
+  
   const handleDrawCard = () => {
     if (!socket || !localGameState) return;
     
+    // More defensive check for deck
     if (localGameState.deck && Array.isArray(localGameState.deck)) {
       socket.emit('unoDrawCard', { roomId, playerId: currentPlayer });
     } else {
       console.error('Cannot draw card: Deck is not properly initialized');
+      // Optionally, you can trigger a game state refresh
       socket.emit('unoGetState', { roomId });
     }
   };
@@ -191,62 +193,32 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
     socket.emit('unoRestartGame', { roomId });
   };
 
-  // FIXED: More robust image path generation
   const getCardImage = (card: UnoCard): string => {
-    // Handle wild cards separately
-    if (card.type === 'wild_draw_four') {
-      return '/images/uno/wild_draw_four.png';
-    }
-    if (card.type === 'wild') {
+    // Handle special cards first
+    if (card.type === 'wild' || card.type === 'wild_draw_four') {
+      if (card.type === 'wild_draw_four') {
+        return '/images/uno/wild_draw_four.png';
+      }
       return '/images/uno/wild.png';
     }
-
+  
+    // For action cards and number cards
     const color = card.color.toLowerCase();
-    const value = card.value.toLowerCase().replace(/\s+/g, '_');
+    let value = card.value.toLowerCase();
+    
+    // Handle action card naming
+    if (card.type === 'skip') {
+      value = 'skip';
+    } else if (card.type === 'reverse') {
+      value = 'reverse';
+    } else if (card.type === 'draw_two') {
+      value = 'draw_two';
+    }
+    
+    // Replace spaces with underscores for consistency
+    value = value.replace(' ', '_');
     
     return `/images/uno/${color}_${value}.png`;
-  };
-
-  // Handle image load errors
-  const handleImageError = (cardId: string, card: UnoCard) => {
-    console.error('Failed to load image for card:', card);
-    setImageErrors(prev => new Set(prev).add(cardId));
-  };
-
-  // Fallback card render when image fails
-  const renderCardFallback = (card: UnoCard) => {
-    const colorMap = {
-      red: '#FF5555',
-      blue: '#5555FF',
-      green: '#55AA55',
-      yellow: '#FFAA00',
-      black: '#333333'
-    };
-
-    return (
-      <div 
-        className="uno-card-fallback"
-        style={{
-          backgroundColor: colorMap[card.color] || '#666',
-          color: 'white',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          height: '100%',
-          borderRadius: '8px',
-          border: '2px solid white'
-        }}
-      >
-        <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-          {card.type === 'number' ? card.value : card.type.toUpperCase()}
-        </div>
-        <div style={{ fontSize: '12px', marginTop: '4px' }}>
-          {card.color}
-        </div>
-      </div>
-    );
   };
 
   const getTopCard = (): UnoCard | null => {
@@ -279,7 +251,7 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
 
       {/* Players Area */}
       <div className="uno-players-area">
-        {localGameState.players.map((player) => {
+        {localGameState.players.map((player, index) => {
           const isActive = player.id === localGameState.currentTurn;
           const isCurrentUser = player.id === currentPlayer;
           
@@ -309,24 +281,21 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
       {/* Game Board */}
       <div className="uno-board">
         {/* Draw Pile */}
-        <div className="uno-pile draw-pile" onClick={canPlay ? handleDrawCard : undefined}>
-          <div className="uno-card-back"></div>
-          <div className="pile-label">Draw ({localGameState.deck?.length || 0})</div>
-        </div>
+<div className="uno-pile draw-pile" onClick={canPlay ? handleDrawCard : undefined}>
+  <div className="uno-card-back"></div>
+  <div className="pile-label">
+    Draw ({localGameState.deck && Array.isArray(localGameState.deck) ? localGameState.deck.length : 0})
+  </div>
+</div>
 
         {/* Discard Pile */}
         <div className="uno-pile discard-pile">
           {topCard ? (
-            imageErrors.has(topCard.id) ? (
-              renderCardFallback(topCard)
-            ) : (
-              <img 
-                src={getCardImage(topCard)} 
-                alt={`${topCard.color} ${topCard.value}`}
-                className="uno-card-image"
-                onError={() => handleImageError(topCard.id, topCard)}
-              />
-            )
+            <img 
+              src={getCardImage(topCard)} 
+              alt={`${topCard.color} ${topCard.value}`}
+              className="uno-card-image"
+            />
           ) : (
             <div className="uno-card-placeholder">Start</div>
           )}
@@ -354,37 +323,38 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
 
       {/* Current Player's Hand */}
       {currentPlayerData && (
-        <div className="uno-player-hand">
-          <div className="hand-header">
-            <span>Your Cards ({currentPlayerData.cards.length})</span>
-            {currentPlayerData.cards.length === 1 && !currentPlayerData.hasUno && (
-              <button className="uno-say-btn" onClick={handleSayUno}>
-                Say UNO!
-              </button>
-            )}
-          </div>
-          <div className="card-container">
-            {currentPlayerData.cards.map(card => (
-              <div
-                key={card.id}
-                className={`uno-card ${canPlay ? 'playable' : ''} ${selectedCard === card.id ? 'selected' : ''}`}
-                onClick={() => canPlay && handlePlayCard(card.id)}
-              >
-                {imageErrors.has(card.id) ? (
-                  renderCardFallback(card)
-                ) : (
-                  <img 
-                    src={getCardImage(card)} 
-                    alt={`${card.color} ${card.value}`}
-                    className="uno-card-image"
-                    onError={() => handleImageError(card.id, card)}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+  <div className="uno-player-hand">
+    <div className="hand-header">
+      <span>Your Cards ({currentPlayerData.cards.length})</span>
+      {currentPlayerData.cards.length === 1 && !currentPlayerData.hasUno && (
+        <button className="uno-say-btn" onClick={handleSayUno}>
+          Say UNO!
+        </button>
       )}
+    </div>
+    <div className="card-container">
+      {currentPlayerData.cards.map(card => (
+        <div
+          key={card.id}
+          className={`uno-card ${canPlay ? 'playable' : ''} ${selectedCard === card.id ? 'selected' : ''}`}
+          onClick={() => canPlay && handlePlayCard(card.id)}
+        >
+          <img 
+            src={getCardImage(card)} 
+            alt={`${card.color} ${card.value}`}
+            className="uno-card-image"
+            onError={(e) => {
+              // Fallback if image doesn't exist
+              const target = e.target as HTMLImageElement;
+              console.warn(`Card image not found: ${getCardImage(card)}`);
+              target.src = '/images/uno/card_back.png'; // Add a fallback image
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
       {/* Color Picker Modal */}
       {showColorPicker && (
@@ -432,6 +402,9 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
     </div>
   );
 };
+
+
+
 
 // import React, { useState, useEffect } from 'react';
 // import { useSocket } from '../../SocketContext';

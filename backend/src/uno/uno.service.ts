@@ -87,12 +87,30 @@ export class UnoService {
     // Create number cards (0-9, two of each except 0)
     colors.forEach(color => {
       // One zero card per color
-      deck.push({ id: uuidv4(), type: 'number', color, value: '0', points: 0 });
+      deck.push({ 
+        id: uuidv4(), 
+        type: 'number', 
+        color, 
+        value: '0',  // Ensure this matches image naming
+        points: 0 
+      });
       
       // Two of each number 1-9 per color
       for (let i = 1; i <= 9; i++) {
-        deck.push({ id: uuidv4(), type: 'number', color, value: i.toString(), points: i });
-        deck.push({ id: uuidv4(), type: 'number', color, value: i.toString(), points: i });
+        deck.push({ 
+          id: uuidv4(), 
+          type: 'number', 
+          color, 
+          value: i.toString(),  // This should match '1', '2', etc.
+          points: i 
+        });
+        deck.push({ 
+          id: uuidv4(), 
+          type: 'number', 
+          color, 
+          value: i.toString(), 
+          points: i 
+        });
       }
       
       // Action cards (two of each per color)
@@ -101,7 +119,7 @@ export class UnoService {
           id: uuidv4(), 
           type: action as any, 
           color, 
-          value: action, 
+          value: action,  // This should match 'skip', 'reverse', 'draw_two'
           points: 20 
         });
         deck.push({ 
@@ -120,14 +138,14 @@ export class UnoService {
         id: uuidv4(), 
         type: 'wild', 
         color: 'black', 
-        value: 'wild', 
+        value: 'wild',  // This should match 'wild'
         points: 50 
       });
       deck.push({ 
         id: uuidv4(), 
         type: 'wild_draw_four', 
         color: 'black', 
-        value: 'wild_draw_four', 
+        value: 'wild_draw_four',  // This should match 'wild_draw_four'
         points: 50 
       });
     }
@@ -468,5 +486,5 @@ export class UnoService {
     }
   }
 
-  
+
 }
