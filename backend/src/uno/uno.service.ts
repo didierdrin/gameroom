@@ -190,18 +190,72 @@ export class UnoService {
       throw new Error('At least 2 players required to start UNO');
     }
     
+    // CRITICAL FIX: Ensure deck is properly initialized
+    if (!gameState.deck || gameState.deck.length === 0) {
+      console.warn('Deck is empty or undefined, creating new deck');
+      gameState.deck = this.createDeck();
+    }
+    
+    // CRITICAL FIX: Ensure we have enough cards to deal
+    const totalCardsNeeded = gameState.players.length * 7;
+    if (gameState.deck.length < totalCardsNeeded) {
+      console.warn(`Not enough cards in deck (${gameState.deck.length}), creating new deck`);
+      gameState.deck = this.createDeck();
+    }
+    
     // Deal 7 cards to each player
     gameState.players.forEach(player => {
-      player.cards = gameState.deck.splice(0, 7);
+      // CRITICAL FIX: Check if we have enough cards before splicing
+      if (gameState.deck.length >= 7) {
+        player.cards = gameState.deck.splice(0, 7);
+      } else {
+        console.error(`Not enough cards to deal to player ${player.name}`);
+        player.cards = [];
+      }
     });
     
-    // Start with first card from deck
-    let firstCard: UnoCard;
+    // CRITICAL FIX: Check if we have cards left for the first card
+    if (gameState.deck.length === 0) {
+      console.warn('No cards left after dealing, creating new deck');
+      gameState.deck = this.createDeck();
+    }
+    
+    // Start with first card from deck - FIXED: Initialize firstCard properly
+    let firstCard: UnoCard | null = null;
+    let attempts = 0;
+    const maxAttempts = 10; // Safety limit
+    
     do {
+      if (gameState.deck.length === 0) {
+        console.error('No cards available for first card');
+        break;
+      }
+      
       firstCard = gameState.deck.pop()!;
       gameState.discardPile.push(firstCard);
+      attempts++;
+      
+      // Safety break to prevent infinite loop
+      if (attempts >= maxAttempts) {
+        console.warn('Max attempts reached for finding non-wild first card');
+        break;
+      }
     } while (firstCard.type === 'wild' || firstCard.type === 'wild_draw_four');
     
+    // FIXED: Handle case where firstCard might be null
+    if (!firstCard) {
+      console.error('Could not find a valid first card, creating default card');
+      firstCard = {
+        id: uuidv4(),
+        type: 'number',
+        color: 'red',
+        value: '0',
+        points: 0
+      };
+      gameState.discardPile.push(firstCard);
+    }
+    
+    // Set game state properties - FIXED: firstCard is guaranteed to be non-null now
     gameState.currentColor = firstCard.color;
     gameState.currentValue = firstCard.value;
     gameState.gameStarted = true;
