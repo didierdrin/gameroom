@@ -1,6 +1,6 @@
 import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, ConnectedSocket } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { UnoService } from './uno.service';
+import { UnoService, UnoState } from './uno.service';
 
 @WebSocketGateway({
   cors: {
@@ -32,15 +32,60 @@ export class UnoGateway {
     }
   }
 
-  @SubscribeMessage('unoStartGame')
-  async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
+  // In uno.gateway.ts - Add this method for state validation
+  private async validateAndFixGameState(roomId: string): Promise<UnoState> {
     try {
-      const gameState = await this.unoService.startGame(data.roomId);
-      this.server.to(data.roomId).emit('unoGameState', gameState);
+      let gameState = await this.unoService.getGameState(roomId);
+      
+      // Validate critical arrays exist
+      if (!gameState.players || !Array.isArray(gameState.players)) {
+        console.warn('Players array invalid, resetting');
+        gameState.players = [];
+      }
+      
+      if (!gameState.deck || !Array.isArray(gameState.deck)) {
+        console.warn('Deck invalid, recreating');
+        gameState.deck = this.unoService['createDeck'](); // Access private method
+      }
+      
+      if (!gameState.discardPile || !Array.isArray(gameState.discardPile)) {
+        console.warn('Discard pile invalid, resetting');
+        gameState.discardPile = [];
+      }
+      
+      await this.unoService.updateGameState(roomId, gameState);
+      return gameState;
     } catch (error) {
-      client.emit('unoError', { message: error.message });
+      console.error('State validation failed:', error);
+      return this.unoService.recoverGameState(roomId);
     }
   }
+
+// Update the startGame handler to use validation
+@SubscribeMessage('unoStartGame')
+async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
+  try {
+    console.log('Starting UNO game for room:', data.roomId);
+    
+    // First, validate and fix the game state
+    await this.validateAndFixGameState(data.roomId);
+    
+    // Then start the game
+    const gameState = await this.unoService.startGame(data.roomId);
+    this.server.to(data.roomId).emit('unoGameState', gameState);
+  } catch (error) {
+    console.error('Error starting UNO game:', error);
+    client.emit('unoError', { message: error.message });
+    
+    // Try to send the current state even if start failed
+    try {
+      const currentState = await this.unoService.getGameState(data.roomId);
+      client.emit('unoGameState', currentState);
+    } catch (recoveryError) {
+      console.error('Could not recover game state:', recoveryError);
+    }
+  }
+}
 
   @SubscribeMessage('unoPlayCard')
   async handlePlayCard(@MessageBody() data: { roomId: string; playerId: string; cardId: string; chosenColor?: string }, @ConnectedSocket() client: Socket) {

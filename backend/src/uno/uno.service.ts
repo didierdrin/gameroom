@@ -196,6 +196,12 @@ export class UnoService {
       gameState.deck = this.createDeck();
     }
     
+    // CRITICAL FIX: Ensure discardPile is properly initialized
+    if (!gameState.discardPile) {
+      console.warn('Discard pile is undefined, initializing empty array');
+      gameState.discardPile = [];
+    }
+    
     // CRITICAL FIX: Ensure we have enough cards to deal
     const totalCardsNeeded = gameState.players.length * 7;
     if (gameState.deck.length < totalCardsNeeded) {
@@ -220,7 +226,7 @@ export class UnoService {
       gameState.deck = this.createDeck();
     }
     
-    // Start with first card from deck - FIXED: Initialize firstCard properly
+    // Start with first card from deck
     let firstCard: UnoCard | null = null;
     let attempts = 0;
     const maxAttempts = 10; // Safety limit
@@ -232,7 +238,13 @@ export class UnoService {
       }
       
       firstCard = gameState.deck.pop()!;
+      
+      // CRITICAL FIX: Ensure discardPile exists before pushing
+      if (!gameState.discardPile) {
+        gameState.discardPile = [];
+      }
       gameState.discardPile.push(firstCard);
+      
       attempts++;
       
       // Safety break to prevent infinite loop
@@ -252,10 +264,15 @@ export class UnoService {
         value: '0',
         points: 0
       };
+      
+      // CRITICAL FIX: Ensure discardPile exists before pushing
+      if (!gameState.discardPile) {
+        gameState.discardPile = [];
+      }
       gameState.discardPile.push(firstCard);
     }
     
-    // Set game state properties - FIXED: firstCard is guaranteed to be non-null now
+    // Set game state properties
     gameState.currentColor = firstCard.color;
     gameState.currentValue = firstCard.value;
     gameState.gameStarted = true;
@@ -287,8 +304,16 @@ export class UnoService {
       throw new Error('Invalid card play');
     }
     
-    // Remove card from player's hand and add to discard pile
+    // Remove card from player's hand
     player.cards.splice(cardIndex, 1);
+    
+    // CRITICAL FIX: Ensure discardPile exists before pushing
+    if (!gameState.discardPile) {
+      console.warn('Discard pile was undefined, initializing empty array');
+      gameState.discardPile = [];
+    }
+    
+    // Add card to discard pile
     gameState.discardPile.push(card);
     gameState.lastPlayer = playerId;
     gameState.consecutivePasses = 0;
@@ -488,11 +513,50 @@ export class UnoService {
   }
 
   async getGameState(roomId: string): Promise<UnoState> {
-    const redisState = await this.redisService.get(`game:${roomId}`);
-    if (!redisState) {
-      throw new Error('Game state not found');
+    try {
+      const redisState = await this.redisService.get(`game:${roomId}`);
+      if (!redisState) {
+        throw new Error('Game state not found');
+      }
+      
+      const parsedState: UnoState = JSON.parse(redisState);
+      
+      // CRITICAL: Ensure all required properties exist with proper defaults
+      const safeGameState: UnoState = {
+        roomId: parsedState.roomId || roomId,
+        players: parsedState.players || [],
+        currentTurn: parsedState.currentTurn || '',
+        currentPlayerIndex: parsedState.currentPlayerIndex || 0,
+        gameStarted: parsedState.gameStarted || false,
+        gameOver: parsedState.gameOver || false,
+        winner: parsedState.winner || null,
+        roomName: parsedState.roomName || '',
+        gameType: 'uno',
+        host: parsedState.host || '',
+        deck: parsedState.deck || this.createDeck(),
+        discardPile: parsedState.discardPile || [], // CRITICAL FIX: Ensure discardPile exists
+        currentColor: parsedState.currentColor || '',
+        currentValue: parsedState.currentValue || '',
+        direction: parsedState.direction || 1,
+        pendingDraw: parsedState.pendingDraw || 0,
+        pendingColorChoice: parsedState.pendingColorChoice || false,
+        lastPlayer: parsedState.lastPlayer || null,
+        consecutivePasses: parsedState.consecutivePasses || 0,
+      };
+      
+      // Ensure all players have required properties
+      safeGameState.players.forEach(player => {
+        if (!player.cards) player.cards = [];
+        if (player.hasUno === undefined) player.hasUno = false;
+        if (!player.score) player.score = 0;
+      });
+      
+      return safeGameState;
+    } catch (error) {
+      console.error(`Error getting game state for room ${roomId}:`, error);
+      // If recovery fails, return a fresh state
+      return this.initializeGameState(roomId, '', 'Recovered Game');
     }
-    return JSON.parse(redisState);
   }
 
   async updateGameState(roomId: string, gameState: UnoState) {
@@ -519,14 +583,25 @@ export class UnoService {
     try {
       let gameState = await this.getGameState(roomId);
       
-      // Fix any undefined properties
-      if (!gameState.deck) gameState.deck = [];
-      if (!gameState.discardPile) gameState.discardPile = [];
-      if (!gameState.players) gameState.players = [];
+      // Fix any undefined properties with comprehensive checks
+      if (!gameState.deck || !Array.isArray(gameState.deck)) {
+        console.warn('Deck was corrupted, creating new deck');
+        gameState.deck = this.createDeck();
+      }
+      
+      if (!gameState.discardPile || !Array.isArray(gameState.discardPile)) {
+        console.warn('Discard pile was corrupted, initializing empty array');
+        gameState.discardPile = [];
+      }
+      
+      if (!gameState.players || !Array.isArray(gameState.players)) {
+        console.warn('Players array was corrupted, initializing empty array');
+        gameState.players = [];
+      }
       
       // Ensure all players have required properties
       gameState.players.forEach(player => {
-        if (!player.cards) player.cards = [];
+        if (!player.cards || !Array.isArray(player.cards)) player.cards = [];
         if (player.hasUno === undefined) player.hasUno = false;
         if (!player.score) player.score = 0;
       });
@@ -534,7 +609,6 @@ export class UnoService {
       await this.updateGameState(roomId, gameState);
       return gameState;
     } catch (error) {
-      // If recovery fails, reinitialize the game
       console.error('Game state recovery failed, reinitializing:', error);
       return this.initializeGameState(roomId, '', 'Recovered Game');
     }
