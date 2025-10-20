@@ -714,6 +714,15 @@ useEffect(() => {
           ...prev,
           [data.playerId]: data.playerName || data.playerId,
         }));
+
+        if (gameType === 'uno' && socket && roomId) {
+          socket.emit('unoJoinGame', { 
+            roomId, 
+            playerId: data.playerId, 
+            playerName: data.playerName || data.playerId 
+          });
+        }
+        
       }
     };
 
@@ -986,15 +995,29 @@ const handleTriviaQuestionsRegenerated = (data: any) => {
 
 
 // In LiveGameRoomPage.tsx - Fix the socket event handlers
-const handleUnoGameState = (newGameState: GameState) => {
+const handleUnoGameState = (newGameState: any) => {
   console.log("UNO game state received:", newGameState);
   
-  // Ensure deck is properly set
-  if (!newGameState.deck) {
-    newGameState.deck = [];
-  }
+  // Ensure all UNO-specific properties are properly set
+  const enhancedGameState = {
+    ...newGameState,
+    deck: newGameState.deck || [],
+    discardPile: newGameState.discardPile || [],
+    currentColor: newGameState.currentColor || 'red',
+    currentValue: newGameState.currentValue || '',
+    direction: newGameState.direction || 1,
+    pendingDraw: newGameState.pendingDraw || 0,
+    pendingColorChoice: newGameState.pendingColorChoice || false,
+    lastPlayer: newGameState.lastPlayer || null,
+    consecutivePasses: newGameState.consecutivePasses || 0,
+    players: newGameState.players || [],
+    // Preserve existing properties that might not be in UNO state
+    coins: newGameState.coins || gameState.coins,
+    diceValue: newGameState.diceValue || gameState.diceValue,
+    diceRolled: newGameState.diceRolled || gameState.diceRolled
+  };
   
-  setGameState(newGameState);
+  setGameState(enhancedGameState);
 };
 
 const handleUnoGameOver = (data: any) => {
@@ -1208,6 +1231,12 @@ const handleStartGame = () => {
   console.log("Starting game for room:", roomId);
   if (!socket || !socket.connected) {
     console.error("Socket not connected");
+    return;
+  }
+
+   // For UNO games, use the UNO-specific start event
+   if (gameType === 'uno') {
+    socket.emit('unoStartGame', { roomId });
     return;
   }
   
