@@ -261,6 +261,17 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
 
       if (joinResult) {
         console.log('Host successfully auto-joined as player');
+
+        if (gameType === 'uno') {
+          console.log('Also joining UNO game for host:', myId);
+          socket.emit('unoJoinGame', {
+            roomId: gameRoomId,
+            playerId: myId,
+            playerName: user.username
+          });
+        }
+      
+
       } else {
         console.warn('Host auto-join failed or timed out');
       }

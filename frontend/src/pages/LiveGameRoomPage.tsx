@@ -326,6 +326,37 @@ useEffect(() => {
   }
 }, [gameState?.players]);
 
+
+
+// In LiveGameRoomPage.tsx - Add this useEffect to handle existing players joining UNO
+useEffect(() => {
+  if (socket && roomId && gameType === 'uno' && user?.id) {
+    // When entering a UNO game room, make sure current user joins UNO game
+    console.log('Auto-joining UNO game for current user in UNO room:', user.id);
+    socket.emit('unoJoinGame', {
+      roomId,
+      playerId: user.id,
+      playerName: user.username
+    });
+    
+    // Also join any existing players in the room to UNO game
+    if (roomInfo?.playerIds) {
+      roomInfo.playerIds.forEach((playerId: string) => {
+        if (playerId !== user.id) {
+          console.log('Auto-joining existing player to UNO game:', playerId);
+          // This would typically be handled by the backend, but we can trigger it
+          socket.emit('unoJoinGame', {
+            roomId,
+            playerId: playerId,
+            playerName: playerIdToUsername[playerId] || playerId
+          });
+        }
+      });
+    }
+  }
+}, [socket, roomId, gameType, user?.id, roomInfo?.playerIds, playerIdToUsername]);
+
+
   // Helper function to check if current user is a playing participant (not host spectator)
   const isActivePlayer = () => {
     return gameState.players.some(p => p.id === user?.id);
@@ -722,7 +753,7 @@ useEffect(() => {
             playerName: data.playerName || data.playerId 
           });
         }
-        
+
       }
     };
 

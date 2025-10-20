@@ -307,6 +307,15 @@ export const HomePage = () => {
 
       const result = await joinRoom;
       console.log("Successfully joined room:", result);
+
+      if (gameRoom.gameType.toLowerCase() === 'uno' && joinAsPlayer) {
+        console.log('Also joining UNO game specifically for player:', user?.id);
+        socket?.emit('unoJoinGame', {
+          roomId: id,
+          playerId: user?.id,
+          playerName: user?.username
+        });
+      }
       
       // Close modal and navigate
       setIsJoinModalOpen(false);
