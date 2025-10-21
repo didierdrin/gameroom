@@ -184,9 +184,9 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     // Map safe stars without stars to player colors
     const safeStarPlayerMap: {[key: string]: string} = {
       '6,1': 'red',    // Top left area - Red player
-      '13,6': 'blue',  // Bottom left area - Blue player  
+      '13,6': 'yellow',  // Top right area - yellow player  
       '8,13': 'green', // Bottom right area - Green player
-      '1,8': 'yellow'  // Top right area - Yellow player
+      '1,8': 'blue'  // Bottom left area - blue player
     };
     
     // Center home area
@@ -251,7 +251,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     return 'bg-gradient-to-br from-gray-50 to-gray-100';
   };
 
-  
+
 
   // const getCellColor = (row: number, col: number): string => {
   //   // Safe star positions - add star and indigo color to these specific positions
