@@ -278,38 +278,86 @@ async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket(
   }
 
 
+  // @SubscribeMessage('triviaAnswer')
+  // async handleTriviaAnswer(@MessageBody() data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }, @ConnectedSocket() client: Socket) {
+  //   try {
+  //     console.log('Trivia answer received:', data);
+  //     const result = await this.gameService.submitTriviaAnswer(data);
+      
+  //     // Emit the answer result
+  //     this.server.to(data.roomId).emit('triviaAnswer', result);
+      
+  //     // Get and emit updated game state
+  //     const gameState = await this.gameService.getGameState(data.roomId);
+  //     this.server.to(data.roomId).emit('gameState', gameState);
+      
+  //     console.log('Trivia answer processed:', {
+  //       playerId: data.playerId,
+  //       isCorrect: result.isCorrect,
+  //       newScore: result.currentScore,
+  //       allScores: result.scores
+  //     });
+      
+  //     // If game is over after this answer, emit game over
+  //     if (gameState.gameOver) {
+  //       this.server.to(data.roomId).emit('gameOver', { 
+  //         winner: gameState.winner,
+  //         scores: gameState.triviaState?.scores 
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error('Trivia answer error:', error.message);
+  //     client.emit('error', { message: error.message, type: 'triviaAnswerError' });
+  //   }
+  // }
+
   @SubscribeMessage('triviaAnswer')
-  async handleTriviaAnswer(@MessageBody() data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }, @ConnectedSocket() client: Socket) {
-    try {
-      console.log('Trivia answer received:', data);
-      const result = await this.gameService.submitTriviaAnswer(data);
-      
-      // Emit the answer result
-      this.server.to(data.roomId).emit('triviaAnswer', result);
-      
-      // Get and emit updated game state
-      const gameState = await this.gameService.getGameState(data.roomId);
-      this.server.to(data.roomId).emit('gameState', gameState);
-      
-      console.log('Trivia answer processed:', {
-        playerId: data.playerId,
-        isCorrect: result.isCorrect,
-        newScore: result.currentScore,
-        allScores: result.scores
+async handleTriviaAnswer(@MessageBody() data: { 
+  roomId: string; 
+  playerId: string; 
+  qId: string; 
+  answer: string | null; 
+  correct?: string; 
+  isCorrect?: boolean;
+  pointsEarned?: number;
+  timeRemaining?: number;
+}, @ConnectedSocket() client: Socket) {
+  try {
+    console.log('Trivia answer received with time-based scoring:', {
+      playerId: data.playerId,
+      pointsEarned: data.pointsEarned,
+      timeRemaining: data.timeRemaining
+    });
+    
+    const result = await this.gameService.submitTriviaAnswer(data);
+    
+    // Emit the answer result with scoring details
+    this.server.to(data.roomId).emit('triviaAnswer', result);
+    
+    // Get and emit updated game state
+    const gameState = await this.gameService.getGameState(data.roomId);
+    this.server.to(data.roomId).emit('gameState', gameState);
+    
+    console.log('Trivia answer processed with time-based scoring:', {
+      playerId: data.playerId,
+      isCorrect: result.isCorrect,
+      pointsEarned: result.pointsEarned,
+      newScore: result.currentScore,
+      allScores: result.scores
+    });
+    
+    // If game is over after this answer, emit game over
+    if (gameState.gameOver) {
+      this.server.to(data.roomId).emit('gameOver', { 
+        winner: gameState.winner,
+        scores: gameState.triviaState?.scores 
       });
-      
-      // If game is over after this answer, emit game over
-      if (gameState.gameOver) {
-        this.server.to(data.roomId).emit('gameOver', { 
-          winner: gameState.winner,
-          scores: gameState.triviaState?.scores 
-        });
-      }
-    } catch (error) {
-      console.error('Trivia answer error:', error.message);
-      client.emit('error', { message: error.message, type: 'triviaAnswerError' });
     }
+  } catch (error) {
+    console.error('Trivia answer error:', error.message);
+    client.emit('error', { message: error.message, type: 'triviaAnswerError' });
   }
+}
 
   
 @SubscribeMessage('triviaComplete')

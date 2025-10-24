@@ -925,8 +925,17 @@ async startGame(roomId: string) {
 
 
 
-  // Update the submitTriviaAnswer method to ensure proper score accumulation
-async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }) {
+  // Update the submitTriviaAnswer method to handle time-based scoring
+async submitTriviaAnswer(data: { 
+  roomId: string; 
+  playerId: string; 
+  qId: string; 
+  answer: string | null; 
+  correct?: string; 
+  isCorrect?: boolean;
+  pointsEarned?: number; // New parameter for time-based scoring
+  timeRemaining?: number; // New parameter for time data
+}) {
   const gameState = await this.getGameState(data.roomId);
   if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
   if (!gameState.triviaState) throw new Error('Trivia state not initialized');
@@ -939,12 +948,17 @@ async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; 
 
   const isCorrect = data.answer === question.correctAnswer;
   
-  console.log('=== PROCESSING TRIVIA ANSWER ===', {
+  // Use provided pointsEarned or calculate default (5 points for correct answer)
+  const pointsEarned = data.pointsEarned !== undefined ? data.pointsEarned : (isCorrect ? 5 : 0);
+  
+  console.log('=== PROCESSING TRIVIA ANSWER WITH TIME-BASED SCORING ===', {
     playerId: data.playerId,
     questionId: data.qId,
     answer: data.answer,
     correctAnswer: question.correctAnswer,
     isCorrect: isCorrect,
+    timeRemaining: data.timeRemaining,
+    pointsEarned: pointsEarned,
     currentScoreBefore: gameState.triviaState.scores[data.playerId] || 0
   });
 
@@ -957,10 +971,10 @@ async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; 
     isCorrect: isCorrect 
   };
 
-  // CRITICAL FIX: Always update score immediately and accumulate properly
+  // Update score with time-based points
   if (isCorrect) {
     const currentScore = gameState.triviaState.scores[data.playerId] || 0;
-    const newScore = currentScore + 5;
+    const newScore = currentScore + pointsEarned;
     gameState.triviaState.scores[data.playerId] = newScore;
     
     // Sync with player object
@@ -969,7 +983,7 @@ async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; 
       player.score = newScore;
     }
     
-    console.log(`✅ SCORE UPDATED: ${data.playerId} ${currentScore} → ${newScore}`);
+    console.log(`✅ TIME-BASED SCORE UPDATED: ${data.playerId} ${currentScore} → ${newScore} (earned ${pointsEarned} points)`);
   } else {
     console.log(`❌ Incorrect answer for ${data.playerId}, score remains: ${gameState.triviaState.scores[data.playerId] || 0}`);
   }
@@ -990,12 +1004,87 @@ async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; 
     answer: data.answer,
     correct: question.correctAnswer,
     isCorrect: isCorrect,
+    pointsEarned: pointsEarned,
+    timeRemaining: data.timeRemaining,
     scores: gameState.triviaState.scores,
     currentScore: gameState.triviaState.scores[data.playerId] || 0
   };
 
   return result;
 }
+
+
+  // Update the submitTriviaAnswer method to ensure proper score accumulation
+// async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }) {
+//   const gameState = await this.getGameState(data.roomId);
+//   if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
+//   if (!gameState.triviaState) throw new Error('Trivia state not initialized');
+
+//   // Find the question by ID (not by current index, to handle timing issues)
+//   const question = gameState.triviaState.questions.find(q => q.id === data.qId);
+//   if (!question) {
+//     throw new Error('Question not found');
+//   }
+
+//   const isCorrect = data.answer === question.correctAnswer;
+  
+//   console.log('=== PROCESSING TRIVIA ANSWER ===', {
+//     playerId: data.playerId,
+//     questionId: data.qId,
+//     answer: data.answer,
+//     correctAnswer: question.correctAnswer,
+//     isCorrect: isCorrect,
+//     currentScoreBefore: gameState.triviaState.scores[data.playerId] || 0
+//   });
+
+//   // Update answer tracking
+//   if (!gameState.triviaState.answers[data.playerId]) {
+//     gameState.triviaState.answers[data.playerId] = { answer: null, isCorrect: null };
+//   }
+//   gameState.triviaState.answers[data.playerId] = { 
+//     answer: data.answer, 
+//     isCorrect: isCorrect 
+//   };
+
+//   // CRITICAL FIX: Always update score immediately and accumulate properly
+//   if (isCorrect) {
+//     const currentScore = gameState.triviaState.scores[data.playerId] || 0;
+//     const newScore = currentScore + 5;
+//     gameState.triviaState.scores[data.playerId] = newScore;
+    
+//     // Sync with player object
+//     const player = gameState.players.find(p => p.id === data.playerId);
+//     if (player) {
+//       player.score = newScore;
+//     }
+    
+//     console.log(`✅ SCORE UPDATED: ${data.playerId} ${currentScore} → ${newScore}`);
+//   } else {
+//     console.log(`❌ Incorrect answer for ${data.playerId}, score remains: ${gameState.triviaState.scores[data.playerId] || 0}`);
+//   }
+  
+//   // Save immediately to Redis with detailed logging
+//   await this.updateGameState(data.roomId, gameState);
+  
+//   console.log('=== AFTER ANSWER PROCESSING ===', {
+//     playerId: data.playerId,
+//     finalScore: gameState.triviaState.scores[data.playerId] || 0,
+//     allScores: gameState.triviaState.scores
+//   });
+
+//   const result = {
+//     roomId: data.roomId,
+//     playerId: data.playerId,
+//     qId: data.qId,
+//     answer: data.answer,
+//     correct: question.correctAnswer,
+//     isCorrect: isCorrect,
+//     scores: gameState.triviaState.scores,
+//     currentScore: gameState.triviaState.scores[data.playerId] || 0
+//   };
+
+//   return result;
+// }
 
 // Update the completeTriviaGame method to verify final scores
 async completeTriviaGame(data: { roomId: string; playerId: string; score: number; total: number }) {

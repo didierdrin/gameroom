@@ -148,12 +148,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
     }
   }, [privacy]);
 
-  // Set player limit to 10 for chess games
-  useEffect(() => {
-    if (gameType === '') { // it was chess
-      setPlayerLimit(10);
-    }
-  }, [gameType]);
+  
 
   // Copy URL to clipboard
   const copyInviteUrl = async () => {
