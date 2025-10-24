@@ -253,59 +253,6 @@ export const LudoGame: React.FC<LudoGameProps> = ({
 
 
 
-  // const getCellColor = (row: number, col: number): string => {
-  //   // Safe star positions - add star and indigo color to these specific positions
-  //   const safeStarsWithStars = [[2, 6], [8, 2], [12, 8], [6, 12]];
-  //   const safeStarsWithoutStars = [[6, 1], [13, 6], [8, 13], [1, 8]];
-    
-  //   // Center home area
-  //   if (row === 7 && col === 7) return 'bg-gradient-to-br from-purple-600 to-pink-600';
-    
-  //   // Player home areas
-  //   if (row === 6 && col === 7) return 'bg-gradient-to-br from-red-500 to-red-600'; // Red home
-  //   if (row === 7 && col === 6) return 'bg-gradient-to-br from-blue-500 to-blue-600'; // Blue home
-  //   if (row === 8 && col === 7) return 'bg-gradient-to-br from-yellow-400 to-yellow-500'; // Yellow home
-  //   if (row === 7 && col === 8) return 'bg-gradient-to-br from-green-500 to-green-600'; // Green home
-    
-  //   // Safe star positions with stars (indigo color)
-  //   if (safeStarsWithStars.some(([r, c]) => r === row && c === col)) {
-  //     return 'bg-gradient-to-br from-indigo-200 to-indigo-300 border-2 border-indigo-400 shadow-inner';
-  //   }
-    
-  //   // Safe star positions without stars (keep original color)
-  //   if (safeStarsWithoutStars.some(([r, c]) => r === row && c === col)) {
-  //     return 'bg-gradient-to-br from-emerald-200 to-emerald-300 border-2 border-yellow-400 shadow-inner';
-  //   }
-    
-  //   // Board path
-  //   if (boardPath.some(([r, c]) => r === row && c === col)) {
-  //     return 'bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 shadow-sm';
-  //   }
-    
-  //   // Home stretch areas
-  //   for (const stretch of Object.values(homeStretch)) {
-  //     if (stretch.some(([r, c]) => r === row && c === col)) {
-  //       return 'bg-gradient-to-br from-slate-200 to-slate-300 border border-gray-400';
-  //     }
-  //   }
-    
-  //   // Player base areas
-  //   const baseCells = {
-  //     red: [[1, 1], [1, 3], [3, 1], [3, 3]],
-  //     blue: [[1, 11], [1, 13], [3, 11], [3, 13]],
-  //     green: [[11, 11], [11, 13], [13, 11], [13, 13]],
-  //     yellow: [[11, 1], [11, 3], [13, 1], [13, 3]],
-  //   };
-    
-  //   for (const [color, cells] of Object.entries(baseCells)) {
-  //     if (cells.some(([r, c]) => r === row && c === col)) {
-  //       return `bg-gradient-to-br from-${color}-100 to-${color}-200 border-2 border-${color}-300`;
-  //     }
-  //   }
-    
-  //   return 'bg-gradient-to-br from-gray-50 to-gray-100';
-  // };
-
   const getBasePositions = (playerIndex: number): number[][] => {
     const bases: { [key: number]: number[][] } = {
       0: [[1, 1], [1, 3], [3, 1], [3, 3]], // Red
