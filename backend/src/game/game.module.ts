@@ -7,7 +7,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { GameRoom, GameRoomSchema } from './schemas/game-room.schema';
 import { GameSessionEntity, GameSessionSchema } from './schemas/game-session.schema';
 import { RedisModule } from '../redis/redis.module';
-import { TriviaService } from '../trivia/trivia.service';
+import { TriviaService } from '../trivia/trivia.service'
+import { EnhancedTriviaService } from '../trivia/enhanced-trivia.service';
 import { UserModule } from '../user/user.module';
 import { ChessModule } from '../chess/chess.module';
 import { TriviaModule } from '../trivia/trivia.module'; 
@@ -30,6 +31,7 @@ import { UnoModule } from 'src/uno/uno.module';
     GameService, 
     GameGateway, 
     TriviaService,
+    EnhancedTriviaService, 
 ],
   exports: [GameService],
 })
