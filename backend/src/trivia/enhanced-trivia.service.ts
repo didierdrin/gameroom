@@ -117,4 +117,28 @@ export class EnhancedTriviaService {
     }
     return newArray;
   }
+
+  
+async regenerateQuestionsWithNewCategory(roomId: string, settings: TriviaSettings): Promise<Question[]> {
+    try {
+      console.log('Regenerating questions with new category:', settings);
+      
+      // Clear any session tracking for this room to get fresh questions
+      await this.triviaQuestionModel.updateMany(
+        { usedInSessions: roomId },
+        { $pull: { usedInSessions: roomId } }
+      );
+      
+      // Get new questions with the updated settings
+      const questions = await this.getUniqueQuestionsForSession(settings, roomId);
+      
+      console.log(`Generated ${questions.length} new questions for category: ${settings.category}`);
+      return questions;
+      
+    } catch (error) {
+      console.error('Error regenerating questions with new category:', error);
+      throw error;
+    }
+  }
+
 }

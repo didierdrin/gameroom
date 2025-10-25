@@ -160,10 +160,7 @@ export class GameService {
     return playerCoins.every(pos => pos === 57);
   }
 
-  private async fetchTriviaQuestions(topic: string = 'general') {
-    // Legacy method, kept for fallback - now uses getQuestions
-    return this.triviaService.getQuestions({ questionCount: 10, difficulty: 'medium', category: topic || 'general' });
-  }
+
 
 
 async createGame(createGameDto: CreateGameDto) {
@@ -838,9 +835,7 @@ async startGame(roomId: string) {
       
       console.log('Fetching trivia questions with settings:', triviaSettings);
       
-      // Fetch questions using TriviaService with correct count and category
-      // const questions = await this.triviaService.getQuestions(triviaSettings);
-
+     
       // Use enhanced service to get unique questions
     const questions = await this.enhancedTriviaService.getUniqueQuestionsForSession(
       triviaSettings, 
@@ -1022,77 +1017,50 @@ async submitTriviaAnswer(data: {
 }
 
 
-  // Update the submitTriviaAnswer method to ensure proper score accumulation
-// async submitTriviaAnswer(data: { roomId: string; playerId: string; qId: string; answer: string | null; correct?: string; isCorrect?: boolean }) {
-//   const gameState = await this.getGameState(data.roomId);
-//   if (gameState.gameType !== 'trivia') throw new Error('Invalid game type');
-//   if (!gameState.triviaState) throw new Error('Trivia state not initialized');
 
-//   // Find the question by ID (not by current index, to handle timing issues)
-//   const question = gameState.triviaState.questions.find(q => q.id === data.qId);
-//   if (!question) {
-//     throw new Error('Question not found');
-//   }
-
-//   const isCorrect = data.answer === question.correctAnswer;
+async updateTriviaSettings(roomId: string, hostId: string, newSettings: any) {
+  const gameRoom = await this.gameRoomModel.findOne({ roomId });
+  if (!gameRoom) throw new Error('Game room not found');
+  if (gameRoom.host !== hostId) throw new Error('Only the host can update trivia settings');
+  if (gameRoom.gameType !== 'trivia') throw new Error('This is not a trivia game room');
   
-//   console.log('=== PROCESSING TRIVIA ANSWER ===', {
-//     playerId: data.playerId,
-//     questionId: data.qId,
-//     answer: data.answer,
-//     correctAnswer: question.correctAnswer,
-//     isCorrect: isCorrect,
-//     currentScoreBefore: gameState.triviaState.scores[data.playerId] || 0
-//   });
-
-//   // Update answer tracking
-//   if (!gameState.triviaState.answers[data.playerId]) {
-//     gameState.triviaState.answers[data.playerId] = { answer: null, isCorrect: null };
-//   }
-//   gameState.triviaState.answers[data.playerId] = { 
-//     answer: data.answer, 
-//     isCorrect: isCorrect 
-//   };
-
-//   // CRITICAL FIX: Always update score immediately and accumulate properly
-//   if (isCorrect) {
-//     const currentScore = gameState.triviaState.scores[data.playerId] || 0;
-//     const newScore = currentScore + 5;
-//     gameState.triviaState.scores[data.playerId] = newScore;
-    
-//     // Sync with player object
-//     const player = gameState.players.find(p => p.id === data.playerId);
-//     if (player) {
-//       player.score = newScore;
-//     }
-    
-//     console.log(`✅ SCORE UPDATED: ${data.playerId} ${currentScore} → ${newScore}`);
-//   } else {
-//     console.log(`❌ Incorrect answer for ${data.playerId}, score remains: ${gameState.triviaState.scores[data.playerId] || 0}`);
-//   }
+  console.log('Updating trivia settings for room:', roomId, newSettings);
   
-//   // Save immediately to Redis with detailed logging
-//   await this.updateGameState(data.roomId, gameState);
+  // Validate the new settings
+  if (!newSettings.questionCount || !newSettings.difficulty || !newSettings.category) {
+    throw new Error('Invalid trivia settings provided');
+  }
   
-//   console.log('=== AFTER ANSWER PROCESSING ===', {
-//     playerId: data.playerId,
-//     finalScore: gameState.triviaState.scores[data.playerId] || 0,
-//     allScores: gameState.triviaState.scores
-//   });
+  // Update the game room's trivia settings
+  gameRoom.triviaSettings = {
+    questionCount: newSettings.questionCount,
+    difficulty: newSettings.difficulty,
+    category: newSettings.category
+  };
+  
+  await gameRoom.save();
+  
+  // Also update the current game state's trivia settings
+  const gameState = await this.getGameState(roomId);
+  if (gameState.triviaSettings) {
+    gameState.triviaSettings = {
+      questionCount: newSettings.questionCount,
+      difficulty: newSettings.difficulty,
+      category: newSettings.category
+    };
+    await this.updateGameState(roomId, gameState);
+  }
+  
+  console.log('Trivia settings updated successfully:', {
+    roomId,
+    newSettings,
+    gameRoomSettings: gameRoom.triviaSettings
+  });
+  
+  return { success: true, triviaSettings: gameRoom.triviaSettings };
+}
 
-//   const result = {
-//     roomId: data.roomId,
-//     playerId: data.playerId,
-//     qId: data.qId,
-//     answer: data.answer,
-//     correct: question.correctAnswer,
-//     isCorrect: isCorrect,
-//     scores: gameState.triviaState.scores,
-//     currentScore: gameState.triviaState.scores[data.playerId] || 0
-//   };
 
-//   return result;
-// }
 
 // Update the completeTriviaGame method to verify final scores
 async completeTriviaGame(data: { roomId: string; playerId: string; score: number; total: number }) {
@@ -1825,15 +1793,29 @@ async restartGame(roomId: string, hostId: string) {
   }
 
   
-if (gameRoom.gameType === 'trivia') {
-  try {
-    await this.regenerateTriviaQuestions(roomId);
-    console.log('Trivia questions regenerated for restart');
-  } catch (error) {
-    console.error('Error regenerating trivia questions:', error);
-    // Continue with restart even if question regeneration fails
+  if (gameRoom.gameType === 'trivia') {
+    try {
+      // Use the current trivia settings from the game room
+      const triviaSettings = gameRoom.triviaSettings || {
+        questionCount: 10,
+        difficulty: 'medium',
+        category: 'general'
+      };
+      
+      console.log('Regenerating trivia questions with settings:', triviaSettings);
+      
+      // Regenerate questions with the current settings
+      const newQuestions = await this.enhancedTriviaService.regenerateQuestionsWithNewCategory(
+        roomId, 
+        triviaSettings
+      );
+      
+      console.log('Trivia questions regenerated for restart:', newQuestions.length);
+    } catch (error) {
+      console.error('Error regenerating trivia questions:', error);
+      // Continue with restart even if question regeneration fails
+    }
   }
-}
   
   // Completely reinitialize game state with preserved players
   await this.initializeGameState(
@@ -2022,9 +2004,3 @@ async handleGameOver(roomId: string, winnerId: string) {
 
 
 }
-
-
-
-
-
-

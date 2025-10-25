@@ -35,6 +35,7 @@ import { useAuth } from "../context/AuthContext";
 import { SocketType } from "../SocketContext";
 import { useUserData } from "../hooks/useUserData"; 
 import { Link } from 'react-router-dom'; 
+import { TriviaCategorySelectionModal } from '../components/Trivia/TriviaCategorySelectionModal';
 
 interface Participant {
   id: string;
@@ -277,6 +278,9 @@ export const LiveGameRoomPage = () => {
   const [gameEnded, setGameEnded] = useState(false);
   const [gameEndedMessage, setGameEndedMessage] = useState("");
   const [gameStatus, setGameStatus] = useState(''); 
+  
+const [showTriviaCategoryModal, setShowTriviaCategoryModal] = useState(false);
+const [isUpdatingTriviaSettings, setIsUpdatingTriviaSettings] = useState(false);
 
   // TURN/STUN config
   const rtcConfig: RTCConfiguration = React.useMemo(() => ({
@@ -1063,8 +1067,14 @@ const handleUnoError = (error: any) => {
 };
 
 
-
-
+// Add this to your socket event handlers in useEffect
+const handleTriviaSettingsUpdated = (data: any) => {
+  console.log('Trivia settings updated:', data);
+  // Refresh game state to get updated settings
+  if (socket && roomId) {
+    socket.emit('getGameState', { roomId });
+  }
+};
 
 
 
@@ -1092,6 +1102,7 @@ const handleUnoError = (error: any) => {
     socket.on("unoGameState", handleUnoGameState);
 socket.on("unoGameOver", handleUnoGameOver);
 socket.on("unoError", handleUnoError);
+socket.on('triviaSettingsUpdated', handleTriviaSettingsUpdated);
 
 
     return () => {
@@ -1119,6 +1130,7 @@ socket.on("unoError", handleUnoError);
       socket.off("unoGameState", handleUnoGameState);
       socket.off("unoGameOver", handleUnoGameOver);
       socket.off("unoError", handleUnoError);
+      socket.off('triviaSettingsUpdated', handleTriviaSettingsUpdated);
     };
   }, [socket, roomId, user, navigate, isSocketConnected]);
 
@@ -1322,10 +1334,45 @@ const handleStartGame = () => {
     }
   };
 
+  const handleUpdateTriviaSettings = async (newSettings: any) => {
+    if (!socket || !roomId || !user?.id) return;
+    
+    setIsUpdatingTriviaSettings(true);
+    
+    try {
+      console.log('Updating trivia settings and restarting game:', newSettings);
+      
+      // Emit event to update trivia settings
+      socket.emit('updateTriviaSettings', { 
+        roomId, 
+        hostId: user.id, 
+        triviaSettings: newSettings 
+      });
+      
+      // Wait a moment for settings to update, then restart game
+      setTimeout(() => {
+        handleRestartGame();
+        setShowTriviaCategoryModal(false);
+        setIsUpdatingTriviaSettings(false);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error updating trivia settings:', error);
+      setIsUpdatingTriviaSettings(false);
+      alert('Failed to update trivia settings. Please try again.');
+    }
+  };
+
+
   // Update the handleRestartGame function
 const handleRestartGame = () => {
   if (!isHost || !socket || !roomId) {
     console.error('Cannot restart: not host or missing socket/roomId');
+    return;
+  }
+
+  if (gameType === 'trivia') {
+    setShowTriviaCategoryModal(true);
     return;
   }
   
@@ -1348,10 +1395,7 @@ const handleRestartGame = () => {
       diceRolled: false
     }));
 
-    if (gameType === 'trivia') {
-      // First regenerate questions, then restart game
-      socket.emit('regenerateTriviaQuestions', { roomId, hostId: user?.id });
-    }
+   
     
     socket.emit('restartGame', { roomId, hostId: user?.id });
   }
@@ -1818,6 +1862,15 @@ const handleRestartGame = () => {
         hostId={user?.id?.toString() || ''}  
         playerIdToUsername={playerIdToUsername}
       />
+
+      {/* Trivia Category Selection Modal */}
+    <TriviaCategorySelectionModal
+      isOpen={showTriviaCategoryModal}
+      onClose={() => setShowTriviaCategoryModal(false)}
+      onConfirm={handleUpdateTriviaSettings}
+      currentSettings={gameState.triviaSettings}
+      isLoading={isUpdatingTriviaSettings}
+    />
 
       {(showPlayers || showChat) && (
         <div

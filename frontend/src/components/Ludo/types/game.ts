@@ -43,4 +43,9 @@ export interface Player {
     kahootState?: KahootState;
     host?: string;
     deck?: []; 
+    triviaSettings?: {
+      questionCount: number;
+      difficulty: string;
+      category: string;
+    };
   }
