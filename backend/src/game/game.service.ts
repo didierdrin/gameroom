@@ -6,6 +6,7 @@ import { GameRoom, GameRoomDocument } from './schemas/game-room.schema';
 import { GameSessionEntity, GameSessionDocument } from './schemas/game-session.schema';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
 import { TriviaService } from '../trivia/trivia.service';
+import { EnhancedTriviaService } from 'src/trivia/enhanced-trivia.service';
 import { v4 as uuidv4 } from 'uuid';
 import { forwardRef } from '@nestjs/common';
 import { Types } from 'mongoose';
@@ -133,6 +134,7 @@ export class GameService {
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoomDocument>,
     @InjectModel(GameSessionEntity.name) private gameSessionModel: Model<GameSessionDocument>,
     private readonly triviaService: TriviaService,
+    private readonly enhancedTriviaService: EnhancedTriviaService,
     private readonly userService: UserService,
   ) {}
 
@@ -837,7 +839,13 @@ async startGame(roomId: string) {
       console.log('Fetching trivia questions with settings:', triviaSettings);
       
       // Fetch questions using TriviaService with correct count and category
-      const questions = await this.triviaService.getQuestions(triviaSettings);
+      // const questions = await this.triviaService.getQuestions(triviaSettings);
+
+      // Use enhanced service to get unique questions
+    const questions = await this.enhancedTriviaService.getUniqueQuestionsForSession(
+      triviaSettings, 
+      roomId // Use roomId as session identifier
+    );
       
       // Validate questions are from the correct category
       const categoryQuestions = questions.filter(q => 
