@@ -54,7 +54,7 @@ export const useUserData = (userId: string | null | undefined) => {
       setError(null);
       
       try {
-        const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userId}`);
+        const response = await fetch(`https://gameroom-t0mx.onrender.com/user/${userId}`);
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.data) {
@@ -98,7 +98,7 @@ export const useUserData = (userId: string | null | undefined) => {
     setError(null);
     
     try {
-      const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userId}`);
+      const response = await fetch(`https://gameroom-t0mx.onrender.com/user/${userId}`);
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data) {

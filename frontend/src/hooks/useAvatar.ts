@@ -68,7 +68,7 @@ export const useAvatar = (userId: string | null | undefined, seedFallback?: stri
       console.log(`Fetching avatar for user ${userId}...`);
       
       try {
-        const resp = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userId}/profile`, {
+        const resp = await fetch(`https://gameroom-t0mx.onrender.com/user/${userId}/profile`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

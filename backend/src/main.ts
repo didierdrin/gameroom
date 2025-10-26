@@ -14,7 +14,7 @@ async function bootstrap() {
       'http://localhost:3000',
       'http://localhost:5173',
       'https://alu-globe-gameroom-frontend.vercel.app',
-      'https://alu-globe-gameroom.onrender.com',
+      'https://gameroom-t0mx.onrender.com',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
@@ -36,7 +36,7 @@ async function bootstrap() {
   // Keep-alive function to prevent Render.com from sleeping
   const keepAlive = () => {
     // Use the public Render URL
-    const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://alu-globe-gameroom.onrender.com';
+    const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://gameroom-t0mx.onrender.com';
 
     // Ping the server every 5 minutes to keep it active
     setInterval(() => {

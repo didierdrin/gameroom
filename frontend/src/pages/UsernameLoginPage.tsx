@@ -54,7 +54,7 @@ export const UsernameLoginPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post('https://alu-globe-gameroom.onrender.com/auth/signup', {
+      const response = await axios.post('https://gameroom-t0mx.onrender.com/auth/signup', {
         username: formData.username,
         email: formData.email,
         password: formData.password,
@@ -79,7 +79,7 @@ export const UsernameLoginPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post('https://alu-globe-gameroom.onrender.com/auth/login', {
+      const response = await axios.post('https://gameroom-t0mx.onrender.com/auth/login', {
         usernameOrEmail: formData.usernameOrEmail,
         password: formData.password,
       });

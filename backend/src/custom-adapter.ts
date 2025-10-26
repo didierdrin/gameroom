@@ -16,8 +16,9 @@ export class CustomIoAdapter extends IoAdapter {
       cors: {
         origin: [
           'http://localhost:5173',
+          'http://localhost:3000',
           'https://alu-globe-gameroom-frontend.vercel.app',
-          'https://alu-globe-gameroom.onrender.com'
+          'https://gameroom-t0mx.onrender.com'
         ],
         methods: ['GET', 'POST'],
         credentials: true,

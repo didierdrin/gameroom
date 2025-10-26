@@ -49,7 +49,7 @@ class UsernameResolver {
 
   private async fetchUsernameFromBackend(userId: string): Promise<string> {
     try {
-      const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userId}`);
+      const response = await fetch(`https://gameroom-t0mx.onrender.com/user/${userId}`);
       if (response.ok) {
         const data = await response.json();
         // Fix: Change from data.username to data.data?.username

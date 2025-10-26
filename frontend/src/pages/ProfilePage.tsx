@@ -115,7 +115,7 @@ const [currentPage, setCurrentPage] = useState(1);
   // Function to fetch gamerooms data
   const fetchGameroomsData = async () => {
     try {
-      const response = await fetch('https://alu-globe-gameroom.onrender.com/gamerooms', {
+      const response = await fetch('https://gameroom-t0mx.onrender.com/gamerooms', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -241,7 +241,7 @@ const [currentPage, setCurrentPage] = useState(1);
     
     try {
       // Fetch leaderboard
-      const leaderboardResponse = await fetch('https://alu-globe-gameroom.onrender.com/user/leaderboard', {
+      const leaderboardResponse = await fetch('https://gameroom-t0mx.onrender.com/user/leaderboard', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -300,7 +300,7 @@ const [currentPage, setCurrentPage] = useState(1);
       // Fetch full profile
       let profileData = null;
       try {
-        const profileResponse = await fetch(`https://alu-globe-gameroom.onrender.com/user/${targetUserId}/profile`, {
+        const profileResponse = await fetch(`https://gameroom-t0mx.onrender.com/user/${targetUserId}/profile`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -744,7 +744,7 @@ useEffect(() => {
       const effectiveSeed = editForm.selectedAvatarSeed || (editForm.username || '');
       const avatarUrl = `https://api.dicebear.com/7.x/${editForm.selectedAvatarStyle}/svg?seed=${encodeURIComponent(effectiveSeed)}`;
 
-      const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userData._id}/profile`, {
+      const response = await fetch(`https://gameroom-t0mx.onrender.com/user/${userData._id}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

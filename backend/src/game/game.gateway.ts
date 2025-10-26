@@ -13,7 +13,7 @@ import { TriviaService } from '../trivia/trivia.service';
       'http://localhost:3000',
       'http://localhost:5173',
       'https://alu-globe-gameroom-frontend.vercel.app',
-      'https://alu-globe-gameroom.onrender.com'
+      'https://gameroom-t0mx.onrender.com'
     ], 
     credentials: true 
   },
