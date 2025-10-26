@@ -548,7 +548,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
                   value={diceValue || 0}
                   onRoll={onRollDice}
                   disabled={!canRollDice}
-                  size="medium"
+                  // size="medium"
                 />
               </div>
               {diceRolled && (
