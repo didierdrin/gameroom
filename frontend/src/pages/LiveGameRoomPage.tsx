@@ -258,8 +258,8 @@ export const LiveGameRoomPage = () => {
   // Chess player selection modal state
   const [showChessPlayerModal, setShowChessPlayerModal] = useState(false);
 
-  // All other existing state variables and refs...
   const hasJoinedRef = useRef(false);
+  const hasJoinedUnoRef = useRef(false);
   const playerNameMapRef = useRef<Record<string, string>>({});
   const [mediaAvailable, setMediaAvailable] = useState<MediaAvailability>({
     audio: false,
@@ -278,6 +278,7 @@ export const LiveGameRoomPage = () => {
   const [gameEnded, setGameEnded] = useState(false);
   const [gameEndedMessage, setGameEndedMessage] = useState("");
   const [gameStatus, setGameStatus] = useState(''); 
+  
   
 const [showTriviaCategoryModal, setShowTriviaCategoryModal] = useState(false);
 const [isUpdatingTriviaSettings, setIsUpdatingTriviaSettings] = useState(false);
@@ -332,34 +333,46 @@ useEffect(() => {
 
 
 
-// In LiveGameRoomPage.tsx - Add this useEffect to handle existing players joining UNO
 useEffect(() => {
-  if (socket && roomId && gameType === 'uno' && user?.id) {
-    // When entering a UNO game room, make sure current user joins UNO game
+  if (socket && roomId && gameType === 'uno' && user?.id && !hasJoinedUnoRef.current) {
     console.log('Auto-joining UNO game for current user in UNO room:', user.id);
-    socket.emit('unoJoinGame', {
-      roomId,
-      playerId: user.id,
-      playerName: user.username
-    });
     
-    // Also join any existing players in the room to UNO game
-    if (roomInfo?.playerIds) {
-      roomInfo.playerIds.forEach((playerId: string) => {
-        if (playerId !== user.id) {
-          console.log('Auto-joining existing player to UNO game:', playerId);
-          // This would typically be handled by the backend, but we can trigger it
-          socket.emit('unoJoinGame', {
-            roomId,
-            playerId: playerId,
-            playerName: playerIdToUsername[playerId] || playerId
-          });
-        }
+    const joinUno = () => {
+      if (hasJoinedUnoRef.current) return;
+      
+      socket.emit('unoJoinGame', {
+        roomId,
+        playerId: user.id,
+        playerName: user.username
       });
-    }
-  }
-}, [socket, roomId, gameType, user?.id, roomInfo?.playerIds, playerIdToUsername]);
+      
+      hasJoinedUnoRef.current = true;
+    };
 
+    // Small delay to ensure room is properly joined first
+    const timeoutId = setTimeout(joinUno, 1000);
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }
+}, [socket, roomId, gameType, user?.id]);
+
+
+useEffect(() => {
+  return () => {
+    // Reset the UNO join flag when leaving the room
+    hasJoinedUnoRef.current = false;
+    
+    // Other cleanup code...
+    pcRef.current?.close();
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+
+    Object.values(remoteAudioRefs.current).forEach((audioEl) => {
+      audioEl.remove();
+    });
+  };
+}, []);
 
   // Helper function to check if current user is a playing participant (not host spectator)
   const isActivePlayer = () => {

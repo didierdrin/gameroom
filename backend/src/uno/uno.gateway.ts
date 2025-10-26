@@ -21,16 +21,35 @@ export class UnoGateway {
 
   constructor(private readonly unoService: UnoService) {}
 
-  @SubscribeMessage('unoJoinGame')
-  async handleJoinGame(@MessageBody() data: { roomId: string; playerId: string; playerName: string }, @ConnectedSocket() client: Socket) {
-    try {
-      const gameState = await this.unoService.addPlayer(data.roomId, data.playerId, data.playerName);
-      client.join(data.roomId);
-      this.server.to(data.roomId).emit('unoGameState', gameState);
-    } catch (error) {
-      client.emit('unoError', { message: error.message });
+
+@SubscribeMessage('unoJoinGame')
+async handleJoinGame(@MessageBody() data: { roomId: string; playerId: string; playerName: string }, @ConnectedSocket() client: Socket) {
+  try {
+    console.log('UNO Join Game Request:', {
+      roomId: data.roomId,
+      playerId: data.playerId,
+      playerName: data.playerName,
+      clientId: client.id,
+      timestamp: new Date().toISOString()
+    });
+
+    const gameState = await this.unoService.addPlayer(data.roomId, data.playerId, data.playerName);
+    
+    // Check if player was actually added (not duplicate)
+    const playerExists = gameState.players.find(p => p.id === data.playerId);
+    if (playerExists) {
+      console.log(`Player ${data.playerId} added to UNO game in room ${data.roomId}`);
+    } else {
+      console.log(`Player ${data.playerId} already exists in UNO game`);
     }
+    
+    client.join(data.roomId);
+    this.server.to(data.roomId).emit('unoGameState', gameState);
+  } catch (error) {
+    console.error('UNO Join Game Error:', error);
+    client.emit('unoError', { message: error.message });
   }
+}
 
   // In uno.gateway.ts - Add this method for state validation
   private async validateAndFixGameState(roomId: string): Promise<UnoState> {

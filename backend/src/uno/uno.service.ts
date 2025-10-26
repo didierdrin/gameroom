@@ -161,23 +161,30 @@ export class UnoService {
     return deck;
   }
 
-  async addPlayer(roomId: string, playerId: string, playerName: string) {
-    const gameState = await this.getGameState(roomId);
-    
-    if (!gameState.players.find(p => p.id === playerId)) {
-      gameState.players.push({
-        id: playerId,
-        name: playerName,
-        cards: [],
-        hasUno: false,
-        score: 0
-      });
-      
-      await this.updateGameState(roomId, gameState);
-    }
-    
+  
+async addPlayer(roomId: string, playerId: string, playerName: string) {
+  const gameState = await this.getGameState(roomId);
+  
+  // Check if player already exists
+  const existingPlayer = gameState.players.find(p => p.id === playerId);
+  if (existingPlayer) {
+    console.log(`Player ${playerId} already in UNO game, skipping duplicate join`);
     return gameState;
   }
+  
+  console.log(`Adding new player ${playerId} to UNO game in room ${roomId}`);
+  
+  gameState.players.push({
+    id: playerId,
+    name: playerName,
+    cards: [],
+    hasUno: false,
+    score: 0
+  });
+  
+  await this.updateGameState(roomId, gameState);
+  return gameState;
+}
 
   async startGame(roomId: string) {
     const gameState = await this.getGameState(roomId);

@@ -51,7 +51,7 @@ export const HomePage = () => {
   const socket = useSocket();
   const { user } = useAuth();
   const [playerIdToUsername, setPlayerIdToUsername] = useState<Record<string, string>>({});
-
+  const [isJoining, setIsJoining] = useState(false); 
   // Fetch game rooms when socket is available
   useEffect(() => {
     if (!socket) return;
@@ -247,89 +247,90 @@ export const HomePage = () => {
     setIsJoinModalOpen(true);
   };
 
-  // New function to handle actual joining with player/spectator option
-  const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, password?: string) => {
-    const { id } = gameRoom;
-    
-    console.log(`Attempting to join room ${id} as ${joinAsPlayer ? 'player' : 'spectator'} ${user?.id}`);
-    
-    try {
-      const payload = {
-        roomId: id,
-        playerId: user?.id,
-        playerName: user?.username,
-        joinAsPlayer,
-        password: password || undefined
+ 
+ 
+const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, password?: string) => {
+  const { id } = gameRoom;
+
+  if (isJoining) return;
+
+  setIsJoining(true); 
+  
+  console.log(`Attempting to join room ${id} as ${joinAsPlayer ? 'player' : 'spectator'} ${user?.id}`);
+  
+  try {
+    const payload = {
+      roomId: id,
+      playerId: user?.id,
+      playerName: user?.username,
+      joinAsPlayer,
+      password: password || undefined
+    };
+
+    // Create a promise with proper typing
+    const joinRoom = new Promise<JoinRoomResponse>((resolve, reject) => {
+      const handleJoinSuccess = (data: JoinRoomResponse) => {
+        cleanupListeners();
+        resolve(data);
       };
 
-      // Create a promise with proper typing
-      const joinRoom = new Promise<JoinRoomResponse>((resolve, reject) => {
-        const handleJoinSuccess = (data: JoinRoomResponse) => {
-          cleanupListeners();
-          resolve(data);
-        };
+      const handleJoinError = (error: any) => {
+        cleanupListeners();
+        reject(error);
+      };
 
-        const handleJoinError = (error: any) => {
-          cleanupListeners();
-          reject(error);
-        };
+      const cleanupListeners = () => {
+        socket?.off("playerJoined", handleJoinSuccess);
+        socket?.off("spectatorJoined", handleJoinSuccess);
+        socket?.off("error", handleJoinError);
+      };
 
-        const cleanupListeners = () => {
-          socket?.off("playerJoined", handleJoinSuccess);
-          socket?.off("spectatorJoined", handleJoinSuccess);
-          socket?.off("error", handleJoinError);
-        };
+      const timeout = setTimeout(() => {
+        cleanupListeners();
+        reject(new Error("Join operation timed out"));
+      }, 10000);
 
-        const timeout = setTimeout(() => {
-          cleanupListeners();
-          reject(new Error("Join operation timed out"));
-        }, 10000);
-
-        // Listen for both player and spectator join events
-        socket?.on("playerJoined", (data: JoinRoomResponse) => {
-          clearTimeout(timeout);
-          handleJoinSuccess(data);
-        });
-
-        socket?.on("spectatorJoined", (data: JoinRoomResponse) => {
-          clearTimeout(timeout);
-          handleJoinSuccess(data);
-        });
-
-        socket?.on("error", (err: any) => {
-          clearTimeout(timeout);
-          handleJoinError(err);
-        });
-
-        // Emit appropriate event based on join type
-        socket?.emit(joinAsPlayer ? "joinGame" : "joinAsSpectator", payload);
+      // Listen for both player and spectator join events
+      socket?.on("playerJoined", (data: JoinRoomResponse) => {
+        clearTimeout(timeout);
+        handleJoinSuccess(data);
       });
 
-      const result = await joinRoom;
-      console.log("Successfully joined room:", result);
+      socket?.on("spectatorJoined", (data: JoinRoomResponse) => {
+        clearTimeout(timeout);
+        handleJoinSuccess(data);
+      });
 
-      if (gameRoom.gameType.toLowerCase() === 'uno' && joinAsPlayer) {
-        console.log('Also joining UNO game specifically for player:', user?.id);
-        socket?.emit('unoJoinGame', {
-          roomId: id,
-          playerId: user?.id,
-          playerName: user?.username
-        });
-      }
-      
-      // Close modal and navigate
-      setIsJoinModalOpen(false);
-      setSelectedGameRoom(null);
-      
-      const targetRoomId = result.roomId || id;
-      navigate(`/game-room/${targetRoomId}`);
+      socket?.on("error", (err: any) => {
+        clearTimeout(timeout);
+        handleJoinError(err);
+      });
 
-    } catch (error) {
-      console.error("Join error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to join game room";
-      alert(errorMessage);
-    }
-  };
+      // Emit appropriate event based on join type
+      socket?.emit(joinAsPlayer ? "joinGame" : "joinAsSpectator", payload);
+    });
+
+    const result = await joinRoom;
+    console.log("Successfully joined room:", result);
+
+    
+    console.log('Room joined successfully. UNO join will be handled in game room page if needed.');
+    
+    // Close modal and navigate
+    setIsJoinModalOpen(false);
+    setSelectedGameRoom(null);
+    
+    const targetRoomId = result.roomId || id;
+    navigate(`/game-room/${targetRoomId}`);
+
+  } catch (error) {
+    console.error("Join error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to join game room";
+    alert(errorMessage);
+  } finally {
+    setIsJoining(false); 
+  }
+};
   
 
   
@@ -617,6 +618,7 @@ export const HomePage = () => {
         }}
         gameRoom={selectedGameRoom}
         onJoin={handleModalJoin}
+        isLoading={isJoining}
       />
     </div>
   );

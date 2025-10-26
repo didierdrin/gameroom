@@ -180,103 +180,196 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
     if (onGameCreated) onGameCreated();
   };
 
-  // Join host as player
-  const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Promise<boolean> => {
-    if (!socket || !user) {
-      console.error('Missing socket or user for auto-join');
-      return false;
-    }
 
-    try {
-      console.log('Auto-joining host as player to room:', gameRoomId);
-      const myId = String(user.id);
-      
-      const joinPayload = {
-        roomId: gameRoomId,
-        playerId: myId,
-        playerName: user.username,
-        joinAsPlayer: true,
-        isHost: true,
-        password: roomPassword
+  
+const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Promise<boolean> => {
+  if (!socket || !user) {
+    console.error('Missing socket or user for auto-join');
+    return false;
+  }
+
+  try {
+    console.log('Auto-joining host as player to room:', gameRoomId);
+    const myId = String(user.id);
+    
+    const joinPayload = {
+      roomId: gameRoomId,
+      playerId: myId,
+      playerName: user.username,
+      joinAsPlayer: true,
+      isHost: true,
+      password: roomPassword
+    };
+
+    console.log('Join payload:', joinPayload);
+
+    const joinResult = await new Promise<boolean>((resolve) => {
+      const timeout = setTimeout(() => {
+        console.warn('Host auto-join timed out');
+        cleanupListeners();
+        resolve(false);
+      }, 30000);
+
+      const handleJoinSuccess = (data: any) => {
+        console.log('Host successfully joined as player:', data);
+        clearTimeout(timeout);
+        cleanupListeners();
+        resolve(true);
       };
 
-      console.log('Join payload:', joinPayload);
-
-      const joinResult = await new Promise<boolean>((resolve) => {
-        const timeout = setTimeout(() => {
-          console.warn('Host auto-join timed out');
-          cleanupListeners();
-          resolve(false);
-        }, 30000);
-
-        const handleJoinSuccess = (data: any) => {
-          console.log('Host successfully joined as player:', data);
+      const handlePlayerJoined = (data: any) => {
+        if (data.playerId === myId) {
+          console.log('Host player joined event received:', data);
           clearTimeout(timeout);
           cleanupListeners();
           resolve(true);
-        };
-
-        const handlePlayerJoined = (data: any) => {
-          if (data.playerId === myId) {
-            console.log('Host player joined event received:', data);
-            clearTimeout(timeout);
-            cleanupListeners();
-            resolve(true);
-          }
-        };
-
-        const handleJoinError = (error: any) => {
-          console.error('Host auto-join failed:', error);
-          clearTimeout(timeout);
-          cleanupListeners();
-          resolve(false);
-        };
-
-        const handleError = (error: any) => {
-          console.error('General error during host auto-join:', error);
-          clearTimeout(timeout);
-          cleanupListeners();
-          resolve(false);
-        };
-
-        const cleanupListeners = () => {
-          socket.off('joinGameSuccess', handleJoinSuccess);
-          socket.off('playerJoined', handlePlayerJoined);
-          socket.off('joinGameError', handleJoinError);
-          socket.off('error', handleError);
-        };
-
-        socket.on('joinGameSuccess', handleJoinSuccess);
-        socket.on('playerJoined', handlePlayerJoined);
-        socket.on('joinGameError', handleJoinError);
-        socket.on('error', handleError);
-
-        socket.emit('joinGame', joinPayload);
-      });
-
-      if (joinResult) {
-        console.log('Host successfully auto-joined as player');
-
-        if (gameType === 'uno') {
-          console.log('Also joining UNO game for host:', myId);
-          socket.emit('unoJoinGame', {
-            roomId: gameRoomId,
-            playerId: myId,
-            playerName: user.username
-          });
         }
+      };
+
+      const handleJoinError = (error: any) => {
+        console.error('Host auto-join failed:', error);
+        clearTimeout(timeout);
+        cleanupListeners();
+        resolve(false);
+      };
+
+      const handleError = (error: any) => {
+        console.error('General error during host auto-join:', error);
+        clearTimeout(timeout);
+        cleanupListeners();
+        resolve(false);
+      };
+
+      const cleanupListeners = () => {
+        socket.off('joinGameSuccess', handleJoinSuccess);
+        socket.off('playerJoined', handlePlayerJoined);
+        socket.off('joinGameError', handleJoinError);
+        socket.off('error', handleError);
+      };
+
+      socket.on('joinGameSuccess', handleJoinSuccess);
+      socket.on('playerJoined', handlePlayerJoined);
+      socket.on('joinGameError', handleJoinError);
+      socket.on('error', handleError);
+
+      socket.emit('joinGame', joinPayload);
+    });
+
+    if (joinResult) {
+      console.log('Host successfully auto-joined as player');
+
+      // ONLY join UNO game if the game type is uno and we haven't joined already
+      // Remove the automatic UNO join here - let LiveGameRoomPage handle it
+      console.log('Game room joined successfully. UNO join will be handled in game room page.');
+    } else {
+      console.warn('Host auto-join failed or timed out');
+    }
+
+    return joinResult;
+  } catch (error) {
+    console.error('Error in joinHostAsPlayer:', error);
+    return false;
+  }
+};
+
+
+  // // Join host as player
+  // const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Promise<boolean> => {
+  //   if (!socket || !user) {
+  //     console.error('Missing socket or user for auto-join');
+  //     return false;
+  //   }
+
+  //   try {
+  //     console.log('Auto-joining host as player to room:', gameRoomId);
+  //     const myId = String(user.id);
+      
+  //     const joinPayload = {
+  //       roomId: gameRoomId,
+  //       playerId: myId,
+  //       playerName: user.username,
+  //       joinAsPlayer: true,
+  //       isHost: true,
+  //       password: roomPassword
+  //     };
+
+  //     console.log('Join payload:', joinPayload);
+
+  //     const joinResult = await new Promise<boolean>((resolve) => {
+  //       const timeout = setTimeout(() => {
+  //         console.warn('Host auto-join timed out');
+  //         cleanupListeners();
+  //         resolve(false);
+  //       }, 30000);
+
+  //       const handleJoinSuccess = (data: any) => {
+  //         console.log('Host successfully joined as player:', data);
+  //         clearTimeout(timeout);
+  //         cleanupListeners();
+  //         resolve(true);
+  //       };
+
+  //       const handlePlayerJoined = (data: any) => {
+  //         if (data.playerId === myId) {
+  //           console.log('Host player joined event received:', data);
+  //           clearTimeout(timeout);
+  //           cleanupListeners();
+  //           resolve(true);
+  //         }
+  //       };
+
+  //       const handleJoinError = (error: any) => {
+  //         console.error('Host auto-join failed:', error);
+  //         clearTimeout(timeout);
+  //         cleanupListeners();
+  //         resolve(false);
+  //       };
+
+  //       const handleError = (error: any) => {
+  //         console.error('General error during host auto-join:', error);
+  //         clearTimeout(timeout);
+  //         cleanupListeners();
+  //         resolve(false);
+  //       };
+
+  //       const cleanupListeners = () => {
+  //         socket.off('joinGameSuccess', handleJoinSuccess);
+  //         socket.off('playerJoined', handlePlayerJoined);
+  //         socket.off('joinGameError', handleJoinError);
+  //         socket.off('error', handleError);
+  //       };
+
+  //       socket.on('joinGameSuccess', handleJoinSuccess);
+  //       socket.on('playerJoined', handlePlayerJoined);
+  //       socket.on('joinGameError', handleJoinError);
+  //       socket.on('error', handleError);
+
+  //       socket.emit('joinGame', joinPayload);
+  //     });
+
+  //     if (joinResult) {
+  //       console.log('Host successfully auto-joined as player');
+
+  //       if (gameType === 'uno') {
+  //         console.log('Also joining UNO game for host:', myId);
+  //         socket.emit('unoJoinGame', {
+  //           roomId: gameRoomId,
+  //           playerId: myId,
+  //           playerName: user.username
+  //         });
+  //       }
       
 
-      } else {
-        console.warn('Host auto-join failed or timed out');
-      }
+  //     } else {
+  //       console.warn('Host auto-join failed or timed out');
+  //     }
 
-      return joinResult;
-    } catch (error) {
-      console.error('Error in joinHostAsPlayer:', error);
-      return false;
-    }
-  };
+  //     return joinResult;
+  //   } catch (error) {
+  //     console.error('Error in joinHostAsPlayer:', error);
+  //     return false;
+  //   }
+  // };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -428,7 +521,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
       }
     }
   };
-  
+
   // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 //   e.preventDefault();
 

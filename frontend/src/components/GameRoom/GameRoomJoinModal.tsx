@@ -9,18 +9,22 @@ interface GameRoomJoinModalProps {
   onClose: () => void;
   gameRoom: GameRoom | null;
   onJoin: (gameRoom: GameRoom, joinAsPlayer: boolean, password?: string) => void;
+  isLoading: boolean; 
 }
 
 export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
   isOpen,
   onClose,
   gameRoom,
-  onJoin
+  onJoin,
+  isLoading
 }) => {
   const [password, setPassword] = useState('');
   const [isJoining, setIsJoining] = useState(false);
 
   if (!isOpen || !gameRoom) return null;
+
+  if (isLoading) return null; 
 
   const actualCurrentPlayers = gameRoom.playerIds?.length;
   const safeCurrentPlayers = actualCurrentPlayers; 
