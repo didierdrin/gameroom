@@ -302,7 +302,8 @@ private async initializeGameState(
   gameType: string,
   triviaSettings?: any
 ) {
-  const colors = ['red', 'blue', 'green', 'yellow'];
+  // const colors = ['red', 'blue', 'green', 'yellow'];
+  const colors = ['red', 'yellow', 'green', 'blue'];
   let initialGameState: GameState;
 
   // Get current room to preserve player lists

@@ -154,11 +154,31 @@ export class UnoService {
   }
 
   private shuffleDeck(deck: UnoCard[]): UnoCard[] {
-    for (let i = deck.length - 1; i > 0; i--) {
+    console.log('Shuffling UNO deck...');
+    const shuffledDeck = [...deck];
+    
+    // Use Fisher-Yates shuffle algorithm for better randomization
+    for (let i = shuffledDeck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
+      [shuffledDeck[i], shuffledDeck[j]] = [shuffledDeck[j], shuffledDeck[i]];
     }
-    return deck;
+    
+    // Additional shuffle pass for better distribution
+    for (let i = 0; i < shuffledDeck.length; i++) {
+      const randomIndex = Math.floor(Math.random() * shuffledDeck.length);
+      [shuffledDeck[i], shuffledDeck[randomIndex]] = [shuffledDeck[randomIndex], shuffledDeck[i]];
+    }
+    
+    console.log(`Deck shuffled: ${shuffledDeck.length} cards`);
+    
+    // Log color distribution for debugging
+    const colorCount: Record<string, number> = {};
+    shuffledDeck.forEach(card => {
+      colorCount[card.color] = (colorCount[card.color] || 0) + 1;
+    });
+    console.log('Deck color distribution after shuffle:', colorCount);
+    
+    return shuffledDeck;
   }
 
   
@@ -186,6 +206,111 @@ async addPlayer(roomId: string, playerId: string, playerName: string) {
   return gameState;
 }
 
+  // async startGame(roomId: string) {
+  //   const gameState = await this.getGameState(roomId);
+    
+  //   if (gameState.gameStarted) {
+  //     throw new Error('Game already started');
+  //   }
+    
+  //   if (gameState.players.length < 2) {
+  //     throw new Error('At least 2 players required to start UNO');
+  //   }
+    
+  //   // CRITICAL FIX: Ensure deck is properly initialized
+  //   if (!gameState.deck || gameState.deck.length === 0) {
+  //     console.warn('Deck is empty or undefined, creating new deck');
+  //     gameState.deck = this.createDeck();
+  //   }
+    
+  //   // CRITICAL FIX: Ensure discardPile is properly initialized
+  //   if (!gameState.discardPile) {
+  //     console.warn('Discard pile is undefined, initializing empty array');
+  //     gameState.discardPile = [];
+  //   }
+    
+  //   // CRITICAL FIX: Ensure we have enough cards to deal
+  //   const totalCardsNeeded = gameState.players.length * 7;
+  //   if (gameState.deck.length < totalCardsNeeded) {
+  //     console.warn(`Not enough cards in deck (${gameState.deck.length}), creating new deck`);
+  //     gameState.deck = this.createDeck();
+  //   }
+    
+  //   // Deal 7 cards to each player
+  //   gameState.players.forEach(player => {
+  //     // CRITICAL FIX: Check if we have enough cards before splicing
+  //     if (gameState.deck.length >= 7) {
+  //       player.cards = gameState.deck.splice(0, 7);
+  //     } else {
+  //       console.error(`Not enough cards to deal to player ${player.name}`);
+  //       player.cards = [];
+  //     }
+  //   });
+    
+  //   // CRITICAL FIX: Check if we have cards left for the first card
+  //   if (gameState.deck.length === 0) {
+  //     console.warn('No cards left after dealing, creating new deck');
+  //     gameState.deck = this.createDeck();
+  //   }
+    
+  //   // Start with first card from deck
+  //   let firstCard: UnoCard | null = null;
+  //   let attempts = 0;
+  //   const maxAttempts = 10; // Safety limit
+    
+  //   do {
+  //     if (gameState.deck.length === 0) {
+  //       console.error('No cards available for first card');
+  //       break;
+  //     }
+      
+  //     firstCard = gameState.deck.pop()!;
+      
+  //     // CRITICAL FIX: Ensure discardPile exists before pushing
+  //     if (!gameState.discardPile) {
+  //       gameState.discardPile = [];
+  //     }
+  //     gameState.discardPile.push(firstCard);
+      
+  //     attempts++;
+      
+  //     // Safety break to prevent infinite loop
+  //     if (attempts >= maxAttempts) {
+  //       console.warn('Max attempts reached for finding non-wild first card');
+  //       break;
+  //     }
+  //   } while (firstCard.type === 'wild' || firstCard.type === 'wild_draw_four');
+    
+  //   // FIXED: Handle case where firstCard might be null
+  //   if (!firstCard) {
+  //     console.error('Could not find a valid first card, creating default card');
+  //     firstCard = {
+  //       id: uuidv4(),
+  //       type: 'number',
+  //       color: 'red',
+  //       value: '0',
+  //       points: 0
+  //     };
+      
+  //     // CRITICAL FIX: Ensure discardPile exists before pushing
+  //     if (!gameState.discardPile) {
+  //       gameState.discardPile = [];
+  //     }
+  //     gameState.discardPile.push(firstCard);
+  //   }
+    
+  //   // Set game state properties
+  //   gameState.currentColor = firstCard.color;
+  //   gameState.currentValue = firstCard.value;
+  //   gameState.gameStarted = true;
+  //   gameState.currentTurn = gameState.players[0].id;
+  //   gameState.currentPlayerIndex = 0;
+    
+  //   await this.updateGameState(roomId, gameState);
+  //   return gameState;
+  // }
+
+
   async startGame(roomId: string) {
     const gameState = await this.getGameState(roomId);
     
@@ -197,94 +322,43 @@ async addPlayer(roomId: string, playerId: string, playerName: string) {
       throw new Error('At least 2 players required to start UNO');
     }
     
-    // CRITICAL FIX: Ensure deck is properly initialized
-    if (!gameState.deck || gameState.deck.length === 0) {
-      console.warn('Deck is empty or undefined, creating new deck');
-      gameState.deck = this.createDeck();
-    }
+    // CRITICAL FIX: Create and properly shuffle a new deck
+    console.log('Creating and shuffling new deck for UNO game');
+    gameState.deck = this.shuffleDeck(this.createDeck());
     
-    // CRITICAL FIX: Ensure discardPile is properly initialized
-    if (!gameState.discardPile) {
-      console.warn('Discard pile is undefined, initializing empty array');
-      gameState.discardPile = [];
-    }
+    // CRITICAL FIX: Ensure discardPile is properly initialized as empty
+    gameState.discardPile = [];
     
-    // CRITICAL FIX: Ensure we have enough cards to deal
+    // CRITICAL FIX: Deal cards with proper randomization
     const totalCardsNeeded = gameState.players.length * 7;
     if (gameState.deck.length < totalCardsNeeded) {
       console.warn(`Not enough cards in deck (${gameState.deck.length}), creating new deck`);
-      gameState.deck = this.createDeck();
+      gameState.deck = this.shuffleDeck(this.createDeck());
     }
     
-    // Deal 7 cards to each player
+    // Deal 7 cards to each player - they should be random due to proper shuffling
     gameState.players.forEach(player => {
-      // CRITICAL FIX: Check if we have enough cards before splicing
       if (gameState.deck.length >= 7) {
         player.cards = gameState.deck.splice(0, 7);
+        console.log(`Dealt ${player.cards.length} cards to ${player.name}:`, 
+          player.cards.map(c => `${c.color} ${c.value}`));
       } else {
         console.error(`Not enough cards to deal to player ${player.name}`);
         player.cards = [];
       }
     });
     
-    // CRITICAL FIX: Check if we have cards left for the first card
-    if (gameState.deck.length === 0) {
-      console.warn('No cards left after dealing, creating new deck');
-      gameState.deck = this.createDeck();
-    }
-    
-    // Start with first card from deck
-    let firstCard: UnoCard | null = null;
-    let attempts = 0;
-    const maxAttempts = 10; // Safety limit
-    
-    do {
-      if (gameState.deck.length === 0) {
-        console.error('No cards available for first card');
-        break;
-      }
-      
-      firstCard = gameState.deck.pop()!;
-      
-      // CRITICAL FIX: Ensure discardPile exists before pushing
-      if (!gameState.discardPile) {
-        gameState.discardPile = [];
-      }
-      gameState.discardPile.push(firstCard);
-      
-      attempts++;
-      
-      // Safety break to prevent infinite loop
-      if (attempts >= maxAttempts) {
-        console.warn('Max attempts reached for finding non-wild first card');
-        break;
-      }
-    } while (firstCard.type === 'wild' || firstCard.type === 'wild_draw_four');
-    
-    // FIXED: Handle case where firstCard might be null
-    if (!firstCard) {
-      console.error('Could not find a valid first card, creating default card');
-      firstCard = {
-        id: uuidv4(),
-        type: 'number',
-        color: 'red',
-        value: '0',
-        points: 0
-      };
-      
-      // CRITICAL FIX: Ensure discardPile exists before pushing
-      if (!gameState.discardPile) {
-        gameState.discardPile = [];
-      }
-      gameState.discardPile.push(firstCard);
-    }
-    
-    // Set game state properties
-    gameState.currentColor = firstCard.color;
-    gameState.currentValue = firstCard.value;
+    // CRITICAL FIX: Start with empty discard pile and let first player play any card
+    gameState.currentColor = '';
+    gameState.currentValue = '';
     gameState.gameStarted = true;
     gameState.currentTurn = gameState.players[0].id;
     gameState.currentPlayerIndex = 0;
+    gameState.pendingColorChoice = false;
+    gameState.pendingDraw = 0;
+    
+    console.log('UNO game started with empty discard pile - first player can play any card');
+    console.log('Remaining deck size:', gameState.deck.length);
     
     await this.updateGameState(roomId, gameState);
     return gameState;
@@ -428,10 +502,18 @@ async addPlayer(roomId: string, playerId: string, playerName: string) {
   }
 
   private canPlayCard(card: UnoCard, gameState: UnoState): boolean {
+    // CRITICAL FIX: Allow any card if no cards have been played yet (empty discard pile)
+    if (gameState.discardPile.length === 0) {
+      console.log('First move: allowing any card to be played');
+      return true;
+    }
+    
+    // Wild cards can always be played
     if (card.type === 'wild' || card.type === 'wild_draw_four') {
       return true;
     }
     
+    // Normal card matching rules
     return card.color === gameState.currentColor || card.value === gameState.currentValue;
   }
 

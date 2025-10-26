@@ -222,9 +222,11 @@ const unoGameState: UnoGameState = React.useMemo(() => {
   };
 
   const getTopCard = (): UnoCard | null => {
-    return localGameState.discardPile.length > 0 
-      ? localGameState.discardPile[localGameState.discardPile.length - 1] 
-      : null;
+    // Handle empty discard pile at game start
+    if (!localGameState.discardPile || localGameState.discardPile.length === 0) {
+      return null;
+    }
+    return localGameState.discardPile[localGameState.discardPile.length - 1];
   };
 
   const topCard = getTopCard();
@@ -290,17 +292,20 @@ const unoGameState: UnoGameState = React.useMemo(() => {
 
         {/* Discard Pile */}
         <div className="uno-pile discard-pile">
-          {topCard ? (
-            <img 
-              src={getCardImage(topCard)} 
-              alt={`${topCard.color} ${topCard.value}`}
-              className="uno-card-image"
-            />
-          ) : (
-            <div className="uno-card-placeholder">Start</div>
-          )}
-          <div className="pile-label">Discard</div>
-        </div>
+  {topCard ? (
+    <img 
+      src={getCardImage(topCard)} 
+      alt={`${topCard.color} ${topCard.value}`}
+      className="uno-card-image"
+    />
+  ) : (
+    <div className="uno-card-placeholder">
+      <div>Start</div>
+      <div>Play Any Card</div>
+    </div>
+  )}
+  <div className="pile-label">Discard</div>
+</div>
 
         {/* Center Info */}
         <div className="uno-center-info">
