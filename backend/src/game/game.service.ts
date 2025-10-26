@@ -1849,16 +1849,12 @@ async restartGame(roomId: string, hostId: string) {
   if (!gameRoom) throw new Error('Game room not found');
   if (gameRoom.host !== hostId) throw new Error('Only the host can restart the game');
   
-  console.log(`Restarting game for room ${roomId}, current status: ${gameRoom.status}`);
+  console.log(`Restarting trivia game for room ${roomId}, current status: ${gameRoom.status}`);
   
   // CRITICAL: Reset room status to 'waiting' and clear winner
   gameRoom.status = 'waiting';
   gameRoom.winner = undefined;
-  if (gameRoom.scores instanceof Map) {
-    gameRoom.scores.clear(); // Clear if it's a Map
-  } else {
-    gameRoom.scores = {}; // Set to empty object if it's a plain object
-  }
+  gameRoom.scores = {};
   await gameRoom.save();
   
   // Get current players and spectators before reset
@@ -1867,18 +1863,7 @@ async restartGame(roomId: string, hostId: string) {
   
   console.log(`Preserving players: ${currentPlayerIds.length}, spectators: ${currentSpectatorIds.length}`);
   
-  // Handle chess game restart separately
-  if (gameRoom.gameType === 'chess') {
-    try {
-      await this.chessService.resetGame(roomId);
-      console.log('Chess game reset completed');
-    } catch (error) {
-      console.error('Error resetting chess game:', error);
-      // Continue with general reset even if chess reset fails
-    }
-  }
-
-  
+  // For trivia games, regenerate questions with current settings
   if (gameRoom.gameType === 'trivia') {
     try {
       // Use the current trivia settings from the game room
@@ -1897,13 +1882,42 @@ async restartGame(roomId: string, hostId: string) {
       );
       
       console.log('Trivia questions regenerated for restart:', newQuestions.length);
+      
+      // Update the game state with new questions
+      const gameState = await this.getGameState(roomId);
+      
+      // CRITICAL: Reset all game state for trivia
+      gameState.gameStarted = false;
+      gameState.gameOver = false;
+      gameState.winner = null;
+      
+      if (gameState.triviaState) {
+        gameState.triviaState.currentQuestionIndex = 0;
+        gameState.triviaState.questions = newQuestions;
+        gameState.triviaState.scores = {};
+        gameState.triviaState.answers = {};
+        gameState.triviaState.completedPlayers = [];
+        gameState.triviaState.questionTimer = 30;
+        
+        // Reset player scores
+        gameState.players.forEach(player => {
+          gameState.triviaState!.scores[player.id] = 0;
+          player.score = 0;
+        });
+      }
+      
+      // Save the updated state immediately
+      await this.updateGameState(roomId, gameState);
+      
+      console.log('Trivia game state reset with new questions');
+      
     } catch (error) {
       console.error('Error regenerating trivia questions:', error);
       // Continue with restart even if question regeneration fails
     }
   }
   
-  // Completely reinitialize game state with preserved players
+  // For non-trivia games or as fallback, do general reinitialization
   await this.initializeGameState(
     roomId, 
     hostId, 
@@ -1912,52 +1926,145 @@ async restartGame(roomId: string, hostId: string) {
     gameRoom.triviaSettings
   );
   
-  // Get the fresh game state
-  const gameState = await this.getGameState(roomId);
-  
-  // CRITICAL: Ensure game state is properly reset
-  gameState.gameStarted = false;
-  gameState.gameOver = false;
-  gameState.winner = null;
-  
-  // Reset game-specific state
-  if (gameState.gameType === 'ludo') {
-    gameState.diceValue = 0;
-    gameState.diceRolled = false;
-    gameState.consecutiveSixes = 0;
-    // Reset coins for all players
-    if (gameState.coins) {
-      Object.keys(gameState.coins).forEach(playerId => {
-        gameState.coins![playerId] = [0, 0, 0, 0];
-      });
-    }
-  } else if (gameState.gameType === 'trivia' && gameState.triviaState) {
-    gameState.triviaState.currentQuestionIndex = 0;
-    gameState.triviaState.scores = {};
-    gameState.triviaState.answers = {};
-    gameState.triviaState.completedPlayers = [];
-    // Reset player scores
-    gameState.players.forEach(player => {
-      if (gameState.triviaState) {
-        gameState.triviaState.scores[player.id] = 0;
-        player.score = 0;
-      }
-    });
-  }
-  
-  // Save the reset state
-  await this.updateGameState(roomId, gameState);
+  // Get the fresh game state to ensure everything is reset
+  const finalGameState = await this.getGameState(roomId);
   
   console.log(`Game restarted successfully for room ${roomId}`, {
     status: gameRoom.status,
-    players: gameState.players.length,
-    gameStarted: gameState.gameStarted,
-    gameOver: gameState.gameOver,
-    winner: gameState.winner
+    players: finalGameState.players.length,
+    gameStarted: finalGameState.gameStarted,
+    gameOver: finalGameState.gameOver,
+    winner: finalGameState.winner,
+    triviaQuestions: finalGameState.triviaState?.questions?.length || 0
   });
   
-  return gameState;
+  // Emit game state update to all clients in the room
+  if (this.server) {
+    this.server.to(roomId).emit('gameState', finalGameState);
+    this.server.to(roomId).emit('gameRestarted', { 
+      roomId, 
+      gameState: finalGameState,
+      message: 'New round started!' 
+    });
+  }
+  
+  return finalGameState;
 }
+
+// async restartGame(roomId: string, hostId: string) {
+//   const gameRoom = await this.gameRoomModel.findOne({ roomId });
+//   if (!gameRoom) throw new Error('Game room not found');
+//   if (gameRoom.host !== hostId) throw new Error('Only the host can restart the game');
+  
+//   console.log(`Restarting game for room ${roomId}, current status: ${gameRoom.status}`);
+  
+//   // CRITICAL: Reset room status to 'waiting' and clear winner
+//   gameRoom.status = 'waiting';
+//   gameRoom.winner = undefined;
+//   if (gameRoom.scores instanceof Map) {
+//     gameRoom.scores.clear(); // Clear if it's a Map
+//   } else {
+//     gameRoom.scores = {}; // Set to empty object if it's a plain object
+//   }
+//   await gameRoom.save();
+  
+//   // Get current players and spectators before reset
+//   const currentPlayerIds = gameRoom.playerIds || [];
+//   const currentSpectatorIds = gameRoom.spectatorIds || [];
+  
+//   console.log(`Preserving players: ${currentPlayerIds.length}, spectators: ${currentSpectatorIds.length}`);
+  
+//   // Handle chess game restart separately
+//   if (gameRoom.gameType === 'chess') {
+//     try {
+//       await this.chessService.resetGame(roomId);
+//       console.log('Chess game reset completed');
+//     } catch (error) {
+//       console.error('Error resetting chess game:', error);
+//       // Continue with general reset even if chess reset fails
+//     }
+//   }
+
+  
+//   if (gameRoom.gameType === 'trivia') {
+//     try {
+//       // Use the current trivia settings from the game room
+//       const triviaSettings = gameRoom.triviaSettings || {
+//         questionCount: 10,
+//         difficulty: 'medium',
+//         category: 'general'
+//       };
+      
+//       console.log('Regenerating trivia questions with settings:', triviaSettings);
+      
+//       // Regenerate questions with the current settings
+//       const newQuestions = await this.enhancedTriviaService.regenerateQuestionsWithNewCategory(
+//         roomId, 
+//         triviaSettings
+//       );
+      
+//       console.log('Trivia questions regenerated for restart:', newQuestions.length);
+//     } catch (error) {
+//       console.error('Error regenerating trivia questions:', error);
+//       // Continue with restart even if question regeneration fails
+//     }
+//   }
+  
+//   // Completely reinitialize game state with preserved players
+//   await this.initializeGameState(
+//     roomId, 
+//     hostId, 
+//     gameRoom.name, 
+//     gameRoom.gameType, 
+//     gameRoom.triviaSettings
+//   );
+  
+//   // Get the fresh game state
+//   const gameState = await this.getGameState(roomId);
+  
+//   // CRITICAL: Ensure game state is properly reset
+//   gameState.gameStarted = false;
+//   gameState.gameOver = false;
+//   gameState.winner = null;
+  
+//   // Reset game-specific state
+//   if (gameState.gameType === 'ludo') {
+//     gameState.diceValue = 0;
+//     gameState.diceRolled = false;
+//     gameState.consecutiveSixes = 0;
+//     // Reset coins for all players
+//     if (gameState.coins) {
+//       Object.keys(gameState.coins).forEach(playerId => {
+//         gameState.coins![playerId] = [0, 0, 0, 0];
+//       });
+//     }
+//   } else if (gameState.gameType === 'trivia' && gameState.triviaState) {
+//     gameState.triviaState.currentQuestionIndex = 0;
+//     gameState.triviaState.scores = {};
+//     gameState.triviaState.answers = {};
+//     gameState.triviaState.completedPlayers = [];
+//     // Reset player scores
+//     gameState.players.forEach(player => {
+//       if (gameState.triviaState) {
+//         gameState.triviaState.scores[player.id] = 0;
+//         player.score = 0;
+//       }
+//     });
+//   }
+  
+//   // Save the reset state
+//   await this.updateGameState(roomId, gameState);
+  
+//   console.log(`Game restarted successfully for room ${roomId}`, {
+//     status: gameRoom.status,
+//     players: gameState.players.length,
+//     gameStarted: gameState.gameStarted,
+//     gameOver: gameState.gameOver,
+//     winner: gameState.winner
+//   });
+  
+//   return gameState;
+// }
 
 
 async endGame(roomId: string, hostId: string) {

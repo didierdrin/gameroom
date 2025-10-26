@@ -89,17 +89,47 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     }
   }, [timer, loading, questions, hasAnswered]);
 
+  // useEffect(() => {
+  //   // Reset game state when gameState indicates a restart
+  //   if (gameState.gameStarted && !gameState.gameOver) {
+  //     setCurrentQ(0);
+  //     setSelected(null);
+  //     setTimer(10);
+  //     setHasAnswered(false);
+  //     setShowAnswerResult(false);
+  //     setShowFireworks(false);
+  //   }
+  // }, [gameState.gameStarted, gameState.gameOver]);
+
+
   useEffect(() => {
     // Reset game state when gameState indicates a restart
     if (gameState.gameStarted && !gameState.gameOver) {
+      console.log('Resetting trivia game state for new round', {
+        questionsCount: gameState.triviaState?.questions?.length,
+        currentQuestionIndex: gameState.triviaState?.currentQuestionIndex
+      });
+      
       setCurrentQ(0);
       setSelected(null);
       setTimer(10);
       setHasAnswered(false);
       setShowAnswerResult(false);
       setShowFireworks(false);
+      
+      // If we have new questions, update the local questions state
+      if (gameState.triviaState?.questions) {
+        const questions = gameState.triviaState.questions;
+        const shuffledQuestions = shuffleArray(questions).map(question => ({
+          ...question as any,
+          options: shuffleArray([...(question as any).options])
+        }));
+        
+        setQuestions(shuffledQuestions);
+        console.log('New questions loaded for restarted game:', shuffledQuestions.length);
+      }
     }
-  }, [gameState.gameStarted, gameState.gameOver]);
+  }, [gameState.gameStarted, gameState.gameOver, gameState.triviaState?.questions]);
 
 
 // Update the submitAnswer function to calculate time-based scoring

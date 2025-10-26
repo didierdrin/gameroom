@@ -1347,6 +1347,35 @@ const handleStartGame = () => {
     }
   };
 
+  // const handleUpdateTriviaSettings = async (newSettings: any) => {
+  //   if (!socket || !roomId || !user?.id) return;
+    
+  //   setIsUpdatingTriviaSettings(true);
+    
+  //   try {
+  //     console.log('Updating trivia settings and restarting game:', newSettings);
+      
+  //     // Emit event to update trivia settings
+  //     socket.emit('updateTriviaSettings', { 
+  //       roomId, 
+  //       hostId: user.id, 
+  //       triviaSettings: newSettings 
+  //     });
+      
+  //     // Wait a moment for settings to update, then restart game
+  //     setTimeout(() => {
+  //       handleRestartGame();
+  //       setShowTriviaCategoryModal(false);
+  //       setIsUpdatingTriviaSettings(false);
+  //     }, 1000);
+      
+  //   } catch (error) {
+  //     console.error('Error updating trivia settings:', error);
+  //     setIsUpdatingTriviaSettings(false);
+  //     alert('Failed to update trivia settings. Please try again.');
+  //   }
+  // };
+
   const handleUpdateTriviaSettings = async (newSettings: any) => {
     if (!socket || !roomId || !user?.id) return;
     
@@ -1355,7 +1384,7 @@ const handleStartGame = () => {
     try {
       console.log('Updating trivia settings and restarting game:', newSettings);
       
-      // Emit event to update trivia settings
+      // First update the trivia settings
       socket.emit('updateTriviaSettings', { 
         roomId, 
         hostId: user.id, 
@@ -1364,10 +1393,12 @@ const handleStartGame = () => {
       
       // Wait a moment for settings to update, then restart game
       setTimeout(() => {
-        handleRestartGame();
+        console.log('Emitting restartGame after settings update');
+        socket.emit('restartGame', { roomId, hostId: user.id });
+        
         setShowTriviaCategoryModal(false);
         setIsUpdatingTriviaSettings(false);
-      }, 1000);
+      }, 500);
       
     } catch (error) {
       console.error('Error updating trivia settings:', error);
@@ -1377,42 +1408,69 @@ const handleStartGame = () => {
   };
 
 
-  // Update the handleRestartGame function
-const handleRestartGame = () => {
-  if (!isHost || !socket || !roomId) {
-    console.error('Cannot restart: not host or missing socket/roomId');
-    return;
-  }
-
-  if (gameType === 'trivia') {
-    setShowTriviaCategoryModal(true);
-    return;
-  }
+  const handleRestartGame = () => {
+    if (!isHost || !socket || !roomId) {
+      console.error('Cannot restart: not host or missing socket/roomId');
+      return;
+    }
   
-  const confirmRestart = window.confirm(
-    'Are you sure you want to restart the game? This will start a fresh new round with all current players.'
-  );
-  
-  if (confirmRestart) {
-    console.log('Emitting restartGame event');
+    // For trivia games, open category modal instead of immediate restart
+    if (gameType === 'trivia') {
+      setShowTriviaCategoryModal(true);
+      return;
+    }
     
-    // Optimistically reset local state immediately
-    setGameEnded(false);
-    setGameEndedMessage('');
-    setGameState(prev => ({
-      ...prev,
-      gameStarted: false,
-      gameOver: false,
-      winner: null,
-      diceValue: 0,
-      diceRolled: false
-    }));
+    const confirmRestart = window.confirm(
+      'Are you sure you want to restart the game? This will start a fresh new round with all current players.'
+    );
+    
+    if (confirmRestart) {
+      console.log('Emitting restartGame event');
+      
+      // Optimistically reset local state immediately
+      setGameEnded(false);
+      setGameEndedMessage('');
+      
+      socket.emit('restartGame', { roomId, hostId: user?.id });
+    }
+  };
+  
+  // Update the handleRestartGame function
+// const handleRestartGame = () => {
+//   if (!isHost || !socket || !roomId) {
+//     console.error('Cannot restart: not host or missing socket/roomId');
+//     return;
+//   }
+
+//   if (gameType === 'trivia') {
+//     setShowTriviaCategoryModal(true);
+//     return;
+//   }
+  
+//   const confirmRestart = window.confirm(
+//     'Are you sure you want to restart the game? This will start a fresh new round with all current players.'
+//   );
+  
+//   if (confirmRestart) {
+//     console.log('Emitting restartGame event');
+    
+//     // Optimistically reset local state immediately
+//     setGameEnded(false);
+//     setGameEndedMessage('');
+//     setGameState(prev => ({
+//       ...prev,
+//       gameStarted: false,
+//       gameOver: false,
+//       winner: null,
+//       diceValue: 0,
+//       diceRolled: false
+//     }));
 
    
     
-    socket.emit('restartGame', { roomId, hostId: user?.id });
-  }
-};
+//     socket.emit('restartGame', { roomId, hostId: user?.id });
+//   }
+// };
 
 
 
