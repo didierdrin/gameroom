@@ -24,7 +24,8 @@ export interface Question {
 @Injectable()
 export class EnhancedTriviaService {
   constructor(
-    @InjectModel('TriviaQuestion') private triviaQuestionModel: Model<TriviaQuestion>,
+    @InjectModel(TriviaQuestion.name) private triviaQuestionModel: Model<TriviaQuestion>,
+    // @InjectModel('TriviaQuestion') private triviaQuestionModel: Model<TriviaQuestion>,
     private readonly triviaService: TriviaService
   ) {}
 

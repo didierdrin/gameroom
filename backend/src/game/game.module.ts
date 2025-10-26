@@ -20,7 +20,7 @@ import { UnoModule } from 'src/uno/uno.module';
       { name: GameRoom.name, schema: GameRoomSchema },
       { name: GameSessionEntity.name, schema: GameSessionSchema },
     ]), 
-    forwardRef(() => TriviaModule),
+    TriviaModule,
     RedisModule,
     UserModule, 
     ChessModule,
@@ -30,8 +30,6 @@ import { UnoModule } from 'src/uno/uno.module';
   providers: [
     GameService, 
     GameGateway, 
-    TriviaService,
-    EnhancedTriviaService, 
 ],
   exports: [GameService],
 })
