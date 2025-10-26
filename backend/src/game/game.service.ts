@@ -136,10 +136,25 @@ export interface PlayerPoints {
 export class GameService {
   private server: Server;
 
-  private boardPath = Array.from({ length: 52 }, (_, i) => i + 1);
-  private startPositions = [1, 14, 27, 40]; // Red, Blue, Green, Yellow
+  //private boardPath = Array.from({ length: 52 }, (_, i) => i + 1);
+  private boardPath: number[][] = [
+    [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [5, 6], [4, 6], [3, 6], [2, 6], [1, 6], [0, 6],
+    [0, 7], [0, 8], [1, 8], [2, 8], [3, 8], [4, 8], [5, 8], [6, 9], [6, 10], [6, 11], [6, 12], [6, 13], [6, 14],
+    [7, 14], [8, 14], [8, 13], [8, 12], [8, 11], [8, 10], [8, 9], [9, 8], [10, 8], [11, 8], [12, 8], [13, 8], [14, 8],
+    [14, 7], [14, 6], [13, 6], [12, 6], [11, 6], [10, 6], [9, 6], [8, 5], [8, 4], [8, 3], [8, 2], [8, 1], [8, 0],
+    [7, 0], [6, 0],
+  ];
+
+  private startPositions: number[] = [1, 14, 27, 40]; 
+
   private safePositions = [1, 9, 14, 22, 27, 35, 40, 48];
-  private homeColumnStart = 52; // Positions 52–57 are home column
+  private homeColumnStart = 52; 
+  private homeStretch: { [key: number]: number[][] } = {
+    0: [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6]], // Red
+    1: [[1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [6, 7]], // Blue
+    2: [[7, 13], [7, 12], [7, 11], [7, 10], [7, 9], [7, 8]], // Green
+    3: [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7], [8, 7]], // Yellow
+  };
   chessService: ChessService;
 
   constructor(
@@ -155,18 +170,56 @@ export class GameService {
     this.server = server;
   }
 
+
+
+    // Add this helper method to convert linear position to grid coordinates
+    private getBoardPosition(playerIndex: number, position: number): number[] | null {
+      if (position === 0) return null; // Coin in base
+      if (position === 57) return [7, 7]; // Home center
+      
+      // Home stretch positions (52-57)
+      if (position > 51) {
+        return this.homeStretch[playerIndex][position - 52];
+      }
+      
+      // Regular board positions (1-51)
+      const adjusted = (position - 1 + this.startPositions[playerIndex]) % 52;
+      return this.boardPath[adjusted];
+    }
+  
+    // Update the checkValidMoves method to use the same logic as frontend
+    private checkValidMoves(playerCoins: number[], diceValue: number): boolean {
+      // Can always move if dice is 6 (can bring coin from base)
+      if (diceValue === 6) return true;
+      
+      // Check if any coin can move on the board
+      return playerCoins.some(pos => {
+        if (pos === 0) return false; // Coin in base, can't move without 6
+        if (pos >= 57) return false; // Coin already home
+        
+        // For home stretch, check if move won't exceed home
+        if (pos >= 52 && pos < 57) {
+          return pos + diceValue <= 57;
+        }
+        
+        // For regular positions
+        return pos + diceValue <= 57;
+      });
+    }
+
+
   // Helper method to check if player has valid moves
-  private checkValidMoves(playerCoins: number[], diceValue: number): boolean {
-    // Can always move if dice is 6 (can bring coin from base)
-    if (diceValue === 6) return true;
+  // private checkValidMoves(playerCoins: number[], diceValue: number): boolean {
+  //   // Can always move if dice is 6 (can bring coin from base)
+  //   if (diceValue === 6) return true;
     
-    // Check if any coin can move on the board
-    return playerCoins.some(pos => {
-      if (pos === 0) return false; // Coin in base, can't move without 6
-      if (pos >= 57) return false; // Coin already home
-      return pos + diceValue <= 57; // Can move without exceeding home
-    });
-  }
+  //   // Check if any coin can move on the board
+  //   return playerCoins.some(pos => {
+  //     if (pos === 0) return false; // Coin in base, can't move without 6
+  //     if (pos >= 57) return false; // Coin already home
+  //     return pos + diceValue <= 57; // Can move without exceeding home
+  //   });
+  // }
 
   // Helper method to check win condition
   private checkWinCondition(playerCoins: number[]): boolean {
@@ -542,15 +595,7 @@ case 'uno':
 
       await this.updateGameState(rollDiceDto.roomId, gameState);
 
-      // If player is AI, trigger their move
-      if (rollDiceDto.playerId.startsWith('ai-')) {
-        console.log(`Scheduling AI move for ${rollDiceDto.playerId}`);
-        setTimeout(() => {
-          this.handleAIMove(rollDiceDto.roomId, rollDiceDto.playerId).catch((error) => {
-            console.error(`Error in AI move for ${rollDiceDto.playerId}:`, error);
-          });
-        }, 1000);
-      }
+   
 
       return { 
         roomId: rollDiceDto.roomId, 
@@ -595,7 +640,7 @@ case 'uno':
 
       console.log(`Move coin attempt: ${moveCoinDto.coinId} by ${moveCoinDto.playerId}, current position: ${coinPosition}, dice: ${gameState.diceValue}`);
 
-      // Validate move
+      // Validate move using same logic as frontend
       if (coinPosition === 0 && gameState.diceValue === 6) {
         // Moving coin from base to start position
         newPosition = this.startPositions[playerIndex];
@@ -620,7 +665,14 @@ case 'uno':
       }
 
       // Check for captures (only on non-safe positions and not in home column)
-      if (newPosition <= 51 && !this.safePositions.includes(newPosition % 52)) {
+      // Use the same safe position logic as frontend
+      const isSafePosition = (position: number): boolean => {
+        if (position > 51) return true; // Home stretch is safe
+        const adjustedPosition = position % 52;
+        return this.safePositions.includes(adjustedPosition);
+      };
+
+      if (newPosition <= 51 && !isSafePosition(newPosition)) {
         for (const opponentId of Object.keys(gameState.coins!)) {
           if (opponentId !== moveCoinDto.playerId) {
             const opponentCoins = gameState.coins![opponentId];
@@ -658,7 +710,7 @@ case 'uno':
         console.log(`Player ${moveCoinDto.playerId} has won!`);
       }
 
-      // Update turn logic
+      // Update turn logic - same as frontend
       if (gameState.diceValue !== 6 && !captured) {
         // Normal turn: Pass to next player
         console.log(`Normal turn completion for ${moveCoinDto.playerId}, passing to next player`);
@@ -672,15 +724,6 @@ case 'uno':
         await this.updateGameState(moveCoinDto.roomId, gameState);
       }
 
-      // If next player is AI and the turn was passed, trigger their turn
-      if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver && gameState.gameStarted) {
-        console.log(`Scheduling AI turn for ${gameState.currentTurn} after move`);
-        setTimeout(() => {
-          this.handleAITurn(moveCoinDto.roomId, gameState.currentTurn).catch((error) => {
-            console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
-          });
-        }, 1000);
-      }
 
       return {
         roomId: moveCoinDto.roomId,
@@ -697,6 +740,130 @@ case 'uno':
       throw error;
     }
   }
+
+  // async moveCoin(moveCoinDto: MoveCoinDto) {
+  //   try {
+  //     const gameState = await this.getGameState(moveCoinDto.roomId);
+      
+  //     // Validate it's the player's turn
+  //     if (gameState.currentTurn !== moveCoinDto.playerId) {
+  //       throw new Error('Not your turn');
+  //     }
+      
+  //     // Check if dice has been rolled
+  //     if (!gameState.diceRolled) {
+  //       throw new Error('You must roll the dice first');
+  //     }
+
+  //     // Parse coin ID
+  //     const [color, coinIndexStr] = moveCoinDto.coinId.split('-');
+  //     const coinIndex = parseInt(coinIndexStr) - 1;
+  //     const playerIndex = gameState.players.findIndex((p) => p.id === moveCoinDto.playerId);
+      
+  //     if (playerIndex === -1) {
+  //       throw new Error('Player not found');
+  //     }
+
+  //     const playerCoins = gameState.coins![moveCoinDto.playerId];
+  //     const coinPosition = playerCoins[coinIndex];
+  //     let newPosition = coinPosition;
+  //     let captured = false;
+
+  //     console.log(`Move coin attempt: ${moveCoinDto.coinId} by ${moveCoinDto.playerId}, current position: ${coinPosition}, dice: ${gameState.diceValue}`);
+
+  //     // Validate move
+  //     if (coinPosition === 0 && gameState.diceValue === 6) {
+  //       // Moving coin from base to start position
+  //       newPosition = this.startPositions[playerIndex];
+  //     } else if (coinPosition > 0 && coinPosition < 57) {
+  //       // Moving coin on the board
+  //       newPosition = coinPosition + gameState.diceValue!;
+        
+  //       // Check if move exceeds home
+  //       if (newPosition > 57) {
+  //         throw new Error('Invalid move: Beyond home');
+  //       }
+        
+  //       // Check if move is valid in home stretch
+  //       if (newPosition > 51 && newPosition < 57) {
+  //         const homeStretchPosition = newPosition - 51;
+  //         if (homeStretchPosition > 6) {
+  //           throw new Error('Invalid move: Beyond home stretch');
+  //         }
+  //       }
+  //     } else {
+  //       throw new Error('Invalid move: Coin in base requires a 6');
+  //     }
+
+  //     // Check for captures (only on non-safe positions and not in home column)
+  //     if (newPosition <= 51 && !this.safePositions.includes(newPosition % 52)) {
+  //       for (const opponentId of Object.keys(gameState.coins!)) {
+  //         if (opponentId !== moveCoinDto.playerId) {
+  //           const opponentCoins = gameState.coins![opponentId];
+  //           opponentCoins.forEach((pos, idx) => {
+  //             if (pos === newPosition) {
+  //               // Capture opponent coin
+  //               gameState.coins![opponentId][idx] = 0;
+  //               const opponentPlayerIndex = gameState.players.findIndex((p) => p.id === opponentId);
+  //               if (opponentPlayerIndex !== -1) {
+  //                 gameState.players[opponentPlayerIndex].coins![idx] = 0;
+  //               }
+  //               captured = true;
+  //               console.log(`Captured opponent coin at position ${newPosition} for player ${opponentId}`);
+  //             }
+  //           });
+  //         }
+  //       }
+  //     }
+
+  //     // Update coin position
+  //     gameState.coins![moveCoinDto.playerId][coinIndex] = newPosition;
+  //     gameState.players[playerIndex].coins![coinIndex] = newPosition;
+  //     console.log(`Coin moved: ${moveCoinDto.coinId} to position ${newPosition}`);
+
+  //     // Check win condition
+  //     const hasWon = this.checkWinCondition(gameState.coins![moveCoinDto.playerId]);
+  //     if (hasWon) {
+  //       gameState.winner = moveCoinDto.playerId;
+  //       gameState.gameOver = true;
+  //       await this.gameRoomModel.updateOne(
+  //         { roomId: moveCoinDto.roomId },
+  //         { status: 'completed', winner: moveCoinDto.playerId },
+  //       );
+  //       await this.saveGameSession(moveCoinDto.roomId, gameState);
+  //       console.log(`Player ${moveCoinDto.playerId} has won!`);
+  //     }
+
+  //     // Update turn logic
+  //     if (gameState.diceValue !== 6 && !captured) {
+  //       // Normal turn: Pass to next player
+  //       console.log(`Normal turn completion for ${moveCoinDto.playerId}, passing to next player`);
+  //       await this.passTurn(moveCoinDto.roomId, gameState);
+  //     } else {
+  //       // Extra turn for 6 or capture
+  //       console.log(`Extra turn for ${moveCoinDto.playerId} - ${gameState.diceValue === 6 ? 'rolled 6' : 'captured opponent'}`);
+  //       gameState.diceRolled = false;
+  //       gameState.diceValue = 0; // Reset dice for next roll
+  //       // Don't pass turn - same player continues
+  //       await this.updateGameState(moveCoinDto.roomId, gameState);
+  //     }
+
+
+  //     return {
+  //       roomId: moveCoinDto.roomId,
+  //       coins: gameState.coins,
+  //       currentTurn: gameState.currentTurn,
+  //       currentPlayer: gameState.currentPlayer,
+  //       diceValue: gameState.diceValue,
+  //       diceRolled: gameState.diceRolled,
+  //       gameOver: gameState.gameOver,
+  //       winner: gameState.winner,
+  //     };
+  //   } catch (error) {
+  //     console.error(`Error in moveCoin for ${moveCoinDto.playerId}:`, error);
+  //     throw error;
+  //   }
+  // }
 
   private async passTurn(roomId: string, gameState: GameState, diceValue?: number) {
     console.log(`Passing turn from ${gameState.currentTurn} in room ${roomId}`);
@@ -724,127 +891,7 @@ case 'uno':
     
     await this.updateGameState(roomId, gameState);
 
-    // Handle AI turn if next player is AI
-    if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver && gameState.gameStarted) {
-      console.log(`Scheduling AI turn for ${gameState.currentTurn}`);
-      setTimeout(() => {
-        this.handleAITurn(roomId, gameState.currentTurn).catch((error) => {
-          console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
-        });
-      }, 1000);
-    }
-  }
-
-  async handleAITurn(roomId: string, aiPlayerId: string) {
-    try {
-      console.log(`Starting AI turn for ${aiPlayerId} in room ${roomId}`);
-      const gameState = await this.getGameState(roomId);
-  
-      if (gameState.currentTurn !== aiPlayerId || gameState.gameOver) {
-        console.log(`AI turn skipped for ${aiPlayerId}: not their turn or game over`);
-        return;
-      }
-      
-      if (gameState.diceRolled) {
-        console.log(`AI ${aiPlayerId} proceeding with existing dice roll: ${gameState.diceValue}`);
-        await this.handleAIMove(roomId, aiPlayerId);
-      } else {
-        console.log(`AI ${aiPlayerId} rolling dice`);
-        const rollResult = await this.rollDice({ roomId, playerId: aiPlayerId });
-        console.log(`AI ${aiPlayerId} rolled: ${rollResult.diceValue}`);
-      }
-    } catch (error) {
-      console.error(`Error in handleAITurn for ${aiPlayerId}:`, error);
-    }
-  }
-
-  async handleAIMove(roomId: string, aiPlayerId: string) {
-    try {
-      const gameState = await this.getGameState(roomId);
-      if (gameState.currentTurn !== aiPlayerId || !gameState.diceRolled || gameState.gameOver) {
-        console.log(`AI move skipped for ${aiPlayerId}: not their turn, dice not rolled, or game over`);
-        return;
-      }
-
-      const playerIndex = gameState.players.findIndex((p) => p.id === aiPlayerId);
-      if (playerIndex === -1) {
-        console.log(`AI player ${aiPlayerId} not found in players array`);
-        return;
-      }
-
-      const playerCoins = gameState.coins![aiPlayerId] || [0, 0, 0, 0];
-      const movableCoins: { index: number; newPosition: number; captures: boolean; priority: number }[] = [];
-
-      // Determine movable coins with priority
-      playerCoins.forEach((position, index) => {
-        let newPosition = position;
-        let captures = false;
-        let priority = 0;
-
-        if (position === 0 && gameState.diceValue === 6) {
-          // Can move coin from base
-          newPosition = this.startPositions[playerIndex];
-          priority = 1; // Low priority for moving from base
-        } else if (position > 0 && position < 57) {
-          newPosition = position + gameState.diceValue!;
-          if (newPosition <= 57) {
-            // Check for captures
-            if (newPosition <= 51 && !this.safePositions.includes(newPosition % 52)) {
-              for (const opponentId of Object.keys(gameState.coins!)) {
-                if (opponentId !== aiPlayerId && gameState.coins![opponentId].includes(newPosition)) {
-                  captures = true;
-                  priority = 10; // Highest priority for captures
-                  break;
-                }
-              }
-            }
-            
-            // Check if this is a home stretch move
-            if (newPosition > 51) {
-              priority = 5; // High priority for home stretch
-            } else if (position > 0) {
-              priority = 3; // Medium priority for regular moves
-            }
-          }
-        }
-
-        if (newPosition !== position && newPosition <= 57) {
-          movableCoins.push({ index, newPosition, captures, priority });
-        }
-      });
-
-      console.log(`AI ${aiPlayerId} movable coins: ${JSON.stringify(movableCoins)}`);
-
-      if (movableCoins.length > 0) {
-        // Sort by priority: captures > home stretch > regular moves > base moves
-        movableCoins.sort((a, b) => b.priority - a.priority);
-        
-        const coinToMove = movableCoins[0];
-        const coinId = `${gameState.players[playerIndex].color}-${coinToMove.index + 1}`;
-        console.log(`AI ${aiPlayerId} moving coin: ${coinId} with priority ${coinToMove.priority}`);
-        await this.moveCoin({ roomId, playerId: aiPlayerId, coinId });
-      } else {
-        // No valid moves: Pass turn
-        console.log(`AI ${aiPlayerId} has no valid moves, passing turn`);
-        gameState.diceValue = 0;
-        gameState.diceRolled = false;
-        gameState.consecutiveSixes = 0;
-        gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-        gameState.currentTurn = gameState.players[gameState.currentPlayer].id;
-        await this.updateGameState(roomId, gameState);
-        
-        if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
-          console.log(`Scheduling AI turn for ${gameState.currentTurn} after no valid move`);
-          setTimeout(() => {
-            this.handleAITurn(roomId, gameState.currentTurn).catch((error) => {
-              console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
-            });
-          }, 1000);
-        }
-      }
-    } catch (error) {
-      console.error(`Error in handleAIMove for ${aiPlayerId}:`, error);
-    }
+ 
   }
 
   
@@ -1292,14 +1339,7 @@ async processTriviaQuestion(roomId: string) {
           gameState.diceRolled = false;
           gameState.consecutiveSixes = 0;
           await this.updateGameState(room.roomId, gameState);
-          if (gameState.currentTurn.startsWith('ai-') && !gameState.gameOver) {
-            console.log(`Scheduling AI turn for ${gameState.currentTurn} after disconnect`);
-            setTimeout(() => {
-              this.handleAITurn(room.roomId, gameState.currentTurn).catch((error) => {
-                console.error(`Error in AI turn for ${gameState.currentTurn}:`, error);
-              });
-            }, 1000);
-          }
+          
         }
       }
     } catch (error) {
