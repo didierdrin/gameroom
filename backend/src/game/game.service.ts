@@ -87,6 +87,7 @@ interface GameState {
   players: Player[];
   currentTurn: string;
   currentPlayer: number;
+  currentPlayerIndex?: number;
   gameStarted: boolean;
   gameOver: boolean;
   winner: string | null;
@@ -109,6 +110,18 @@ interface GameState {
   chessPlayers?: { player1Id: string; player2Id: string }; 
   triviaState?: TriviaState; 
   winCondition?: string; 
+  deck?: [];  
+  discardPile?: [];
+  playerTurn?: string;
+  playerIds?: string[];
+  spectatorIds?: string[];
+  currentColor?: string;
+  currentValue?: string; 
+  direction?: number; 
+  pendingDraw?: number; 
+  pendingColorChoice?: boolean;
+  lastPlayer?: any; 
+  consecutivePasses?: number;
 }
 
 export interface PlayerPoints {
@@ -298,8 +311,39 @@ private async initializeGameState(
         chessPlayers: undefined // Will be set when host selects players
       };
       break;
+    
+case 'uno':
+  initialGameState = {
+    roomId,
+    players: playerIds.map(id => ({ 
+      id, 
+      name: id, 
+      cards: [],
+      hasUno: false,
+      score: 0
+    })),
+    currentTurn: playerIds[0] || hostId,
+    currentPlayerIndex: 0,
+    gameStarted: false,
+    gameOver: false,
+    winner: null,
+    roomName,
+    gameType: gameType.toLowerCase(),
+    host: hostId,
+    deck: [],
+    discardPile: [],
+    currentColor: '',
+    currentValue: '',
+    direction: 1,
+    pendingDraw: 0,
+    pendingColorChoice: false,
+    lastPlayer: null,
+    consecutivePasses: 0,
+    currentPlayer: 0
+  };
+  break;
 
-    default: // ludo, uno, pictionary, sudoku
+    default: // ludo, pictionary, sudoku
       initialGameState = {
         roomId,
         players: playerIds.map((id, index) => ({ 
@@ -320,6 +364,7 @@ private async initializeGameState(
         roomName,
         gameType: gameType.toLowerCase(),
         host: hostId,
+     
       };
   }
   
