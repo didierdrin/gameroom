@@ -183,7 +183,7 @@ export class GameService {
       }
       
       // Regular board positions (1-51)
-      const adjusted = (position - 1 + this.startPositions[playerIndex]) % 52;
+      const adjusted = (position - 2 + this.startPositions[playerIndex]) % 52;
       return this.boardPath[adjusted];
     }
   

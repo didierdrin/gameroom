@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSocket } from '../../SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import './UnoGame.css';
+import { useUserData } from '../../hooks/useUserData';
 
 interface UnoCard {
   id: string;
@@ -231,12 +232,52 @@ const unoGameState: UnoGameState = React.useMemo(() => {
 
   const topCard = getTopCard();
 
+
+  const UnoPlayerDisplay: React.FC<{ player: UnoPlayer; isActive: boolean; isCurrentUser: boolean }> = ({ 
+    player, 
+    isActive, 
+    isCurrentUser 
+  }) => {
+    const { username, isLoading } = useUserData(player.id);
+    
+    const displayName = isLoading ? 'Loading...' : (username || player.name || player.id);
+    
+    return (
+      <div 
+        className={`uno-player ${isActive ? 'active' : ''} ${isCurrentUser ? 'current-user' : ''}`}
+      >
+        <div className="player-info">
+          <span className="player-name">{displayName}</span>
+          {player.hasUno && <span className="uno-indicator">UNO!</span>}
+          <span className="card-count">{player.cards.length} cards</span>
+          <span className="player-score">Score: {player.score}</span>
+        </div>
+        {!isCurrentUser && (
+          <div className="opponent-cards">
+            {Array.from({ length: Math.min(player.cards.length, 8) }).map((_, i) => (
+              <div key={i} className="uno-card-back"></div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Component for current turn display
+  const CurrentTurnDisplay: React.FC<{ playerId: string }> = ({ playerId }) => {
+    const { username, isLoading } = useUserData(playerId);
+    
+    const displayName = isLoading ? 'Loading...' : (username || 'Unknown');
+    
+    return <span>{displayName}</span>;
+  };
+
   return (
     <div className="uno-game">
       {/* Game Info Bar */}
       <div className="uno-game-info">
         <div className="uno-current-turn">
-          Current Turn: {localGameState.players.find(p => p.id === localGameState.currentTurn)?.name || 'Unknown'}
+        Current Turn: <CurrentTurnDisplay playerId={localGameState.currentTurn} />
         </div>
         <div className="uno-current-color">
           Current Color: <span className={`color-${localGameState.currentColor}`}>{localGameState.currentColor}</span>
@@ -251,31 +292,19 @@ const unoGameState: UnoGameState = React.useMemo(() => {
         )}
       </div>
 
-      {/* Players Area */}
+      {/* Players Area - UPDATED */}
       <div className="uno-players-area">
-        {localGameState.players.map((player, index) => {
+        {localGameState.players.map((player) => {
           const isActive = player.id === localGameState.currentTurn;
           const isCurrentUser = player.id === currentPlayer;
           
           return (
-            <div 
-              key={player.id} 
-              className={`uno-player ${isActive ? 'active' : ''} ${isCurrentUser ? 'current-user' : ''}`}
-            >
-              <div className="player-info">
-                <span className="player-name">{player.name}</span>
-                {player.hasUno && <span className="uno-indicator">UNO!</span>}
-                <span className="card-count">{player.cards.length} cards</span>
-                <span className="player-score">Score: {player.score}</span>
-              </div>
-              {!isCurrentUser && (
-                <div className="opponent-cards">
-                  {Array.from({ length: Math.min(player.cards.length, 8) }).map((_, i) => (
-                    <div key={i} className="uno-card-back"></div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <UnoPlayerDisplay
+              key={player.id}
+              player={player}
+              isActive={isActive}
+              isCurrentUser={isCurrentUser}
+            />
           );
         })}
       </div>
