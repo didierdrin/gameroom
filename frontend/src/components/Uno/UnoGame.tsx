@@ -250,7 +250,7 @@ const unoGameState: UnoGameState = React.useMemo(() => {
           <span className="player-name">{displayName}</span>
           {player.hasUno && <span className="uno-indicator">UNO!</span>}
           <span className="card-count">{player.cards.length} cards</span>
-          <span className="player-score">Score: {player.score}</span>
+          {/* <span className="player-score">Score: {player.score}</span> */}
         </div>
         {!isCurrentUser && (
           <div className="opponent-cards">
