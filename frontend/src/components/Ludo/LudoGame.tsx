@@ -138,10 +138,10 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     [7, 0], [6, 0],
   ];
 
-  // Starting positions for each player (Red: 0, Yellow: 1, Green: 2, Blue: 3)
+
+  
   // Starting positions for each player (Red: 0, Blue: 1, Green: 2, Yellow: 3)  
-  // const startPositions: number[] = [27, 1, 40, 14];
-  const startPositions: number[] = [1, 40, 14, 27];
+  const startPositions: number[] = [1, 14, 27, 40];
   
   
   // Home stretch positions for each player (positions 52-57)
