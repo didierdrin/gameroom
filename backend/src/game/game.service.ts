@@ -136,7 +136,7 @@ export interface PlayerPoints {
 export class GameService {
   private server: Server;
 
-  //private boardPath = Array.from({ length: 52 }, (_, i) => i + 1);
+
   private boardPath: number[][] = [
     [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [5, 6], [4, 6], [3, 6], [2, 6], [1, 6], [0, 6],
     [0, 7], [0, 8], [1, 8], [2, 8], [3, 8], [4, 8], [5, 8], [6, 9], [6, 10], [6, 11], [6, 12], [6, 13], [6, 14],
@@ -145,7 +145,7 @@ export class GameService {
     [7, 0], [6, 0],
   ];
 
-  private startPositions: number[] = [1, 40, 14, 27];
+  private startPositions: number[] = [1, 14, 27, 40];
 
   private safePositions = [1, 9, 14, 22, 27, 35, 40, 48];
   private homeColumnStart = 52; 
@@ -207,19 +207,6 @@ export class GameService {
       });
     }
 
-
-  // Helper method to check if player has valid moves
-  // private checkValidMoves(playerCoins: number[], diceValue: number): boolean {
-  //   // Can always move if dice is 6 (can bring coin from base)
-  //   if (diceValue === 6) return true;
-    
-  //   // Check if any coin can move on the board
-  //   return playerCoins.some(pos => {
-  //     if (pos === 0) return false; // Coin in base, can't move without 6
-  //     if (pos >= 57) return false; // Coin already home
-  //     return pos + diceValue <= 57; // Can move without exceeding home
-  //   });
-  // }
 
   // Helper method to check win condition
   private checkWinCondition(playerCoins: number[]): boolean {
@@ -302,8 +289,8 @@ private async initializeGameState(
   gameType: string,
   triviaSettings?: any
 ) {
-  // const colors = ['red', 'blue', 'green', 'yellow'];
-  const colors = ['red', 'yellow', 'green', 'blue'];
+  const colors = ['red', 'blue', 'green', 'yellow'];
+  // const colors = ['red', 'yellow', 'green', 'blue'];
   let initialGameState: GameState;
 
   // Get current room to preserve player lists
