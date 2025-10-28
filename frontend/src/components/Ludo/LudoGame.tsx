@@ -459,6 +459,7 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
       
       {showPointsTable && <PointsTableModal />}
       
+      <div className='mb-6'></div>
     
       {/* Winner announcement */}
       {winner !== null && !showPointsTable && (
