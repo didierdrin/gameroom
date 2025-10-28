@@ -459,14 +459,7 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
       
       {showPointsTable && <PointsTableModal />}
       
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 bg-clip-text text-transparent">
-          Ludo 
-        </h1>
-        
-      </div>
-      
+    
       {/* Winner announcement */}
       {winner !== null && !showPointsTable && (
         <div className="mb-6 p-6 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl backdrop-blur-sm">
@@ -542,23 +535,7 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
         </div>
       </div>
       
-      {/* Game rules and tips */}
-      <div className="mt-6 text-sm max-w-4xl text-center">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
-            <h4 className="font-bold text-white mb-3 text-lg">🎲 Game Rules</h4>
-            <p className="text-purple-200">Roll a 6 to enter the board. Capture opponents by landing on them. First to get all coins home wins!</p>
-          </div>
-          <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
-            <h4 className="font-bold text-white mb-3 text-lg">📍 Pin Movement</h4>
-            <p className="text-purple-200">Move your location pins around the board. Click on glowing pins to move them after rolling!</p>
-          </div>
-          <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
-            <h4 className="font-bold text-white mb-3 text-lg">🏆 Points System</h4>
-            <p className="text-purple-200">Winner: 10pts, 2nd: 5pts, 3rd: 2pts, 4th: 1pt. Strategy matters!</p>
-          </div>
-        </div>
-      </div>
+    
       
       {/* Player list */}
       <div className="mt-8 w-full max-w-2xl">
