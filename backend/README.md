@@ -96,3 +96,26 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+
+
+@Injectable()
+export class AppService implements OnApplicationBootstrap {
+  constructor(
+    private readonly triviaPopulator: TriviaPopulatorService,
+    private readonly enhancedTriviaService: EnhancedTriviaService,
+  ) {}
+
+  async onApplicationBootstrap() {
+    // Check if database needs population
+    const totalQuestions = await this.enhancedTriviaService.getTotalQuestionCount();
+    
+    if (totalQuestions < 100) { // Adjust threshold as needed
+      console.log('Database has few questions, starting auto-population...');
+      // Run in background without waiting
+      this.triviaPopulator.populateDatabase().catch(error => {
+        console.error('Auto-population failed:', error);
+      });
+    }
+  }
+}

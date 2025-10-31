@@ -1,10 +1,19 @@
 // trivia.controller.ts
-import { Controller, Get, Query, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { TriviaService, Question, TriviaSettings } from './trivia.service';
+import { EnhancedTriviaService } from './enhanced-trivia.service';
+import { TriviaPopulatorService } from './trivia-populator.service';
 
 @Controller('trivia')
 export class TriviaController {
-  constructor(private readonly triviaService: TriviaService) {}
+  constructor(
+    private readonly triviaService: TriviaService, 
+    private readonly enhancedTriviaService: EnhancedTriviaService,
+    private readonly triviaPopulator: TriviaPopulatorService
+    ) {}
+
+
+
 
   @Get('questions')
   async getQuestions( 
@@ -82,6 +91,71 @@ export class TriviaController {
       console.error('Error getting trivia questions:', error);
       throw new HttpException(
         error.message || 'Failed to fetch trivia questions. Please try again.',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+
+  @Post('populate-database')
+  async populateDatabase() {
+    try {
+      await this.triviaPopulator.populateDatabase();
+      return {
+        success: true,
+        message: 'Database population started successfully'
+      };
+    } catch (error) {
+      console.error('Error populating database:', error);
+      throw new HttpException(
+        'Failed to populate database',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('stats')
+  async getQuestionStats(
+    @Query('category') category?: string,
+    @Query('difficulty') difficulty?: string,
+  ) {
+    try {
+      const stats = await this.enhancedTriviaService.getQuestionStats(category, difficulty);
+      
+      return {
+        success: true,
+        data: {
+          stats,
+          filters: { category, difficulty }
+        }
+      };
+    } catch (error) {
+      console.error('Error getting question stats:', error);
+      throw new HttpException(
+        'Failed to get question statistics',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('database-status')
+  async getDatabaseStatus() {
+    try {
+      const stats = await this.triviaPopulator.getDatabaseStats();
+      const totalQuestions = await this.enhancedTriviaService.getTotalQuestionCount();
+      
+      return {
+        success: true,
+        data: {
+          totalQuestions,
+          categoryStats: stats,
+          status: totalQuestions > 0 ? 'POPULATED' : 'EMPTY'
+        }
+      };
+    } catch (error) {
+      console.error('Error getting database status:', error);
+      throw new HttpException(
+        'Failed to get database status',
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

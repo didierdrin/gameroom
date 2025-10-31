@@ -4,6 +4,7 @@ import { TriviaController } from './trivia.controller';
 import { TriviaService } from './trivia.service';
 import { EnhancedTriviaService } from './enhanced-trivia.service';
 import { TriviaQuestion, TriviaQuestionSchema } from './schemas/trivia-question.schema';
+import { TriviaPopulatorService } from './trivia-populator.service';
 
 @Module({
   imports: [
@@ -12,18 +13,7 @@ import { TriviaQuestion, TriviaQuestionSchema } from './schemas/trivia-question.
     ])
   ],
   controllers: [TriviaController],
-  providers: [TriviaService, EnhancedTriviaService],
-  exports: [TriviaService, EnhancedTriviaService, MongooseModule], // Export MongooseModule too
+  providers: [TriviaService, EnhancedTriviaService, TriviaPopulatorService],
+  exports: [TriviaService, EnhancedTriviaService, TriviaPopulatorService, MongooseModule], 
 })
 export class TriviaModule {}
-
-// import { Module } from '@nestjs/common';
-// import { TriviaController } from './trivia.controller';
-// import { TriviaService } from './trivia.service';
-
-// @Module({
-//   controllers: [TriviaController],
-//   providers: [TriviaService],  
-//   exports: [TriviaService],    
-// })
-// export class TriviaModule {}

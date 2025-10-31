@@ -89,17 +89,6 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     }
   }, [timer, loading, questions, hasAnswered]);
 
-  // useEffect(() => {
-  //   // Reset game state when gameState indicates a restart
-  //   if (gameState.gameStarted && !gameState.gameOver) {
-  //     setCurrentQ(0);
-  //     setSelected(null);
-  //     setTimer(10);
-  //     setHasAnswered(false);
-  //     setShowAnswerResult(false);
-  //     setShowFireworks(false);
-  //   }
-  // }, [gameState.gameStarted, gameState.gameOver]);
 
 
   useEffect(() => {
@@ -464,95 +453,5 @@ console.log('Current game state:', {
 
 
 
-
-
-
-  
-// Update the submitAnswer function to ensure proper score tracking
-// const submitAnswer = () => {
-//   if (hasAnswered) return;
-  
-//   setHasAnswered(true);
-//   setShowAnswerResult(true);
-  
-//   const currentQuestion = questions[currentQ];
-//   const isCorrect = selected === currentQuestion.correctAnswer;
-  
-//   // Get current score BEFORE submission for debugging
-//   const scoreBefore = gameState.triviaState?.scores?.[currentPlayer] || 0;
-  
-//   console.log('🎯 SUBMITTING ANSWER:', {
-//     question: currentQ + 1,
-//     totalQuestions: questions.length,
-//     questionId: currentQuestion.id,
-//     selected,
-//     correct: currentQuestion.correctAnswer,
-//     isCorrect,
-//     scoreBefore: scoreBefore,
-//     expectedNewScore: isCorrect ? scoreBefore + 5 : scoreBefore
-//   });
-  
-//   socket.emit('triviaAnswer', { 
-//     roomId, 
-//     playerId: currentPlayer, 
-//     qId: currentQuestion.id, 
-//     answer: selected,
-//     correct: currentQuestion.correctAnswer,
-//     isCorrect
-//   });
-
-//   // Wait for server response before moving to next question
-//   setTimeout(() => {
-//     setShowAnswerResult(false);
-    
-//     // Check if this was the last question
-//     if (currentQ + 1 >= questions.length) {
-//       // Last question - wait for all players to finish
-//       console.log('🎯 LAST QUESTION ANSWERED - COMPLETING GAME');
-      
-//       // Get final score from gameState after server updates
-//       const finalScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
-      
-//       console.log('🎯 SENDING COMPLETION:', {
-//         playerId: currentPlayer,
-//         finalScore: finalScore,
-//         totalQuestions: questions.length,
-//         expectedScore: (questions.filter((q, idx) => {
-//           // This is just for debugging - track expected correct answers
-//           return true; // We can't track actual correct answers here, but this helps debug
-//         }).length * 5)
-//       });
-      
-//       // Notify server this player completed
-//       socket.emit('triviaComplete', { 
-//         roomId, 
-//         playerId: currentPlayer, 
-//         score: finalScore,
-//         total: questions.length 
-//       });
-      
-//       // Show fireworks while waiting
-//       setShowFireworks(true);
-//     } else {
-//       // Not last question - move to next
-//       console.log(`🎯 MOVING TO QUESTION ${currentQ + 2} of ${questions.length}`);
-//       nextQuestion();
-//     }
-//   }, 2000);
-// };
-
-
-
-
-// {showAnswerResult && (
-//   <div className={`p-4 mb-4 rounded-lg text-center text-xl font-bold ${
-//     isCorrect ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
-//   }`}>
-//     {isCorrect ? '✓ Correct! +5 points' : '✗ Incorrect!'}
-//     <div className="text-sm mt-2 font-normal">
-//       {currentQ + 1 < questions.length ? 'Moving to next question...' : 'Waiting for other players...'}
-//     </div>
-//   </div>
-// )}
 
 

@@ -1435,43 +1435,6 @@ const handleStartGame = () => {
     }
   };
   
-  // Update the handleRestartGame function
-// const handleRestartGame = () => {
-//   if (!isHost || !socket || !roomId) {
-//     console.error('Cannot restart: not host or missing socket/roomId');
-//     return;
-//   }
-
-//   if (gameType === 'trivia') {
-//     setShowTriviaCategoryModal(true);
-//     return;
-//   }
-  
-//   const confirmRestart = window.confirm(
-//     'Are you sure you want to restart the game? This will start a fresh new round with all current players.'
-//   );
-  
-//   if (confirmRestart) {
-//     console.log('Emitting restartGame event');
-    
-//     // Optimistically reset local state immediately
-//     setGameEnded(false);
-//     setGameEndedMessage('');
-//     setGameState(prev => ({
-//       ...prev,
-//       gameStarted: false,
-//       gameOver: false,
-//       winner: null,
-//       diceValue: 0,
-//       diceRolled: false
-//     }));
-
-   
-    
-//     socket.emit('restartGame', { roomId, hostId: user?.id });
-//   }
-// };
-
 
 
   const sendMessage = (text: string) => {

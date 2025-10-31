@@ -17,7 +17,7 @@ interface TriviaCategorySelectionModalProps {
 
 const TRIVIA_CATEGORIES = [
   { value: 'general', label: 'General Knowledge', icon: '🌍' },
-  { value: 'science', label: 'Science & Nature', icon: '🔬' },
+  { value: 'science', label: 'Science', icon: '🔬' },
   { value: 'history', label: 'History', icon: '📜' },
   { value: 'geography', label: 'Geography', icon: '🗺️' },
   { value: 'entertainment', label: 'Entertainment: Film', icon: '🎬' },
