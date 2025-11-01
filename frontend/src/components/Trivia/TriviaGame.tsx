@@ -357,9 +357,9 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-lg font-bold">{player.score} points</div>
-                        <div className="text-sm text-gray-400">
+                        {/* <div className="text-sm text-gray-400">
                           ~{player.correctAnswers} correct answers
-                        </div>
+                        </div> */}
                       </td>
                     </tr>
                   ))}
