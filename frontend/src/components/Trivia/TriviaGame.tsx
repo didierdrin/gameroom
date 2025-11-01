@@ -61,6 +61,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [localScore, setLocalScore] = useState(0);
+  const [lastPointsEarned, setLastPointsEarned] = useState(0);
 
 // 2. Update useEffect to sync with backend score
 useEffect(() => {
@@ -226,13 +227,15 @@ useEffect(() => {
     const currentQuestion = questions[currentQ];
     const isCorrect = selected === currentQuestion.correctAnswer;
     
-    // Calculate time-based score
     const totalTime = 10;
     const timeRemaining = timer;
     const timePercentage = timeRemaining / totalTime;
     const pointsEarned = isCorrect ? Math.round(5 * timePercentage * 100) / 100 : 0;
     
-    // CRITICAL FIX: Update local score immediately for UI responsiveness
+    // Store for display
+    setLastPointsEarned(pointsEarned);
+    
+    // Update local score immediately
     const currentScore = localScore;
     const newScore = currentScore + pointsEarned;
     if (isCorrect) {
@@ -241,14 +244,10 @@ useEffect(() => {
     
     console.log('🎯 SUBMITTING ANSWER:', {
       question: currentQ + 1,
-      totalQuestions: questions.length,
-      questionId: currentQuestion.id,
       selected,
       correct: currentQuestion.correctAnswer,
       isCorrect,
-      timeRemaining,
       pointsEarned,
-      currentScoreBefore: currentScore,
       newScoreLocal: newScore
     });
     
@@ -263,37 +262,24 @@ useEffect(() => {
       timeRemaining
     });
   
-    // Wait 2 seconds to show result, then move to next question
     setTimeout(() => {
       setShowAnswerResult(false);
       
       if (currentQ + 1 >= questions.length) {
-        console.log('🎯 LAST QUESTION ANSWERED - COMPLETING GAME');
-        
-        // Use LOCAL score for completion to ensure accuracy
-        const finalScore = localScore;
-        
-        console.log('🎯 SENDING COMPLETION:', {
-          playerId: currentPlayer,
-          finalScore: finalScore,
-          totalQuestions: questions.length
-        });
-        
         socket.emit('triviaComplete', { 
           roomId, 
           playerId: currentPlayer, 
-          score: finalScore,
+          score: localScore, // Use local score
           total: questions.length 
         });
-        
         setShowFireworks(true);
         isProcessingRef.current = false;
       } else {
-        console.log(`🎯 MOVING TO QUESTION ${currentQ + 2} of ${questions.length}`);
         nextQuestion();
       }
     }, 2000);
   };
+  
 
 
   const nextQuestion = () => {
@@ -475,9 +461,9 @@ useEffect(() => {
     {isCorrect ? (
       <>
         <div>✓ Correct!</div>
-        {/* <div className="text-lg mt-1">
-          +{pointsEarned} points
-        </div> */}
+        <div className="text-lg mt-1">
+          +{lastPointsEarned} points
+        </div>
         <div className="text-sm text-green-300 mt-1">
           (Answered in {10 - timer}s - {Math.round(((timer) / 10) * 100)}% time bonus)
         </div>
