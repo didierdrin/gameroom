@@ -422,7 +422,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
 
           {/* Dropdown Menu */}
           {isFilterDropdownOpen && (
-            <div className="absolute top-full left-[-120px] mt-2 w-60 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-50 py-2">
+            <div className="absolute top-full left-0 md:left-[-120px] mt-2 w-60 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-50 py-2">
               {/* Header */}
               <div className="px-4 py-2 border-b border-gray-700 flex justify-between items-center">
                 <h3 className="text-white font-medium">Filter Game Rooms</h3>
