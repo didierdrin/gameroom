@@ -612,15 +612,13 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
 
 
 
-  {/* Game board */}
-<div className="mb-4 sm:mb-6 md:mb-8 flex justify-center">
-  <div className="inline-block transform scale-[0.65] xs:scale-75 sm:scale-90 md:scale-100 origin-top transition-transform duration-300">
-    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-4 border-white/20 bg-white/10 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden"
+ {/* Game board */}
+<div className="mb-4 sm:mb-6 md:mb-8 flex justify-center w-full px-2">
+  <div className="w-full max-w-[min(95vw,500px)]">
+    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-4 border-white/20 bg-white/10 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden aspect-square"
       style={{
         gridTemplateColumns: 'repeat(15, minmax(0, 1fr))',
         gridTemplateRows: 'repeat(15, minmax(0, 1fr))',
-        width: 'min(90vw, 400px)',
-        height: 'min(90vw, 400px)'
       }}>
       {renderBoard()}
     </div>
