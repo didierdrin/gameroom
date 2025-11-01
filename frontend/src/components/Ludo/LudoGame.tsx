@@ -333,11 +333,12 @@ const renderBoard = () => {
       board.push(
         <div
           key={`${row}-${col}`}
-          className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 flex items-center justify-center relative transition-all duration-200 hover:scale-105 ${cellColor}`}
+          className={`w-full h-full flex items-center justify-center relative transition-all duration-200 hover:scale-105 ${cellColor}`}
+          style={{ minWidth: 0, minHeight: 0 }} // Ensure cells can shrink properly
         >
           {/* Star icon for specific safe star positions */}
           {isStarPosition && coinsAtPosition.length === 0 && (
-            <Star className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-indigo-600 fill-indigo-300 absolute" />
+            <Star className="w-1/3 h-1/3 text-indigo-600 fill-indigo-300 absolute" />
           )}
           
           {coinsAtPosition.map((coin, idx) => (
@@ -347,23 +348,23 @@ const renderBoard = () => {
                 movableCoins.includes(coin.coinIndex) && 
                 coin.playerIndex === currentPlayer && 
                 players[currentPlayer]?.id === currentPlayerId
-                  ? 'animate-pulse ring-2 sm:ring-4 ring-white ring-offset-1 sm:ring-offset-2 rounded-full'
+                  ? 'animate-pulse ring-1 sm:ring-2 ring-white ring-offset-1 rounded-full'
                   : ''
               }`}
               onClick={() => handleMoveCoin(coin.coinIndex)}
               style={{
                 position: coinsAtPosition.length > 1 ? 'absolute' : 'static',
-                transform: coinsAtPosition.length > 1 ? `translate(${idx * 2}px, ${idx * 2}px)` : 'none',
+                transform: coinsAtPosition.length > 1 ? `translate(${idx * 1}px, ${idx * 1}px)` : 'none',
                 zIndex: idx + 1,
               }}
               title={`${coin.player.name}'s coin ${coin.coinIndex + 1} at position ${coin.pos}`}
             >
               <div className="relative">
                 <MapPin 
-                  className={`w-4 h-4 sm:w-5 sm:h-5 md:w-7 md:h-7 ${getPinColor(coin.player.color)} drop-shadow-lg`}
+                  className={`w-3 h-3 sm:w-4 sm:h-4 md:w-6 md:h-6 ${getPinColor(coin.player.color)} drop-shadow-lg`}
                 />
                 {/* Small number indicator on the pin */}
-                <div className="absolute top-0.5 left-1/2 transform -translate-x-1/2 -translate-y-1 text-white text-[8px] sm:text-xs font-bold">
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 text-white text-[6px] xs:text-[8px] sm:text-xs font-bold">
                   {coin.coinIndex + 1}
                 </div>
               </div>
@@ -611,10 +612,16 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
 
 
 
-      {/* Game board */}
-<div className="mb-4 sm:mb-6 md:mb-8">
-  <div className="inline-block transform scale-75 sm:scale-90 md:scale-100 origin-top transition-transform duration-300">
-    <div className="grid grid-cols-[repeat(15,_1.5rem)] sm:grid-cols-[repeat(15,_2rem)] md:grid-cols-[repeat(15,_2.5rem)] grid-rows-[repeat(15,_1.5rem)] sm:grid-rows-[repeat(15,_2rem)] md:grid-rows-[repeat(15,_2.5rem)] gap-0 border-4 border-white/20 bg-white/10 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden">
+  {/* Game board */}
+<div className="mb-4 sm:mb-6 md:mb-8 flex justify-center">
+  <div className="inline-block transform scale-[0.65] xs:scale-75 sm:scale-90 md:scale-100 origin-top transition-transform duration-300">
+    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-4 border-white/20 bg-white/10 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden"
+      style={{
+        gridTemplateColumns: 'repeat(15, minmax(0, 1fr))',
+        gridTemplateRows: 'repeat(15, minmax(0, 1fr))',
+        width: 'min(90vw, 400px)',
+        height: 'min(90vw, 400px)'
+      }}>
       {renderBoard()}
     </div>
   </div>
