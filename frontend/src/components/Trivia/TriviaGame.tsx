@@ -447,7 +447,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
               {timer}
             </div>
           </div>
-          {selected && !hasAnswered && (
+          {/* {selected && !hasAnswered && (
             <div className="p-4">
               <button
                 className="w-full p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
@@ -456,7 +456,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                 Submit Answer
               </button>
             </div>
-          )}
+          )} */}
         </>
       )}
     </div>
