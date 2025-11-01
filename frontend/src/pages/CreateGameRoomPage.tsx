@@ -110,6 +110,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   const socket = useSocket();
   const { user } = useAuth(); 
   const isMountedRef = useRef(true);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
 
   const gameTypes = [
     { id: 'chess', name: 'Chess', icon: '♟️' },
@@ -181,497 +182,491 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   };
 
 
-  
-const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Promise<boolean> => {
-  if (!socket || !user) {
-    console.error('Missing socket or user for auto-join');
-    return false;
-  }
 
-  try {
-    console.log('Auto-joining host as player to room:', gameRoomId);
-    const myId = String(user.id);
-    
-    const joinPayload = {
-      roomId: gameRoomId,
-      playerId: myId,
-      playerName: user.username,
-      joinAsPlayer: true,
-      isHost: true,
-      password: roomPassword
-    };
-
-    console.log('Join payload:', joinPayload);
-
-    const joinResult = await new Promise<boolean>((resolve) => {
-      const timeout = setTimeout(() => {
-        console.warn('Host auto-join timed out');
-        cleanupListeners();
-        resolve(false);
-      }, 30000);
-
-      const handleJoinSuccess = (data: any) => {
-        console.log('Host successfully joined as player:', data);
-        clearTimeout(timeout);
-        cleanupListeners();
-        resolve(true);
-      };
-
-      const handlePlayerJoined = (data: any) => {
-        if (data.playerId === myId) {
-          console.log('Host player joined event received:', data);
-          clearTimeout(timeout);
-          cleanupListeners();
-          resolve(true);
-        }
-      };
-
-      const handleJoinError = (error: any) => {
-        console.error('Host auto-join failed:', error);
-        clearTimeout(timeout);
-        cleanupListeners();
-        resolve(false);
-      };
-
-      const handleError = (error: any) => {
-        console.error('General error during host auto-join:', error);
-        clearTimeout(timeout);
-        cleanupListeners();
-        resolve(false);
-      };
-
-      const cleanupListeners = () => {
-        socket.off('joinGameSuccess', handleJoinSuccess);
-        socket.off('playerJoined', handlePlayerJoined);
-        socket.off('joinGameError', handleJoinError);
-        socket.off('error', handleError);
-      };
-
-      socket.on('joinGameSuccess', handleJoinSuccess);
-      socket.on('playerJoined', handlePlayerJoined);
-      socket.on('joinGameError', handleJoinError);
-      socket.on('error', handleError);
-
-      socket.emit('joinGame', joinPayload);
-    });
-
-    if (joinResult) {
-      console.log('Host successfully auto-joined as player');
-
-      // ONLY join UNO game if the game type is uno and we haven't joined already
-      // Remove the automatic UNO join here - let LiveGameRoomPage handle it
-      console.log('Game room joined successfully. UNO join will be handled in game room page.');
-    } else {
-      console.warn('Host auto-join failed or timed out');
-    }
-
-    return joinResult;
-  } catch (error) {
-    console.error('Error in joinHostAsPlayer:', error);
-    return false;
-  }
-};
-
-
-  // // Join host as player
-  // const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Promise<boolean> => {
-  //   if (!socket || !user) {
-  //     console.error('Missing socket or user for auto-join');
-  //     return false;
-  //   }
-
-  //   try {
-  //     console.log('Auto-joining host as player to room:', gameRoomId);
-  //     const myId = String(user.id);
-      
-  //     const joinPayload = {
-  //       roomId: gameRoomId,
-  //       playerId: myId,
-  //       playerName: user.username,
-  //       joinAsPlayer: true,
-  //       isHost: true,
-  //       password: roomPassword
-  //     };
-
-  //     console.log('Join payload:', joinPayload);
-
-  //     const joinResult = await new Promise<boolean>((resolve) => {
-  //       const timeout = setTimeout(() => {
-  //         console.warn('Host auto-join timed out');
-  //         cleanupListeners();
-  //         resolve(false);
-  //       }, 30000);
-
-  //       const handleJoinSuccess = (data: any) => {
-  //         console.log('Host successfully joined as player:', data);
-  //         clearTimeout(timeout);
-  //         cleanupListeners();
-  //         resolve(true);
-  //       };
-
-  //       const handlePlayerJoined = (data: any) => {
-  //         if (data.playerId === myId) {
-  //           console.log('Host player joined event received:', data);
-  //           clearTimeout(timeout);
-  //           cleanupListeners();
-  //           resolve(true);
-  //         }
-  //       };
-
-  //       const handleJoinError = (error: any) => {
-  //         console.error('Host auto-join failed:', error);
-  //         clearTimeout(timeout);
-  //         cleanupListeners();
-  //         resolve(false);
-  //       };
-
-  //       const handleError = (error: any) => {
-  //         console.error('General error during host auto-join:', error);
-  //         clearTimeout(timeout);
-  //         cleanupListeners();
-  //         resolve(false);
-  //       };
-
-  //       const cleanupListeners = () => {
-  //         socket.off('joinGameSuccess', handleJoinSuccess);
-  //         socket.off('playerJoined', handlePlayerJoined);
-  //         socket.off('joinGameError', handleJoinError);
-  //         socket.off('error', handleError);
-  //       };
-
-  //       socket.on('joinGameSuccess', handleJoinSuccess);
-  //       socket.on('playerJoined', handlePlayerJoined);
-  //       socket.on('joinGameError', handleJoinError);
-  //       socket.on('error', handleError);
-
-  //       socket.emit('joinGame', joinPayload);
-  //     });
-
-  //     if (joinResult) {
-  //       console.log('Host successfully auto-joined as player');
-
-  //       if (gameType === 'uno') {
-  //         console.log('Also joining UNO game for host:', myId);
-  //         socket.emit('unoJoinGame', {
-  //           roomId: gameRoomId,
-  //           playerId: myId,
-  //           playerName: user.username
-  //         });
-  //       }
-      
-
-  //     } else {
-  //       console.warn('Host auto-join failed or timed out');
-  //     }
-
-  //     return joinResult;
-  //   } catch (error) {
-  //     console.error('Error in joinHostAsPlayer:', error);
-  //     return false;
-  //   }
-  // };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-  
-    // Validate required fields
-    if (!gameType) {
-      alert('Please select a game type');
-      return;
-    }
-  
-    if (!roomName.trim()) {
-      alert('Please enter a room name');
-      return;
-    }
-  
-    if (!user) {
-      alert('Please login to create a game room');
-      navigate('/login');
-      return;
-    }
-  
-    if (privacy === 'private' && !password.trim()) {
-      alert('Please enter a password for private room');
-      return;
-    }
-  
-    if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
-      alert('Please select both date and time for scheduled games');
-      return;
-    }
-  
-    if (!socket) {
-      alert("Connection error. Please refresh and try again.");
-      return;
-    }
-  
-    setIsLoading(true);
-  
-    const scheduledTimeCombined = (scheduledDate && scheduledTime)
-      ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
-      : undefined;
-  
-    // Create the base game room data
-    const gameRoomData: any = {
-      name: roomName,
-      gameType: gameType.trim().toLowerCase(),
-      maxPlayers: playerLimit,
-      isPrivate: privacy === 'private' || privacy === 'inviteOnly',
-      password: privacy === 'private' ? password : undefined,
-      hostId: String(user.id),
-      hostName: user.username,
-      scheduledTimeCombined,
-      description: description.trim() || undefined,
-      enableVideoChat,
-      enableVoiceChat,
-      allowSpectators,
-    };
-  
-    // Add trivia settings if game type is trivia - FIXED VERSION
-    if (gameType === 'trivia') {
-      gameRoomData.triviaSettings = {
-        questionCount: triviaQuestionCount,
-        difficulty: triviaDifficulty,
-        category: triviaCategory,
-      };
-  
-      console.log('Creating trivia game with settings:', gameRoomData.triviaSettings);
+  const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Promise<boolean> => {
+    if (!socket || !user) {
+      console.error('Missing socket or user for auto-join');
+      return false;
     }
   
     try {
-      if (!socket) {
-        throw new Error("Connection error. Please refresh and try again.");
+      setIsJoiningRoom(true); // Start loading
+      console.log('Auto-joining host as player to room:', gameRoomId);
+      const myId = String(user.id);
+      
+      const joinPayload = {
+        roomId: gameRoomId,
+        playerId: myId,
+        playerName: user.username,
+        joinAsPlayer: true,
+        isHost: true,
+        password: roomPassword
+      };
+  
+      console.log('Join payload:', joinPayload);
+  
+      const joinResult = await new Promise<boolean>((resolve) => {
+        const timeout = setTimeout(() => {
+          console.warn('Host auto-join timed out');
+          cleanupListeners();
+          resolve(false);
+        }, 30000);
+  
+        const handleJoinSuccess = (data: any) => {
+          console.log('Host successfully joined as player:', data);
+          clearTimeout(timeout);
+          cleanupListeners();
+          resolve(true);
+        };
+  
+        const handlePlayerJoined = (data: any) => {
+          if (data.playerId === myId) {
+            console.log('Host player joined event received:', data);
+            clearTimeout(timeout);
+            cleanupListeners();
+            resolve(true);
+          }
+        };
+  
+        const handleJoinError = (error: any) => {
+          console.error('Host auto-join failed:', error);
+          clearTimeout(timeout);
+          cleanupListeners();
+          resolve(false);
+        };
+  
+        const handleError = (error: any) => {
+          console.error('General error during host auto-join:', error);
+          clearTimeout(timeout);
+          cleanupListeners();
+          resolve(false);
+        };
+  
+        const cleanupListeners = () => {
+          socket.off('joinGameSuccess', handleJoinSuccess);
+          socket.off('playerJoined', handlePlayerJoined);
+          socket.off('joinGameError', handleJoinError);
+          socket.off('error', handleError);
+        };
+  
+        socket.on('joinGameSuccess', handleJoinSuccess);
+        socket.on('playerJoined', handlePlayerJoined);
+        socket.on('joinGameError', handleJoinError);
+        socket.on('error', handleError);
+  
+        socket.emit('joinGame', joinPayload);
+      });
+  
+      if (joinResult) {
+        console.log('Host successfully auto-joined as player');
+        console.log('Game room joined successfully. UNO join will be handled in game room page.');
+      } else {
+        console.warn('Host auto-join failed or timed out');
       }
   
-      let responded = false;
-      const timeout = setTimeout(() => {
-        if (responded || !isMountedRef.current) return;
-        responded = true;
-        setIsLoading(false);
-        alert('Request timed out. Please try again.');
-      }, 15000);
-  
-      const handleGameCreated = async (game: any) => {
-        if (responded || !isMountedRef.current) return;
-        responded = true;
-        clearTimeout(timeout);
-        setIsLoading(false);
-  
-        console.log('Game created successfully:', game);
-  
-        setCreatedGameData(game);
-  
-        // Automatically join the host as a player for all games
-        if (game?.roomId) {
-          console.log('Attempting to auto-join host as player...');
-  
-          await new Promise(resolve => setTimeout(resolve, 3000));
-  
-          const joinSuccess = await joinHostAsPlayer(
-            game.roomId,
-            privacy === 'private' ? password : undefined
-          );
-  
-          if (!joinSuccess) {
-            console.warn('Host auto-join failed, but continuing with game creation');
-          } else {
-            console.log('Host successfully joined as player');
-          }
-        }
-  
-        // Check if this is an invite-only room for playNow mode
-        if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
-          const baseUrl = window.location.origin;
-          const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
-          setInviteUrl(gameUrl);
-          setShowInviteModal(true);
-        } else {
-          if (gameMode === 'playNow' && game?.roomId) {
-            navigate(`/game-room/${game.roomId}`, { replace: true });
-          } else {
-            navigate('/my-game-rooms', { replace: true });
-            console.log('Game scheduled successfully!');
-          }
-  
-          if (onGameCreated) onGameCreated();
-        }
-      };
-  
-      const handleError = (error: any) => {
-        if (responded || !isMountedRef.current) return;
-        responded = true;
-        clearTimeout(timeout);
-        setIsLoading(false);
-        console.error('Game creation error:', error);
-        alert(error.message || 'Failed to create game room');
-      };
-  
-      socket.once('gameCreated', handleGameCreated);
-      socket.once('error', handleError);
-  
-      console.log('Emitting createGame with data:', gameRoomData);
-      socket.emit('createGame', gameRoomData);
-  
+      return joinResult;
     } catch (error) {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-        alert('Failed to create game room. Please try again.');
-        console.error('Create game error:', error);
-      }
+      console.error('Error in joinHostAsPlayer:', error);
+      return false;
+    } finally {
+      setIsJoiningRoom(false); // Stop loading
     }
   };
 
-  // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-//   e.preventDefault();
-
-//   // Validate required fields
-//   if (!gameType) {
-//     alert('Please select a game type');
-//     return;
-//   }
-
-//   if (!roomName.trim()) {
-//     alert('Please enter a room name');
-//     return;
-//   }
-
-//   if (!user) {
-//     alert('Please login to create a game room');
-//     navigate('/login');
-//     return;
-//   }
-
-//   if (privacy === 'private' && !password.trim()) {
-//     alert('Please enter a password for private room');
-//     return;
-//   }
-
-//   if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
-//     alert('Please select both date and time for scheduled games');
-//     return;
-//   }
-
-//   if (!socket) {
-//     alert("Connection error. Please refresh and try again.");
-//     return;
-//   }
-
-//   setIsLoading(true);
-
-//   const scheduledTimeCombined = (scheduledDate && scheduledTime)
-//     ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
-//     : undefined;
-
-//   // Create the base game room data
-//   const gameRoomData: any = {
-//     name: roomName,
-//     gameType: gameType.trim().toLowerCase(),
-//     maxPlayers: playerLimit,
-//     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
-//     password: privacy === 'private' ? password : undefined,
-//     hostId: String(user.id),
-//     hostName: user.username,
-//     scheduledTimeCombined,
-//     description: description.trim() || undefined,
-//     enableVideoChat,
-//     enableVoiceChat,
-//     allowSpectators,
-//   };
-
-//   // Add trivia settings if game type is trivia - FIXED VERSION
-//   if (gameType === 'trivia') {
-//     gameRoomData.triviaSettings = {
-//       questionCount: triviaQuestionCount,
-//       difficulty: triviaDifficulty,
-//       category: triviaCategory,
-//     };
-    
-//     console.log('Creating trivia game with settings:', gameRoomData.triviaSettings);
+  
+// const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Promise<boolean> => {
+//   if (!socket || !user) {
+//     console.error('Missing socket or user for auto-join');
+//     return false;
 //   }
 
 //   try {
-//     if (!socket) {
-//       throw new Error("Connection error. Please refresh and try again.");
-//     }
-
-//     let responded = false;
-//     const timeout = setTimeout(() => {
-//       if (responded || !isMountedRef.current) return;
-//       responded = true;
-//       setIsLoading(false);
-//       alert('Request timed out. Please try again.');
-//     }, 15000);
-
-//     const handleGameCreated = async (game: any) => {
-//       if (responded || !isMountedRef.current) return;
-//       responded = true;
-//       clearTimeout(timeout);
-//       setIsLoading(false);
-      
-//       console.log('Game created successfully:', game);
-      
-//       setCreatedGameData(game);
-      
-//       // Automatically join the host as a player for all games
-//       if (game?.roomId) {
-//         console.log('Attempting to auto-join host as player...');
-        
-//         await new Promise(resolve => setTimeout(resolve, 3000));
-        
-//         const joinSuccess = await joinHostAsPlayer(
-//           game.roomId, 
-//           privacy === 'private' ? password : undefined
-//         );
-        
-//         if (!joinSuccess) {
-//           console.warn('Host auto-join failed, but continuing with game creation');
-//         } else {
-//           console.log('Host successfully joined as player');
-//         }
-//       }
-      
-//       // Check if this is an invite-only room for playNow mode
-//       if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
-//         const baseUrl = window.location.origin;
-//         const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
-//         setInviteUrl(gameUrl);
-//         setShowInviteModal(true);
-//       } else {
-//         if (gameMode === 'playNow' && game?.roomId) {
-//           navigate(`/game-room/${game.roomId}`);
-//         } else {
-//           navigate('/my-game-rooms');
-//           console.log('Game scheduled successfully!');
-//         }
-        
-//         if (onGameCreated) onGameCreated();
-//       }
-//     };
-
-//     const handleError = (error: any) => {
-//       if (responded || !isMountedRef.current) return;
-//       responded = true;
-//       clearTimeout(timeout);
-//       setIsLoading(false);
-//       console.error('Game creation error:', error);
-//       alert(error.message || 'Failed to create game room');
-//     };
-
-//     socket.once('gameCreated', handleGameCreated);
-//     socket.once('error', handleError);
+//     console.log('Auto-joining host as player to room:', gameRoomId);
+//     const myId = String(user.id);
     
-//     console.log('Emitting createGame with data:', gameRoomData);
-//     socket.emit('createGame', gameRoomData);
+//     const joinPayload = {
+//       roomId: gameRoomId,
+//       playerId: myId,
+//       playerName: user.username,
+//       joinAsPlayer: true,
+//       isHost: true,
+//       password: roomPassword
+//     };
 
-//   } catch (error) {
-//     if (isMountedRef.current) {
-//       setIsLoading(false);
-//       alert('Failed to create game room. Please try again.');
-//       console.error('Create game error:', error);
+//     console.log('Join payload:', joinPayload);
+
+//     const joinResult = await new Promise<boolean>((resolve) => {
+//       const timeout = setTimeout(() => {
+//         console.warn('Host auto-join timed out');
+//         cleanupListeners();
+//         resolve(false);
+//       }, 30000);
+
+//       const handleJoinSuccess = (data: any) => {
+//         console.log('Host successfully joined as player:', data);
+//         clearTimeout(timeout);
+//         cleanupListeners();
+//         resolve(true);
+//       };
+
+//       const handlePlayerJoined = (data: any) => {
+//         if (data.playerId === myId) {
+//           console.log('Host player joined event received:', data);
+//           clearTimeout(timeout);
+//           cleanupListeners();
+//           resolve(true);
+//         }
+//       };
+
+//       const handleJoinError = (error: any) => {
+//         console.error('Host auto-join failed:', error);
+//         clearTimeout(timeout);
+//         cleanupListeners();
+//         resolve(false);
+//       };
+
+//       const handleError = (error: any) => {
+//         console.error('General error during host auto-join:', error);
+//         clearTimeout(timeout);
+//         cleanupListeners();
+//         resolve(false);
+//       };
+
+//       const cleanupListeners = () => {
+//         socket.off('joinGameSuccess', handleJoinSuccess);
+//         socket.off('playerJoined', handlePlayerJoined);
+//         socket.off('joinGameError', handleJoinError);
+//         socket.off('error', handleError);
+//       };
+
+//       socket.on('joinGameSuccess', handleJoinSuccess);
+//       socket.on('playerJoined', handlePlayerJoined);
+//       socket.on('joinGameError', handleJoinError);
+//       socket.on('error', handleError);
+
+//       socket.emit('joinGame', joinPayload);
+//     });
+
+//     if (joinResult) {
+//       console.log('Host successfully auto-joined as player');
+
+//       // ONLY join UNO game if the game type is uno and we haven't joined already
+//       // Remove the automatic UNO join here - let LiveGameRoomPage handle it
+//       console.log('Game room joined successfully. UNO join will be handled in game room page.');
+//     } else {
+//       console.warn('Host auto-join failed or timed out');
 //     }
+
+//     return joinResult;
+//   } catch (error) {
+//     console.error('Error in joinHostAsPlayer:', error);
+//     return false;
 //   }
 // };
+
+
+
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+
+  // Validate required fields
+  if (!gameType) {
+    alert('Please select a game type');
+    return;
+  }
+
+  if (!roomName.trim()) {
+    alert('Please enter a room name');
+    return;
+  }
+
+  if (!user) {
+    alert('Please login to create a game room');
+    navigate('/login');
+    return;
+  }
+
+  if (privacy === 'private' && !password.trim()) {
+    alert('Please enter a password for private room');
+    return;
+  }
+
+  if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
+    alert('Please select both date and time for scheduled games');
+    return;
+  }
+
+  if (!socket) {
+    alert("Connection error. Please refresh and try again.");
+    return;
+  }
+
+  setIsLoading(true);
+
+  const scheduledTimeCombined = (scheduledDate && scheduledTime)
+    ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+    : undefined;
+
+  const gameRoomData: any = {
+    name: roomName,
+    gameType: gameType.trim().toLowerCase(),
+    maxPlayers: playerLimit,
+    isPrivate: privacy === 'private' || privacy === 'inviteOnly',
+    password: privacy === 'private' ? password : undefined,
+    hostId: String(user.id),
+    hostName: user.username,
+    scheduledTimeCombined,
+    description: description.trim() || undefined,
+    enableVideoChat,
+    enableVoiceChat,
+    allowSpectators,
+  };
+
+  if (gameType === 'trivia') {
+    gameRoomData.triviaSettings = {
+      questionCount: triviaQuestionCount,
+      difficulty: triviaDifficulty,
+      category: triviaCategory,
+    };
+  }
+
+  try {
+    if (!socket) {
+      throw new Error("Connection error. Please refresh and try again.");
+    }
+
+    let responded = false;
+    const timeout = setTimeout(() => {
+      if (responded || !isMountedRef.current) return;
+      responded = true;
+      setIsLoading(false);
+      alert('Request timed out. Please try again.');
+    }, 15000);
+
+    const handleGameCreated = async (game: any) => {
+      if (responded || !isMountedRef.current) return;
+      responded = true;
+      clearTimeout(timeout);
+      
+      console.log('Game created successfully:', game);
+      setCreatedGameData(game);
+
+      // For playNow mode, auto-join before navigation
+      if (gameMode === 'playNow' && game?.roomId) {
+        console.log('Attempting to auto-join host as player...');
+        
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        const joinSuccess = await joinHostAsPlayer(
+          game.roomId,
+          privacy === 'private' ? password : undefined
+        );
+        
+        if (!joinSuccess) {
+          console.warn('Host auto-join failed, but continuing with game creation');
+          setIsLoading(false);
+        }
+      } else {
+        // For scheduled games, stop loading immediately
+        setIsLoading(false);
+      }
+
+      // Handle navigation based on privacy and mode
+      if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
+        const baseUrl = window.location.origin;
+        const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
+        setInviteUrl(gameUrl);
+        setShowInviteModal(true);
+      } else {
+        if (gameMode === 'playNow' && game?.roomId) {
+          navigate(`/game-room/${game.roomId}`, { replace: true });
+        } else {
+          navigate('/my-game-rooms', { replace: true });
+          console.log('Game scheduled successfully!');
+        }
+
+        if (onGameCreated) onGameCreated();
+      }
+    };
+
+    const handleError = (error: any) => {
+      if (responded || !isMountedRef.current) return;
+      responded = true;
+      clearTimeout(timeout);
+      setIsLoading(false);
+      setIsJoiningRoom(false);
+      console.error('Game creation error:', error);
+      alert(error.message || 'Failed to create game room');
+    };
+
+    socket.once('gameCreated', handleGameCreated);
+    socket.once('error', handleError);
+
+    console.log('Emitting createGame with data:', gameRoomData);
+    socket.emit('createGame', gameRoomData);
+
+  } catch (error) {
+    if (isMountedRef.current) {
+      setIsLoading(false);
+      setIsJoiningRoom(false);
+      alert('Failed to create game room. Please try again.');
+      console.error('Create game error:', error);
+    }
+  }
+};
+
+  // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  //   e.preventDefault();
+  
+  //   // Validate required fields
+  //   if (!gameType) {
+  //     alert('Please select a game type');
+  //     return;
+  //   }
+  
+  //   if (!roomName.trim()) {
+  //     alert('Please enter a room name');
+  //     return;
+  //   }
+  
+  //   if (!user) {
+  //     alert('Please login to create a game room');
+  //     navigate('/login');
+  //     return;
+  //   }
+  
+  //   if (privacy === 'private' && !password.trim()) {
+  //     alert('Please enter a password for private room');
+  //     return;
+  //   }
+  
+  //   if (gameMode === 'schedule' && (!scheduledDate || !scheduledTime)) {
+  //     alert('Please select both date and time for scheduled games');
+  //     return;
+  //   }
+  
+  //   if (!socket) {
+  //     alert("Connection error. Please refresh and try again.");
+  //     return;
+  //   }
+  
+  //   setIsLoading(true);
+  
+  //   const scheduledTimeCombined = (scheduledDate && scheduledTime)
+  //     ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+  //     : undefined;
+  
+  //   // Create the base game room data
+  //   const gameRoomData: any = {
+  //     name: roomName,
+  //     gameType: gameType.trim().toLowerCase(),
+  //     maxPlayers: playerLimit,
+  //     isPrivate: privacy === 'private' || privacy === 'inviteOnly',
+  //     password: privacy === 'private' ? password : undefined,
+  //     hostId: String(user.id),
+  //     hostName: user.username,
+  //     scheduledTimeCombined,
+  //     description: description.trim() || undefined,
+  //     enableVideoChat,
+  //     enableVoiceChat,
+  //     allowSpectators,
+  //   };
+  
+  //   // Add trivia settings if game type is trivia - FIXED VERSION
+  //   if (gameType === 'trivia') {
+  //     gameRoomData.triviaSettings = {
+  //       questionCount: triviaQuestionCount,
+  //       difficulty: triviaDifficulty,
+  //       category: triviaCategory,
+  //     };
+  
+  //     console.log('Creating trivia game with settings:', gameRoomData.triviaSettings);
+  //   }
+  
+  //   try {
+  //     if (!socket) {
+  //       throw new Error("Connection error. Please refresh and try again.");
+  //     }
+  
+  //     let responded = false;
+  //     const timeout = setTimeout(() => {
+  //       if (responded || !isMountedRef.current) return;
+  //       responded = true;
+  //       setIsLoading(false);
+  //       alert('Request timed out. Please try again.');
+  //     }, 15000);
+  
+  //     const handleGameCreated = async (game: any) => {
+  //       if (responded || !isMountedRef.current) return;
+  //       responded = true;
+  //       clearTimeout(timeout);
+  //       setIsLoading(false);
+  
+  //       console.log('Game created successfully:', game);
+  
+  //       setCreatedGameData(game);
+  
+  //       // Automatically join the host as a player for all games
+  //       if (game?.roomId) {
+  //         console.log('Attempting to auto-join host as player...');
+  
+  //         await new Promise(resolve => setTimeout(resolve, 3000));
+  
+  //         const joinSuccess = await joinHostAsPlayer(
+  //           game.roomId,
+  //           privacy === 'private' ? password : undefined
+  //         );
+  
+  //         if (!joinSuccess) {
+  //           console.warn('Host auto-join failed, but continuing with game creation');
+  //         } else {
+  //           console.log('Host successfully joined as player');
+  //         }
+  //       }
+  
+  //       // Check if this is an invite-only room for playNow mode
+  //       if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
+  //         const baseUrl = window.location.origin;
+  //         const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
+  //         setInviteUrl(gameUrl);
+  //         setShowInviteModal(true);
+  //       } else {
+  //         if (gameMode === 'playNow' && game?.roomId) {
+  //           navigate(`/game-room/${game.roomId}`, { replace: true });
+  //         } else {
+  //           navigate('/my-game-rooms', { replace: true });
+  //           console.log('Game scheduled successfully!');
+  //         }
+  
+  //         if (onGameCreated) onGameCreated();
+  //       }
+  //     };
+  
+  //     const handleError = (error: any) => {
+  //       if (responded || !isMountedRef.current) return;
+  //       responded = true;
+  //       clearTimeout(timeout);
+  //       setIsLoading(false);
+  //       console.error('Game creation error:', error);
+  //       alert(error.message || 'Failed to create game room');
+  //     };
+  
+  //     socket.once('gameCreated', handleGameCreated);
+  //     socket.once('error', handleError);
+  
+  //     console.log('Emitting createGame with data:', gameRoomData);
+  //     socket.emit('createGame', gameRoomData);
+  
+  //   } catch (error) {
+  //     if (isMountedRef.current) {
+  //       setIsLoading(false);
+  //       alert('Failed to create game room. Please try again.');
+  //       console.error('Create game error:', error);
+  //     }
+  //   }
+  // };
+
+ 
 
   return (
     <div className="p-6 overflow-y-auto h-screen pb-20">
@@ -681,6 +676,9 @@ const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Prom
       />
       
       <form onSubmit={handleSubmit} className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
+       {/* Add pointer-events-none when loading */}
+  <div className={isLoading || isJoiningRoom ? 'pointer-events-none opacity-60' : ''}>
+    
         {/* Game Type Selection */}
         <div className="mb-8">
           <label className="block text-white mb-3 font-medium">
@@ -1061,8 +1059,31 @@ const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Prom
           </div>
         </div>
 
+
+
+            {/* Submit Button */}
+        <button 
+  type="submit" 
+  className={`px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center ${
+    (isLoading || isJoiningRoom) ? 'opacity-75 cursor-not-allowed' : ''
+  }`}
+  disabled={isLoading || isJoiningRoom}
+>
+  {(isLoading || isJoiningRoom) ? (
+    <>
+      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      {isJoiningRoom ? 'Joining...' : (gameMode === 'playNow' ? 'Creating...' : 'Scheduling...')}
+    </>
+  ) : (
+    gameMode === 'playNow' ? 'Create & Start Game' : 'Schedule Game'
+  )}
+</button>
+
         {/* Submit Button */}
-        <div className="flex justify-end">
+        {/* <div className="flex justify-end">
           <button 
             type="submit" 
             className={`px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center ${
@@ -1082,8 +1103,44 @@ const joinHostAsPlayer = async (gameRoomId: string, roomPassword?: string): Prom
               gameMode === 'playNow' ? 'Create & Start Game' : 'Schedule Game'
             )}
           </button>
+        </div> */}
         </div>
       </form>
+
+
+      {/* Loading Overlay - Similar to GameRoomJoinModal */}
+{(isLoading || isJoiningRoom) && (
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="text-center">
+      <svg 
+        className="animate-spin h-12 w-12 text-purple-500 mx-auto mb-4" 
+        xmlns="http://www.w3.org/2000/svg" 
+        fill="none" 
+        viewBox="0 0 24 24"
+      >
+        <circle 
+          className="opacity-25" 
+          cx="12" 
+          cy="12" 
+          r="10" 
+          stroke="currentColor" 
+          strokeWidth="4"
+        ></circle>
+        <path 
+          className="opacity-75" 
+          fill="currentColor" 
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        ></path>
+      </svg>
+      <p className="text-white text-lg font-medium">
+        {isJoiningRoom ? 'Joining room...' : 'Creating game room...'}
+      </p>
+      <p className="text-gray-400 text-sm mt-2">
+        Please wait, this may take a moment
+      </p>
+    </div>
+  </div>
+)}
 
       {/* Invite URL Modal */}
       {showInviteModal && (

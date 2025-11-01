@@ -1,5 +1,5 @@
 // /components/TriviaGame.tsx 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { SocketType } from '../../SocketContext';
 import { Fireworks } from '../UI/Fireworks';
 import { useUserData } from '../../hooks/useUserData';
@@ -55,6 +55,10 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   const [showFireworks, setShowFireworks] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [showAnswerResult, setShowAnswerResult] = useState(false);
+  
+  // Use ref to track if we're currently processing an answer
+  const isProcessingRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load questions from gameState WITHOUT any shuffling
   useEffect(() => {
@@ -72,29 +76,48 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     }
   }, [gameState.triviaState?.questions]);
 
+  // Timer effect - handle countdown and auto-submit
   useEffect(() => {
-    if (timer > 0 && !loading && questions.length > 0 && !hasAnswered) {
-      const timeout = setTimeout(() => setTimer(timer - 1), 1000);
-      return () => clearTimeout(timeout);
-    } else if (timer === 0 && !hasAnswered) {
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    if (timer > 0 && !loading && questions.length > 0 && !hasAnswered && !isProcessingRef.current) {
+      timeoutRef.current = setTimeout(() => {
+        setTimer(timer - 1);
+      }, 1000);
+    } else if (timer === 0 && !hasAnswered && !isProcessingRef.current) {
+      // Auto-submit when timer reaches 0
+      console.log('⏰ Timer expired - auto-submitting answer');
       submitAnswer();
     }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
   }, [timer, loading, questions, hasAnswered]);
 
+  // Reset game state when game restarts
   useEffect(() => {
-    // Reset game state when gameState indicates a restart
     if (gameState.gameStarted && !gameState.gameOver) {
       console.log('Resetting trivia game state for new round', {
         questionsCount: gameState.triviaState?.questions?.length,
         currentQuestionIndex: gameState.triviaState?.currentQuestionIndex
       });
       
+      // Reset all state
       setCurrentQ(0);
       setSelected(null);
       setTimer(10);
       setHasAnswered(false);
       setShowAnswerResult(false);
       setShowFireworks(false);
+      isProcessingRef.current = false;
       
       // If we have new questions, load them WITHOUT shuffling
       if (gameState.triviaState?.questions) {
@@ -103,11 +126,16 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
         console.log('New questions loaded for restarted game:', questionsFromBackend.length);
       }
     }
-  }, [gameState.gameStarted, gameState.gameOver, gameState.triviaState?.questions]);
+  }, [gameState.gameStarted, gameState.gameOver]);
 
   const submitAnswer = () => {
-    if (hasAnswered) return;
+    // Prevent multiple simultaneous submissions
+    if (isProcessingRef.current || hasAnswered) {
+      console.log('⚠️ Already processing answer, skipping submission');
+      return;
+    }
     
+    isProcessingRef.current = true;
     setHasAnswered(true);
     setShowAnswerResult(true);
     
@@ -122,7 +150,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     
     const scoreBefore = gameState.triviaState?.scores?.[currentPlayer] || 0;
     
-    console.log('🎯 SUBMITTING ANSWER WITH TIME-BASED SCORING:', {
+    console.log('🎯 SUBMITTING ANSWER:', {
       question: currentQ + 1,
       totalQuestions: questions.length,
       questionId: currentQuestion.id,
@@ -130,10 +158,8 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       correct: currentQuestion.correctAnswer,
       isCorrect,
       timeRemaining,
-      timePercentage: (timePercentage * 100).toFixed(1) + '%',
       pointsEarned,
-      scoreBefore: scoreBefore,
-      expectedNewScore: scoreBefore + pointsEarned
+      scoreBefore
     });
     
     socket.emit('triviaAnswer', { 
@@ -147,6 +173,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       timeRemaining
     });
 
+    // Wait 2 seconds to show result, then move to next question
     setTimeout(() => {
       setShowAnswerResult(false);
       
@@ -169,11 +196,32 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
         });
         
         setShowFireworks(true);
+        isProcessingRef.current = false;
       } else {
         console.log(`🎯 MOVING TO QUESTION ${currentQ + 2} of ${questions.length}`);
         nextQuestion();
       }
     }, 2000);
+  };
+
+  const nextQuestion = () => {
+    if (currentQ + 1 < questions.length) {
+      console.log(`➡️ Moving from question ${currentQ + 1} to ${currentQ + 2}`);
+      
+      // Update to next question
+      const nextQuestionIndex = currentQ + 1;
+      setCurrentQ(nextQuestionIndex);
+      setTimer(10);
+      setSelected(null);
+      setHasAnswered(false);
+      setShowAnswerResult(false);
+      isProcessingRef.current = false;
+      
+      console.log(`✅ Now on question ${nextQuestionIndex + 1}/${questions.length}`);
+    } else {
+      console.log('⚠️ No more questions to move to');
+      isProcessingRef.current = false;
+    }
   };
 
   useEffect(() => {
@@ -206,8 +254,6 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
         const playerInfo = gameState.players.find((p: any) => p.id === playerId);
         const correctAnswers = Math.floor((playerScore as number) / 5);
         
-        console.log(`🏆 PLAYER SCORE: ${playerId} = ${playerScore} (${correctAnswers} correct)`);
-        
         return {
           _id: playerId,
           score: playerScore as number,
@@ -219,16 +265,6 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 
     console.log('🏆 FINAL LEADERBOARD:', leaderboard);
     return leaderboard;
-  };
-
-  const nextQuestion = () => {
-    if (currentQ + 1 < questions.length) {
-      setCurrentQ(currentQ + 1);
-      setTimer(10);
-      setSelected(null);
-      setHasAnswered(false);
-      setShowAnswerResult(false);
-    }
   };
 
   const leaderboardData = gameState.gameOver ? getLeaderboardData() : [];
@@ -257,10 +293,11 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   const isCorrect = selected === currentQuestion.correctAnswer;
 
   console.log('Current game state:', {
+    currentQuestionIndex: currentQ,
+    totalQuestions: questions.length,
     gameOver: gameState.gameOver,
-    scores: gameState.triviaState?.scores,
-    completedPlayers: gameState.triviaState?.completedPlayers,
-    totalPlayers: gameState.players.length
+    hasAnswered,
+    timer
   });
 
   return (
@@ -352,7 +389,12 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                     </div>
                   </>
                 ) : (
-                  '✗ Incorrect!'
+                  <>
+                    <div>✗ Incorrect!</div>
+                    <div className="text-sm mt-2">
+                      Correct answer: {currentQuestion.correctAnswer}
+                    </div>
+                  </>
                 )}
                 <div className="text-sm mt-2 font-normal">
                   {currentQ + 1 < questions.length ? 'Moving to next question...' : 'Waiting for other players...'}
@@ -415,7 +457,6 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 // import { SocketType } from '../../SocketContext';
 // import { Fireworks } from '../UI/Fireworks';
 // import { useUserData } from '../../hooks/useUserData';
-// import { shuffleArray } from '../../utils/arrayUtils';
 
 // interface Question {
 //   id: string;
@@ -469,28 +510,21 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //   const [hasAnswered, setHasAnswered] = useState(false);
 //   const [showAnswerResult, setShowAnswerResult] = useState(false);
 
+//   // Load questions from gameState WITHOUT any shuffling
 //   useEffect(() => {
 //     if (gameState.triviaState?.questions) {
-//       const questions = gameState.triviaState.questions;
+//       const questionsFromBackend = gameState.triviaState.questions;
       
-//       // Shuffle the questions array to randomize order
-//       const shuffledQuestions = shuffleArray(questions).map(question => ({
-//         ...question as any,
-//         // Also shuffle the options for each question
-//         options: shuffleArray([...(question as any).options])
-//       }));
-      
-//       setQuestions(shuffledQuestions);
+//       // CRITICAL: Do NOT shuffle - backend already did this
+//       setQuestions(questionsFromBackend);
 //       setLoading(false);
       
-//       console.log('Questions loaded and shuffled:', {
-//         originalCount: questions.length,
-//         shuffledCount: shuffledQuestions.length,
-//         firstQuestion: shuffledQuestions[0]?.text.substring(0, 50) + '...'
+//       console.log('Questions loaded from backend (pre-shuffled):', {
+//         count: questionsFromBackend.length,
+//         firstQuestion: questionsFromBackend[0]?.text.substring(0, 50) + '...'
 //       });
 //     }
-//   }, [gameState]);
-  
+//   }, [gameState.triviaState?.questions]);
 
 //   useEffect(() => {
 //     if (timer > 0 && !loading && questions.length > 0 && !hasAnswered) {
@@ -500,8 +534,6 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //       submitAnswer();
 //     }
 //   }, [timer, loading, questions, hasAnswered]);
-
-
 
 //   useEffect(() => {
 //     // Reset game state when gameState indicates a restart
@@ -518,153 +550,130 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //       setShowAnswerResult(false);
 //       setShowFireworks(false);
       
-//       // If we have new questions, update the local questions state
+//       // If we have new questions, load them WITHOUT shuffling
 //       if (gameState.triviaState?.questions) {
-//         const questions = gameState.triviaState.questions;
-//         const shuffledQuestions = shuffleArray(questions).map(question => ({
-//           ...question as any,
-//           options: shuffleArray([...(question as any).options])
-//         }));
-        
-//         setQuestions(shuffledQuestions);
-//         console.log('New questions loaded for restarted game:', shuffledQuestions.length);
+//         const questionsFromBackend = gameState.triviaState.questions;
+//         setQuestions(questionsFromBackend);
+//         console.log('New questions loaded for restarted game:', questionsFromBackend.length);
 //       }
 //     }
 //   }, [gameState.gameStarted, gameState.gameOver, gameState.triviaState?.questions]);
 
-
-// // Update the submitAnswer function to calculate time-based scoring
-// const submitAnswer = () => {
-//   if (hasAnswered) return;
-  
-//   setHasAnswered(true);
-//   setShowAnswerResult(true);
-  
-//   const currentQuestion = questions[currentQ];
-//   const isCorrect = selected === currentQuestion.correctAnswer;
-  
-//   // Calculate time-based score (5 points * percentage of time remaining)
-//   const totalTime = 10; // Full timer duration
-//   const timeUsed = totalTime - timer; // Time used to answer
-//   const timeRemaining = timer; // Time remaining when answered
-//   const timePercentage = timeRemaining / totalTime; // Percentage of time remaining
-  
-//   // Calculate score: 5 points * percentage of time remaining
-//   const pointsEarned = isCorrect ? Math.round(5 * timePercentage * 100) / 100 : 0;
-  
-//   // Get current score BEFORE submission for debugging
-//   const scoreBefore = gameState.triviaState?.scores?.[currentPlayer] || 0;
-  
-//   console.log('🎯 SUBMITTING ANSWER WITH TIME-BASED SCORING:', {
-//     question: currentQ + 1,
-//     totalQuestions: questions.length,
-//     questionId: currentQuestion.id,
-//     selected,
-//     correct: currentQuestion.correctAnswer,
-//     isCorrect,
-//     timeUsed,
-//     timeRemaining,
-//     timePercentage: (timePercentage * 100).toFixed(1) + '%',
-//     pointsEarned,
-//     scoreBefore: scoreBefore,
-//     expectedNewScore: scoreBefore + pointsEarned
-//   });
-  
-//   socket.emit('triviaAnswer', { 
-//     roomId, 
-//     playerId: currentPlayer, 
-//     qId: currentQuestion.id, 
-//     answer: selected,
-//     correct: currentQuestion.correctAnswer,
-//     isCorrect,
-//     pointsEarned, // Send the calculated points to backend
-//     timeRemaining // Send time data for verification
-//   });
-
-//   // Wait for server response before moving to next question
-//   setTimeout(() => {
-//     setShowAnswerResult(false);
+//   const submitAnswer = () => {
+//     if (hasAnswered) return;
     
-//     // Check if this was the last question
-//     if (currentQ + 1 >= questions.length) {
-//       // Last question - wait for all players to finish
-//       console.log('🎯 LAST QUESTION ANSWERED - COMPLETING GAME');
+//     setHasAnswered(true);
+//     setShowAnswerResult(true);
+    
+//     const currentQuestion = questions[currentQ];
+//     const isCorrect = selected === currentQuestion.correctAnswer;
+    
+//     // Calculate time-based score
+//     const totalTime = 10;
+//     const timeRemaining = timer;
+//     const timePercentage = timeRemaining / totalTime;
+//     const pointsEarned = isCorrect ? Math.round(5 * timePercentage * 100) / 100 : 0;
+    
+//     const scoreBefore = gameState.triviaState?.scores?.[currentPlayer] || 0;
+    
+//     console.log('🎯 SUBMITTING ANSWER WITH TIME-BASED SCORING:', {
+//       question: currentQ + 1,
+//       totalQuestions: questions.length,
+//       questionId: currentQuestion.id,
+//       selected,
+//       correct: currentQuestion.correctAnswer,
+//       isCorrect,
+//       timeRemaining,
+//       timePercentage: (timePercentage * 100).toFixed(1) + '%',
+//       pointsEarned,
+//       scoreBefore: scoreBefore,
+//       expectedNewScore: scoreBefore + pointsEarned
+//     });
+    
+//     socket.emit('triviaAnswer', { 
+//       roomId, 
+//       playerId: currentPlayer, 
+//       qId: currentQuestion.id, 
+//       answer: selected,
+//       correct: currentQuestion.correctAnswer,
+//       isCorrect,
+//       pointsEarned,
+//       timeRemaining
+//     });
+
+//     setTimeout(() => {
+//       setShowAnswerResult(false);
       
-//       // Get final score from gameState after server updates
-//       const finalScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
-      
-//       console.log('🎯 SENDING COMPLETION:', {
-//         playerId: currentPlayer,
-//         finalScore: finalScore,
-//         totalQuestions: questions.length
-//       });
-      
-//       // Notify server this player completed
-//       socket.emit('triviaComplete', { 
-//         roomId, 
-//         playerId: currentPlayer, 
-//         score: finalScore,
-//         total: questions.length 
-//       });
-      
-//       // Show fireworks while waiting
-//       setShowFireworks(true);
-//     } else {
-//       // Not last question - move to next
-//       console.log(`🎯 MOVING TO QUESTION ${currentQ + 2} of ${questions.length}`);
-//       nextQuestion();
+//       if (currentQ + 1 >= questions.length) {
+//         console.log('🎯 LAST QUESTION ANSWERED - COMPLETING GAME');
+        
+//         const finalScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
+        
+//         console.log('🎯 SENDING COMPLETION:', {
+//           playerId: currentPlayer,
+//           finalScore: finalScore,
+//           totalQuestions: questions.length
+//         });
+        
+//         socket.emit('triviaComplete', { 
+//           roomId, 
+//           playerId: currentPlayer, 
+//           score: finalScore,
+//           total: questions.length 
+//         });
+        
+//         setShowFireworks(true);
+//       } else {
+//         console.log(`🎯 MOVING TO QUESTION ${currentQ + 2} of ${questions.length}`);
+//         nextQuestion();
+//       }
+//     }, 2000);
+//   };
+
+//   useEffect(() => {
+//     console.log('🎯 SCORE UPDATED:', {
+//       player: currentPlayer,
+//       currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0,
+//       allScores: gameState.triviaState?.scores
+//     });
+//   }, [gameState.triviaState?.scores?.[currentPlayer]]);
+
+//   const getLeaderboardData = () => {
+//     const scores = gameState.triviaState?.scores || {};
+    
+//     console.log('🏆 BUILDING LEADERBOARD:', {
+//       scores: scores,
+//       players: gameState.players,
+//       gameOver: gameState.gameOver
+//     });
+    
+//     if (Object.keys(scores).length === 0) {
+//       return gameState.players.map((player: any) => ({
+//         _id: player.id,
+//         score: player.score || 0,
+//         name: player.name || player.id
+//       })).sort((a:any, b:any) => b.score - a.score);
 //     }
-//   }, 2000);
-// };
+    
+//     const leaderboard = Object.entries(scores)
+//       .map(([playerId, playerScore]) => {
+//         const playerInfo = gameState.players.find((p: any) => p.id === playerId);
+//         const correctAnswers = Math.floor((playerScore as number) / 5);
+        
+//         console.log(`🏆 PLAYER SCORE: ${playerId} = ${playerScore} (${correctAnswers} correct)`);
+        
+//         return {
+//           _id: playerId,
+//           score: playerScore as number,
+//           name: playerInfo?.name || playerId,
+//           correctAnswers: correctAnswers
+//         };
+//       })
+//       .sort((a, b) => b.score - a.score);
 
-// // Add a useEffect to monitor score changes
-// useEffect(() => {
-//   console.log('🎯 SCORE UPDATED:', {
-//     player: currentPlayer,
-//     currentScore: gameState.triviaState?.scores?.[currentPlayer] || 0,
-//     allScores: gameState.triviaState?.scores
-//   });
-// }, [gameState.triviaState?.scores?.[currentPlayer]]);
-
-// // Update the leaderboard display to show more detailed information
-// const getLeaderboardData = () => {
-//   const scores = gameState.triviaState?.scores || {};
-  
-//   console.log('🏆 BUILDING LEADERBOARD:', {
-//     scores: scores,
-//     players: gameState.players,
-//     gameOver: gameState.gameOver
-//   });
-  
-//   // If no scores, create default scores from players
-//   if (Object.keys(scores).length === 0) {
-//     return gameState.players.map((player: any) => ({
-//       _id: player.id,
-//       score: player.score || 0,
-//       name: player.name || player.id
-//     })).sort((a:any, b:any) => b.score - a.score);
-//   }
-  
-//   const leaderboard = Object.entries(scores)
-//     .map(([playerId, playerScore]) => {
-//       const playerInfo = gameState.players.find((p: any) => p.id === playerId);
-//       const correctAnswers = Math.floor((playerScore as number) / 5);
-      
-//       console.log(`🏆 PLAYER SCORE: ${playerId} = ${playerScore} (${correctAnswers} correct)`);
-      
-//       return {
-//         _id: playerId,
-//         score: playerScore as number,
-//         name: playerInfo?.name || playerId,
-//         correctAnswers: correctAnswers
-//       };
-//     })
-//     .sort((a, b) => b.score - a.score);
-
-//   console.log('🏆 FINAL LEADERBOARD:', leaderboard);
-//   return leaderboard;
-// };
-  
+//     console.log('🏆 FINAL LEADERBOARD:', leaderboard);
+//     return leaderboard;
+//   };
 
 //   const nextQuestion = () => {
 //     if (currentQ + 1 < questions.length) {
@@ -675,8 +684,6 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //       setShowAnswerResult(false);
 //     }
 //   };
-
- 
 
 //   const leaderboardData = gameState.gameOver ? getLeaderboardData() : [];
 //   const { username: currentUsername } = useUserData(currentPlayer);
@@ -703,14 +710,12 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //   const currentPlayerScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
 //   const isCorrect = selected === currentQuestion.correctAnswer;
 
-
-// console.log('Current game state:', {
-//   gameOver: gameState.gameOver,
-//   scores: gameState.triviaState?.scores,
-//   completedPlayers: gameState.triviaState?.completedPlayers,
-//   totalPlayers: gameState.players.length
-// });
-
+//   console.log('Current game state:', {
+//     gameOver: gameState.gameOver,
+//     scores: gameState.triviaState?.scores,
+//     completedPlayers: gameState.triviaState?.completedPlayers,
+//     totalPlayers: gameState.players.length
+//   });
 
 //   return (
 //     <div className="flex flex-col h-full">
@@ -786,32 +791,28 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //               </div>
 //             )}
 
-
-
-// {showAnswerResult && (
-//   <div className={`p-4 mb-4 rounded-lg text-center text-xl font-bold ${
-//     isCorrect ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
-//   }`}>
-//     {isCorrect ? (
-//       <>
-//         <div>✓ Correct!</div>
-//         <div className="text-lg mt-1">
-//           +{Math.round(5 * ((10 - timer) / 10) * 100) / 100} points
-//         </div>
-//         <div className="text-sm text-green-300 mt-1">
-//           (Answered in {10 - timer}s - {Math.round(((10 - timer) / 10) * 100)}% of time)
-//         </div>
-//       </>
-//     ) : (
-//       '✗ Incorrect!'
-//     )}
-//     <div className="text-sm mt-2 font-normal">
-//       {currentQ + 1 < questions.length ? 'Moving to next question...' : 'Waiting for other players...'}
-//     </div>
-//   </div>
-// )}
-            
-            
+//             {showAnswerResult && (
+//               <div className={`p-4 mb-4 rounded-lg text-center text-xl font-bold ${
+//                 isCorrect ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
+//               }`}>
+//                 {isCorrect ? (
+//                   <>
+//                     <div>✓ Correct!</div>
+//                     <div className="text-lg mt-1">
+//                       +{Math.round(5 * (timer / 10) * 100) / 100} points
+//                     </div>
+//                     <div className="text-sm text-green-300 mt-1">
+//                       (Answered in {10 - timer}s - {Math.round(((timer) / 10) * 100)}% time remaining)
+//                     </div>
+//                   </>
+//                 ) : (
+//                   '✗ Incorrect!'
+//                 )}
+//                 <div className="text-sm mt-2 font-normal">
+//                   {currentQ + 1 < questions.length ? 'Moving to next question...' : 'Waiting for other players...'}
+//                 </div>
+//               </div>
+//             )}
             
 //             <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">
 //               {currentQuestion.text}
@@ -861,9 +862,4 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //     </div>
 //   );
 // };
-
-
-
-
-
 
