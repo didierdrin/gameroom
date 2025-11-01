@@ -46,7 +46,7 @@ export class TriviaPopulatorService {
 
       const apiQuestions = await this.triviaService.getQuestions(settings);
       
-      // Store questions in database
+      // Store questions in database with usageCount 1-30
       await this.storeQuestions(apiQuestions, category, difficulty);
       
       console.log(`Stored ${apiQuestions.length} questions for ${category} (${difficulty})`);
@@ -57,7 +57,19 @@ export class TriviaPopulatorService {
   }
 
   private async storeQuestions(apiQuestions: any[], category: string, difficulty: string) {
-    for (const q of apiQuestions) {
+    // Get current count of questions for this category/difficulty to determine usageCount
+    const existingCount = await this.triviaQuestionModel.countDocuments({
+      category: category,
+      difficulty: difficulty
+    });
+
+    for (let i = 0; i < apiQuestions.length; i++) {
+      const q = apiQuestions[i];
+      
+      // Calculate usageCount: cycle through 1-30
+      // If we already have 30+ questions, new ones will reuse numbers 1-30
+      const usageCount = ((existingCount + i) % 30) + 1;
+      
       try {
         await this.triviaQuestionModel.findOneAndUpdate(
           { questionId: q.id },
@@ -68,11 +80,13 @@ export class TriviaPopulatorService {
             correctAnswer: q.correctAnswer,
             difficulty: difficulty,
             category: category,
-            // Don't increment usageCount here - only when actually used
+            usageCount: usageCount, // Assign fixed number 1-30
             lastUsed: new Date()
           },
           { upsert: true, new: true }
         );
+        
+        console.log(`Stored question with usageCount: ${usageCount} for ${category}/${difficulty}`);
       } catch (error) {
         console.error('Error storing question:', error);
       }

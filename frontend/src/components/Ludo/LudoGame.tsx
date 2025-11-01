@@ -385,86 +385,7 @@ const renderBoard = () => {
   return board;
 };
 
-// const renderBoard = () => {
-//   const board = [];
-//   for (let row = 0; row < 15; row++) {
-//     for (let col = 0; col < 15; col++) {
-//       const cellColor = getCellColor(row, col);
-//       const coinsAtPosition: any[] = [];
-      
-//       // Check if this is a star position
-//       const isStarPosition = [[2, 6], [8, 2], [12, 8], [6, 12]].some(([r, c]) => r === row && c === col);
-      
-//       // Check for coins at this position
-//       players.forEach((player, playerIndex) => {
-//         const playerCoins = coins![player.id] || [0, 0, 0, 0];
-//         playerCoins.forEach((pos, coinIndex) => {
-//           // Coins on the board
-//           if (pos > 0) {
-//             const boardPos = getBoardPosition(playerIndex, pos);
-//             if (boardPos?.[0] === row && boardPos?.[1] === col) {
-//               coinsAtPosition.push({ playerIndex, coinIndex, player, pos });
-//             }
-//           }
-//           // Coins in base
-//           else if (pos === 0) {
-//             const basePos = getBasePositions(playerIndex);
-//             basePos.forEach((bp, idx) => {
-//               if (bp[0] === row && bp[1] === col && idx === coinIndex) {
-//                 coinsAtPosition.push({ playerIndex, coinIndex, player, pos });
-//               }
-//             });
-//           }
-//         });
-//       });
-      
-//       board.push(
-//         <div
-//           key={`${row}-${col}`}
-//           className={`w-10 h-10 flex items-center justify-center relative transition-all duration-200 hover:scale-105 ${cellColor}`}
-//         >
-//           {/* Star icon for specific safe star positions */}
-//           {isStarPosition && coinsAtPosition.length === 0 && (
-//             <Star className="w-5 h-5 text-indigo-600 fill-indigo-300 absolute" />
-//           )}
-          
-//           {coinsAtPosition.map((coin, idx) => (
-//             <div
-//               key={`${coin.playerIndex}-${coin.coinIndex}`}
-//               className={`flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-125 ${
-//                 movableCoins.includes(coin.coinIndex) && 
-//                 coin.playerIndex === currentPlayer && 
-//                 players[currentPlayer]?.id === currentPlayerId
-//                   ? 'animate-pulse ring-4 ring-white ring-offset-2 rounded-full'
-//                   : ''
-//               }`}
-//               onClick={() => handleMoveCoin(coin.coinIndex)}
-//               style={{
-//                 position: coinsAtPosition.length > 1 ? 'absolute' : 'static',
-//                 transform: coinsAtPosition.length > 1 ? `translate(${idx * 3}px, ${idx * 3}px)` : 'none',
-//                 zIndex: idx + 1,
-//               }}
-//               title={`${coin.player.name}'s coin ${coin.coinIndex + 1} at position ${coin.pos}`}
-//             >
-//               <div className="relative">
-//                 <MapPin 
-//                   className={`w-7 h-7 ${getPinColor(coin.player.color)} drop-shadow-lg`}
-//                 />
-//                 {/* Small number indicator on the pin */}
-//                 <div className="absolute top-1 left-1/2 transform -translate-x-1/2 -translate-y-1 text-white text-xs font-bold">
-//                   {coin.coinIndex + 1}
-//                 </div>
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       );
-//     }
-//   }
-//   return board;
-// };
-  
-  
+
 
   const currentPlayerUserId = players[currentPlayer]?.id || '';
 const { username: currentPlayerName } = useUsername(currentPlayerUserId);
@@ -638,27 +559,6 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
     </div>
   </div>
 </div>
-
-{/* Game board */}
-{/* <div className="mb-4 sm:mb-6 md:mb-8 flex justify-center w-full px-2">
-  <div className="w-full max-w-[600px]">
-    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-2 sm:border-4 border-white/20 bg-white/10 rounded-xl sm:rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden aspect-square"
-      style={{
-        gridTemplateColumns: 'repeat(15, minmax(8px, 1fr))',
-        gridTemplateRows: 'repeat(15, minmax(8px, 1fr))',
-      }}>
-      {renderBoard()}
-    </div>
-  </div>
-</div> */}
-
-      {/* Game board */}
-      {/* <div className="mb-8">
-        <div className="grid grid-cols-[repeat(15,_2.5rem)] grid-rows-[repeat(15,_2.5rem)] gap-0 border-4 border-white/20 bg-white/10 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden">
-          {renderBoard()}
-        </div>
-      </div> */}
-      
     
       
       {/* Player list */}
