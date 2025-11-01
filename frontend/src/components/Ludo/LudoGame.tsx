@@ -333,12 +333,18 @@ const renderBoard = () => {
       board.push(
         <div
           key={`${row}-${col}`}
-          className={`w-full h-full flex items-center justify-center relative transition-all duration-200 hover:scale-105 ${cellColor}`}
-          style={{ minWidth: 0, minHeight: 0 }} // Ensure cells can shrink properly
+          className={`flex items-center justify-center relative transition-all duration-200 hover:scale-105 ${cellColor}`}
+          style={{ 
+            aspectRatio: '1 / 1',
+            minWidth: '100%',
+            minHeight: '100%'
+          }}
         >
           {/* Star icon for specific safe star positions */}
           {isStarPosition && coinsAtPosition.length === 0 && (
-            <Star className="w-1/3 h-1/3 text-indigo-600 fill-indigo-300 absolute" />
+            <div className="flex items-center justify-center w-full h-full">
+              <Star className="w-1/2 h-1/2 text-indigo-600 fill-indigo-300" />
+            </div>
           )}
           
           {coinsAtPosition.map((coin, idx) => (
@@ -348,23 +354,25 @@ const renderBoard = () => {
                 movableCoins.includes(coin.coinIndex) && 
                 coin.playerIndex === currentPlayer && 
                 players[currentPlayer]?.id === currentPlayerId
-                  ? 'animate-pulse ring-1 sm:ring-2 ring-white ring-offset-1 rounded-full'
+                  ? 'animate-pulse ring-1 sm:ring-2 ring-white rounded-full'
                   : ''
               }`}
               onClick={() => handleMoveCoin(coin.coinIndex)}
               style={{
-                position: coinsAtPosition.length > 1 ? 'absolute' : 'static',
-                transform: coinsAtPosition.length > 1 ? `translate(${idx * 1}px, ${idx * 1}px)` : 'none',
+                position: 'absolute',
+                transform: coinsAtPosition.length > 1 ? `translate(${idx * 2}px, ${idx * 2}px)` : 'none',
                 zIndex: idx + 1,
+                width: '70%',
+                height: '70%'
               }}
               title={`${coin.player.name}'s coin ${coin.coinIndex + 1} at position ${coin.pos}`}
             >
-              <div className="relative">
+              <div className="relative w-full h-full flex items-center justify-center">
                 <MapPin 
-                  className={`w-3 h-3 sm:w-4 sm:h-4 md:w-6 md:h-6 ${getPinColor(coin.player.color)} drop-shadow-lg`}
+                  className={`w-full h-full ${getPinColor(coin.player.color)} drop-shadow-lg`}
                 />
                 {/* Small number indicator on the pin */}
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 text-white text-[6px] xs:text-[8px] sm:text-xs font-bold">
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 text-white text-[8px] xs:text-[10px] sm:text-xs font-bold">
                   {coin.coinIndex + 1}
                 </div>
               </div>
@@ -612,19 +620,20 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
 
 
 
- {/* Game board */}
-<div className="mb-4 sm:mb-6 md:mb-8 flex justify-center w-full px-2">
-  <div className="w-full max-w-[min(95vw,500px)]">
-    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-4 border-white/20 bg-white/10 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden aspect-square"
+{/* Game board */}
+<div className="mb-4 sm:mb-6 md:mb-8 flex justify-center">
+  <div className="inline-block">
+    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-4 border-white/20 bg-white/10 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden"
       style={{
-        gridTemplateColumns: 'repeat(15, minmax(0, 1fr))',
-        gridTemplateRows: 'repeat(15, minmax(0, 1fr))',
+        width: 'min(95vw, 85vw, 400px)',
+        height: 'min(95vw, 85vw, 400px)',
+        gridTemplateColumns: 'repeat(15, 1fr)',
+        gridTemplateRows: 'repeat(15, 1fr)'
       }}>
       {renderBoard()}
     </div>
   </div>
 </div>
-
       {/* Game board */}
       {/* <div className="mb-8">
         <div className="grid grid-cols-[repeat(15,_2.5rem)] grid-rows-[repeat(15,_2.5rem)] gap-0 border-4 border-white/20 bg-white/10 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden">
