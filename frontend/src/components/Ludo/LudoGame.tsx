@@ -622,6 +622,25 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
 
 {/* Game board */}
 <div className="mb-4 sm:mb-6 md:mb-8 flex justify-center w-full px-2">
+  <div className="w-full" style={{ maxWidth: 'min(95vw, 600px)' }}>
+    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-2 sm:border-4 border-white/20 bg-white/10 rounded-xl sm:rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden"
+      style={{
+        gridTemplateColumns: 'repeat(15, 1fr)',
+        gridTemplateRows: 'repeat(15, 1fr)',
+        width: '100%',
+        height: 0,
+        paddingBottom: '100%',
+        position: 'relative'
+      }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: 'repeat(15, 1fr)', gridTemplateRows: 'repeat(15, 1fr)' }}>
+        {renderBoard()}
+      </div>
+    </div>
+  </div>
+</div>
+
+{/* Game board */}
+{/* <div className="mb-4 sm:mb-6 md:mb-8 flex justify-center w-full px-2">
   <div className="w-full max-w-[600px]">
     <div className="grid grid-cols-15 grid-rows-15 gap-0 border-2 sm:border-4 border-white/20 bg-white/10 rounded-xl sm:rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden aspect-square"
       style={{
@@ -631,7 +650,7 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
       {renderBoard()}
     </div>
   </div>
-</div>
+</div> */}
 
       {/* Game board */}
       {/* <div className="mb-8">
