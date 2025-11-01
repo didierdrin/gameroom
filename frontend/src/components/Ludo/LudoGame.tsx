@@ -621,19 +621,18 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
 
 
 {/* Game board */}
-<div className="mb-4 sm:mb-6 md:mb-8 flex justify-center">
-  <div className="inline-block">
-    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-4 border-white/20 bg-white/10 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden"
+<div className="mb-4 sm:mb-6 md:mb-8 flex justify-center w-full px-2">
+  <div className="w-full max-w-[600px]">
+    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-2 sm:border-4 border-white/20 bg-white/10 rounded-xl sm:rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden aspect-square"
       style={{
-        width: 'min(95vw, 85vw, 400px)',
-        height: 'min(95vw, 85vw, 400px)',
-        gridTemplateColumns: 'repeat(15, 1fr)',
-        gridTemplateRows: 'repeat(15, 1fr)'
+        gridTemplateColumns: 'repeat(15, minmax(8px, 1fr))',
+        gridTemplateRows: 'repeat(15, minmax(8px, 1fr))',
       }}>
       {renderBoard()}
     </div>
   </div>
 </div>
+
       {/* Game board */}
       {/* <div className="mb-8">
         <div className="grid grid-cols-[repeat(15,_2.5rem)] grid-rows-[repeat(15,_2.5rem)] gap-0 border-4 border-white/20 bg-white/10 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden">
