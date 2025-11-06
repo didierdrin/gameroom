@@ -145,7 +145,8 @@ export class GameService {
     [7, 0], [6, 0],
   ];
 
-  private startPositions: number[] = [1, 14, 27, 40];
+  //private startPositions: number[] = [1, 14, 27, 40];
+  private startPositions: number[] = [0, 13, 26, 39]; 
 
   private safePositions = [1, 9, 14, 22, 27, 35, 40, 48];
   private homeColumnStart = 52; 
@@ -183,7 +184,7 @@ export class GameService {
       }
       
       // Regular board positions (1-51)
-      const adjusted = (position - 2 + this.startPositions[playerIndex]) % 52;
+      const adjusted = (position - 1 + this.startPositions[playerIndex]) % 52;
       return this.boardPath[adjusted];
     }
   
@@ -729,130 +730,7 @@ case 'uno':
     }
   }
 
-  // async moveCoin(moveCoinDto: MoveCoinDto) {
-  //   try {
-  //     const gameState = await this.getGameState(moveCoinDto.roomId);
-      
-  //     // Validate it's the player's turn
-  //     if (gameState.currentTurn !== moveCoinDto.playerId) {
-  //       throw new Error('Not your turn');
-  //     }
-      
-  //     // Check if dice has been rolled
-  //     if (!gameState.diceRolled) {
-  //       throw new Error('You must roll the dice first');
-  //     }
-
-  //     // Parse coin ID
-  //     const [color, coinIndexStr] = moveCoinDto.coinId.split('-');
-  //     const coinIndex = parseInt(coinIndexStr) - 1;
-  //     const playerIndex = gameState.players.findIndex((p) => p.id === moveCoinDto.playerId);
-      
-  //     if (playerIndex === -1) {
-  //       throw new Error('Player not found');
-  //     }
-
-  //     const playerCoins = gameState.coins![moveCoinDto.playerId];
-  //     const coinPosition = playerCoins[coinIndex];
-  //     let newPosition = coinPosition;
-  //     let captured = false;
-
-  //     console.log(`Move coin attempt: ${moveCoinDto.coinId} by ${moveCoinDto.playerId}, current position: ${coinPosition}, dice: ${gameState.diceValue}`);
-
-  //     // Validate move
-  //     if (coinPosition === 0 && gameState.diceValue === 6) {
-  //       // Moving coin from base to start position
-  //       newPosition = this.startPositions[playerIndex];
-  //     } else if (coinPosition > 0 && coinPosition < 57) {
-  //       // Moving coin on the board
-  //       newPosition = coinPosition + gameState.diceValue!;
-        
-  //       // Check if move exceeds home
-  //       if (newPosition > 57) {
-  //         throw new Error('Invalid move: Beyond home');
-  //       }
-        
-  //       // Check if move is valid in home stretch
-  //       if (newPosition > 51 && newPosition < 57) {
-  //         const homeStretchPosition = newPosition - 51;
-  //         if (homeStretchPosition > 6) {
-  //           throw new Error('Invalid move: Beyond home stretch');
-  //         }
-  //       }
-  //     } else {
-  //       throw new Error('Invalid move: Coin in base requires a 6');
-  //     }
-
-  //     // Check for captures (only on non-safe positions and not in home column)
-  //     if (newPosition <= 51 && !this.safePositions.includes(newPosition % 52)) {
-  //       for (const opponentId of Object.keys(gameState.coins!)) {
-  //         if (opponentId !== moveCoinDto.playerId) {
-  //           const opponentCoins = gameState.coins![opponentId];
-  //           opponentCoins.forEach((pos, idx) => {
-  //             if (pos === newPosition) {
-  //               // Capture opponent coin
-  //               gameState.coins![opponentId][idx] = 0;
-  //               const opponentPlayerIndex = gameState.players.findIndex((p) => p.id === opponentId);
-  //               if (opponentPlayerIndex !== -1) {
-  //                 gameState.players[opponentPlayerIndex].coins![idx] = 0;
-  //               }
-  //               captured = true;
-  //               console.log(`Captured opponent coin at position ${newPosition} for player ${opponentId}`);
-  //             }
-  //           });
-  //         }
-  //       }
-  //     }
-
-  //     // Update coin position
-  //     gameState.coins![moveCoinDto.playerId][coinIndex] = newPosition;
-  //     gameState.players[playerIndex].coins![coinIndex] = newPosition;
-  //     console.log(`Coin moved: ${moveCoinDto.coinId} to position ${newPosition}`);
-
-  //     // Check win condition
-  //     const hasWon = this.checkWinCondition(gameState.coins![moveCoinDto.playerId]);
-  //     if (hasWon) {
-  //       gameState.winner = moveCoinDto.playerId;
-  //       gameState.gameOver = true;
-  //       await this.gameRoomModel.updateOne(
-  //         { roomId: moveCoinDto.roomId },
-  //         { status: 'completed', winner: moveCoinDto.playerId },
-  //       );
-  //       await this.saveGameSession(moveCoinDto.roomId, gameState);
-  //       console.log(`Player ${moveCoinDto.playerId} has won!`);
-  //     }
-
-  //     // Update turn logic
-  //     if (gameState.diceValue !== 6 && !captured) {
-  //       // Normal turn: Pass to next player
-  //       console.log(`Normal turn completion for ${moveCoinDto.playerId}, passing to next player`);
-  //       await this.passTurn(moveCoinDto.roomId, gameState);
-  //     } else {
-  //       // Extra turn for 6 or capture
-  //       console.log(`Extra turn for ${moveCoinDto.playerId} - ${gameState.diceValue === 6 ? 'rolled 6' : 'captured opponent'}`);
-  //       gameState.diceRolled = false;
-  //       gameState.diceValue = 0; // Reset dice for next roll
-  //       // Don't pass turn - same player continues
-  //       await this.updateGameState(moveCoinDto.roomId, gameState);
-  //     }
-
-
-  //     return {
-  //       roomId: moveCoinDto.roomId,
-  //       coins: gameState.coins,
-  //       currentTurn: gameState.currentTurn,
-  //       currentPlayer: gameState.currentPlayer,
-  //       diceValue: gameState.diceValue,
-  //       diceRolled: gameState.diceRolled,
-  //       gameOver: gameState.gameOver,
-  //       winner: gameState.winner,
-  //     };
-  //   } catch (error) {
-  //     console.error(`Error in moveCoin for ${moveCoinDto.playerId}:`, error);
-  //     throw error;
-  //   }
-  // }
-
+ 
   private async passTurn(roomId: string, gameState: GameState, diceValue?: number) {
     console.log(`Passing turn from ${gameState.currentTurn} in room ${roomId}`);
     
@@ -1073,6 +951,24 @@ async submitTriviaAnswer(data: {
   
   // Save immediately to Redis with detailed logging
   await this.updateGameState(data.roomId, gameState);
+
+
+  
+
+// Check if all players have answered
+const allPlayersAnswered = await this.checkAllPlayersAnswered(data.roomId, gameState);
+if (allPlayersAnswered) {
+  console.log('🎯 ALL PLAYERS HAVE ANSWERED - EMITTING EVENT');
+  
+  // Emit event to all clients that all players have answered
+  if (this.server) {
+    this.server.to(data.roomId).emit('triviaAllPlayersAnswered', {
+      roomId: data.roomId,
+      currentQuestionIndex: gameState.triviaState!.currentQuestionIndex,
+      scores: gameState.triviaState.scores
+    });
+  }
+}
   
   console.log('=== AFTER ANSWER PROCESSING ===', {
     playerId: data.playerId,
@@ -1938,121 +1834,6 @@ async restartGame(roomId: string, hostId: string) {
   return finalGameState;
 }
 
-// async restartGame(roomId: string, hostId: string) {
-//   const gameRoom = await this.gameRoomModel.findOne({ roomId });
-//   if (!gameRoom) throw new Error('Game room not found');
-//   if (gameRoom.host !== hostId) throw new Error('Only the host can restart the game');
-  
-//   console.log(`Restarting game for room ${roomId}, current status: ${gameRoom.status}`);
-  
-//   // CRITICAL: Reset room status to 'waiting' and clear winner
-//   gameRoom.status = 'waiting';
-//   gameRoom.winner = undefined;
-//   if (gameRoom.scores instanceof Map) {
-//     gameRoom.scores.clear(); // Clear if it's a Map
-//   } else {
-//     gameRoom.scores = {}; // Set to empty object if it's a plain object
-//   }
-//   await gameRoom.save();
-  
-//   // Get current players and spectators before reset
-//   const currentPlayerIds = gameRoom.playerIds || [];
-//   const currentSpectatorIds = gameRoom.spectatorIds || [];
-  
-//   console.log(`Preserving players: ${currentPlayerIds.length}, spectators: ${currentSpectatorIds.length}`);
-  
-//   // Handle chess game restart separately
-//   if (gameRoom.gameType === 'chess') {
-//     try {
-//       await this.chessService.resetGame(roomId);
-//       console.log('Chess game reset completed');
-//     } catch (error) {
-//       console.error('Error resetting chess game:', error);
-//       // Continue with general reset even if chess reset fails
-//     }
-//   }
-
-  
-//   if (gameRoom.gameType === 'trivia') {
-//     try {
-//       // Use the current trivia settings from the game room
-//       const triviaSettings = gameRoom.triviaSettings || {
-//         questionCount: 10,
-//         difficulty: 'medium',
-//         category: 'general'
-//       };
-      
-//       console.log('Regenerating trivia questions with settings:', triviaSettings);
-      
-//       // Regenerate questions with the current settings
-//       const newQuestions = await this.enhancedTriviaService.regenerateQuestionsWithNewCategory(
-//         roomId, 
-//         triviaSettings
-//       );
-      
-//       console.log('Trivia questions regenerated for restart:', newQuestions.length);
-//     } catch (error) {
-//       console.error('Error regenerating trivia questions:', error);
-//       // Continue with restart even if question regeneration fails
-//     }
-//   }
-  
-//   // Completely reinitialize game state with preserved players
-//   await this.initializeGameState(
-//     roomId, 
-//     hostId, 
-//     gameRoom.name, 
-//     gameRoom.gameType, 
-//     gameRoom.triviaSettings
-//   );
-  
-//   // Get the fresh game state
-//   const gameState = await this.getGameState(roomId);
-  
-//   // CRITICAL: Ensure game state is properly reset
-//   gameState.gameStarted = false;
-//   gameState.gameOver = false;
-//   gameState.winner = null;
-  
-//   // Reset game-specific state
-//   if (gameState.gameType === 'ludo') {
-//     gameState.diceValue = 0;
-//     gameState.diceRolled = false;
-//     gameState.consecutiveSixes = 0;
-//     // Reset coins for all players
-//     if (gameState.coins) {
-//       Object.keys(gameState.coins).forEach(playerId => {
-//         gameState.coins![playerId] = [0, 0, 0, 0];
-//       });
-//     }
-//   } else if (gameState.gameType === 'trivia' && gameState.triviaState) {
-//     gameState.triviaState.currentQuestionIndex = 0;
-//     gameState.triviaState.scores = {};
-//     gameState.triviaState.answers = {};
-//     gameState.triviaState.completedPlayers = [];
-//     // Reset player scores
-//     gameState.players.forEach(player => {
-//       if (gameState.triviaState) {
-//         gameState.triviaState.scores[player.id] = 0;
-//         player.score = 0;
-//       }
-//     });
-//   }
-  
-//   // Save the reset state
-//   await this.updateGameState(roomId, gameState);
-  
-//   console.log(`Game restarted successfully for room ${roomId}`, {
-//     status: gameRoom.status,
-//     players: gameState.players.length,
-//     gameStarted: gameState.gameStarted,
-//     gameOver: gameState.gameOver,
-//     winner: gameState.winner
-//   });
-  
-//   return gameState;
-// }
-
 
 async endGame(roomId: string, hostId: string) {
   const gameRoom = await this.gameRoomModel.findOne({ roomId });
@@ -2180,6 +1961,27 @@ async handleGameOver(roomId: string, winnerId: string) {
   await this.redisService.set(`game:${roomId}:points`, JSON.stringify(playerPoints));
   
   return playerPoints;
+}
+
+
+
+private async checkAllPlayersAnswered(roomId: string, gameState: GameState): Promise<boolean> {
+  if (gameState.gameType !== 'trivia' || !gameState.triviaState) {
+    return false;
+  }
+
+  const allPlayers = gameState.players;
+  const allAnswered = allPlayers.every(player => 
+    gameState.triviaState!.answers[player.id]?.answer !== null
+  );
+
+  console.log('Checking if all players answered:', {
+    totalPlayers: allPlayers.length,
+    answeredPlayers: Object.values(gameState.triviaState.answers).filter((a: any) => a.answer !== null).length,
+    allAnswered
+  });
+
+  return allAnswered;
 }
 
 

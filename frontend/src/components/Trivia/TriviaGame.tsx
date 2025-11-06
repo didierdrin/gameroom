@@ -1,4 +1,4 @@
-// /components/TriviaGame.tsx - FIXED VERSION
+// /components/TriviaGame.tsx
 import React, { useEffect, useState, useRef } from 'react';
 import { SocketType } from '../../SocketContext';
 import { Fireworks } from '../UI/Fireworks';
@@ -55,7 +55,10 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   const [showFireworks, setShowFireworks] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [showAnswerResult, setShowAnswerResult] = useState(false);
-  
+  const [waitingForOthers, setWaitingForOthers] = useState(false);
+  const [playersAnswered, setPlayersAnswered] = useState(0);
+  const [totalPlayers, setTotalPlayers] = useState(0);
+
   const isProcessingRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [localScore, setLocalScore] = useState(0);
@@ -82,7 +85,18 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     }
   }, [gameState.triviaState?.questions]);
 
-  // Timer effect
+  // Update players answered count
+  useEffect(() => {
+    if (gameState.triviaState?.answers) {
+      const answeredCount = Object.values(gameState.triviaState.answers).filter(
+        (answer: any) => answer.answer !== null
+      ).length;
+      setPlayersAnswered(answeredCount);
+      setTotalPlayers(gameState.players?.length || 0);
+    }
+  }, [gameState.triviaState?.answers, gameState.players]);
+
+  // Timer effect - stop timer when player has answered
   useEffect(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -95,7 +109,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       }, 1000);
     } else if (timer === 0 && !hasAnswered && !isProcessingRef.current) {
       console.log('⏰ Timer expired - auto-submitting answer');
-      submitAnswer();
+      handleOptionClick(null); // Auto-submit with no answer
     }
 
     return () => {
@@ -119,6 +133,8 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       setHasAnswered(false);
       setShowAnswerResult(false);
       setShowFireworks(false);
+      setWaitingForOthers(false);
+      setPlayersAnswered(0);
       isProcessingRef.current = false;
       answerTimeRef.current = 10;
       
@@ -130,8 +146,8 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     }
   }, [gameState.gameStarted, gameState.gameOver]);
 
-  // FIXED: Submit answer with proper time tracking
-  const submitAnswer = () => {
+  // NEW: Handle option click - submit answer immediately
+  const handleOptionClick = (option: string | null) => {
     if (isProcessingRef.current || hasAnswered) {
       console.log('⚠️ Already processing answer, skipping submission');
       return;
@@ -139,14 +155,15 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     
     isProcessingRef.current = true;
     setHasAnswered(true);
-    setShowAnswerResult(true);
+    setSelected(option);
+    setWaitingForOthers(true);
     
     // CRITICAL FIX: Capture the timer value BEFORE it changes
     const timeWhenAnswered = timer > 0 ? timer : 0;
     answerTimeRef.current = timeWhenAnswered;
     
     const currentQuestion = questions[currentQ];
-    const isCorrect = selected === currentQuestion.correctAnswer;
+    const isCorrect = option === currentQuestion.correctAnswer;
     
     const totalTime = 10;
     const timePercentage = timeWhenAnswered / totalTime;
@@ -175,7 +192,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     
     console.log('🎯 SUBMITTING ANSWER WITH CORRECT TIME:', {
       question: currentQ + 1,
-      selected,
+      selected: option,
       correct: currentQuestion.correctAnswer,
       isCorrect,
       timeWhenAnswered,
@@ -188,51 +205,60 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       roomId, 
       playerId: currentPlayer, 
       qId: currentQuestion.id, 
-      answer: selected,
+      answer: option,
       correct: currentQuestion.correctAnswer,
       isCorrect,
       pointsEarned,
       timeRemaining: timeWhenAnswered
     });
-  
-    setTimeout(() => {
-      setShowAnswerResult(false);
-      
-      if (currentQ + 1 >= questions.length) {
-        // Use the accumulated local score for final submission
-        socket.emit('triviaComplete', { 
-          roomId, 
-          playerId: currentPlayer, 
-          score: newScore, // Use the updated score
-          total: questions.length 
-        });
-        setShowFireworks(true);
-        isProcessingRef.current = false;
-      } else {
-        nextQuestion();
-      }
-    }, 2000);
+
+    // Show answer result immediately
+    setShowAnswerResult(true);
   };
 
-  const nextQuestion = () => {
-    if (currentQ + 1 < questions.length) {
-      console.log(`➡️ Moving from question ${currentQ + 1} to ${currentQ + 2}`);
+  // NEW: Listen for all players answered event
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleAllPlayersAnswered = (data: any) => {
+      console.log('All players have answered, waiting 3 seconds before next question');
       
-      const nextQuestionIndex = currentQ + 1;
-      setCurrentQ(nextQuestionIndex);
-      setTimer(10);
-      setSelected(null);
-      setHasAnswered(false);
-      setShowAnswerResult(false);
-      isProcessingRef.current = false;
-      answerTimeRef.current = 10;
-      
-      console.log(`✅ Now on question ${nextQuestionIndex + 1}/${questions.length}`);
-    } else {
-      console.log('⚠️ No more questions to move to');
-      isProcessingRef.current = false;
-    }
-  };
+      // Wait 3 seconds then move to next question
+      setTimeout(() => {
+        setShowAnswerResult(false);
+        setWaitingForOthers(false);
+        
+        if (currentQ + 1 >= questions.length) {
+          // Game completed
+          const finalScore = localScore;
+          socket.emit('triviaComplete', { 
+            roomId, 
+            playerId: currentPlayer, 
+            score: finalScore,
+            total: questions.length 
+          });
+          setShowFireworks(true);
+          isProcessingRef.current = false;
+        } else {
+          // Move to next question
+          console.log(`➡️ Moving from question ${currentQ + 1} to ${currentQ + 2}`);
+          const nextQuestionIndex = currentQ + 1;
+          setCurrentQ(nextQuestionIndex);
+          setTimer(10);
+          setSelected(null);
+          setHasAnswered(false);
+          isProcessingRef.current = false;
+          answerTimeRef.current = 10;
+        }
+      }, 3000);
+    };
+
+    socket.on('triviaAllPlayersAnswered', handleAllPlayersAnswered);
+
+    return () => {
+      socket.off('triviaAllPlayersAnswered', handleAllPlayersAnswered);
+    };
+  }, [socket, roomId, currentPlayer, currentQ, questions.length, localScore]);
 
   useEffect(() => {
     console.log('🎯 SCORE UPDATED:', {
@@ -309,7 +335,9 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     totalQuestions: questions.length,
     gameOver: gameState.gameOver,
     hasAnswered,
-    timer
+    timer,
+    playersAnswered,
+    totalPlayers
   });
 
   return (
@@ -357,9 +385,6 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-lg font-bold">{player.score} points</div>
-                        {/* <div className="text-sm text-gray-400">
-                          ~{player.correctAnswers} correct answers
-                        </div> */}
                       </td>
                     </tr>
                   ))}
@@ -386,6 +411,19 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
               </div>
             )}
 
+            {/* Show waiting message while waiting for other players */}
+            {waitingForOthers && (
+              <div className="p-4 mb-4 bg-blue-500/20 border border-blue-500/50 rounded-lg text-center">
+                <div className="text-blue-400 text-lg font-bold mb-2">
+                  Waiting for other players...
+                </div>
+                <div className="text-blue-300">
+                  {playersAnswered}/{totalPlayers} players answered
+                </div>
+              </div>
+            )}
+
+            {/* Show answer result */}
             {showAnswerResult && (
               <div className={`p-4 mb-4 rounded-lg text-center text-xl font-bold ${
                 isCorrect ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
@@ -434,7 +472,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                       ? '!bg-red-500 !text-white !border-red-500' 
                       : ''
                   }`}
-                  onClick={() => !hasAnswered && setSelected(option)}
+                  onClick={() => !hasAnswered && handleOptionClick(option)}
                   disabled={hasAnswered}
                 >
                   {String.fromCharCode(65 + index)}. {option}
@@ -447,24 +485,15 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
               {timer}
             </div>
           </div>
-          {/* {selected && !hasAnswered && (
-            <div className="p-4">
-              <button
-                className="w-full p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                onClick={submitAnswer}
-              >
-                Submit Answer
-              </button>
-            </div>
-          )} */}
         </>
       )}
     </div>
   );
 };
 
-// // /components/TriviaGame.tsx 
-// import React, { useEffect, useState } from 'react';
+
+// // /components/TriviaGame.tsx
+// import React, { useEffect, useState, useRef } from 'react';
 // import { SocketType } from '../../SocketContext';
 // import { Fireworks } from '../UI/Fireworks';
 // import { useUserData } from '../../hooks/useUserData';
@@ -520,13 +549,23 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //   const [showFireworks, setShowFireworks] = useState(false);
 //   const [hasAnswered, setHasAnswered] = useState(false);
 //   const [showAnswerResult, setShowAnswerResult] = useState(false);
+  
+//   const isProcessingRef = useRef(false);
+//   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+//   const [localScore, setLocalScore] = useState(0);
+//   const [lastPointsEarned, setLastPointsEarned] = useState(0);
 
-//   // Load questions from gameState WITHOUT any shuffling
+//   // CRITICAL FIX: Store the timer value when answer is submitted
+//   const answerTimeRef = useRef(10);
+
+//   useEffect(() => {
+//     const backendScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
+//     setLocalScore(backendScore);
+//   }, [gameState.triviaState?.scores?.[currentPlayer]]);
+
 //   useEffect(() => {
 //     if (gameState.triviaState?.questions) {
 //       const questionsFromBackend = gameState.triviaState.questions;
-      
-//       // CRITICAL: Do NOT shuffle - backend already did this
 //       setQuestions(questionsFromBackend);
 //       setLoading(false);
       
@@ -537,17 +576,31 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //     }
 //   }, [gameState.triviaState?.questions]);
 
+//   // Timer effect
 //   useEffect(() => {
-//     if (timer > 0 && !loading && questions.length > 0 && !hasAnswered) {
-//       const timeout = setTimeout(() => setTimer(timer - 1), 1000);
-//       return () => clearTimeout(timeout);
-//     } else if (timer === 0 && !hasAnswered) {
+//     if (timeoutRef.current) {
+//       clearTimeout(timeoutRef.current);
+//       timeoutRef.current = null;
+//     }
+
+//     if (timer > 0 && !loading && questions.length > 0 && !hasAnswered && !isProcessingRef.current) {
+//       timeoutRef.current = setTimeout(() => {
+//         setTimer(timer - 1);
+//       }, 1000);
+//     } else if (timer === 0 && !hasAnswered && !isProcessingRef.current) {
+//       console.log('⏰ Timer expired - auto-submitting answer');
 //       submitAnswer();
 //     }
+
+//     return () => {
+//       if (timeoutRef.current) {
+//         clearTimeout(timeoutRef.current);
+//         timeoutRef.current = null;
+//       }
+//     };
 //   }, [timer, loading, questions, hasAnswered]);
 
 //   useEffect(() => {
-//     // Reset game state when gameState indicates a restart
 //     if (gameState.gameStarted && !gameState.gameOver) {
 //       console.log('Resetting trivia game state for new round', {
 //         questionsCount: gameState.triviaState?.questions?.length,
@@ -560,45 +613,69 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //       setHasAnswered(false);
 //       setShowAnswerResult(false);
 //       setShowFireworks(false);
+//       isProcessingRef.current = false;
+//       answerTimeRef.current = 10;
       
-//       // If we have new questions, load them WITHOUT shuffling
 //       if (gameState.triviaState?.questions) {
 //         const questionsFromBackend = gameState.triviaState.questions;
 //         setQuestions(questionsFromBackend);
 //         console.log('New questions loaded for restarted game:', questionsFromBackend.length);
 //       }
 //     }
-//   }, [gameState.gameStarted, gameState.gameOver, gameState.triviaState?.questions]);
+//   }, [gameState.gameStarted, gameState.gameOver]);
 
+//   // FIXED: Submit answer with proper time tracking
 //   const submitAnswer = () => {
-//     if (hasAnswered) return;
+//     if (isProcessingRef.current || hasAnswered) {
+//       console.log('⚠️ Already processing answer, skipping submission');
+//       return;
+//     }
     
+//     isProcessingRef.current = true;
 //     setHasAnswered(true);
 //     setShowAnswerResult(true);
+    
+//     // CRITICAL FIX: Capture the timer value BEFORE it changes
+//     const timeWhenAnswered = timer > 0 ? timer : 0;
+//     answerTimeRef.current = timeWhenAnswered;
     
 //     const currentQuestion = questions[currentQ];
 //     const isCorrect = selected === currentQuestion.correctAnswer;
     
-//     // Calculate time-based score
 //     const totalTime = 10;
-//     const timeRemaining = timer;
-//     const timePercentage = timeRemaining / totalTime;
-//     const pointsEarned = isCorrect ? Math.round(5 * timePercentage * 100) / 100 : 0;
+//     const timePercentage = timeWhenAnswered / totalTime;
     
-//     const scoreBefore = gameState.triviaState?.scores?.[currentPlayer] || 0;
+//     // CRITICAL FIX: Ensure minimum 1 point for correct answers, even at time=0
+//     let pointsEarned = 0;
+//     if (isCorrect) {
+//       if (timeWhenAnswered > 0) {
+//         // Normal time-based scoring (1-5 points based on speed)
+//         pointsEarned = Math.max(1, Math.round(5 * timePercentage * 100) / 100);
+//       } else {
+//         // Answered at last second - give 1 point
+//         pointsEarned = 1;
+//       }
+//     }
     
-//     console.log('🎯 SUBMITTING ANSWER WITH TIME-BASED SCORING:', {
+//     // Store for display
+//     setLastPointsEarned(pointsEarned);
+    
+//     // Update local score immediately
+//     const currentScore = localScore;
+//     const newScore = currentScore + pointsEarned;
+//     if (isCorrect) {
+//       setLocalScore(newScore);
+//     }
+    
+//     console.log('🎯 SUBMITTING ANSWER WITH CORRECT TIME:', {
 //       question: currentQ + 1,
-//       totalQuestions: questions.length,
-//       questionId: currentQuestion.id,
 //       selected,
 //       correct: currentQuestion.correctAnswer,
 //       isCorrect,
-//       timeRemaining,
-//       timePercentage: (timePercentage * 100).toFixed(1) + '%',
+//       timeWhenAnswered,
+//       timePercentage: Math.round(timePercentage * 100) + '%',
 //       pointsEarned,
-//       scoreBefore: scoreBefore,
-//       expectedNewScore: scoreBefore + pointsEarned
+//       newScoreLocal: newScore
 //     });
     
 //     socket.emit('triviaAnswer', { 
@@ -609,36 +686,46 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //       correct: currentQuestion.correctAnswer,
 //       isCorrect,
 //       pointsEarned,
-//       timeRemaining
+//       timeRemaining: timeWhenAnswered
 //     });
-
+  
 //     setTimeout(() => {
 //       setShowAnswerResult(false);
       
 //       if (currentQ + 1 >= questions.length) {
-//         console.log('🎯 LAST QUESTION ANSWERED - COMPLETING GAME');
-        
-//         const finalScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
-        
-//         console.log('🎯 SENDING COMPLETION:', {
-//           playerId: currentPlayer,
-//           finalScore: finalScore,
-//           totalQuestions: questions.length
-//         });
-        
+//         // Use the accumulated local score for final submission
 //         socket.emit('triviaComplete', { 
 //           roomId, 
 //           playerId: currentPlayer, 
-//           score: finalScore,
+//           score: newScore, // Use the updated score
 //           total: questions.length 
 //         });
-        
 //         setShowFireworks(true);
+//         isProcessingRef.current = false;
 //       } else {
-//         console.log(`🎯 MOVING TO QUESTION ${currentQ + 2} of ${questions.length}`);
 //         nextQuestion();
 //       }
 //     }, 2000);
+//   };
+
+//   const nextQuestion = () => {
+//     if (currentQ + 1 < questions.length) {
+//       console.log(`➡️ Moving from question ${currentQ + 1} to ${currentQ + 2}`);
+      
+//       const nextQuestionIndex = currentQ + 1;
+//       setCurrentQ(nextQuestionIndex);
+//       setTimer(10);
+//       setSelected(null);
+//       setHasAnswered(false);
+//       setShowAnswerResult(false);
+//       isProcessingRef.current = false;
+//       answerTimeRef.current = 10;
+      
+//       console.log(`✅ Now on question ${nextQuestionIndex + 1}/${questions.length}`);
+//     } else {
+//       console.log('⚠️ No more questions to move to');
+//       isProcessingRef.current = false;
+//     }
 //   };
 
 //   useEffect(() => {
@@ -662,16 +749,16 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //       return gameState.players.map((player: any) => ({
 //         _id: player.id,
 //         score: player.score || 0,
-//         name: player.name || player.id
+//         name: player.name || player.id,
+//         correctAnswers: 0
 //       })).sort((a:any, b:any) => b.score - a.score);
 //     }
     
 //     const leaderboard = Object.entries(scores)
 //       .map(([playerId, playerScore]) => {
 //         const playerInfo = gameState.players.find((p: any) => p.id === playerId);
-//         const correctAnswers = Math.floor((playerScore as number) / 5);
-        
-//         console.log(`🏆 PLAYER SCORE: ${playerId} = ${playerScore} (${correctAnswers} correct)`);
+//         // Estimate correct answers (assuming average 2.5 points per correct answer)
+//         const correctAnswers = Math.floor((playerScore as number) / 2.5);
         
 //         return {
 //           _id: playerId,
@@ -684,16 +771,6 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 
 //     console.log('🏆 FINAL LEADERBOARD:', leaderboard);
 //     return leaderboard;
-//   };
-
-//   const nextQuestion = () => {
-//     if (currentQ + 1 < questions.length) {
-//       setCurrentQ(currentQ + 1);
-//       setTimer(10);
-//       setSelected(null);
-//       setHasAnswered(false);
-//       setShowAnswerResult(false);
-//     }
 //   };
 
 //   const leaderboardData = gameState.gameOver ? getLeaderboardData() : [];
@@ -718,14 +795,15 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //   }
 
 //   const currentQuestion = questions[currentQ];
-//   const currentPlayerScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
+//   const currentPlayerScore = localScore;
 //   const isCorrect = selected === currentQuestion.correctAnswer;
 
 //   console.log('Current game state:', {
+//     currentQuestionIndex: currentQ,
+//     totalQuestions: questions.length,
 //     gameOver: gameState.gameOver,
-//     scores: gameState.triviaState?.scores,
-//     completedPlayers: gameState.triviaState?.completedPlayers,
-//     totalPlayers: gameState.players.length
+//     hasAnswered,
+//     timer
 //   });
 
 //   return (
@@ -773,9 +851,9 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //                       </td>
 //                       <td className="px-6 py-4 whitespace-nowrap">
 //                         <div className="text-lg font-bold">{player.score} points</div>
-//                         <div className="text-sm text-gray-400">
-//                           {Math.floor(player.score / 5)} correct answers
-//                         </div>
+//                         {/* <div className="text-sm text-gray-400">
+//                           ~{player.correctAnswers} correct answers
+//                         </div> */}
 //                       </td>
 //                     </tr>
 //                   ))}
@@ -810,18 +888,23 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //                   <>
 //                     <div>✓ Correct!</div>
 //                     <div className="text-lg mt-1">
-//                       +{Math.round(5 * (timer / 10) * 100) / 100} points
+//                       +{lastPointsEarned} points
 //                     </div>
 //                     <div className="text-sm text-green-300 mt-1">
-//                       (Answered in {10 - timer}s - {Math.round(((timer) / 10) * 100)}% time remaining)
+//                       {answerTimeRef.current > 0 
+//                         ? `(Answered in ${10 - answerTimeRef.current}s - ${Math.round((answerTimeRef.current / 10) * 100)}% time bonus)`
+//                         : '(Answered at buzzer - 1 point)'
+//                       }
 //                     </div>
 //                   </>
 //                 ) : (
-//                   '✗ Incorrect!'
+//                   <>
+//                     <div>✗ Incorrect!</div>
+//                     <div className="text-sm mt-2">
+//                       Correct answer: {currentQuestion.correctAnswer}
+//                     </div>
+//                   </>
 //                 )}
-//                 <div className="text-sm mt-2 font-normal">
-//                   {currentQ + 1 < questions.length ? 'Moving to next question...' : 'Waiting for other players...'}
-//                 </div>
 //               </div>
 //             )}
             
@@ -858,7 +941,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //               {timer}
 //             </div>
 //           </div>
-//           {selected && !hasAnswered && (
+//           {/* {selected && !hasAnswered && (
 //             <div className="p-4">
 //               <button
 //                 className="w-full p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
@@ -867,10 +950,12 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
 //                 Submit Answer
 //               </button>
 //             </div>
-//           )}
+//           )} */}
 //         </>
 //       )}
 //     </div>
 //   );
 // };
+
+
 

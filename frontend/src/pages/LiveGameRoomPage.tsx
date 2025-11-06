@@ -1091,6 +1091,15 @@ const handleTriviaSettingsUpdated = (data: any) => {
 
 
 
+// In the socket event handlers section of LiveGamePageRoom.tsx
+
+const handleTriviaAllPlayersAnswered = (data: any) => {
+  console.log('All players answered trivia question:', data);
+  // The frontend will handle the 3-second wait and next question transition
+};
+
+
+socket.on('triviaAllPlayersAnswered', handleTriviaAllPlayersAnswered);
     socket.on("chatHistory", handleChatHistory);
     socket.emit("getChatHistory", { roomId });
     socket.on("gameState", handleGameState);
@@ -1143,7 +1152,8 @@ socket.on('triviaSettingsUpdated', handleTriviaSettingsUpdated);
       socket.off("unoGameState", handleUnoGameState);
       socket.off("unoGameOver", handleUnoGameOver);
       socket.off("unoError", handleUnoError);
-      socket.off('triviaSettingsUpdated', handleTriviaSettingsUpdated);
+      socket.off('triviaSettingsUpdated', handleTriviaSettingsUpdated);      
+socket.off('triviaAllPlayersAnswered', handleTriviaAllPlayersAnswered);
     };
   }, [socket, roomId, user, navigate, isSocketConnected]);
 
