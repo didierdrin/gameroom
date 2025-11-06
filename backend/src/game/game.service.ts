@@ -146,7 +146,7 @@ export class GameService {
   ];
 
   //private startPositions: number[] = [1, 14, 27, 40];
-  private startPositions: number[] = [0, 13, 26, 39]; 
+  private startPositions: number[] = [2, 15, 28, 41];
 
   private safePositions = [1, 9, 14, 22, 27, 35, 40, 48];
   private homeColumnStart = 52; 

@@ -62,6 +62,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   const calculatePlayerPoints = () => {
     if (!players || !coins) return;
 
+    // Calculate player progress (coins in home)
     const playerProgress = players.map(player => {
       const playerCoins = coins[player.id] || [0, 0, 0, 0];
       const coinsHome = playerCoins.filter(pos => pos === 57).length;
@@ -74,6 +75,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
       };
     });
 
+    // Sort by coins home (descending), then by total progress (descending)
     const sortedPlayers = [...playerProgress].sort((a, b) => {
       if (b.coinsHome !== a.coinsHome) {
         return b.coinsHome - a.coinsHome;
@@ -81,6 +83,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
       return b.totalProgress - a.totalProgress;
     });
 
+    // Assign points based on position
     const pointsMap: { [key: number]: number } = {
       1: 10, // Winner
       2: 5,  // Second
@@ -134,8 +137,12 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     [7, 0], [6, 0],
   ];
 
+
+  
   // Starting positions for each player (Red: 0, Blue: 1, Green: 2, Yellow: 3)  
-  const startPositions: number[] = [0, 13, 26, 39]; // Fixed: Changed to match backend calculation
+  // const startPositions: number[] = [1, 14, 27, 40];
+  const startPositions: number[] = [2, 15, 28, 41];
+  
   
   // Home stretch positions for each player (positions 52-57)
   const homeStretch: { [key: number]: number[][] } = {
@@ -165,7 +172,6 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     }
     
     // Regular board positions (1-51)
-    // FIXED: Use position - 1 instead of position - 2
     const adjusted = (position - 1 + startPositions[playerIndex]) % 52;
     return boardPath[adjusted];
   };
@@ -629,7 +635,6 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
 
 
 
-
 // import React, { useEffect, useState } from 'react';
 // import { GameState } from '../Ludo/types/game';
 // import { Dice } from './Dice';
@@ -803,7 +808,6 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
 //     }
     
 //     // Regular board positions (1-51)
-//     // const adjusted = (position - 1 + startPositions[playerIndex]) % 52;
 //     const adjusted = (position - 2 + startPositions[playerIndex]) % 52;
 //     return boardPath[adjusted];
 //   };
