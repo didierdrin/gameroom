@@ -1688,7 +1688,7 @@ const handleStartGame = () => {
     })();
 
     return (
-      <div className="relative h-full">
+      <div className="relative h-full overflow-y-auto">
         {gameContent}
         
         {isHost && gameState?.gameStarted && !gameState?.gameOver && (
