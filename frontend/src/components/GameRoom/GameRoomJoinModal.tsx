@@ -79,7 +79,7 @@ export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
 
         {/* Loading Overlay */}
         {isAnyLoading && (
-          <div className="absolute inset-0 bg-gray-800/80 rounded-xl flex items-center justify-center z-10">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-xl flex items-center justify-center z-10">
             <div className="text-center">
               <Loader2 size={32} className="animate-spin text-purple-500 mx-auto mb-2" />
               <p className="text-white">Joining room...</p>
