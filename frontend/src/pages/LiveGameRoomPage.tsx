@@ -1099,7 +1099,17 @@ const handleTriviaAllPlayersAnswered = (data: any) => {
 };
 
 
-socket.on('triviaAllPlayersAnswered', handleTriviaAllPlayersAnswered);
+const handlePlayerAutoSubmitted = (data: any) => {
+  console.log('Player auto-submitted due to timeout:', data);
+  // You can show a notification or update UI if needed
+  // For example: show a toast notification
+  setGameStatus(`${data.playerId} ran out of time - answer auto-submitted`);
+  setTimeout(() => setGameStatus(''), 3000);
+};
+
+
+socket.on('playerAutoSubmitted', handlePlayerAutoSubmitted);
+  socket.on('triviaAllPlayersAnswered', handleTriviaAllPlayersAnswered);
     socket.on("chatHistory", handleChatHistory);
     socket.emit("getChatHistory", { roomId });
     socket.on("gameState", handleGameState);
@@ -1153,7 +1163,8 @@ socket.on('triviaSettingsUpdated', handleTriviaSettingsUpdated);
       socket.off("unoGameOver", handleUnoGameOver);
       socket.off("unoError", handleUnoError);
       socket.off('triviaSettingsUpdated', handleTriviaSettingsUpdated);      
-socket.off('triviaAllPlayersAnswered', handleTriviaAllPlayersAnswered);
+      socket.off('triviaAllPlayersAnswered', handleTriviaAllPlayersAnswered);
+      socket.off('playerAutoSubmitted', handlePlayerAutoSubmitted);
     };
   }, [socket, roomId, user, navigate, isSocketConnected]);
 

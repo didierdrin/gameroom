@@ -49,6 +49,7 @@ export class GameGateway {
     await this.gameService.handleDisconnect(client);
     const rooms = await this.gameService.getActiveGameRooms();
     this.server.emit('gameRoomsList', { rooms });
+
   }
 
   @SubscribeMessage('createGame')
@@ -717,6 +718,42 @@ async handleRegenerateTriviaQuestions(
     });
   }
 }
+
+
+
+@SubscribeMessage('triviaAutoSubmit')
+async handleTriviaAutoSubmit(
+  @MessageBody() data: { 
+    roomId: string; 
+    playerId: string;
+    questionId: string;
+  }, 
+  @ConnectedSocket() client: Socket
+) {
+  try {
+    console.log('🎯 Auto-submit notification received:', {
+      playerId: data.playerId,
+      roomId: data.roomId,
+      questionId: data.questionId,
+      timestamp: new Date().toISOString()
+    });
+
+    // Log the auto-submission for tracking
+    console.log(`⏰ Player ${data.playerId} auto-submitted due to timeout for question ${data.questionId}`);
+
+    // You can also emit a notification to all players if needed
+    this.server.to(data.roomId).emit('playerAutoSubmitted', {
+      playerId: data.playerId,
+      questionId: data.questionId,
+      message: 'Time expired - answer auto-submitted'
+    });
+
+  } catch (error) {
+    console.error('Error handling trivia auto-submit:', error.message);
+    // Don't emit error to client as this is just a notification
+  }
+}
+
 
 }
 
