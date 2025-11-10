@@ -158,7 +158,7 @@ private boardPath: number[][] = [
   [13, 6], [12, 6], [11, 6], [10, 6], [9, 6],
   // Back to RED area
   [8, 5], [8, 4], [8, 3], [8, 2], [8, 1], [8, 0],
-  [7, 0] // Position 51 - just before RED start
+  [7, 0], [6, 0] // Position 51 - just before RED start
 ];
 
   //private startPositions: number[] = [1, 14, 27, 40];
@@ -735,7 +735,7 @@ case 'uno':
       throw error;
     }
   }
-  
+
 
   // async moveCoin(moveCoinDto: MoveCoinDto) {
   //   try {
