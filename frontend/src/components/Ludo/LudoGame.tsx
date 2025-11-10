@@ -100,57 +100,95 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     setPlayerPoints(pointsData);
   };
 
-  // Calculate movable coins when it's the current player's turn
   useEffect(() => {
     if (gameStarted && !gameState.gameOver && diceRolled && players[currentPlayer]?.id === currentPlayerId) {
       const currentPlayerData = players[currentPlayer];
       const playerCoins = coins![currentPlayerData.id] || [0, 0, 0, 0];
       const movable: number[] = [];
       
-      playerCoins.forEach((position, index) => {
-        // Can move coin from base if dice is 6
-        if (position === 0 && diceValue === 6) {
-          movable.push(index);
-        } 
-        // Can move coin on board if it won't exceed home
-        else if (position > 0 && position < 57 && position + diceValue! <= 57) {
-          movable.push(index);
+      // Get player index for calculations
+      const playerIndex = players.findIndex(p => p.id === currentPlayerId);
+      
+      playerCoins.forEach((position, coinIndex) => {
+        // Coin in base - can only move with 6
+        if (position === 0) {
+          if (diceValue === 6) {
+            movable.push(coinIndex);
+          }
+          return;
         }
-        // Can move coin in home stretch if it won't exceed center
-        else if (position >= 52 && position < 57 && position + diceValue! <= 57) {
-          movable.push(index);
+        
+        // Coin already home - cannot move
+        if (position === 57) {
+          return;
         }
+        
+        const newPosition = position + diceValue!;
+        
+        // Cannot exceed home position
+        if (newPosition > 57) {
+          return;
+        }
+        
+        // Check if entering home stretch
+        if (position < 52 && newPosition >= 52) {
+          const stepsFromStart = position - 1;
+          // Must complete ~51 steps before entering home
+          if (stepsFromStart >= 50) {
+            movable.push(coinIndex);
+          }
+          return;
+        }
+        
+        // Regular move or move within home stretch
+        movable.push(coinIndex);
       });
       
+      console.log(`Movable coins for player ${playerIndex}:`, movable, 'Dice:', diceValue);
       setMovableCoins(movable);
     } else {
       setMovableCoins([]);
     }
   }, [diceRolled, diceValue, currentPlayer, players, currentPlayerId, coins, gameStarted, gameState.gameOver]);
-
-  // Ludo board path (52 positions around the board)
+  
+  
   const boardPath: number[][] = [
-    [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [5, 6], [4, 6], [3, 6], [2, 6], [1, 6], [0, 6],
-    [0, 7], [0, 8], [1, 8], [2, 8], [3, 8], [4, 8], [5, 8], [6, 9], [6, 10], [6, 11], [6, 12], [6, 13], [6, 14],
-    [7, 14], [8, 14], [8, 13], [8, 12], [8, 11], [8, 10], [8, 9], [9, 8], [10, 8], [11, 8], [12, 8], [13, 8], [14, 8],
-    [14, 7], [14, 6], [13, 6], [12, 6], [11, 6], [10, 6], [9, 6], [8, 5], [8, 4], [8, 3], [8, 2], [8, 1], [8, 0],
-    [7, 0], [6, 0],
+    // RED starting area (position 0) - moving right
+    [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], 
+    // Corner to BLUE area
+    [5, 6], [4, 6], [3, 6], [2, 6], [1, 6], [0, 6],
+    [0, 7], [0, 8],
+    // BLUE starting area (position 13) - moving down
+    [1, 8], [2, 8], [3, 8], [4, 8], [5, 8],
+    // Corner to GREEN area
+    [6, 9], [6, 10], [6, 11], [6, 12], [6, 13], [6, 14],
+    [7, 14], [8, 14],
+    // GREEN starting area (position 26) - moving left
+    [8, 13], [8, 12], [8, 11], [8, 10], [8, 9],
+    // Corner to YELLOW area
+    [9, 8], [10, 8], [11, 8], [12, 8], [13, 8], [14, 8],
+    [14, 7], [14, 6],
+    // YELLOW starting area (position 39) - moving up
+    [13, 6], [12, 6], [11, 6], [10, 6], [9, 6],
+    // Back to RED area
+    [8, 5], [8, 4], [8, 3], [8, 2], [8, 1], [8, 0],
+    [7, 0] // Position 51
   ];
 
 
   
   // Starting positions for each player (Red: 0, Blue: 1, Green: 2, Yellow: 3)  
   // const startPositions: number[] = [1, 14, 27, 40];
-  const startPositions: number[] = [-1, 12, 25, 38];
-  
-  
-  // Home stretch positions for each player (positions 52-57)
-  const homeStretch: { [key: number]: number[][] } = {
-    0: [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6]], // Red
-    1: [[1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [6, 7]], // Blue
-    2: [[7, 13], [7, 12], [7, 11], [7, 10], [7, 9], [7, 8]], // Green
-    3: [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7], [8, 7]], // Yellow
-  };
+  const startPositions: number[] = [0, 13, 26, 39]; // Red, Blue, Green, Yellow
+  const safePositions = [0, 8, 13, 21, 26, 34, 39, 47];
+
+const homeStretch: { [key: number]: number[][] } = {
+  0: [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6]], // Red
+  1: [[1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [6, 7]], // Blue
+  2: [[7, 13], [7, 12], [7, 11], [7, 10], [7, 9], [7, 8]], // Green
+  3: [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7], [8, 7]], // Yellow
+};
+
 
   const handleMoveCoin = (coinIndex: number) => {
     if (!gameStarted || gameState.gameOver || winner) return;
@@ -167,85 +205,67 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     if (position === 57) return [7, 7]; // Home center
     
     // Home stretch positions (52-57)
-    if (position > 51) {
-      return homeStretch[playerIndex][position - 52];
+    if (position >= 52 && position <= 57) {
+      const homeIndex = position - 52;
+      return homeStretch[playerIndex][homeIndex];
     }
     
     // Regular board positions (1-51)
-    const adjusted = (position - 1 + startPositions[playerIndex]) % 52;
-    return boardPath[adjusted];
+    const pathIndex = (startPositions[playerIndex] + (position - 1)) % 52;
+    return boardPath[pathIndex];
   };
 
 
 
   const getCellColor = (row: number, col: number): string => {
-    // Safe star positions - add star and indigo color to these specific positions
+    // Safe star positions - stars and special color
     const safeStarsWithStars = [[2, 6], [8, 2], [12, 8], [6, 12]];
     const safeStarsWithoutStars = [[6, 1], [13, 6], [8, 13], [1, 8]];
     
-    // Map safe stars without stars to player colors
-    const safeStarPlayerMap: {[key: string]: string} = {
-      '6,1': 'red',    // Top left area - Red player
-      '13,6': 'yellow',  // Top right area - yellow player  
-      '8,13': 'green', // Bottom right area - Green player
-      '1,8': 'blue'  // Bottom left area - blue player
+    // Map entry points to player colors
+    const entryPointColors: {[key: string]: string} = {
+      '6,1': 'red',      // Red entry
+      '1,8': 'blue',     // Blue entry
+      '8,13': 'green',   // Green entry
+      '13,6': 'yellow'   // Yellow entry
     };
     
     // Center home area
     if (row === 7 && col === 7) return 'bg-gradient-to-br from-purple-600 to-pink-600';
     
-    // Player home areas
-    if (row === 6 && col === 7) return 'bg-gradient-to-br from-blue-500 to-blue-600'; // blue home
-    if (row === 7 && col === 6) return 'bg-gradient-to-br from-red-500 to-red-600'; // red home
-    if (row === 8 && col === 7) return 'bg-gradient-to-br from-yellow-400 to-yellow-500'; // Yellow home
-    if (row === 7 && col === 8) return 'bg-gradient-to-br from-green-500 to-green-600'; // Green home
+    // Home stretch ends (where they connect to center)
+    if (row === 6 && col === 7) return 'bg-gradient-to-br from-blue-500 to-blue-600';
+    if (row === 7 && col === 6) return 'bg-gradient-to-br from-red-500 to-red-600';
+    if (row === 8 && col === 7) return 'bg-gradient-to-br from-yellow-400 to-yellow-500';
+    if (row === 7 && col === 8) return 'bg-gradient-to-br from-green-500 to-green-600';
     
-    // Safe star positions with stars (indigo color)
+    // Safe star positions with star icons
     if (safeStarsWithStars.some(([r, c]) => r === row && c === col)) {
       return 'bg-gradient-to-br from-indigo-200 to-indigo-300 border-2 border-indigo-400 shadow-inner';
     }
     
-    // Safe star positions without stars (use the color of the player side they belong to)
-    if (safeStarsWithoutStars.some(([r, c]) => r === row && c === col)) {
-      const positionKey = `${row},${col}`;
-      const playerColor = safeStarPlayerMap[positionKey];
-      
-      switch (playerColor) {
-        case 'red':
-          return 'bg-gradient-to-br from-red-200 to-red-300 border-2 border-red-400 shadow-inner';
-        case 'blue':
-          return 'bg-gradient-to-br from-blue-200 to-blue-300 border-2 border-blue-400 shadow-inner';
-        case 'green':
-          return 'bg-gradient-to-br from-green-200 to-green-300 border-2 border-green-400 shadow-inner';
-        case 'yellow':
-          return 'bg-gradient-to-br from-yellow-200 to-yellow-300 border-2 border-yellow-400 shadow-inner';
-        default:
-          return 'bg-gradient-to-br from-emerald-200 to-emerald-300 border-2 border-yellow-400 shadow-inner';
-      }
+    // Entry point safe positions (colored by player)
+    const posKey = `${row},${col}`;
+    if (entryPointColors[posKey]) {
+      const color = entryPointColors[posKey];
+      return `bg-gradient-to-br from-${color}-200 to-${color}-300 border-2 border-${color}-400 shadow-inner`;
     }
     
-    // Home stretch areas with player colors
-    // Red home stretch (positions 52-56)
+    // Home stretch paths
     if (row === 7 && col >= 1 && col <= 5) {
       return 'bg-gradient-to-br from-red-200 to-red-300 border-2 border-red-400 shadow-inner';
     }
-    
-    // Blue home stretch (positions 52-56)
     if (col === 7 && row >= 1 && row <= 5) {
       return 'bg-gradient-to-br from-blue-200 to-blue-300 border-2 border-blue-400 shadow-inner';
     }
-    
-    // Green home stretch (positions 52-56)
     if (row === 7 && col >= 9 && col <= 13) {
       return 'bg-gradient-to-br from-green-200 to-green-300 border-2 border-green-400 shadow-inner';
     }
-    
-    // Yellow home stretch (positions 52-56)
     if (col === 7 && row >= 9 && row <= 13) {
       return 'bg-gradient-to-br from-yellow-200 to-yellow-300 border-2 border-yellow-400 shadow-inner';
     }
     
-    // Board path
+    // Regular board path
     if (boardPath.some(([r, c]) => r === row && c === col)) {
       return 'bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 shadow-sm';
     }
