@@ -41,7 +41,7 @@ export const Sidebar = () => {
   return (
     <div className="w-64 h-screen p-4 flex flex-col bg-gray-800">
       <div className="mb-8 mt-4">
-        <h1 className="text-2xl font-bold text-center bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 bg-clip-text text-transparent">
+        <h1 className="text-2xl font-bold text-center bg-orange-600 bg-clip-text text-transparent">
           Arena
         </h1>
         <p className="text-center text-sm text-gray-400">Game Room</p>
