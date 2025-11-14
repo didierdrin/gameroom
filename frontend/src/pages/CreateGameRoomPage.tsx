@@ -1064,7 +1064,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
             {/* Submit Button bg-gradient-to-r from-purple-600 to-pink-600 */}
         <button 
   type="submit" 
-  className={`px-8 py-4 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center ${
+  className={`px-8 py-4 bg-purple-800 text-white font-medium rounded-lg hover:bg-purple-900 transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center ${
     (isLoading || isJoiningRoom) ? 'opacity-75 cursor-not-allowed' : ''
   }`}
   disabled={isLoading || isJoiningRoom}
