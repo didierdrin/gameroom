@@ -104,7 +104,7 @@ export const UsernameLoginPage: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>Alu Globe Gameroom - Authentication</title>
+        <title>Arena Gameroom - Authentication</title>
       </Helmet>
       <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
         {/* Background decorative elements */}
@@ -121,7 +121,7 @@ export const UsernameLoginPage: React.FC = () => {
             <div className="bg-white/10 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/20">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-white mb-2">Welcome Back</h2>
-                <p className="text-gray-300">Connect, Find, Play – Start Your ALU Globe Game Room Journey Now!</p>
+                <p className="text-gray-300">Connect, Find, Play – Start Your Arena Game Room Journey Now!</p>
               </div>
 
               {/* Tab switcher */}
@@ -275,7 +275,7 @@ export const UsernameLoginPage: React.FC = () => {
           {/* Right side - Welcome message */}
           <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12">
             <div className="text-white">
-              <h1 className="text-4xl font-bold mb-6">ALU Globe Game Room</h1>
+              <h1 className="text-4xl font-bold mb-6">Arena Game Room</h1>
               <p className="text-xl text-gray-300 mb-8">
                 Your Digital campus awaits! Explore the ALU community in an immersive digital environment.
               </p>

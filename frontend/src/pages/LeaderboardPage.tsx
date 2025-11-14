@@ -213,7 +213,7 @@ export const LeaderboardPage = () => {
   if (loading) {
     return (
       <div className="p-6 overflow-y-auto h-screen pb-20">
-        <SectionTitle title="Leaderboards" subtitle="See who's on top of the ALU Globe gaming world" />
+        <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
         <div className="flex items-center justify-center h-64">
           <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -224,7 +224,7 @@ export const LeaderboardPage = () => {
   if (error) {
     return (
       <div className="p-6 overflow-y-auto h-screen pb-20">
-        <SectionTitle title="Leaderboards" subtitle="See who's on top of the ALU Globe gaming world" />
+        <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
         <div className="flex items-center justify-center h-64">
           <div className="text-red-400">
             <div className="text-center">
@@ -244,7 +244,7 @@ export const LeaderboardPage = () => {
 
   return (
     <div className="p-4 sm:p-6 overflow-y-auto h-screen pb-20">
-  <SectionTitle title="Leaderboards" subtitle="See who's on top of the ALU Globe gaming world" />
+  <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
   
   {/* Header with refresh button - MOBILE RESPONSIVE */}
   <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-4 sm:mb-8 gap-4 sm:gap-0">

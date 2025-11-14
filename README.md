@@ -1,6 +1,6 @@
-# ALU Globe Game Room - Leaderboard System
+# Arena Game Room - Leaderboard System
 
-This project implements a comprehensive leaderboard system for the ALU Globe Game Room, aggregating data from game rooms, game sessions, and users to provide real-time gaming statistics.
+This project implements a comprehensive leaderboard system for the Arena Game Room, aggregating data from game rooms, game sessions, and users to provide real-time gaming statistics.
 
 ## Features
 
@@ -164,4 +164,4 @@ npm run test:e2e
 
 ## License
 
-This project is part of the ALU Globe Game Room initiative.
+This project is part of the Arena Game Room initiative.

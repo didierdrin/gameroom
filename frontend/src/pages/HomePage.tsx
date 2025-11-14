@@ -341,7 +341,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
       <div className="relative bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-8 mb-8 overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=2071')] opacity-20 bg-cover bg-center mix-blend-overlay"></div>
         <div className="relative z-10">
-          <h1 className="text-4xl font-bold mb-2">ALU Globe Game Room</h1>
+          <h1 className="text-4xl font-bold mb-2">Arena Game Room</h1>
           <p className="text-xl text-gray-200 mb-6">
             Play, compete, and connect with fellow students!
           </p>

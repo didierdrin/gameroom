@@ -13,7 +13,7 @@ export function App() {
     <SocketProvider>
       <AuthProvider>
       <Helmet>
-        <title>Alu Globe Gameroom</title>
+        <title>Arena Gameroom</title>
       </Helmet>
       <ErrorBoundary>
         <div className="flex w-full min-h-screen bg-gray-900 text-white">

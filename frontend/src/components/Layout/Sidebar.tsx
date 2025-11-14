@@ -9,13 +9,13 @@ export const Sidebar = () => {
     {
       path: '/',
       label: 'Home',
-      icon: <HomeIcon size={24} />
-    },
-    {
-      path: '/my-game-rooms',
-      label: 'My Game Rooms',
       icon: <DicesIcon size={24} />
     },
+    // {
+    //   path: '/my-game-rooms',
+    //   label: 'My Game Rooms',
+    //   icon: <DicesIcon size={24} />
+    // },
     {
       path: '/create-game-room',
       label: 'Create Game Room',
@@ -42,7 +42,7 @@ export const Sidebar = () => {
     <div className="w-64 h-screen p-4 flex flex-col bg-gray-800">
       <div className="mb-8 mt-4">
         <h1 className="text-2xl font-bold text-center bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 bg-clip-text text-transparent">
-          ALU Globe
+          Arena
         </h1>
         <p className="text-center text-sm text-gray-400">Game Room</p>
       </div>
