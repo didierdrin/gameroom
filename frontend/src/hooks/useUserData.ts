@@ -52,16 +52,16 @@ export const useUserData = (userId: string | null | undefined) => {
       // If no cached data, fetch it
       setIsLoading(true);
       setError(null);
-      
+
       try {
-        const response = await fetch(`https://gameroom-t0mx.onrender.com/user/${userId}`);
+        const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userId}`);
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.data) {
             const userData = {
               username: data.data.username || userId,
-              avatar: data.data.avatar && data.data.avatar.trim() !== '' 
-                ? data.data.avatar 
+              avatar: data.data.avatar && data.data.avatar.trim() !== ''
+                ? data.data.avatar
                 : `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.data.username || userId}`
             };
             setUserData(userData);
@@ -77,7 +77,7 @@ export const useUserData = (userId: string | null | undefined) => {
         setError('Failed to load user data');
         // Use fallback display
         const fallbackData = {
-          username: userId.length > 20 
+          username: userId.length > 20
             ? `${userId.substring(0, 8)}...${userId.substring(userId.length - 8)}`
             : userId,
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
@@ -93,19 +93,19 @@ export const useUserData = (userId: string | null | undefined) => {
 
   const refreshUserData = async () => {
     if (!userId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      const response = await fetch(`https://gameroom-t0mx.onrender.com/user/${userId}`);
+      const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userId}`);
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data) {
           const userData = {
             username: data.data.username || userId,
-            avatar: data.data.avatar && data.data.avatar.trim() !== '' 
-              ? data.data.avatar 
+            avatar: data.data.avatar && data.data.avatar.trim() !== ''
+              ? data.data.avatar
               : `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.data.username || userId}`
           };
           setUserData(userData);

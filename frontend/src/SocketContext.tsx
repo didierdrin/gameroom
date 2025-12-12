@@ -40,7 +40,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     console.log(`Attempting to connect to WebSocket... (attempt ${connectionAttempts + 1})`);
     
-    sharedSocket = io('https://gameroom-t0mx.onrender.com', {
+    sharedSocket = io('https://alu-globe-gameroom.onrender.com', {
       transports: ['websocket', 'polling'], // Allow fallback to polling
       timeout: 20000, // 20 second timeout
       reconnection: true,

@@ -5,17 +5,17 @@ import { GameService } from './game.service';
 import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game.dto';
 import { UserService } from '../user/user.service';
 import { ChessService } from 'src/chess/chess.service';
-import { TriviaService } from '../trivia/trivia.service'; 
+import { TriviaService } from '../trivia/trivia.service';
 
-@WebSocketGateway({ 
-  cors: { 
+@WebSocketGateway({
+  cors: {
     origin: [
       'http://localhost:3000',
       'http://localhost:5173',
       'https://alu-globe-gameroom-frontend.vercel.app',
-      'https://gameroom-t0mx.onrender.com'
-    ], 
-    credentials: true 
+      'https://alu-globe-gameroom.onrender.com'
+    ],
+    credentials: true
   },
   pingTimeout: 60000,
   pingInterval: 25000,
@@ -30,7 +30,7 @@ export class GameGateway {
     private readonly userService: UserService,
     private readonly chessService: ChessService,
     private readonly triviaService: TriviaService, // Inject TriviaService
-  ) {}
+  ) { }
 
   afterInit() {
     this.gameService.setServer(this.server);
@@ -41,7 +41,7 @@ export class GameGateway {
     this.connectedSockets.set(client.id, client);
   }
 
- 
+
   async handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
     // Clean up all references
@@ -79,30 +79,30 @@ export class GameGateway {
       console.log('Joining game as player:', data);
       const result = await this.gameService.joinGame({ ...data, joinAsPlayer: true });
       client.join(data.roomId);
-      client.emit('playerJoined', { 
-        roomId: data.roomId, 
-        playerId: data.playerId, 
-        playerName: data.playerName, 
+      client.emit('playerJoined', {
+        roomId: data.roomId,
+        playerId: data.playerId,
+        playerName: data.playerName,
         success: true,
         role: 'player'
       });
-      
+
       if (result.isNewJoin) {
-        client.to(data.roomId).emit('playerConnected', { 
-          playerId: data.playerId, 
-          playerName: data.playerName, 
-          roomId: data.roomId, 
-          currentPlayers: result.game.currentPlayers 
+        client.to(data.roomId).emit('playerConnected', {
+          playerId: data.playerId,
+          playerName: data.playerName,
+          roomId: data.roomId,
+          currentPlayers: result.game.currentPlayers
         });
       }
-      
+
       const gameState = await this.gameService.getGameState(data.roomId);
       this.server.to(data.roomId).emit('gameState', {
         ...gameState,
         gameType: result.game.gameType,
         roomName: result.game.name,
       });
-      
+
       const rooms = await this.gameService.getActiveGameRooms();
       this.server.emit('gameRoomsList', { rooms });
     } catch (error) {
@@ -118,21 +118,21 @@ export class GameGateway {
       console.log('Joining game as spectator:', data);
       const result = await this.gameService.joinAsSpectator(data);
       client.join(data.roomId);
-      client.emit('spectatorJoined', { 
-        roomId: data.roomId, 
-        playerId: data.playerId, 
-        playerName: data.playerName, 
+      client.emit('spectatorJoined', {
+        roomId: data.roomId,
+        playerId: data.playerId,
+        playerName: data.playerName,
         success: true,
         role: 'spectator'
       });
-      
+
       // Notify other users about new spectator
-      client.to(data.roomId).emit('spectatorConnected', { 
-        playerId: data.playerId, 
-        playerName: data.playerName, 
-        roomId: data.roomId 
+      client.to(data.roomId).emit('spectatorConnected', {
+        playerId: data.playerId,
+        playerName: data.playerName,
+        roomId: data.roomId
       });
-      
+
       // Send current game state to spectator
       const gameState = await this.gameService.getGameState(data.roomId);
       client.emit('gameState', {
@@ -141,7 +141,7 @@ export class GameGateway {
         roomName: result.game.name,
         isSpectator: true
       });
-      
+
     } catch (error) {
       console.error('Join as spectator error:', error.message);
       client.emit('error', { message: error.message, type: 'joinError' });
@@ -153,14 +153,14 @@ export class GameGateway {
     try {
       console.log('Rolling dice:', payload);
       const result = await this.gameService.rollDice(payload);
-      
+
       // Emit dice result immediately
       this.server.to(payload.roomId).emit('diceRolled', result);
-      
+
       // Get and emit updated game state
       const gameState = await this.gameService.getGameState(payload.roomId);
       this.server.to(payload.roomId).emit('gameState', gameState);
-      
+
       console.log('Dice rolled result:', {
         roomId: payload.roomId,
         playerId: payload.playerId,
@@ -178,14 +178,14 @@ export class GameGateway {
     try {
       console.log('Moving coin:', payload);
       const result = await this.gameService.moveCoin(payload);
-      
+
       // Emit coin move result
       this.server.to(payload.roomId).emit('coinMoved', result);
-      
+
       // Get and emit updated game state
       const gameState = await this.gameService.getGameState(payload.roomId);
       this.server.to(payload.roomId).emit('gameState', gameState);
-      
+
       // If game is over, emit game over event
       if (result.gameOver) {
         this.server.to(payload.roomId).emit('gameOver', {
@@ -198,7 +198,7 @@ export class GameGateway {
           winner: result.winner
         });
       }
-      
+
       console.log('Coin moved result:', {
         roomId: payload.roomId,
         playerId: payload.playerId,
@@ -215,27 +215,27 @@ export class GameGateway {
 
 
   @SubscribeMessage('startGame')
-async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
-  try {
-    console.log('Starting game:', data);
-    const gameState = await this.gameService.startGame(data.roomId); 
-    console.log('Game started, emitting state:', {
-      roomId: data.roomId,
-      gameType: gameState.gameType,
-      currentTurn: gameState.currentTurn,
-      gameStarted: gameState.gameStarted
-    });
-    this.server.to(data.roomId).emit('gameState', {
-      ...gameState,
-      gameStarted: true,
-    });
-    const rooms = await this.gameService.getActiveGameRooms();
-    this.server.emit('gameRoomsList', { rooms });
-  } catch (error) {
-    console.error('Start game error:', error.message);
-    client.emit('error', { message: error.message, type: 'startGameError' });
+  async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
+    try {
+      console.log('Starting game:', data);
+      const gameState = await this.gameService.startGame(data.roomId);
+      console.log('Game started, emitting state:', {
+        roomId: data.roomId,
+        gameType: gameState.gameType,
+        currentTurn: gameState.currentTurn,
+        gameStarted: gameState.gameStarted
+      });
+      this.server.to(data.roomId).emit('gameState', {
+        ...gameState,
+        gameStarted: true,
+      });
+      const rooms = await this.gameService.getActiveGameRooms();
+      this.server.emit('gameRoomsList', { rooms });
+    } catch (error) {
+      console.error('Start game error:', error.message);
+      client.emit('error', { message: error.message, type: 'startGameError' });
+    }
   }
-}
 
   @SubscribeMessage('getGameRooms')
   async handleGetGameRooms(@ConnectedSocket() client: Socket) {
@@ -279,480 +279,480 @@ async handleStartGame(@MessageBody() data: { roomId: string }, @ConnectedSocket(
   }
 
 
- 
+
 
   @SubscribeMessage('triviaAnswer')
-async handleTriviaAnswer(@MessageBody() data: { 
-  roomId: string; 
-  playerId: string; 
-  qId: string; 
-  answer: string | null; 
-  correct?: string; 
-  isCorrect?: boolean;
-  pointsEarned?: number;
-  timeRemaining?: number;
-}, @ConnectedSocket() client: Socket) {
-  try {
-    console.log('Trivia answer received with time-based scoring:', {
-      playerId: data.playerId,
-      pointsEarned: data.pointsEarned,
-      timeRemaining: data.timeRemaining
-    });
-    
-    const result = await this.gameService.submitTriviaAnswer(data);
-    
-    // Emit the answer result with scoring details
-    this.server.to(data.roomId).emit('triviaAnswer', result);
-    
-    // Get and emit updated game state
-    const gameState = await this.gameService.getGameState(data.roomId);
-    this.server.to(data.roomId).emit('gameState', gameState);
-    
-    console.log('Trivia answer processed with time-based scoring:', {
-      playerId: data.playerId,
-      isCorrect: result.isCorrect,
-      pointsEarned: result.pointsEarned,
-      newScore: result.currentScore,
-      allScores: result.scores
-    });
-    
-    // If game is over after this answer, emit game over
-    if (gameState.gameOver) {
-      this.server.to(data.roomId).emit('gameOver', { 
-        winner: gameState.winner,
-        scores: gameState.triviaState?.scores 
+  async handleTriviaAnswer(@MessageBody() data: {
+    roomId: string;
+    playerId: string;
+    qId: string;
+    answer: string | null;
+    correct?: string;
+    isCorrect?: boolean;
+    pointsEarned?: number;
+    timeRemaining?: number;
+  }, @ConnectedSocket() client: Socket) {
+    try {
+      console.log('Trivia answer received with time-based scoring:', {
+        playerId: data.playerId,
+        pointsEarned: data.pointsEarned,
+        timeRemaining: data.timeRemaining
       });
+
+      const result = await this.gameService.submitTriviaAnswer(data);
+
+      // Emit the answer result with scoring details
+      this.server.to(data.roomId).emit('triviaAnswer', result);
+
+      // Get and emit updated game state
+      const gameState = await this.gameService.getGameState(data.roomId);
+      this.server.to(data.roomId).emit('gameState', gameState);
+
+      console.log('Trivia answer processed with time-based scoring:', {
+        playerId: data.playerId,
+        isCorrect: result.isCorrect,
+        pointsEarned: result.pointsEarned,
+        newScore: result.currentScore,
+        allScores: result.scores
+      });
+
+      // If game is over after this answer, emit game over
+      if (gameState.gameOver) {
+        this.server.to(data.roomId).emit('gameOver', {
+          winner: gameState.winner,
+          scores: gameState.triviaState?.scores
+        });
+      }
+    } catch (error) {
+      console.error('Trivia answer error:', error.message);
+      client.emit('error', { message: error.message, type: 'triviaAnswerError' });
     }
-  } catch (error) {
-    console.error('Trivia answer error:', error.message);
-    client.emit('error', { message: error.message, type: 'triviaAnswerError' });
   }
-}
 
 
-@SubscribeMessage('updateTriviaSettings')
-async handleUpdateTriviaSettings(
-  @MessageBody() data: { 
-    roomId: string; 
-    hostId: string; 
-    triviaSettings: any 
-  }, 
-  @ConnectedSocket() client: Socket
-) {
-  try {
-    console.log('Updating trivia settings:', data);
-    
-    const result = await this.gameService.updateTriviaSettings(
-      data.roomId, 
-      data.hostId, 
-      data.triviaSettings
-    );
-    
-    // Notify all players about the settings update
-    this.server.to(data.roomId).emit('triviaSettingsUpdated', {
-      roomId: data.roomId,
-      triviaSettings: data.triviaSettings,
-      message: 'Trivia settings updated successfully'
-    });
-    
-    console.log(`Trivia settings updated for room ${data.roomId}`);
-    
-  } catch (error) {
-    console.error('Update trivia settings error:', error.message);
-    client.emit('error', { 
-      message: error.message || 'Failed to update trivia settings', 
-      type: 'updateTriviaSettingsError' 
-    });
-  }
-}
-  
-@SubscribeMessage('triviaComplete')
-async handleTriviaComplete(@MessageBody() data: { roomId: string; playerId: string; score: number; total: number }, @ConnectedSocket() client: Socket) {
-  try {
-    console.log('Trivia complete:', data);
-    const result = await this.gameService.completeTriviaGame(data);
-    
-    // Emit the completion result
-    this.server.to(data.roomId).emit('triviaComplete', result);
-    
-    // Get and emit updated game state
-    const gameState = await this.gameService.getGameState(data.roomId);
-    this.server.to(data.roomId).emit('gameState', gameState);
-    
-    // If game is over, emit game over event
-    if (gameState.gameOver) {
-      this.server.to(data.roomId).emit('gameOver', { 
-        winner: gameState.winner,
-        scores: gameState.triviaState?.scores,
-        message: 'Trivia game completed!'
+  @SubscribeMessage('updateTriviaSettings')
+  async handleUpdateTriviaSettings(
+    @MessageBody() data: {
+      roomId: string;
+      hostId: string;
+      triviaSettings: any
+    },
+    @ConnectedSocket() client: Socket
+  ) {
+    try {
+      console.log('Updating trivia settings:', data);
+
+      const result = await this.gameService.updateTriviaSettings(
+        data.roomId,
+        data.hostId,
+        data.triviaSettings
+      );
+
+      // Notify all players about the settings update
+      this.server.to(data.roomId).emit('triviaSettingsUpdated', {
+        roomId: data.roomId,
+        triviaSettings: data.triviaSettings,
+        message: 'Trivia settings updated successfully'
       });
-      
-      // Update game rooms list
-      const rooms = await this.gameService.getActiveGameRooms();
-      this.server.emit('gameRoomsList', { rooms });
+
+      console.log(`Trivia settings updated for room ${data.roomId}`);
+
+    } catch (error) {
+      console.error('Update trivia settings error:', error.message);
+      client.emit('error', {
+        message: error.message || 'Failed to update trivia settings',
+        type: 'updateTriviaSettingsError'
+      });
     }
-  } catch (error) {
-    console.error('Trivia complete error:', error.message);
-    client.emit('error', { message: error.message, type: 'triviaCompleteError' });
   }
-}
+
+  @SubscribeMessage('triviaComplete')
+  async handleTriviaComplete(@MessageBody() data: { roomId: string; playerId: string; score: number; total: number }, @ConnectedSocket() client: Socket) {
+    try {
+      console.log('Trivia complete:', data);
+      const result = await this.gameService.completeTriviaGame(data);
+
+      // Emit the completion result
+      this.server.to(data.roomId).emit('triviaComplete', result);
+
+      // Get and emit updated game state
+      const gameState = await this.gameService.getGameState(data.roomId);
+      this.server.to(data.roomId).emit('gameState', gameState);
+
+      // If game is over, emit game over event
+      if (gameState.gameOver) {
+        this.server.to(data.roomId).emit('gameOver', {
+          winner: gameState.winner,
+          scores: gameState.triviaState?.scores,
+          message: 'Trivia game completed!'
+        });
+
+        // Update game rooms list
+        const rooms = await this.gameService.getActiveGameRooms();
+        this.server.emit('gameRoomsList', { rooms });
+      }
+    } catch (error) {
+      console.error('Trivia complete error:', error.message);
+      client.emit('error', { message: error.message, type: 'triviaCompleteError' });
+    }
+  }
 
   // audio functionality
   @SubscribeMessage('joinAudio')
-handleJoinAudio(
-  @MessageBody() data: { roomId: string; userId: string },
-  @ConnectedSocket() client: Socket
-) {
-  console.log(`User ${data.userId} joining audio room ${data.roomId}`);
-  client.join(`audio_${data.roomId}`);
-  client.join(`user_${data.userId}`); // Add user-specific room
-  client.to(`audio_${data.roomId}`).emit('peerJoined', data.userId);
-}
+  handleJoinAudio(
+    @MessageBody() data: { roomId: string; userId: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    console.log(`User ${data.userId} joining audio room ${data.roomId}`);
+    client.join(`audio_${data.roomId}`);
+    client.join(`user_${data.userId}`); // Add user-specific room
+    client.to(`audio_${data.roomId}`).emit('peerJoined', data.userId);
+  }
 
-@SubscribeMessage('leaveAudio')
-handleLeaveAudio(@MessageBody() data: { roomId: string, userId: string }, @ConnectedSocket() client: Socket) {
-  console.log(`User ${data.userId} leaving audio room ${data.roomId}`);
-  client.leave(`audio_${data.roomId}`);
-  client.to(`audio_${data.roomId}`).emit('peerLeft', data.userId);
-}
+  @SubscribeMessage('leaveAudio')
+  handleLeaveAudio(@MessageBody() data: { roomId: string, userId: string }, @ConnectedSocket() client: Socket) {
+    console.log(`User ${data.userId} leaving audio room ${data.roomId}`);
+    client.leave(`audio_${data.roomId}`);
+    client.to(`audio_${data.roomId}`).emit('peerLeft', data.userId);
+  }
 
-@SubscribeMessage('signal')
-async handleSignal(
-  @MessageBody() data: { 
-    signal: any, 
-    callerId: string, 
-    roomId: string, 
-    targetId: string,
-    type: 'offer' | 'answer' | 'candidate'
-  },
-  @ConnectedSocket() client: Socket
-) {
-  console.log(`Signaling ${data.type} from ${data.callerId} to ${data.targetId}`);
-  
-  // Queue candidates if connection isn't ready
-  if (data.type === 'candidate') {
-    client.to(`user_${data.targetId}`).emit('queuedCandidate', {
-      candidate: data.signal,
-      senderId: data.callerId
-    });
-  } else {
-    client.to(`user_${data.targetId}`).emit('signal', {
-      type: data.type,
+  @SubscribeMessage('signal')
+  async handleSignal(
+    @MessageBody() data: {
+      signal: any,
+      callerId: string,
+      roomId: string,
+      targetId: string,
+      type: 'offer' | 'answer' | 'candidate'
+    },
+    @ConnectedSocket() client: Socket
+  ) {
+    console.log(`Signaling ${data.type} from ${data.callerId} to ${data.targetId}`);
+
+    // Queue candidates if connection isn't ready
+    if (data.type === 'candidate') {
+      client.to(`user_${data.targetId}`).emit('queuedCandidate', {
+        candidate: data.signal,
+        senderId: data.callerId
+      });
+    } else {
+      client.to(`user_${data.targetId}`).emit('signal', {
+        type: data.type,
+        signal: data.signal,
+        senderId: data.callerId
+      });
+    }
+  }
+
+  @SubscribeMessage('returnSignal')
+  handleReturnSignal(
+    @MessageBody() data: { signal: any; callerId: string; roomId: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    console.log(`Return signal from ${data.callerId} in room ${data.roomId}`);
+    this.server.to(`user_${data.callerId}`).emit('returnedSignal', {
       signal: data.signal,
-      senderId: data.callerId
+      id: data.callerId
     });
   }
-}
-
-@SubscribeMessage('returnSignal')
-handleReturnSignal(
-  @MessageBody() data: { signal: any; callerId: string; roomId: string },
-  @ConnectedSocket() client: Socket
-) {
-  console.log(`Return signal from ${data.callerId} in room ${data.roomId}`);
-  this.server.to(`user_${data.callerId}`).emit('returnedSignal', {
-    signal: data.signal,
-    id: data.callerId
-  });
-}
 
 
-// Chat
-@SubscribeMessage('chatMessage')
-async handleChatMessage(
-  @MessageBody() data: { roomId: string; playerId: string; message: string },
-  @ConnectedSocket() client: Socket
-) {
-  try {
-    console.log(`Chat message from ${data.playerId} in room ${data.roomId}: ${data.message}`);
-    
-    // Broadcast the message to all clients in the room
-    this.server.to(data.roomId).emit('chatMessage', {
-      playerId: data.playerId,
-      message: data.message,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Error handling chat message:', error);
-    client.emit('chatError', { message: 'Failed to send chat message' });
-  }
-}
-
-
-@SubscribeMessage('getChatHistory')
-async handleGetChatHistory(
-  @MessageBody() data: { roomId: string },
-  @ConnectedSocket() client: Socket
-) {
-  try {
-    const history = await this.gameService.getChatHistory(data.roomId);
-    client.emit('chatHistory', history);
-  } catch (error) {
-    console.error('Error getting chat history:', error);
-  }
-}
-
-
-@SubscribeMessage('webrtc-offer')
-handleOffer(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-  try {
-    console.log(`WebRTC offer from ${client.id} in room ${data.roomId}`);
-    // Broadcast to all clients in the room except sender
-    client.to(data.roomId).emit('webrtc-offer', { 
-      sdp: data.sdp, 
-      from: client.id,
-      roomId: data.roomId
-    });
-  } catch (error) {
-    console.error('Error handling WebRTC offer:', error);
-    client.emit('webrtc-error', { message: 'Failed to process offer' });
-  }
-}
-
-@SubscribeMessage('webrtc-answer')
-handleAnswer(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-  try {
-    console.log(`WebRTC answer from ${client.id} in room ${data.roomId}`);
-    client.to(data.roomId).emit('webrtc-answer', { 
-      sdp: data.sdp, 
-      from: client.id,
-      roomId: data.roomId
-    });
-  } catch (error) {
-    console.error('Error handling WebRTC answer:', error);
-    client.emit('webrtc-error', { message: 'Failed to process answer' });
-  }
-}
-
-@SubscribeMessage('webrtc-candidate')
-handleCandidate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-  try {
-    console.log(`WebRTC candidate from ${client.id} in room ${data.roomId}`);
-    client.to(data.roomId).emit('webrtc-candidate', { 
-      candidate: data.candidate, 
-      from: client.id,
-      roomId: data.roomId
-    });
-  } catch (error) {
-    console.error('Error handling WebRTC candidate:', error);
-    client.emit('webrtc-error', { message: 'Failed to process candidate' });
-  }
-}
-
-// Add error handling for WebRTC
-@SubscribeMessage('webrtc-error')
-handleWebRTCError(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-  console.error(`WebRTC error from ${client.id}:`, data);
-  // Notify other clients in the room about the error
-  client.to(data.roomId).emit('webrtc-error', {
-    from: client.id,
-    message: data.message,
-    roomId: data.roomId
-  });
-}
-
-
-@SubscribeMessage('restartGame')
-async handleRestartGame(
-  @MessageBody() data: { roomId: string; hostId: string }, 
-  @ConnectedSocket() client: Socket
-) {
-  try {
-    console.log('Restarting game:', data);
-    
-    // Call service to restart game
-    const gameState = await this.gameService.restartGame(data.roomId, data.hostId);
-    
-    // For chess games, ensure chess state is also reset
-    if (gameState.gameType === 'chess') {
-      try {
-        await this.chessService.resetGame(data.roomId);
-        // Get updated chess state
-        const chessState = await this.chessService.getChessState(data.roomId);
-        gameState.chessState = {
-          board: chessState.board,
-          moves: chessState.moves
-        };
-        gameState.currentTurn = chessState.currentTurn;
-      } catch (error) {
-        console.error('Error resetting chess game:', error);
-      }
-    }
-    
-    // Notify all players in the room about the restart
-    this.server.to(data.roomId).emit('gameRestarted', { 
-      roomId: data.roomId,
-      message: 'The host has started a new round',
-      gameState: gameState  // Send the fresh game state
-    });
-    
-    // Send fresh game state to ensure sync
-    this.server.to(data.roomId).emit('gameState', gameState);
-    
-    // Update the game rooms list for lobby
-    const rooms = await this.gameService.getActiveGameRooms();
-    this.server.emit('gameRoomsList', { rooms });
-    
-    console.log(`Game restarted successfully for room ${data.roomId}`, {
-      gameType: gameState.gameType,
-      gameStarted: gameState.gameStarted,
-      currentTurn: gameState.currentTurn
-    });
-  } catch (error) {
-    console.error('Restart game error:', error.message);
-    client.emit('error', { 
-      message: error.message || 'Failed to restart game', 
-      type: 'restartGameError' 
-    });
-  }
-}
-
-@SubscribeMessage('endGame')
-async handleEndGame(
-  @MessageBody() data: { roomId: string; hostId: string }, 
-  @ConnectedSocket() client: Socket
-) {
-  try {
-    console.log('Ending game:', data);
-    
-    // Call service to end game
-    await this.gameService.endGame(data.roomId, data.hostId);
-    
-    // Notify all players in the room
-    this.server.to(data.roomId).emit('gameEnded', { 
-      roomId: data.roomId,
-      message: 'The host has ended the game'
-    });
-    
-    // Update the game rooms list for lobby
-    const rooms = await this.gameService.getActiveGameRooms();
-    this.server.emit('gameRoomsList', { rooms });
-    
-    console.log(`Game ended successfully for room ${data.roomId}`);
-  } catch (error) {
-    console.error('End game error:', error.message);
-    client.emit('error', { 
-      message: error.message || 'Failed to end game', 
-      type: 'endGameError' 
-    });
-  }
-}
-
-@SubscribeMessage('getRoomInfo')
-async handleGetRoomInfo(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
-  try {
-    const room = await this.gameService.getGameRoomById(data.roomId);
-    if (!room) {
-      client.emit('error', { message: 'Room not found', type: 'roomInfoError' });
-      return;
-    }
-
-    // Get host username
-    let hostName = room.host;
+  // Chat
+  @SubscribeMessage('chatMessage')
+  async handleChatMessage(
+    @MessageBody() data: { roomId: string; playerId: string; message: string },
+    @ConnectedSocket() client: Socket
+  ) {
     try {
-      const hostUser = await this.userService.findById(room.host);
-      if (hostUser && hostUser.username) {
-        hostName = hostUser.username;
-      }
+      console.log(`Chat message from ${data.playerId} in room ${data.roomId}: ${data.message}`);
+
+      // Broadcast the message to all clients in the room
+      this.server.to(data.roomId).emit('chatMessage', {
+        playerId: data.playerId,
+        message: data.message,
+        timestamp: new Date().toISOString()
+      });
+
     } catch (error) {
-      console.log(`Could not fetch host username for ${room.host}`);
+      console.error('Error handling chat message:', error);
+      client.emit('chatError', { message: 'Failed to send chat message' });
     }
-
-    const roomInfo = {
-      id: room.roomId,
-      roomId: room.roomId,
-      name: room.name,
-      host: room.host,
-      hostName: hostName,
-      gameType: room.gameType,
-      maxPlayers: room.maxPlayers,
-      currentPlayers: room.currentPlayers,
-      isPrivate: room.isPrivate,
-      status: room.status,
-      playerIds: room.playerIds,
-      spectatorIds: room.spectatorIds,
-      createdAt: room.createdAt
-    };
-
-    console.log("Sending room info:", roomInfo);
-    client.emit('roomInfo', roomInfo);
-  } catch (error) {
-    console.error('Get room info error:', error.message);
-    client.emit('error', { message: error.message, type: 'roomInfoError' });
   }
-}
 
 
-@SubscribeMessage('regenerateTriviaQuestions')
-async handleRegenerateTriviaQuestions(
-  @MessageBody() data: { roomId: string; hostId: string }, 
-  @ConnectedSocket() client: Socket
-) {
-  try {
-    const room = await this.gameService.getGameRoomById(data.roomId);
-    if (!room) throw new Error('Room not found');
-    if (room.host !== data.hostId) throw new Error('Only the host can regenerate questions');
-    
-    await this.gameService.regenerateTriviaQuestions(data.roomId);
-    
-    // Get the updated game state
-    const gameState = await this.gameService.getGameState(data.roomId);
-    
-    // Notify all players about the new questions
-    this.server.to(data.roomId).emit('triviaQuestionsRegenerated', {
-      roomId: data.roomId,
-      questionCount: gameState.triviaState?.questions.length || 0
-    });
-    
-    // Send the fresh game state
-    this.server.to(data.roomId).emit('gameState', gameState);
-    
-    console.log(`Trivia questions regenerated for room ${data.roomId}`);
-    
-  } catch (error) {
-    console.error('Regenerate trivia questions error:', error.message);
-    client.emit('error', { 
-      message: error.message || 'Failed to regenerate questions', 
-      type: 'regenerateQuestionsError' 
+  @SubscribeMessage('getChatHistory')
+  async handleGetChatHistory(
+    @MessageBody() data: { roomId: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    try {
+      const history = await this.gameService.getChatHistory(data.roomId);
+      client.emit('chatHistory', history);
+    } catch (error) {
+      console.error('Error getting chat history:', error);
+    }
+  }
+
+
+  @SubscribeMessage('webrtc-offer')
+  handleOffer(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+    try {
+      console.log(`WebRTC offer from ${client.id} in room ${data.roomId}`);
+      // Broadcast to all clients in the room except sender
+      client.to(data.roomId).emit('webrtc-offer', {
+        sdp: data.sdp,
+        from: client.id,
+        roomId: data.roomId
+      });
+    } catch (error) {
+      console.error('Error handling WebRTC offer:', error);
+      client.emit('webrtc-error', { message: 'Failed to process offer' });
+    }
+  }
+
+  @SubscribeMessage('webrtc-answer')
+  handleAnswer(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+    try {
+      console.log(`WebRTC answer from ${client.id} in room ${data.roomId}`);
+      client.to(data.roomId).emit('webrtc-answer', {
+        sdp: data.sdp,
+        from: client.id,
+        roomId: data.roomId
+      });
+    } catch (error) {
+      console.error('Error handling WebRTC answer:', error);
+      client.emit('webrtc-error', { message: 'Failed to process answer' });
+    }
+  }
+
+  @SubscribeMessage('webrtc-candidate')
+  handleCandidate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+    try {
+      console.log(`WebRTC candidate from ${client.id} in room ${data.roomId}`);
+      client.to(data.roomId).emit('webrtc-candidate', {
+        candidate: data.candidate,
+        from: client.id,
+        roomId: data.roomId
+      });
+    } catch (error) {
+      console.error('Error handling WebRTC candidate:', error);
+      client.emit('webrtc-error', { message: 'Failed to process candidate' });
+    }
+  }
+
+  // Add error handling for WebRTC
+  @SubscribeMessage('webrtc-error')
+  handleWebRTCError(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+    console.error(`WebRTC error from ${client.id}:`, data);
+    // Notify other clients in the room about the error
+    client.to(data.roomId).emit('webrtc-error', {
+      from: client.id,
+      message: data.message,
+      roomId: data.roomId
     });
   }
-}
 
 
+  @SubscribeMessage('restartGame')
+  async handleRestartGame(
+    @MessageBody() data: { roomId: string; hostId: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    try {
+      console.log('Restarting game:', data);
 
-@SubscribeMessage('triviaAutoSubmit')
-async handleTriviaAutoSubmit(
-  @MessageBody() data: { 
-    roomId: string; 
-    playerId: string;
-    questionId: string;
-  }, 
-  @ConnectedSocket() client: Socket
-) {
-  try {
-    console.log('🎯 Auto-submit notification received:', {
-      playerId: data.playerId,
-      roomId: data.roomId,
-      questionId: data.questionId,
-      timestamp: new Date().toISOString()
-    });
+      // Call service to restart game
+      const gameState = await this.gameService.restartGame(data.roomId, data.hostId);
 
-    // Log the auto-submission for tracking
-    console.log(`⏰ Player ${data.playerId} auto-submitted due to timeout for question ${data.questionId}`);
+      // For chess games, ensure chess state is also reset
+      if (gameState.gameType === 'chess') {
+        try {
+          await this.chessService.resetGame(data.roomId);
+          // Get updated chess state
+          const chessState = await this.chessService.getChessState(data.roomId);
+          gameState.chessState = {
+            board: chessState.board,
+            moves: chessState.moves
+          };
+          gameState.currentTurn = chessState.currentTurn;
+        } catch (error) {
+          console.error('Error resetting chess game:', error);
+        }
+      }
 
-    // You can also emit a notification to all players if needed
-    this.server.to(data.roomId).emit('playerAutoSubmitted', {
-      playerId: data.playerId,
-      questionId: data.questionId,
-      message: 'Time expired - answer auto-submitted'
-    });
+      // Notify all players in the room about the restart
+      this.server.to(data.roomId).emit('gameRestarted', {
+        roomId: data.roomId,
+        message: 'The host has started a new round',
+        gameState: gameState  // Send the fresh game state
+      });
 
-  } catch (error) {
-    console.error('Error handling trivia auto-submit:', error.message);
-    // Don't emit error to client as this is just a notification
+      // Send fresh game state to ensure sync
+      this.server.to(data.roomId).emit('gameState', gameState);
+
+      // Update the game rooms list for lobby
+      const rooms = await this.gameService.getActiveGameRooms();
+      this.server.emit('gameRoomsList', { rooms });
+
+      console.log(`Game restarted successfully for room ${data.roomId}`, {
+        gameType: gameState.gameType,
+        gameStarted: gameState.gameStarted,
+        currentTurn: gameState.currentTurn
+      });
+    } catch (error) {
+      console.error('Restart game error:', error.message);
+      client.emit('error', {
+        message: error.message || 'Failed to restart game',
+        type: 'restartGameError'
+      });
+    }
   }
-}
+
+  @SubscribeMessage('endGame')
+  async handleEndGame(
+    @MessageBody() data: { roomId: string; hostId: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    try {
+      console.log('Ending game:', data);
+
+      // Call service to end game
+      await this.gameService.endGame(data.roomId, data.hostId);
+
+      // Notify all players in the room
+      this.server.to(data.roomId).emit('gameEnded', {
+        roomId: data.roomId,
+        message: 'The host has ended the game'
+      });
+
+      // Update the game rooms list for lobby
+      const rooms = await this.gameService.getActiveGameRooms();
+      this.server.emit('gameRoomsList', { rooms });
+
+      console.log(`Game ended successfully for room ${data.roomId}`);
+    } catch (error) {
+      console.error('End game error:', error.message);
+      client.emit('error', {
+        message: error.message || 'Failed to end game',
+        type: 'endGameError'
+      });
+    }
+  }
+
+  @SubscribeMessage('getRoomInfo')
+  async handleGetRoomInfo(@MessageBody() data: { roomId: string }, @ConnectedSocket() client: Socket) {
+    try {
+      const room = await this.gameService.getGameRoomById(data.roomId);
+      if (!room) {
+        client.emit('error', { message: 'Room not found', type: 'roomInfoError' });
+        return;
+      }
+
+      // Get host username
+      let hostName = room.host;
+      try {
+        const hostUser = await this.userService.findById(room.host);
+        if (hostUser && hostUser.username) {
+          hostName = hostUser.username;
+        }
+      } catch (error) {
+        console.log(`Could not fetch host username for ${room.host}`);
+      }
+
+      const roomInfo = {
+        id: room.roomId,
+        roomId: room.roomId,
+        name: room.name,
+        host: room.host,
+        hostName: hostName,
+        gameType: room.gameType,
+        maxPlayers: room.maxPlayers,
+        currentPlayers: room.currentPlayers,
+        isPrivate: room.isPrivate,
+        status: room.status,
+        playerIds: room.playerIds,
+        spectatorIds: room.spectatorIds,
+        createdAt: room.createdAt
+      };
+
+      console.log("Sending room info:", roomInfo);
+      client.emit('roomInfo', roomInfo);
+    } catch (error) {
+      console.error('Get room info error:', error.message);
+      client.emit('error', { message: error.message, type: 'roomInfoError' });
+    }
+  }
+
+
+  @SubscribeMessage('regenerateTriviaQuestions')
+  async handleRegenerateTriviaQuestions(
+    @MessageBody() data: { roomId: string; hostId: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    try {
+      const room = await this.gameService.getGameRoomById(data.roomId);
+      if (!room) throw new Error('Room not found');
+      if (room.host !== data.hostId) throw new Error('Only the host can regenerate questions');
+
+      await this.gameService.regenerateTriviaQuestions(data.roomId);
+
+      // Get the updated game state
+      const gameState = await this.gameService.getGameState(data.roomId);
+
+      // Notify all players about the new questions
+      this.server.to(data.roomId).emit('triviaQuestionsRegenerated', {
+        roomId: data.roomId,
+        questionCount: gameState.triviaState?.questions.length || 0
+      });
+
+      // Send the fresh game state
+      this.server.to(data.roomId).emit('gameState', gameState);
+
+      console.log(`Trivia questions regenerated for room ${data.roomId}`);
+
+    } catch (error) {
+      console.error('Regenerate trivia questions error:', error.message);
+      client.emit('error', {
+        message: error.message || 'Failed to regenerate questions',
+        type: 'regenerateQuestionsError'
+      });
+    }
+  }
+
+
+
+  @SubscribeMessage('triviaAutoSubmit')
+  async handleTriviaAutoSubmit(
+    @MessageBody() data: {
+      roomId: string;
+      playerId: string;
+      questionId: string;
+    },
+    @ConnectedSocket() client: Socket
+  ) {
+    try {
+      console.log('🎯 Auto-submit notification received:', {
+        playerId: data.playerId,
+        roomId: data.roomId,
+        questionId: data.questionId,
+        timestamp: new Date().toISOString()
+      });
+
+      // Log the auto-submission for tracking
+      console.log(`⏰ Player ${data.playerId} auto-submitted due to timeout for question ${data.questionId}`);
+
+      // You can also emit a notification to all players if needed
+      this.server.to(data.roomId).emit('playerAutoSubmitted', {
+        playerId: data.playerId,
+        questionId: data.questionId,
+        message: 'Time expired - answer auto-submitted'
+      });
+
+    } catch (error) {
+      console.error('Error handling trivia auto-submit:', error.message);
+      // Don't emit error to client as this is just a notification
+    }
+  }
 
 
 }

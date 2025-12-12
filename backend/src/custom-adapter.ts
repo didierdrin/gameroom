@@ -10,7 +10,7 @@ export class CustomIoAdapter extends IoAdapter {
 
   createIOServer(port: number, options?: ServerOptions) {
     console.log('🔌 Creating WebSocket server...');
-    
+
     const server = super.createIOServer(port, {
       ...options,
       cors: {
@@ -18,7 +18,7 @@ export class CustomIoAdapter extends IoAdapter {
           'http://localhost:5173',
           'http://localhost:3000',
           'https://alu-globe-gameroom-frontend.vercel.app',
-          'https://gameroom-t0mx.onrender.com'
+          'https://alu-globe-gameroom.onrender.com'
         ],
         methods: ['GET', 'POST'],
         credentials: true,
@@ -27,15 +27,15 @@ export class CustomIoAdapter extends IoAdapter {
       pingTimeout: 60000, // 60 seconds
       pingInterval: 25000, // 25 seconds
       connectTimeout: 45000, // 45 seconds connection timeout
-      
+
       // Transport configuration
       transports: ['websocket', 'polling'], // Allow both transports
       upgradeTimeout: 30000, // 30 seconds to upgrade to websocket
-      
+
       // Additional options for better reliability
       allowEIO3: true, // Support older Socket.IO clients
       maxHttpBufferSize: 1e6, // 1MB buffer size
-      
+
       // Heartbeat settings
       serveClient: false, // Don't serve Socket.IO client files
     });
@@ -43,7 +43,7 @@ export class CustomIoAdapter extends IoAdapter {
     // Add connection event logging
     server.on('connection', (socket) => {
       console.log(`✅ Client connected: ${socket.id} from ${socket.handshake.address}`);
-      
+
       socket.on('disconnect', (reason) => {
         console.log(`❌ Client disconnected: ${socket.id}, reason: ${reason}`);
       });

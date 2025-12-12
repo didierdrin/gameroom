@@ -37,7 +37,7 @@ export const LeaderboardPage = () => {
     
     try {
       const gameTypeParam = gameFilter === 'all' ? '' : gameFilter;
-      const url = `https://gameroom-t0mx.onrender.com/user/leaderboard${gameTypeParam ? `?gameType=${gameTypeParam}` : ''}`;
+      const url = `https://alu-globe-gameroom.onrender.com/user/leaderboard${gameTypeParam ? `?gameType=${gameTypeParam}` : ''}`;
       
       console.log('Fetching leaderboard from:', url);
       

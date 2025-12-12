@@ -49,7 +49,7 @@ class UsernameResolver {
 
   private async fetchUsernameFromBackend(userId: string): Promise<string> {
     try {
-      const response = await fetch(`https://gameroom-t0mx.onrender.com/user/${userId}`);
+      const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userId}`);
       if (response.ok) {
         const data = await response.json();
         // Fix: Change from data.username to data.data?.username
@@ -84,16 +84,16 @@ class UsernameResolver {
           timestamp: Date.now()
         };
         this.saveCache();
-        
+
         // Clean up pending request
         delete this.pendingRequests[userId];
-        
+
         return username;
       })
       .catch(error => {
         // Clean up pending request
         delete this.pendingRequests[userId];
-        
+
         // Return a fallback display
         return this.getFallbackDisplay(userId);
       });
@@ -189,14 +189,14 @@ class UsernameResolver {
   clearExpiredCache() {
     const now = Date.now();
     let cleared = 0;
-    
+
     Object.keys(this.cache).forEach(userId => {
       if (now - this.cache[userId].timestamp > CACHE_DURATION) {
         delete this.cache[userId];
         cleared++;
       }
     });
-    
+
     if (cleared > 0) {
       this.saveCache();
       console.log(`Cleared ${cleared} expired username cache entries`);

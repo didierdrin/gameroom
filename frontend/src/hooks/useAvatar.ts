@@ -54,7 +54,7 @@ export const useAvatar = (userId: string | null | undefined, seedFallback?: stri
     let didCancel = false;
     const cache = loadCache();
     const cached = cache[userId];
-    
+
     if (cached) {
       console.log(`Using cached avatar for user ${userId}:`, cached.url);
       setAvatarUrl(cached.url);
@@ -66,26 +66,26 @@ export const useAvatar = (userId: string | null | undefined, seedFallback?: stri
       setIsLoading(true);
       setError(null);
       console.log(`Fetching avatar for user ${userId}...`);
-      
+
       try {
-        const resp = await fetch(`https://gameroom-t0mx.onrender.com/user/${userId}/profile`, {
+        const resp = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userId}/profile`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           }
         });
-        
+
         if (!resp.ok) {
           throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
         }
-        
+
         const json = await resp.json();
         console.log(`Profile response for user ${userId}:`, json);
-        
+
         // Handle both response formats: { data: { avatar } } or { avatar }
         const url: string | undefined = json?.data?.avatar || json?.avatar;
-        
+
         if (url && !didCancel) {
           console.log(`Found avatar URL for user ${userId}:`, url);
           setAvatarUrl(url);
@@ -93,20 +93,20 @@ export const useAvatar = (userId: string | null | undefined, seedFallback?: stri
           saveCache(updated);
           return;
         }
-        
+
         throw new Error('No avatar found in profile response');
       } catch (e: any) {
         if (didCancel) return;
-        
+
         console.warn(`Failed to fetch avatar for user ${userId}:`, e?.message);
         setError(e?.message || 'Failed to load avatar');
-        
+
         // Fallback: stable dicebear using provided seed or userId
         const seed = (seedFallback || userId).toString();
         const fallbackUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
         console.log(`Using fallback avatar for user ${userId}:`, fallbackUrl);
         setAvatarUrl(fallbackUrl);
-        
+
         // Cache the fallback URL with a shorter TTL (1 minute) so we retry sooner
         const updated = { ...cache, [userId]: { url: fallbackUrl, timestamp: Date.now() - (AVATAR_CACHE_TTL_MS - 60000) } };
         saveCache(updated);

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance
 const apiClient = axios.create({
-  baseURL: 'https://gameroom-t0mx.onrender.com',
+  baseURL: 'https://alu-globe-gameroom.onrender.com',
 });
 
 // Add request interceptor to include token
