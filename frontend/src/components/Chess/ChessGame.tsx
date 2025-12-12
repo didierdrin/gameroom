@@ -1,6 +1,15 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Chessboard from 'chessboardjsx';
 import { Chess, Square } from 'chess.js';
+import { Trophy, Crown } from 'lucide-react';
+
+interface PlayerPoints {
+  playerId: string;
+  name: string;
+  color?: string;
+  position: number;
+  points: number;
+}
 
 interface GameRenderProps {
   socket: any;
@@ -23,6 +32,8 @@ export const ChessGame: React.FC<GameRenderProps> = ({
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [gameStatus, setGameStatus] = useState('');
   const [lastProcessedMove, setLastProcessedMove] = useState<number>(0);
+  const [showPointsTable, setShowPointsTable] = useState(false);
+  const [playerPoints, setPlayerPoints] = useState<PlayerPoints[]>([]);
   
   // New state for click-to-move
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
@@ -403,6 +414,40 @@ useEffect(() => {
   };
 }, [socket]);
 
+  useEffect(() => {
+    if (gameState.gameOver && !showPointsTable) {
+      calculateChessPoints();
+      setTimeout(() => setShowPointsTable(true), 1000);
+    }
+  }, [gameState.gameOver, gameState.winner]);
+
+  const calculateChessPoints = () => {
+    if (!gameState.players) return;
+    
+    // Winner 20, Loser 2
+    const pointsData = gameState.players.map((p: any) => {
+      const isWinner = p.id === gameState.winner;
+      return {
+        playerId: p.id,
+        name: p.name,
+        color: p.chessColor,
+        position: isWinner ? 1 : 2,
+        points: isWinner ? 20 : 2
+      };
+    });
+    
+    // Sort so winner is first
+    pointsData.sort((a: any, b: any) => a.position - b.position);
+    
+    setPlayerPoints(pointsData);
+  };
+
+  const handleRestartGame = () => {
+    if (socket) {
+        socket.emit('restartGame', { roomId, hostId: currentPlayer });
+    }
+  };
+
 
   return (
     <div className="flex flex-col items-center justify-center h-full">
@@ -465,6 +510,56 @@ useEffect(() => {
           </p>
         )}
       </div>
+
+      {/* Points Table Modal */}
+      {showPointsTable && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-purple-900 to-blue-900 rounded-2xl border border-purple-500/30 max-w-md w-full p-6 shadow-2xl">
+            <div className="text-center mb-6">
+              <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+              <h2 className="text-3xl font-bold text-white mb-2">Game Results</h2>
+              <p className="text-purple-200">Final Points Distribution</p>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {playerPoints.map((player, index) => (
+                <div
+                  key={player.playerId}
+                  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-300 ${
+                    index === 0
+                      ? 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border-yellow-400 shadow-lg shadow-yellow-500/25'
+                      : 'bg-gradient-to-r from-purple-800/20 to-purple-900/20 border-purple-700'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20">
+                      {index === 0 ? <Crown className="w-5 h-5 text-yellow-400" /> : 
+                       <span className="text-white text-sm font-bold">{index + 1}</span>}
+                    </div>
+                    <span className="text-white font-semibold">{player.name || player.playerId}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-2xl font-bold text-white">{player.points}</span>
+                    <span className="text-xs text-yellow-400 uppercase tracking-wider font-bold">PTS</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowPointsTable(false);
+                  handleRestartGame();
+                }}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-500/25 transition-all transform hover:scale-105"
+              >
+                Play Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

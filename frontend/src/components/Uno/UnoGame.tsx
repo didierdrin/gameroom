@@ -3,6 +3,7 @@ import { useSocket } from '../../SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import './UnoGame.css';
 import { useUserData } from '../../hooks/useUserData';
+import { Trophy, Award, Star, Crown } from 'lucide-react';
 
 interface UnoCard {
   id: string;
@@ -18,6 +19,14 @@ interface UnoPlayer {
   cards: UnoCard[];
   hasUno: boolean;
   score: number;
+}
+
+interface PlayerPoints {
+  playerId: string;
+  name: string;
+  color?: string;
+  position: number;
+  points: number;
 }
 
 interface UnoGameState {
@@ -60,6 +69,8 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
   const { user } = useAuth();
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showPointsTable, setShowPointsTable] = useState(false);
+  const [playerPoints, setPlayerPoints] = useState<PlayerPoints[]>([]);
   
   
 const unoGameState: UnoGameState = React.useMemo(() => {
@@ -105,6 +116,37 @@ const unoGameState: UnoGameState = React.useMemo(() => {
       setLocalGameState(unoGameState);
     }
   }, [gameState, unoGameState]);
+
+  useEffect(() => {
+    if (localGameState.gameOver && !showPointsTable) {
+      calculateUnoPoints();
+      setTimeout(() => setShowPointsTable(true), 1000);
+    }
+  }, [localGameState.gameOver, localGameState.winner]);
+
+  const calculateUnoPoints = () => {
+    if (!localGameState.players) return;
+
+    const sortedPlayers = [...localGameState.players].sort((a, b) => {
+      if (a.id === localGameState.winner) return -1;
+      if (b.id === localGameState.winner) return 1;
+      return a.cards.length - b.cards.length;
+    });
+
+    const pointsMap: { [key: number]: number } = {
+      1: 20, 2: 15, 3: 10, 4: 5
+    };
+
+    const pointsData = sortedPlayers.map((player, index) => ({
+      playerId: player.id,
+      name: player.name,
+      color: 'blue', // Default for Uno list
+      position: index + 1,
+      points: pointsMap[index + 1] || 0
+    }));
+
+    setPlayerPoints(pointsData);
+  };
 
   useEffect(() => {
     if (!socket) return;
@@ -430,6 +472,62 @@ const unoGameState: UnoGameState = React.useMemo(() => {
                 {color}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Points Table Modal */}
+      {showPointsTable && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-purple-900 to-blue-900 rounded-2xl border border-purple-500/30 max-w-md w-full p-6 shadow-2xl">
+            <div className="text-center mb-6">
+              <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+              <h2 className="text-3xl font-bold text-white mb-2">Game Results</h2>
+              <p className="text-purple-200">Final Points Distribution</p>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {playerPoints.map((player, index) => (
+                <div
+                  key={player.playerId}
+                  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-300 ${
+                    index === 0
+                      ? 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border-yellow-400 shadow-lg shadow-yellow-500/25'
+                      : index === 1
+                      ? 'bg-gradient-to-r from-gray-400/20 to-gray-500/20 border-gray-400 shadow-lg shadow-gray-500/25'
+                      : index === 2
+                      ? 'bg-gradient-to-r from-orange-800/20 to-orange-900/20 border-orange-700 shadow-lg shadow-orange-500/25'
+                      : 'bg-gradient-to-r from-purple-800/20 to-purple-900/20 border-purple-700'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20">
+                      {index === 0 ? <Crown className="w-5 h-5 text-yellow-400" /> : 
+                       index === 1 ? <Award className="w-5 h-5 text-gray-300" /> :
+                       index === 2 ? <Star className="w-5 h-5 text-orange-400" /> :
+                       <span className="text-white text-sm font-bold">{index + 1}</span>}
+                    </div>
+                    <span className="text-white font-semibold">{player.name || player.playerId}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-2xl font-bold text-white">{player.points}</span>
+                    <span className="text-xs text-yellow-400 uppercase tracking-wider font-bold">PTS</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowPointsTable(false);
+                  handleRestartGame();
+                }}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-500/25 transition-all transform hover:scale-105"
+              >
+                Play Again
+              </button>
+            </div>
           </div>
         </div>
       )}

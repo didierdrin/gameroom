@@ -85,10 +85,10 @@ export const LudoGame: React.FC<LudoGameProps> = ({
 
     // Assign points based on position
     const pointsMap: { [key: number]: number } = {
-      1: 10, // Winner
-      2: 5,  // Second
-      3: 2,  // Third
-      4: 1   // Last
+      1: 20, // Winner
+      2: 15, // Second
+      3: 10,  // Third
+      4: 5   // Last
     };
 
     const pointsData = sortedPlayers.map((player, index) => ({

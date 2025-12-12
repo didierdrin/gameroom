@@ -112,127 +112,12 @@ export const ProfilePage = () => {
   // Add this with your other state declarations
 const [currentPage, setCurrentPage] = useState(1);
 
-  // Function to fetch gamerooms data
-  const fetchGameroomsData = async () => {
-    try {
-      const response = await fetch('https://gameroom-t0mx.onrender.com/gamerooms', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch gamerooms: ${response.status}`);
-      }
-
-      const gameroomsData = await response.json();
-
-      let gamerooms: GameRoom[] = [];
-      if (gameroomsData.success && gameroomsData.data) {
-        gamerooms = gameroomsData.data;
-      } else if (Array.isArray(gameroomsData)) {
-        gamerooms = gameroomsData;
-      }
-
-      return gamerooms;
-    } catch (error) {
-      console.error('Error fetching gamerooms:', error);
-      return [];
-    }
-  };
-
-  // Function to process gamerooms data into game stats
-  const processGameStats = (gamerooms: GameRoom[], targetUserId: string, targetUsername: string): GameStat[] => {
-    const gameStatsMap = new Map<string, {
-      count: number;
-      wins: number;
-      totalScore: number;
-      lastPlayed: string;
-    }>();
-
-    gamerooms.forEach(room => {
-      const gameType = room.gameType.toLowerCase();
-      const userPlayer = room.players.find(p => p.id === targetUserId || p.username === targetUsername);
-      
-      if (!userPlayer) return;
-
-      const currentStat = gameStatsMap.get(gameType) || {
-        count: 0,
-        wins: 0,
-        totalScore: 0,
-        lastPlayed: ''
-      };
-
-      currentStat.count += 1;
-      currentStat.totalScore += userPlayer.score || 0;
-      
-      // Check if user won this game
-      if (room.winner === targetUserId || room.winner === targetUsername || userPlayer.isWinner) {
-        currentStat.wins += 1;
-      } else if (room.status === 'completed' && userPlayer.position === 1) {
-        currentStat.wins += 1;
-      }
-
-      // Update last played date
-      const gameDate = room.endedAt || room.startedAt || room.createdAt;
-      if (!currentStat.lastPlayed || new Date(gameDate) > new Date(currentStat.lastPlayed)) {
-        currentStat.lastPlayed = gameDate;
-      }
-
-      gameStatsMap.set(gameType, currentStat);
-    });
-
-    // Convert map to array with win rates
-    return Array.from(gameStatsMap.entries()).map(([gameType, stats]) => ({
-      gameType,
-      count: stats.count,
-      wins: stats.wins,
-      totalScore: stats.totalScore,
-      winRate: stats.count > 0 ? Math.round((stats.wins / stats.count) * 100) : 0,
-      lastPlayed: stats.lastPlayed
-    })).sort((a, b) => b.count - a.count); // Sort by most played
-  };
-
-  // Function to process gamerooms data into recent games
-  const processRecentGames = (gamerooms: GameRoom[], targetUserId: string, targetUsername: string): RecentGame[] => {
-    return gamerooms
-      .filter(room => room.status === 'completed' || room.endedAt) // Only completed games
-      .sort((a, b) => {
-        const dateA = new Date(b.endedAt || b.startedAt || b.createdAt);
-        const dateB = new Date(a.endedAt || a.startedAt || a.createdAt);
-        return dateA.getTime() - dateB.getTime();
-      })
-      .slice(0, 10) // Get last 10 games
-      .map(room => {
-        const userPlayer = room.players.find(p => p.id === targetUserId || p.username === targetUsername);
-        const isWinner = room.winner === targetUserId || room.winner === targetUsername || 
-                        userPlayer?.isWinner || userPlayer?.position === 1;
-        
-        const startTime = room.startedAt ? new Date(room.startedAt) : new Date(room.createdAt);
-        const endTime = room.endedAt ? new Date(room.endedAt) : new Date();
-        const duration = Math.max(0, endTime.getTime() - startTime.getTime());
-        
-        return {
-          id: room._id,
-          name: room.roomName,
-          type: room.gameType.toLowerCase(),
-          date: new Date(room.endedAt || room.startedAt || room.createdAt).toLocaleDateString(),
-          result: isWinner ? 'Won' : 'Lost',
-          score: userPlayer?.score || 0,
-          duration: duration,
-          totalPlayers: room.players.length,
-          startedAt: room.startedAt || room.createdAt,
-          endedAt: room.endedAt || room.startedAt || room.createdAt
-        };
-      });
-  };
 
   const fetchUserProfile = async (targetUsername?: string, showLoading = true) => {
     if (!authUser) return;
     
-    const effectiveUsername = targetUsername || authUser.username;
+    // Determine if we're viewing our own profile or someone else's
     const isOwn = !targetUsername || targetUsername.toLowerCase() === authUser.username.toLowerCase();
     setIsOwnProfile(isOwn);
     
@@ -240,8 +125,36 @@ const [currentPage, setCurrentPage] = useState(1);
     setError(null);
     
     try {
-      // Fetch leaderboard
-      const leaderboardResponse = await fetch('https://gameroom-t0mx.onrender.com/user/leaderboard', {
+      let targetUserId = authUser.id;
+
+      // If viewing another user, resolve their ID from username first
+      if (!isOwn && targetUsername) {
+        const lookupResponse = await fetch(`https://gameroom-t0mx.onrender.com/user/username/${targetUsername}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!lookupResponse.ok) {
+           // Fallback: try to find via leaderboard if the new endpoint isn't deployed yet
+           // This maintains backward compatibility momentarily or if endpoint fails
+           throw new Error('User not found');
+        }
+
+        const lookupData = await lookupResponse.json();
+        if (lookupData.success && lookupData.data) {
+          targetUserId = lookupData.data._id;
+        } else {
+          throw new Error('User not found');
+        }
+      } else if (isOwn) {
+        targetUserId = authUser.id;
+      }
+      
+      // Fetch full profile with aggregated stats from backend
+      const profileResponse = await fetch(`https://gameroom-t0mx.onrender.com/user/${targetUserId}/profile`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -249,103 +162,34 @@ const [currentPage, setCurrentPage] = useState(1);
         }
       });
       
-      if (!leaderboardResponse.ok) {
-        throw new Error(`Failed to fetch leaderboard: ${leaderboardResponse.status}`);
+      if (!profileResponse.ok) {
+        throw new Error(`Failed to fetch profile: ${profileResponse.status}`);
       }
+
+      const result = await profileResponse.json();
       
-      const leaderboardData = await leaderboardResponse.json();
-      
-      let users = [];
-      if (leaderboardData.success && leaderboardData.data) {
-        users = leaderboardData.data;
-      } else if (Array.isArray(leaderboardData)) {
-        users = leaderboardData;
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to load profile data');
       }
+
+      const profileData = result.data;
       
-      // Find target user in leaderboard by username (case-insensitive)
-      const targetUser = users.find((user: any) => 
-        user.username.toLowerCase() === effectiveUsername.toLowerCase()
-      );
-      
-      if (!targetUser) {
-        // User not found
-        setError('User not found');
-        setUserData(null);
-        return;
-      }
-      
-      // Convert ObjectId to string if needed
-      const targetUserId = targetUser._id?.toString() || targetUser._id;
-      
-      // If own profile and ID mismatch, update auth
-      if (isOwn && targetUserId !== authUser.id) {
-        console.log('Updating user ID in auth context from', authUser.id, 'to', targetUserId);
-        updateUser({ id: targetUserId });
-      }
-      
-      // Fetch gamerooms data (all, since we filter client-side)
-      const allGamerooms = await fetchGameroomsData();
-      
-      // Filter user's gamerooms
-      const userGamerooms = allGamerooms.filter(room => 
-        room.players.some(player => 
-          player.id === targetUserId || player.username.toLowerCase() === effectiveUsername.toLowerCase()
-        )
-      );
-      
-      // Process data
-      const gameStats = processGameStats(userGamerooms, targetUserId, effectiveUsername);
-      const recentGames = processRecentGames(userGamerooms, targetUserId, effectiveUsername);
-      
-      // Fetch full profile
-      let profileData = null;
-      try {
-        const profileResponse = await fetch(`https://gameroom-t0mx.onrender.com/user/${targetUserId}/profile`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        });
-        
-        if (profileResponse.ok) {
-          const result = await profileResponse.json();
-          if (result.success && result.data) {
-            profileData = result.data;
-          }
-        }
-      } catch (profileError) {
-        console.log('Profile fetch failed:', profileError);
-      }
-      
-      // Calculate global rank
-      const globalRank = users.findIndex((u: any) => {
-        const userIdString = u._id?.toString() || u._id;
-        return userIdString === targetUserId;
-      }) + 1;
-      
-      // Set user data
+      // Set user data directly from backend response
       setUserData({
-        _id: targetUserId,
-        username: targetUser.username,
-        avatar: profileData?.avatar || targetUser.avatar,
-        createdAt: profileData?.createdAt || new Date().toISOString(),
-        updatedAt: profileData?.updatedAt || new Date().toISOString(),
-        totalScore: targetUser.score || 0,
-        gamesPlayed: targetUser.gamesPlayed || gameStats.reduce((sum, stat) => sum + stat.count, 0),
-        gamesWon: targetUser.gamesWon || gameStats.reduce((sum, stat) => sum + stat.wins, 0),
-        gameStats,
-        recentGames,
-        favoriteGames: gameStats.slice(0, 3).map(stat => ({
-          gameType: stat.gameType,
-          count: stat.count,
-          wins: stat.wins,
-          winRate: stat.winRate,
-          lastPlayed: stat.lastPlayed
-        })),
-        badges: profileData?.badges || [],
-        globalRank: globalRank > 0 ? `#${globalRank}` : 'Unranked',
-        winRate: targetUser.winRate || (targetUser.gamesPlayed > 0 ? Math.round((targetUser.gamesWon / targetUser.gamesPlayed) * 100) : 0)
+        _id: profileData._id || profileData.id,
+        username: profileData.username,
+        avatar: profileData.avatar,
+        createdAt: profileData.createdAt || new Date().toISOString(),
+        updatedAt: profileData.updatedAt || new Date().toISOString(),
+        totalScore: profileData.totalScore || 0,
+        gamesPlayed: profileData.gamesPlayed || 0,
+        gamesWon: profileData.gamesWon || 0,
+        gameStats: profileData.gameStats || [],
+        recentGames: profileData.recentGames || [],
+        favoriteGames: profileData.favoriteGames || [],
+        badges: profileData.badges || [],
+        globalRank: profileData.globalRank || 'Unranked',
+        winRate: profileData.winRate || 0
       });
       
     } catch (error: any) {
