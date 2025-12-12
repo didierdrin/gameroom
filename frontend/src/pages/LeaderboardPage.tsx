@@ -227,16 +227,19 @@ export const LeaderboardPage = () => {
         <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
         <div className="flex items-center justify-center h-64">
           <div className="text-red-400">
-            <div className="text-center">
-              <div className="text-lg mb-2">Error: {error}</div>
-              <button 
-                onClick={handleRefresh}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
+            <div className="flex flex-col items-center justify-center min-h-[50vh] px-4">
+  <div className="text-center space-y-4">
+    <h1 className="text-4xl font-bold text-red-500">Oops!</h1>
+    <p className="text-xl text-gray-400">Something went wrong while loading the leaderboard</p>
+    <div className="text-gray-500">{error}</div>
+    <button
+      onClick={handleRefresh}
+      className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-white font-medium"
+    >
+      Try Again
+    </button>
+  </div>
+</div>          </div>
         </div>
       </div>
     );

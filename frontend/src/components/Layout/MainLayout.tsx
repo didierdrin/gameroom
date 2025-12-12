@@ -8,6 +8,10 @@ export function MainLayout() {
   const location = useLocation();
   const isGameRoom = location.pathname.startsWith('/game-room/');
 
+  const handleSidebarClose = () => {
+    setIsSidebarOpen(false);
+  };
+
   return (
     <>
       {!isGameRoom && (
@@ -25,6 +29,7 @@ export function MainLayout() {
             transition duration-200 ease-in-out
             ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 lg:translate-x-0'}
           `}
+          onClick={handleSidebarClose}
         >
           <Sidebar />
         </div>
@@ -35,7 +40,7 @@ export function MainLayout() {
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={handleSidebarClose}
         />
       )}
     </>
