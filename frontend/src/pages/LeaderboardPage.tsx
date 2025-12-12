@@ -364,27 +364,33 @@ export const LeaderboardPage = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <img 
-                        src={player.avatar} 
-                        alt={player.username} 
-                        className="w-10 h-10 rounded-full border border-gray-600"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`;
-                        }}
-                      />
+                      <Link
+                        to={`/profile/${player.username}`}
+                        className="group relative block"
+                      >
+                        <img
+                          src={player.avatar}
+                          alt={player.username}
+                          className="w-10 h-10 rounded-full border border-gray-600 transition-all duration-200 group-hover:border-purple-500"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`;
+                          }}
+                        />
+                      </Link>
                       <div className="ml-3">
                         <div className="font-medium">
-                        <Link 
-                to={`/profile/${player.username}`} 
-                className="text-purple-400 hover:underline"
-              >
-                          {player.username}
+                          <Link
+                            to={`/profile/${player.username}`}
+                            className="text-purple-400 hover:underline"
+                          >
+                            {player.username}
                           </Link>
-                          </div>
+                        </div>
                       </div>
                     </div>
                   </td>
+
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-lg font-bold">{player.score}</div>
                   </td>
