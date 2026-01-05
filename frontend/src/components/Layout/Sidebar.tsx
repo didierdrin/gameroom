@@ -44,8 +44,11 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
       w-64 ${isCollapsed ? 'lg:w-20' : 'lg:w-64'} 
       h-screen p-4 flex flex-col bg-gray-800 transition-all duration-300 ease-in-out border-r border-gray-700
     `}>
-      <div className="mb-8 mt-4">
-        <h1 className="text-2xl font-bold text-center bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
+      <div className="mb-8 mt-4 overflow-hidden">
+        <h1 className={`
+          font-bold text-center bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent transition-all duration-300
+          ${isCollapsed ? 'text-lg' : 'text-2xl'}
+        `}>
           Arena
         </h1>
         <p className={`text-center text-sm text-gray-400 animate-in fade-in duration-300 ${isCollapsed ? 'lg:hidden' : 'block'}`}>

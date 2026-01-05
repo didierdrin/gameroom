@@ -14,7 +14,7 @@ export function MainLayout() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-900 text-white overflow-x-hidden">
+    <div className="flex h-screen overflow-hidden bg-gray-900 text-white">
       {!isGameRoom && (
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -23,14 +23,15 @@ export function MainLayout() {
           {isSidebarOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
         </button>
       )}
-      
+
       {!isGameRoom && (
         <aside
           className={`
-            fixed inset-y-0 left-0 z-40 transform lg:transform-none lg:opacity-100
+            fixed inset-y-0 left-0 z-40 transform lg:static lg:transform-none
             transition-all duration-300 ease-in-out
-            ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 lg:translate-x-0'}
+            ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full lg:translate-x-0'}
             ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
+            w-64 flex-shrink-0
           `}
         >
           <Sidebar isCollapsed={isCollapsed} onToggle={() => setIsCollapsed(!isCollapsed)} />
@@ -38,12 +39,11 @@ export function MainLayout() {
       )}
 
       <main 
-        className={`
-          flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out
-          ${!isGameRoom ? (isCollapsed ? 'lg:ml-20' : 'lg:ml-64') : ''}
-        `}
+        className="flex-1 flex flex-col min-w-0 min-h-0 bg-gray-900 relative"
       >
-        <Outlet />
+        <div className="flex-1 overflow-y-auto">
+          <Outlet />
+        </div>
       </main>
 
       {isSidebarOpen && (

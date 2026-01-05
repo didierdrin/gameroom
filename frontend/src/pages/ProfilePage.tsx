@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom'; 
 import { SectionTitle } from '../components/UI/SectionTitle';
-import { TrophyIcon, BarChart3Icon, ClockIcon, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { TrophyIcon, BarChart3Icon, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface GameStat {
@@ -60,28 +60,7 @@ interface UserProfileData {
   avatar?: string;
 }
 
-// Interface for gamerooms data structure
-interface GameRoom {
-  _id: string;
-  roomName: string;
-  gameType: string;
-  creator: string;
-  players: Array<{
-    id: string;
-    username: string;
-    score?: number;
-    position?: number;
-    isWinner?: boolean;
-  }>;
-  status: string;
-  createdAt: string;
-  startedAt?: string;
-  endedAt?: string;
-  maxPlayers: number;
-  currentPlayers: number;
-  scores?: { [playerId: string]: number };
-  winner?: string;
-}
+
 
 export const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('stats');
@@ -103,7 +82,7 @@ export const ProfilePage = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   // New state for stable avatar browsing
-  const [avatarSeed, setAvatarSeed] = useState(0);
+
 
   // Avatar options for selection
   const avatarOptions = ['adventurer', 'adventurer-neutral', 'avataaars', 'avataaars-neutral', 'big-ears', 'big-ears-neutral', 'big-smile', 'bottts', 'bottts-neutral', 'croodles', 'croodles-neutral', 'fun-emoji', 'icons', 'identicon', 'initials', 'lorelei'];
@@ -496,7 +475,7 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <div className="p-6 overflow-y-auto h-screen pb-20">
+      <div className="p-6 min-h-full">
         <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
           <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
@@ -507,7 +486,7 @@ useEffect(() => {
 
   if (error || !userData) {
     return (
-      <div className="p-6 overflow-y-auto h-screen pb-20">
+      <div className="p-6 min-h-full">
         <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
           <div className="text-red-400">
@@ -574,7 +553,6 @@ useEffect(() => {
       selectedAvatarSeed: parsedSeed
     });
     // Reset avatar seed when opening modal
-    setAvatarSeed(0);
     setEditError(null);
     setShowEditModal(true);
   };
@@ -812,7 +790,7 @@ const EditProfileModal = () => (
 );
 
   return (
-    <div className="p-6 overflow-y-auto h-screen pb-20">
+    <div className="p-6 min-h-full">
       <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
       
       {/* Profile Header */}
