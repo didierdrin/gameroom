@@ -496,7 +496,7 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <div className="p-6 overflow-y-auto h-screen pb-20">
+      <div className="p-6 pb-20">
         <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
           <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
@@ -507,7 +507,7 @@ useEffect(() => {
 
   if (error || !userData) {
     return (
-      <div className="p-6 overflow-y-auto h-screen pb-20">
+      <div className="p-6 pb-20">
         <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
           <div className="text-red-400">
@@ -812,7 +812,7 @@ const EditProfileModal = () => (
 );
 
   return (
-    <div className="p-6 overflow-y-auto h-screen pb-20">
+    <div className="p-6 pb-20">
       <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
       
       {/* Profile Header */}
