@@ -246,7 +246,7 @@ export const LeaderboardPage = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 min-h-full">
+    <div className="p-4 sm:p-6 overflow-y-auto h-screen pb-20">
   <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
   
   {/* Header with refresh button - MOBILE RESPONSIVE */}

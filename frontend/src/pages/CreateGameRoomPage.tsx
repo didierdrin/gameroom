@@ -1,7 +1,7 @@
 // CreateGameRoomPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
-import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink } from 'lucide-react';
+import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSocket } from '../SocketContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -40,7 +40,26 @@ interface CreateGameRoomPageProps {
   onGameCreated?: () => void;
 }
 
-
+interface GameRoomData {
+  name: string;
+  gameType: string;
+  maxPlayers: number;
+  isPrivate: boolean;
+  password?: string;
+  scheduledTimeCombined?: string;
+  description?: string;
+  enableVideoChat: boolean;
+  enableVoiceChat: boolean;
+  allowSpectators: boolean;
+  hostId: string;
+  hostName: string;
+  // Add trivia specific fields
+  triviaSettings?: {
+    questionCount: number;
+    difficulty: string;
+    category: string;
+  };
+}
 
 // Trivia categories available
 const TRIVIA_CATEGORIES = [
@@ -650,7 +669,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
  
 
   return (
-    <div className="p-6 min-h-full">
+    <div className="p-6 overflow-y-auto h-screen pb-20">
       <SectionTitle 
         title="Create Game Room" 
         subtitle="Set up a new game room for you and your friends to play in" 
