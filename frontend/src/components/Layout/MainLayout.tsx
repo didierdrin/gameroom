@@ -27,10 +27,10 @@ export function MainLayout() {
       {!isGameRoom && (
         <div
           className={`
-            fixed inset-y-0 left-0 z-40 transform lg:transform-none lg:opacity-100
+            fixed lg:relative inset-y-0 left-0 z-40 transform lg:transform-none lg:opacity-100
             transition-all duration-300 ease-in-out
             ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 lg:translate-x-0'}
-            ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
+            ${isCollapsed ? 'w-20' : 'w-64'}
           `}
         >
           <Sidebar 
@@ -41,9 +41,7 @@ export function MainLayout() {
       )}
 
       <main 
-        className={`flex-1 transition-all duration-300 ease-in-out h-screen overflow-y-auto
-          ${!isGameRoom ? (isCollapsed ? 'lg:ml-20' : 'lg:ml-64') : ''}
-        `}
+        className="flex-1 transition-all duration-300 ease-in-out h-screen overflow-y-auto"
       >
         <Outlet />
       </main>
