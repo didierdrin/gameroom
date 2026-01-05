@@ -331,11 +331,12 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
     setIsJoining(false); 
   }
 };
+  
 
   
 
   return (
-    <div className="p-6 pb-20">
+    <div className="p-6 overflow-y-auto h-screen pb-20">
       {/* Hero Banner */}
       <div className="relative bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-8 mb-8 overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=2071')] opacity-20 bg-cover bg-center mix-blend-overlay"></div>

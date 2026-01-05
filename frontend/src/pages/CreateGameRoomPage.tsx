@@ -429,7 +429,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
  
 
   return (
-    <div className="p-6 pb-20">
+    <div className="p-6 overflow-y-auto h-screen pb-20">
       <SectionTitle 
         title="Create Game Room" 
         subtitle="Set up a new game room for you and your friends to play in" 

@@ -1,12 +1,8 @@
+// import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { HomeIcon, DicesIcon, PlusCircleIcon, TrophyIcon, BarChart3Icon, UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { HomeIcon, DicesIcon, PlusCircleIcon, TrophyIcon, BarChart3Icon, UserIcon } from 'lucide-react';
 
-interface SidebarProps {
-  isCollapsed: boolean;
-  onToggle: () => void;
-}
-
-export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
+export const Sidebar = () => {
   const location = useLocation();
   
   const navItems = [
@@ -43,51 +39,33 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   ];
 
   return (
-    <div className={`${isCollapsed ? 'w-20' : 'w-64'} h-screen p-4 flex flex-col bg-gray-900 border-r border-gray-800 transition-all duration-300 ease-in-out`}>
-      <div className="mb-8 mt-4 flex flex-col items-center">
-        <h1 className={`font-bold transition-all duration-300 ${isCollapsed ? 'text-lg' : 'text-2xl'} bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent`}>
+    <div className="w-64 h-screen p-4 flex flex-col bg-gray-800">
+      <div className="mb-8 mt-4">
+        <h1 className="text-2xl font-bold text-center bg-purple-800 bg-clip-text text-transparent">
           Arena
         </h1>
-        {!isCollapsed && <p className="text-center text-sm text-gray-400">Game Room</p>}
+        <p className="text-center text-sm text-gray-400">Game Room</p>
       </div>
       <nav className="flex-1">
-        <ul className="space-y-4">
+        <ul className="space-y-2">
           {navItems.map(item => (
             <li key={item.path}>
               <NavLink
                 to={item.path}
-                title={isCollapsed ? item.label : undefined}
                 className={({ isActive }) => `
-                  w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl transition-all duration-200
-                  ${isActive ? 'bg-purple-600/20 text-purple-400 shadow-lg shadow-purple-900/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}
+                  w-full flex items-center p-3 rounded-lg transition-all duration-200
+                  ${isActive ? 'bg-purple-900/40 text-purple-400' : 'hover:bg-gray-700'}
                 `}
               >
-                <span className={`transition-all duration-200 ${location.pathname === item.path ? 'scale-110' : ''}`}>
+                <span className={location.pathname === item.path ? 'text-purple-500' : ''}>
                   {item.icon}
                 </span>
-                {!isCollapsed && <span className="ml-3 font-semibold whitespace-nowrap">{item.label}</span>}
+                <span className="ml-3 font-medium">{item.label}</span>
               </NavLink>
             </li>
           ))}
         </ul>
       </nav>
-
-      <div className="mt-auto pt-4 border-t border-gray-800">
-        <button
-          onClick={onToggle}
-          className={`
-            w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl
-            text-gray-400 hover:bg-gray-800 hover:text-white transition-all duration-200
-          `}
-        >
-          {isCollapsed ? <ChevronRight size={24} /> : (
-            <>
-              <ChevronLeft size={24} />
-              <span className="ml-3 font-medium">Collapse</span>
-            </>
-          )}
-        </button>
-      </div>
     </div>
   );
 };
