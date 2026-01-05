@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 
 export function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
   const isGameRoom = location.pathname.startsWith('/game-room/');
 
@@ -13,36 +14,44 @@ export function MainLayout() {
   };
 
   return (
-    <>
+    <div className="flex min-h-screen bg-gray-900 text-white overflow-x-hidden">
       {!isGameRoom && (
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 rounded-lg"
+          className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 rounded-lg shadow-lg border border-gray-700"
         >
           {isSidebarOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
         </button>
       )}
+      
       {!isGameRoom && (
-        <div
+        <aside
           className={`
             fixed inset-y-0 left-0 z-40 transform lg:transform-none lg:opacity-100
-            transition duration-200 ease-in-out
+            transition-all duration-300 ease-in-out
             ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 lg:translate-x-0'}
+            ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
           `}
-          onClick={handleSidebarClose}
         >
-          <Sidebar />
-        </div>
+          <Sidebar isCollapsed={isCollapsed} onToggle={() => setIsCollapsed(!isCollapsed)} />
+        </aside>
       )}
-      <div className={`flex-1 ${!isGameRoom ? 'lg:ml-64' : ''}`}>
+
+      <main 
+        className={`
+          flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out
+          ${!isGameRoom ? (isCollapsed ? 'lg:ml-20' : 'lg:ml-64') : ''}
+        `}
+      >
         <Outlet />
-      </div>
+      </main>
+
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden transition-opacity duration-300"
           onClick={handleSidebarClose}
         />
       )}
-    </>
+    </div>
   );
 } 
