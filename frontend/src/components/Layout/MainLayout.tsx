@@ -5,11 +5,16 @@ import { Sidebar } from './Sidebar';
 
 export function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
   const isGameRoom = location.pathname.startsWith('/game-room/');
 
   const handleSidebarClose = () => {
     setIsSidebarOpen(false);
+  };
+
+  const handleToggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
   };
 
   return (
@@ -29,12 +34,15 @@ export function MainLayout() {
             transition duration-200 ease-in-out
             ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 lg:translate-x-0'}
           `}
-          onClick={handleSidebarClose}
         >
-          <Sidebar />
+          <Sidebar 
+            isCollapsed={isCollapsed} 
+            onToggleCollapse={handleToggleCollapse}
+            onLinkClick={handleSidebarClose}
+          />
         </div>
       )}
-      <div className={`flex-1 ${!isGameRoom ? 'lg:ml-64' : ''}`}>
+      <div className={`flex-1 ${!isGameRoom ? (isCollapsed ? 'lg:ml-20' : 'lg:ml-64') : ''}`}>
         <Outlet />
       </div>
       {isSidebarOpen && (
