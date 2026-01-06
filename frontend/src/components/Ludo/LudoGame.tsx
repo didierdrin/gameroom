@@ -377,9 +377,11 @@ const renderBoard = () => {
                 <MapPin 
                   className={`w-full h-full ${getPinColor(coin.player.color)} drop-shadow-lg`}
                 />
-                {/* Small number indicator on the pin */}
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 text-white text-[8px] xs:text-[10px] sm:text-xs font-bold">
-                  {coin.coinIndex + 1}
+                {/* Circular avatar badge for coin number */}
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-300">
+                  <span className="text-gray-900 text-[8px] xs:text-[9px] sm:text-[10px] font-bold">
+                    {coin.coinIndex + 1}
+                  </span>
                 </div>
               </div>
             </div>
