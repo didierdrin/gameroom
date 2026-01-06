@@ -262,7 +262,7 @@ export const LeaderboardPage = () => {
       >
         Global Leaderboard
       </button>
-      {/* <button 
+      <button 
         onClick={() => setLeaderboardType('friends')} 
         className={`px-4 sm:px-6 py-3 rounded-lg transition-colors flex items-center justify-center text-sm sm:text-base w-full sm:w-auto ${
           leaderboardType === 'friends' 
@@ -273,7 +273,7 @@ export const LeaderboardPage = () => {
         <UsersIcon size={16} className="mr-2 sm:mr-2 hidden sm:block" />
         <span className="sm:mr-2">Friends</span>
         Leaderboard
-      </button> */}
+      </button>
     </div>
     
     <button 
