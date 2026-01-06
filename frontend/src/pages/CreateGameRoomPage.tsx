@@ -1,7 +1,7 @@
 // CreateGameRoomPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
-import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink, ChevronLeft, ChevronRight, DollarSign } from 'lucide-react';
 import { useSocket } from '../SocketContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -95,6 +95,9 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   const [password, setPassword] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isChargedGame, setIsChargedGame] = useState(false);
+  const [showFeeInput, setShowFeeInput] = useState(false);
+  const [gameFee, setGameFee] = useState('');
   
   // Trivia specific settings
   const [triviaQuestionCount, setTriviaQuestionCount] = useState(10);
@@ -190,7 +193,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
     }
   
     try {
-      setIsJoiningRoom(true); // Start loading
+      setIsJoiningRoom(true);
       console.log('Auto-joining host as player to room:', gameRoomId);
       const myId = String(user.id);
       
@@ -210,7 +213,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
           console.warn('Host auto-join timed out');
           cleanupListeners();
           resolve(false);
-        }, 30000);
+        }, 10000);
   
         const handleJoinSuccess = (data: any) => {
           console.log('Host successfully joined as player:', data);
@@ -257,19 +260,13 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
         socket.emit('joinGame', joinPayload);
       });
   
-      if (joinResult) {
-        console.log('Host successfully auto-joined as player');
-        console.log('Game room joined successfully. UNO join will be handled in game room page.');
-      } else {
-        console.warn('Host auto-join failed or timed out');
-      }
-  
+      console.log('Join completed with result:', joinResult);
       return joinResult;
     } catch (error) {
       console.error('Error in joinHostAsPlayer:', error);
       return false;
     } finally {
-      setIsJoiningRoom(false); // Stop loading
+      setIsJoiningRoom(false);
     }
   };
 
@@ -365,36 +362,37 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       if (gameMode === 'playNow' && game?.roomId) {
         console.log('Attempting to auto-join host as player...');
         
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         const joinSuccess = await joinHostAsPlayer(
           game.roomId,
           privacy === 'private' ? password : undefined
         );
         
-        if (!joinSuccess) {
-          console.warn('Host auto-join failed, but continuing with game creation');
-          setIsLoading(false);
-        }
-      } else {
-        // For scheduled games, stop loading immediately
+        console.log('Join result:', joinSuccess);
+        
+        // Always stop loading after join attempt
         setIsLoading(false);
-      }
-
-      // Handle navigation based on privacy and mode
-      if (privacy === 'inviteOnly' && gameMode === 'playNow' && game?.roomId) {
-        const baseUrl = window.location.origin;
-        const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
-        setInviteUrl(gameUrl);
-        setShowInviteModal(true);
-      } else {
-        if (gameMode === 'playNow' && game?.roomId) {
-          navigate(`/game-room/${game.roomId}`, { replace: true });
+        setIsJoiningRoom(false);
+        
+        // Handle navigation based on privacy
+        if (privacy === 'inviteOnly') {
+          const baseUrl = window.location.origin;
+          const gameUrl = `${baseUrl}/game-room/${game.roomId}`;
+          setInviteUrl(gameUrl);
+          setShowInviteModal(true);
         } else {
-          navigate('/my-game-rooms', { replace: true });
-          console.log('Game scheduled successfully!');
+          // Navigate to game room regardless of join success
+          console.log('Navigating to game room:', game.roomId);
+          navigate(`/game-room/${game.roomId}`, { replace: true });
+          if (onGameCreated) onGameCreated();
         }
-
+      } else {
+        // For scheduled games, stop loading and navigate
+        setIsLoading(false);
+        setIsJoiningRoom(false);
+        navigate('/my-game-rooms', { replace: true });
+        console.log('Game scheduled successfully!');
         if (onGameCreated) onGameCreated();
       }
     };
@@ -815,6 +813,66 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   <div className="relative w-11 h-6 bg-gray-600 peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                 </label>
               </div>
+            </div>
+            {/* Game fee component */}
+            <div className="flex items-center bg-gray-700/30 p-3 rounded-lg">
+              {!showFeeInput ? (
+                <>
+                  <div className="mr-3">
+                    <DollarSign size={20} className={isChargedGame ? 'text-purple-400' : 'text-gray-500'} />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-sm font-medium">Game Fee</label>
+                  </div>
+                  <div>
+                    <label className="inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={isChargedGame} 
+                        onChange={() => {
+                          const newValue = !isChargedGame;
+                          setIsChargedGame(newValue);
+                          if (newValue) {
+                            setShowFeeInput(true);
+                          } else {
+                            setGameFee('');
+                          }
+                        }} 
+                      />
+                      <div className="relative w-11 h-6 bg-gray-600 peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mr-3">
+                    <DollarSign size={20} className="text-purple-400" />
+                  </div>
+                  <div className="flex-1">
+                    <input 
+                      type="number" 
+                      placeholder="Enter amount" 
+                      className="w-full px-3 py-1 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm" 
+                      value={gameFee} 
+                      onChange={e => setGameFee(e.target.value)}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFeeInput(false);
+                      setIsChargedGame(false);
+                      setGameFee('');
+                    }}
+                    className="ml-2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

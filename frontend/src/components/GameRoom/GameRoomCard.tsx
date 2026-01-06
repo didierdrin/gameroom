@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom'; 
-import { Users, Lock, Unlock, Clock } from 'lucide-react';
+import { Users, Lock, Unlock, Clock, DollarSign } from 'lucide-react';
 import { useUsername } from '../../hooks/useUsername';
 import { useAvatar } from '../../hooks/useAvatar';
 
@@ -23,7 +23,8 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
     maxPlayers,
     isPrivate,
     isInviteOnly,
-    startTime
+    startTime,
+    gameFee
   } = gameRoom;
 
   const { username: hostDisplayName, isLoading: isLoadingHost } = useUsername(host);
@@ -118,8 +119,14 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
 
   return (
     <div className="relative bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/20 hover:border-purple-500/50">
+      {gameFee && parseFloat(gameFee) > 0 && (
+        <div className="absolute top-2 left-2 bg-green-500/90 text-white text-xs py-1 px-2 rounded-full flex items-center z-10 font-semibold shadow-lg">
+          <DollarSign size={12} className="mr-0.5" />
+          {parseFloat(gameFee).toFixed(2)}
+        </div>
+      )}
       {isStartingSoon && (
-        <div className="absolute top-2 right-2 bg-orange-500 text-xs py-1 px-2 rounded-full animate-pulse flex items-center">
+        <div className="absolute top-2 right-2 bg-orange-500 text-xs py-1 px-2 rounded-full animate-pulse flex items-center z-10">
           <Clock size={12} className="mr-1" /> Starting Soon
         </div>
       )}
