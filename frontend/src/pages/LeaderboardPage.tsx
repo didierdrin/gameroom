@@ -123,7 +123,7 @@ export const LeaderboardPage = () => {
   <div className="flex flex-col items-center order-2 lg:order-1">
     <div className="relative">
       <div className="absolute -top-2 sm:-top-3 left-1/2 transform -translate-x-1/2 bg-gray-800 rounded-full p-1">
-        <MedalIcon size={20} className="sm:size-24 text-gray-300" />
+        <MedalIcon className="w-5 h-5 sm:w-6 sm:h-6 text-gray-300" />
       </div>
       <img 
         src={second.avatar} 
@@ -151,8 +151,8 @@ export const LeaderboardPage = () => {
   {/* First Place - Mobile: Center, Desktop: Middle */}
   <div className="flex flex-col items-center order-1 lg:order-2 -mt-4 sm:-mt-8 z-10">
     <div className="relative">
-      <div className="absolute -top-4 sm:-top-0 left-1/2 transform -translate-x-1/2 bg-gray-800 rounded-full p-1">
-        <TrophyIcon size={24} className="sm:size-24 text-yellow-500" />
+      <div className="absolute -top-4 sm:-top-6 left-1/2 transform -translate-x-1/2 bg-gray-800 rounded-full p-1">
+        <TrophyIcon className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500" />
       </div>
       <img 
         src={first.avatar} 
@@ -181,7 +181,7 @@ export const LeaderboardPage = () => {
   <div className="flex flex-col items-center order-3 lg:order-3">
     <div className="relative">
       <div className="absolute -top-2 sm:-top-3 left-1/2 transform -translate-x-1/2 bg-gray-800 rounded-full p-1">
-        <AwardIcon size={20} className="sm:size-24 text-amber-700" />
+        <AwardIcon className="w-5 h-5 sm:w-6 sm:h-6 text-amber-700" />
       </div>
       <img 
         src={third.avatar} 

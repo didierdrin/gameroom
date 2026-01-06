@@ -14,7 +14,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (isLoading) {
     // Wait for auth to finish before redirecting
-    return <div className="p-4 text-center min-h-screen items-center justify-center">Loading...</div>;
+    return <div className="p-4 text-center min-h-screen w-full items-center justify-center">Loading...</div>;
   }
 
   // if (!user) {

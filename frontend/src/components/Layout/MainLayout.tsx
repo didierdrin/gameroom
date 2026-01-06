@@ -22,7 +22,7 @@ export function MainLayout() {
       {!isGameRoom && (
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 rounded-lg"
+          className="lg:hidden fixed top-4 right-4 z-50 p-2 bg-gray-800 rounded-lg"
         >
           {isSidebarOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
         </button>
@@ -30,9 +30,9 @@ export function MainLayout() {
       {!isGameRoom && (
         <div
           className={`
-            fixed inset-y-0 left-0 z-40 transform lg:transform-none lg:opacity-100
+            fixed inset-y-0 right-0 z-40 transform lg:transform-none lg:opacity-100 lg:inset-y-0 lg:left-0 lg:right-auto
             transition duration-200 ease-in-out
-            ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 lg:translate-x-0'}
+            ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 lg:translate-x-0'}
           `}
         >
           <Sidebar 

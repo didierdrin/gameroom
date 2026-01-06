@@ -812,13 +812,13 @@ const EditProfileModal = () => (
 );
 
   return (
-    <div className="p-6 overflow-y-auto h-screen pb-20">
+    <div className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden h-screen pb-20">
       <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
       
       {/* Profile Header */}
-      <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-6 mb-8 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-4 sm:p-6 mb-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=2070')] opacity-10 bg-cover bg-center mix-blend-overlay"></div>
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between">
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-col md:flex-row items-center">
             <div className="relative">
               <img 
@@ -840,23 +840,23 @@ const EditProfileModal = () => (
               <p className="text-gray-300">
                 Member since {joinDate}
               </p>
-              <div className="flex items-center mt-2 justify-center md:justify-start">
-                <div className="bg-purple-600/30 border border-purple-500 px-3 py-1 rounded-full text-sm">
+              <div className="flex flex-wrap items-center mt-2 justify-center md:justify-start gap-2">
+                <div className="bg-purple-600/30 border border-purple-500 px-3 py-1 rounded-full text-sm whitespace-nowrap">
                   Level {Math.floor(userData.gamesPlayed / 10) + 1}
                 </div>
                 <div className="mx-2 h-1 w-1 rounded-full bg-gray-500"></div>
-                <div className="text-sm text-gray-300">
+                <div className="text-sm text-gray-300 whitespace-nowrap">
                   Global Rank: {userData.globalRank}
                 </div>
               </div>
             </div>
           </div>
           
-          <div className="flex items-center space-x-3 mt-4 md:mt-0">
+          <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 mt-4 md:mt-0 w-full sm:w-auto">
             <button 
               onClick={handleRefresh}
               disabled={refreshing}
-              className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
+              className={`w-full sm:w-auto px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
                 refreshing 
                   ? 'bg-gray-600 cursor-not-allowed' 
                   : 'bg-purple-600 hover:bg-purple-700'
@@ -869,7 +869,7 @@ const EditProfileModal = () => (
             {isOwnProfile && (
               <button 
                 onClick={openEditModal}
-                className="px-4 py-2 bg-white text-purple-900 font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                className="w-full sm:w-auto px-4 py-2 bg-white text-purple-900 font-medium rounded-lg hover:bg-gray-100 transition-colors"
               >
                 Edit Profile
               </button>
@@ -879,10 +879,10 @@ const EditProfileModal = () => (
       </div>
       
       {/* Tabs */}
-      <div className="flex mb-6 border-b border-gray-700">
+      <div className="flex mb-6 border-b border-gray-700 overflow-x-auto">
         <button 
           onClick={() => setActiveTab('stats')} 
-          className={`px-6 py-3 font-medium transition-colors ${
+          className={`px-4 sm:px-6 py-3 font-medium transition-colors whitespace-nowrap ${
             activeTab === 'stats' 
               ? 'text-purple-400 border-b-2 border-purple-500' 
               : 'text-gray-400 hover:text-gray-300'
@@ -892,7 +892,7 @@ const EditProfileModal = () => (
         </button>
         <button 
           onClick={() => setActiveTab('badges')} 
-          className={`px-6 py-3 font-medium transition-colors ${
+          className={`px-4 sm:px-6 py-3 font-medium transition-colors whitespace-nowrap ${
             activeTab === 'badges' 
               ? 'text-purple-400 border-b-2 border-purple-500' 
               : 'text-gray-400 hover:text-gray-300'
@@ -903,7 +903,7 @@ const EditProfileModal = () => (
         {isOwnProfile && (
           <button 
             onClick={() => setActiveTab('settings')} 
-            className={`px-6 py-3 font-medium transition-colors ${
+            className={`px-4 sm:px-6 py-3 font-medium transition-colors whitespace-nowrap ${
               activeTab === 'settings' 
                 ? 'text-purple-400 border-b-2 border-purple-500' 
                 : 'text-gray-400 hover:text-gray-300'

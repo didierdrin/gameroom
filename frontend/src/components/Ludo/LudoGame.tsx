@@ -4,7 +4,8 @@ import { Dice } from './Dice';
 import { SocketType } from "../../SocketContext";
 import { Fireworks } from '../UI/Fireworks';
 import { useUsername } from '../../hooks/useUsername';
-import { Trophy, Award, Star, Crown, MapPin } from 'lucide-react';
+import { MapPin, Star } from 'lucide-react';
+import { useUserData } from '../../hooks/useUserData';
 
 export interface LudoGameProps {
   gameState: GameState;
@@ -33,8 +34,7 @@ export const LudoGame: React.FC<LudoGameProps> = ({
 }) => {
   const [movableCoins, setMovableCoins] = useState<number[]>([]);
   const [showFireworks, setShowFireworks] = useState(false);
-  const [showPointsTable, setShowPointsTable] = useState(false);
-  const [playerPoints, setPlayerPoints] = useState<PlayerPoints[]>([]);
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
 
   if (!gameState || !currentPlayerId) {
     return (
@@ -49,55 +49,42 @@ export const LudoGame: React.FC<LudoGameProps> = ({
 
   const { players, currentPlayer, diceValue, diceRolled, winner, gameStarted, coins } = gameState;
   
-  // Show fireworks and points table when game ends
+  // Show fireworks and leaderboard when game ends
   useEffect(() => {
     if (winner !== null && !showFireworks) {
       setShowFireworks(true);
-      calculatePlayerPoints();
-      setTimeout(() => setShowPointsTable(true), 2000);
+      const leaderboard = getLeaderboardData();
+      setLeaderboardData(leaderboard);
     }
   }, [winner, showFireworks]);
 
-  // Calculate player points based on finishing positions
-  const calculatePlayerPoints = () => {
-    if (!players || !coins) return;
+  const getLeaderboardData = () => {
+    if (!players || !coins) return [];
 
-    // Calculate player progress (coins in home)
     const playerProgress = players.map(player => {
       const playerCoins = coins[player.id] || [0, 0, 0, 0];
       const coinsHome = playerCoins.filter(pos => pos === 57).length;
       return {
         playerId: player.id,
         name: player.name,
-        color: player.color || 'gray',
         coinsHome,
         totalProgress: playerCoins.reduce((sum, pos) => sum + pos, 0)
       };
     });
 
-    // Sort by coins home (descending), then by total progress (descending)
     const sortedPlayers = [...playerProgress].sort((a, b) => {
-      if (b.coinsHome !== a.coinsHome) {
-        return b.coinsHome - a.coinsHome;
-      }
+      if (b.coinsHome !== a.coinsHome) return b.coinsHome - a.coinsHome;
       return b.totalProgress - a.totalProgress;
     });
 
-    // Assign points based on position
-    const pointsMap: { [key: number]: number } = {
-      1: 20, // Winner
-      2: 15, // Second
-      3: 10,  // Third
-      4: 5   // Last
-    };
+    const pointsMap: { [key: number]: number } = { 1: 20, 2: 15, 3: 10, 4: 5 };
 
-    const pointsData = sortedPlayers.map((player, index) => ({
-      ...player,
-      position: index + 1,
-      points: pointsMap[index + 1] || 0
+    return sortedPlayers.map((player, index) => ({
+      _id: player.playerId,
+      score: pointsMap[index + 1] || 0,
+      name: player.name,
+      coinsHome: player.coinsHome
     }));
-
-    setPlayerPoints(pointsData);
   };
 
   useEffect(() => {
@@ -414,69 +401,26 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
   const isCurrentPlayerTurn = players[currentPlayer]?.id === currentPlayerId;
   const canRollDice = gameStarted && !gameState.gameOver && !winner && isCurrentPlayerTurn && !diceRolled;
 
-  // Points Table Modal
-  const PointsTableModal = () => (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-br from-purple-900 to-blue-900 rounded-2xl border border-purple-500/30 max-w-md w-full p-6 shadow-2xl">
-        <div className="text-center mb-6">
-          <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-          <h2 className="text-3xl font-bold text-white mb-2">Game Results</h2>
-          <p className="text-purple-200">Final Points Distribution</p>
-        </div>
+  const PlayerDisplay: React.FC<{ playerId: string }> = ({ playerId }) => {
+    const { username, avatar } = useUserData(playerId);
 
-        <div className="space-y-3 mb-6">
-          {playerPoints.map((player, index) => (
-            <div
-              key={player.playerId}
-              className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-300 ${
-                index === 0
-                  ? 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border-yellow-400 shadow-lg shadow-yellow-500/25'
-                  : index === 1
-                  ? 'bg-gradient-to-r from-gray-400/20 to-gray-500/20 border-gray-400 shadow-lg shadow-gray-500/25'
-                  : index === 2
-                  ? 'bg-gradient-to-r from-orange-800/20 to-orange-900/20 border-orange-700 shadow-lg shadow-orange-500/25'
-                  : 'bg-gradient-to-r from-purple-800/20 to-purple-900/20 border-purple-700'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20">
-                  {index === 0 ? <Crown className="w-5 h-5 text-yellow-400" /> : 
-                   index === 1 ? <Award className="w-5 h-5 text-gray-300" /> :
-                   index === 2 ? <Star className="w-5 h-5 text-orange-400" /> :
-                   <span className="text-white text-sm font-bold">{index + 1}</span>}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <MapPin className={`w-5 h-5 ${getPinColor(player.color)}`} />
-                  <span className="text-white font-semibold">{player.name}</span>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-white">{player.points} pts</div>
-                <div className="text-sm text-purple-200">
-                  {index === 0 ? 'Winner' : index === 1 ? '2nd Place' : index === 2 ? '3rd Place' : '4th Place'}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 font-semibold shadow-lg"
-          >
-            New Game
-          </button>
-          <button
-            onClick={() => setShowPointsTable(false)}
-            className="px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg"
-          >
-            Close
-          </button>
+    return (
+      <div className="flex items-center">
+        <img 
+          src={avatar} 
+          alt={username} 
+          className="w-10 h-10 rounded-full border border-gray-600"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(playerId)}`;
+          }}
+        />
+        <div className="ml-3">
+          <div className="font-medium">{username || playerId}</div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="flex flex-col items-center p-4  min-h-screen text-white">
@@ -485,12 +429,65 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
         onComplete={() => setShowFireworks(false)} 
       />
       
-      {showPointsTable && <PointsTableModal />}
-      
       <div className='mb-6'></div>
     
-      {/* Winner announcement */}
-      {winner !== null && !showPointsTable && (
+      {/* Game Over Leaderboard */}
+      {winner !== null && leaderboardData.length > 0 && (
+        <div className="text-center p-6 mb-6 bg-gray-900/95 backdrop-blur-sm rounded-xl border border-gray-700/50 max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold mb-6">
+            {leaderboardData[0]._id === currentPlayerId ? 'Congratulations! 🎉' : 'Game Over!'}
+          </h2>
+          
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 overflow-hidden mb-6">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-800">
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                    Rank
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                    Player
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                    Score
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {leaderboardData.map((player: any, index: number) => (
+                  <tr key={player._id} className={index < 3 ? 'bg-gray-800/30' : ''}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
+                        index === 0 ? 'bg-yellow-500/20 text-yellow-300' : 
+                        index === 1 ? 'bg-gray-400/20 text-gray-300' : 
+                        index === 2 ? 'bg-amber-700/20 text-amber-500' : 'bg-gray-700/50 text-gray-400'
+                      }`}>
+                        {index + 1}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <PlayerDisplay playerId={player._id} />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-lg font-bold">{player.score} points</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3 px-8 rounded-xl font-bold shadow-lg transition-all transform hover:scale-105"
+          >
+            Play Again
+          </button>
+        </div>
+      )}
+
+      {/* Winner announcement - only show if leaderboard not shown */}
+      {winner !== null && leaderboardData.length === 0 && (
         <div className="mb-6 p-6 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl backdrop-blur-sm">
           <h2 className="text-3xl font-bold text-white text-center mb-3">
             🎉 {winnerName} Wins! 🎉
@@ -499,7 +496,10 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
             Congratulations on an amazing victory!
           </p>
           <button
-            onClick={() => setShowPointsTable(true)}
+            onClick={() => {
+              const leaderboard = getLeaderboardData();
+              setLeaderboardData(leaderboard);
+            }}
             className="w-full px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 font-semibold shadow-lg"
           >
             View Results & Points

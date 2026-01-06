@@ -8,6 +8,7 @@ import { LeaderboardPage } from './pages/LeaderboardPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { TournamentsPage } from './pages/TournamentsPage';
 import { LiveGameRoomPage } from './pages/LiveGameRoomPage';
+import { WalletPage } from './pages/WalletPage';
 import { UsernameLoginPage } from './pages/UsernameLoginPage';
 import { ErrorBoundary } from './components/UI/ErrorBoundary';
 import { NotFoundPage } from './components/UI/NotFoundPage';
@@ -29,7 +30,6 @@ export const router = createBrowserRouter([
     errorElement: <ErrorBoundary><NotFoundPage /></ErrorBoundary>,
     children: [
       {
-        // path: '/',
         index: true,
         element: <HomePage />,
       },
@@ -56,6 +56,10 @@ export const router = createBrowserRouter([
       {
         path: '/game-room/:id',
         element: <LiveGameRoomPage />,
+      },
+      {
+        path: '/wallet',
+        element: <WalletPage />,
       },
     ],
   },

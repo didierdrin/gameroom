@@ -71,6 +71,7 @@ export const UnoGame: React.FC<UnoGameProps> = ({ socket, roomId, currentPlayer,
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showPointsTable, setShowPointsTable] = useState(false);
   const [playerPoints, setPlayerPoints] = useState<PlayerPoints[]>([]);
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   
   
 const unoGameState: UnoGameState = React.useMemo(() => {
@@ -119,10 +120,30 @@ const unoGameState: UnoGameState = React.useMemo(() => {
 
   useEffect(() => {
     if (localGameState.gameOver && !showPointsTable) {
+      const leaderboard = getLeaderboardData();
+      setLeaderboardData(leaderboard);
       calculateUnoPoints();
       setTimeout(() => setShowPointsTable(true), 1000);
     }
   }, [localGameState.gameOver, localGameState.winner]);
+
+  const getLeaderboardData = () => {
+    if (!localGameState.players) return [];
+
+    const sortedPlayers = [...localGameState.players].sort((a, b) => {
+      if (a.id === localGameState.winner) return -1;
+      if (b.id === localGameState.winner) return 1;
+      return a.cards.length - b.cards.length;
+    });
+
+    return sortedPlayers.map((player, index) => ({
+      _id: player.id,
+      score: player.score || 0,
+      name: player.name || player.id,
+      cardsLeft: player.cards.length,
+      isWinner: player.id === localGameState.winner
+    }));
+  };
 
   const calculateUnoPoints = () => {
     if (!localGameState.players) return;
@@ -140,7 +161,7 @@ const unoGameState: UnoGameState = React.useMemo(() => {
     const pointsData = sortedPlayers.map((player, index) => ({
       playerId: player.id,
       name: player.name,
-      color: 'blue', // Default for Uno list
+      color: 'blue',
       position: index + 1,
       points: pointsMap[index + 1] || 0
     }));
@@ -275,6 +296,27 @@ const unoGameState: UnoGameState = React.useMemo(() => {
   const topCard = getTopCard();
 
 
+  const PlayerDisplay: React.FC<{ playerId: string }> = ({ playerId }) => {
+    const { username, avatar } = useUserData(playerId);
+
+    return (
+      <div className="flex items-center">
+        <img 
+          src={avatar} 
+          alt={username} 
+          className="w-10 h-10 rounded-full border border-gray-600"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(playerId)}`;
+          }}
+        />
+        <div className="ml-3">
+          <div className="font-medium">{username || playerId}</div>
+        </div>
+      </div>
+    );
+  };
+
   const UnoPlayerDisplay: React.FC<{ player: UnoPlayer; isActive: boolean; isCurrentUser: boolean }> = ({ 
     player, 
     isActive, 
@@ -292,7 +334,6 @@ const unoGameState: UnoGameState = React.useMemo(() => {
           <span className="player-name">{displayName}</span>
           {player.hasUno && <span className="uno-indicator">UNO!</span>}
           <span className="card-count">{player.cards.length} cards</span>
-          {/* <span className="player-score">Score: {player.score}</span> */}
         </div>
         {!isCurrentUser && (
           <div className="opponent-cards">
@@ -385,15 +426,6 @@ const unoGameState: UnoGameState = React.useMemo(() => {
               Start Game
             </button>
           )}
-          {localGameState.gameOver && (
-            <div className="uno-game-over">
-              <h2>Game Over!</h2>
-              <p>Winner: {localGameState.winner}</p>
-              <button className="uno-restart-btn" onClick={handleRestartGame}>
-                Play Again
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -473,6 +505,63 @@ const unoGameState: UnoGameState = React.useMemo(() => {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Game Over Leaderboard */}
+      {localGameState.gameOver && leaderboardData.length > 0 && (
+        <div className="text-center p-6 absolute inset-0 bg-gray-900/95 backdrop-blur-sm z-40 flex flex-col items-center justify-center">
+          <h2 className="text-3xl font-bold mb-6">
+            {leaderboardData[0]._id === currentPlayer ? 'Congratulations! 🎉' : 'Game Over!'}
+          </h2>
+          
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 overflow-hidden max-w-2xl mx-auto mb-6">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-800">
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                    Rank
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                    Player
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                    Cards Left
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {leaderboardData.map((player: any, index: number) => (
+                  <tr key={player._id} className={index < 3 ? 'bg-gray-800/30' : ''}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
+                        index === 0 ? 'bg-yellow-500/20 text-yellow-300' : 
+                        index === 1 ? 'bg-gray-400/20 text-gray-300' : 
+                        index === 2 ? 'bg-amber-700/20 text-amber-500' : 'bg-gray-700/50 text-gray-400'
+                      }`}>
+                        {index + 1}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <PlayerDisplay playerId={player._id} />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-lg font-bold">
+                        {player.isWinner ? '0 (Winner!)' : `${player.cardsLeft} cards`}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <button
+            onClick={handleRestartGame}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3 px-8 rounded-xl font-bold shadow-lg transition-all transform hover:scale-105"
+          >
+            Play Again
+          </button>
         </div>
       )}
 

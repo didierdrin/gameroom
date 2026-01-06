@@ -130,30 +130,6 @@ useEffect(() => {
 }, [timer, loading, questions, hasAnswered, currentQ, currentPlayer, roomId, socket]);
 
 
-  // Timer effect - stop timer when player has answered
-  // useEffect(() => {
-  //   if (timeoutRef.current) {
-  //     clearTimeout(timeoutRef.current);
-  //     timeoutRef.current = null;
-  //   }
-
-  //   if (timer > 0 && !loading && questions.length > 0 && !hasAnswered && !isProcessingRef.current) {
-  //     timeoutRef.current = setTimeout(() => {
-  //       setTimer(timer - 1);
-  //     }, 1000);
-  //   } else if (timer === 0 && !hasAnswered && !isProcessingRef.current) {
-  //     console.log('⏰ Timer expired - auto-submitting answer');
-  //     handleOptionClick(null); // Auto-submit with no answer
-  //   }
-
-  //   return () => {
-  //     if (timeoutRef.current) {
-  //       clearTimeout(timeoutRef.current);
-  //       timeoutRef.current = null;
-  //     }
-  //   };
-  // }, [timer, loading, questions, hasAnswered]);
-
   useEffect(() => {
     if (gameState.gameStarted && !gameState.gameOver) {
       console.log('Resetting trivia game state for new round', {

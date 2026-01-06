@@ -277,7 +277,7 @@ export const UsernameLoginPage: React.FC = () => {
             <div className="text-white">
               <h1 className="text-4xl font-bold mb-6">Arena Game Room</h1>
               <p className="text-xl text-gray-300 mb-8">
-                Your Digital campus awaits! Explore the ALU community in an immersive digital environment.
+                Your Digital campus awaits! Explore the community in an immersive digital environment.
               </p>
               
               <div className="space-y-6">
@@ -287,7 +287,7 @@ export const UsernameLoginPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg">Global Connection</h3>
-                    <p className="text-gray-300">Connect with ALU students across Africa</p>
+                    <p className="text-gray-300">Connect with gamers across Africa</p>
                   </div>
                 </div>
                 
