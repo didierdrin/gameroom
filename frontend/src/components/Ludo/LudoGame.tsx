@@ -35,6 +35,8 @@ export const LudoGame: React.FC<LudoGameProps> = ({
   const [movableCoins, setMovableCoins] = useState<number[]>([]);
   const [showFireworks, setShowFireworks] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+  const [animatingCoin, setAnimatingCoin] = useState<{playerIndex: number, coinIndex: number, path: number[][], color: string} | null>(null);
+  const [animationStep, setAnimationStep] = useState(0);
 
   if (!gameState || !currentPlayerId) {
     return (
@@ -138,6 +140,24 @@ export const LudoGame: React.FC<LudoGameProps> = ({
     }
   }, [diceRolled, diceValue, currentPlayer, players, currentPlayerId, coins, gameStarted, gameState.gameOver]);
   
+  // Animation effect
+  useEffect(() => {
+    if (!animatingCoin) return;
+    
+    if (animationStep < animatingCoin.path.length) {
+      const timer = setTimeout(() => {
+        setAnimationStep(prev => prev + 1);
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      // Animation complete, execute move
+      const coinId = `${players[animatingCoin.playerIndex].color}-${animatingCoin.coinIndex + 1}`;
+      onMoveCoin(coinId);
+      setAnimatingCoin(null);
+      setAnimationStep(0);
+    }
+  }, [animatingCoin, animationStep]);
+  
   
   const boardPath: number[][] = [
     // RED starting area (position 0) - moving right
@@ -183,8 +203,24 @@ const homeStretch: { [key: number]: number[][] } = {
     if (!diceRolled) return;
     if (!movableCoins.includes(coinIndex)) return;
     
-    const coinId = `${players[currentPlayer].color}-${coinIndex + 1}`;
-    onMoveCoin(coinId);
+    const playerIndex = currentPlayer;
+    const currentPos = coins![players[playerIndex].id][coinIndex];
+    const newPos = currentPos === 0 ? 1 : currentPos + diceValue!;
+    
+    // Build animation path
+    const path: number[][] = [];
+    for (let i = currentPos === 0 ? 1 : currentPos + 1; i <= newPos; i++) {
+      const pos = getBoardPosition(playerIndex, i);
+      if (pos) path.push(pos);
+    }
+    
+    setAnimatingCoin({
+      playerIndex,
+      coinIndex,
+      path,
+      color: players[playerIndex].color || 'gray'
+    });
+    setAnimationStep(0);
   };
 
   const getBoardPosition = (playerIndex: number, position: number): number[] | null => {
@@ -353,10 +389,31 @@ const renderBoard = () => {
             </div>
           )}
           
+          {/* Animated coin overlay */}
+          {animatingCoin && animationStep < animatingCoin.path.length && 
+           animatingCoin.path[animationStep][0] === row && 
+           animatingCoin.path[animationStep][1] === col && (
+            <div
+              className="flex items-center justify-center absolute z-50"
+              style={{ width: '70%', height: '70%' }}
+            >
+              <div className="relative w-full h-full flex items-center justify-center animate-bounce">
+                <MapPin className={`w-full h-full ${getPinColor(animatingCoin.color)} drop-shadow-2xl`} />
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-300">
+                  <span className="text-gray-900 text-[8px] xs:text-[9px] sm:text-[10px] font-bold">
+                    {animatingCoin.coinIndex + 1}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {coinsAtPosition.map((coin, idx) => (
             <div
               key={`${coin.playerIndex}-${coin.coinIndex}`}
               className={`flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-125 ${
+                animatingCoin?.playerIndex === coin.playerIndex && animatingCoin?.coinIndex === coin.coinIndex ? 'opacity-0' : ''
+              } ${
                 movableCoins.includes(coin.coinIndex) && 
                 coin.playerIndex === currentPlayer && 
                 players[currentPlayer]?.id === currentPlayerId
