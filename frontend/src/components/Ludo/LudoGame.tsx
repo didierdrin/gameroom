@@ -228,33 +228,33 @@ const homeStretch: { [key: number]: number[][] } = {
     
     // Safe star positions with star icons
     if (safeStarsWithStars.some(([r, c]) => r === row && c === col)) {
-      return 'bg-gradient-to-br from-indigo-200 to-indigo-300 border-2 border-indigo-400 shadow-inner';
+      return 'bg-gradient-to-br from-indigo-700 to-indigo-800 border-2 border-indigo-500 shadow-inner';
     }
     
     // Entry point safe positions (colored by player)
     const posKey = `${row},${col}`;
     if (entryPointColors[posKey]) {
       const color = entryPointColors[posKey];
-      return `bg-gradient-to-br from-${color}-200 to-${color}-300 border-2 border-${color}-400 shadow-inner`;
+      return `bg-gradient-to-br from-${color}-800 to-${color}-900 border-2 border-${color}-600 shadow-inner`;
     }
     
     // Home stretch paths
     if (row === 7 && col >= 1 && col <= 5) {
-      return 'bg-gradient-to-br from-red-200 to-red-300 border-2 border-red-400 shadow-inner';
+      return 'bg-gradient-to-br from-red-800 to-red-900 border-2 border-red-600 shadow-inner';
     }
     if (col === 7 && row >= 1 && row <= 5) {
-      return 'bg-gradient-to-br from-blue-200 to-blue-300 border-2 border-blue-400 shadow-inner';
+      return 'bg-gradient-to-br from-blue-800 to-blue-900 border-2 border-blue-600 shadow-inner';
     }
     if (row === 7 && col >= 9 && col <= 13) {
-      return 'bg-gradient-to-br from-green-200 to-green-300 border-2 border-green-400 shadow-inner';
+      return 'bg-gradient-to-br from-green-800 to-green-900 border-2 border-green-600 shadow-inner';
     }
     if (col === 7 && row >= 9 && row <= 13) {
-      return 'bg-gradient-to-br from-yellow-200 to-yellow-300 border-2 border-yellow-400 shadow-inner';
+      return 'bg-gradient-to-br from-yellow-700 to-yellow-800 border-2 border-yellow-600 shadow-inner';
     }
     
     // Regular board path
     if (boardPath.some(([r, c]) => r === row && c === col)) {
-      return 'bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 shadow-sm';
+      return 'bg-gradient-to-br from-gray-700 to-gray-800 border border-gray-600 shadow-sm';
     }
     
     // Player base areas
@@ -267,11 +267,11 @@ const homeStretch: { [key: number]: number[][] } = {
     
     for (const [color, cells] of Object.entries(baseCells)) {
       if (cells.some(([r, c]) => r === row && c === col)) {
-        return `bg-gradient-to-br from-${color}-100 to-${color}-200 border-2 border-${color}-300`;
+        return `bg-gradient-to-br from-${color}-900 to-${color}-950 border-2 border-${color}-700`;
       }
     }
     
-    return 'bg-gradient-to-br from-gray-50 to-gray-100';
+    return 'bg-gradient-to-br from-gray-800 to-gray-900';
   };
   
 
@@ -349,7 +349,7 @@ const renderBoard = () => {
           {/* Star icon for specific safe star positions */}
           {isStarPosition && coinsAtPosition.length === 0 && (
             <div className="flex items-center justify-center w-full h-full">
-              <Star className="w-1/2 h-1/2 text-indigo-600 fill-indigo-300" />
+              <Star className="w-1/2 h-1/2 text-indigo-400 fill-indigo-500" />
             </div>
           )}
           
@@ -563,7 +563,7 @@ const { username: currentPlayerName } = useUsername(currentPlayerUserId);
 {/* Game board */}
 <div className="mb-4 sm:mb-6 md:mb-8 flex justify-center w-full px-2">
   <div className="w-full" style={{ maxWidth: 'min(95vw, 600px)' }}>
-    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-2 sm:border-4 border-white/20 bg-white/10 rounded-xl sm:rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden"
+    <div className="grid grid-cols-15 grid-rows-15 gap-0 border-2 sm:border-4 border-gray-600 bg-gray-900 rounded-xl sm:rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden"
       style={{
         gridTemplateColumns: 'repeat(15, 1fr)',
         gridTemplateRows: 'repeat(15, 1fr)',
