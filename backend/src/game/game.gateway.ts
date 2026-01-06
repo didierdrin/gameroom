@@ -466,11 +466,16 @@ export class GameGateway {
     try {
       console.log(`Chat message from ${data.playerId} in room ${data.roomId}: ${data.message}`);
 
+      const timestamp = new Date().toISOString();
+
+      // Store the message
+      await this.gameService.storeChatMessage(data.roomId, data.playerId, data.message);
+
       // Broadcast the message to all clients in the room
       this.server.to(data.roomId).emit('chatMessage', {
         playerId: data.playerId,
         message: data.message,
-        timestamp: new Date().toISOString()
+        timestamp
       });
 
     } catch (error) {
