@@ -9,6 +9,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { TournamentsPage } from './pages/TournamentsPage';
 import { LiveGameRoomPage } from './pages/LiveGameRoomPage';
 import { WalletPage } from './pages/WalletPage';
+import { DiscussionsPage } from './pages/DiscussionsPage';
 import { UsernameLoginPage } from './pages/UsernameLoginPage';
 import { ErrorBoundary } from './components/UI/ErrorBoundary';
 import { NotFoundPage } from './components/UI/NotFoundPage';
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
       {
         path: '/leaderboard',
         element: <LeaderboardPage />,
+      },
+      {
+        path: '/discussions',
+        element: <DiscussionsPage />,
       },
       {
         path: '/profile/:username?',

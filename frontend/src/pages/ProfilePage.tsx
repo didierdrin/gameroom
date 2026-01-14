@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom'; 
 import { SectionTitle } from '../components/UI/SectionTitle';
-import { TrophyIcon, BarChart3Icon, ClockIcon, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { TrophyIcon, BarChart3Icon, ClockIcon, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface GameStat {
@@ -848,11 +848,23 @@ const EditProfileModal = () => (
                 <div className="text-sm text-gray-300 whitespace-nowrap">
                   Global Rank: {userData.globalRank}
                 </div>
+                <div className="mx-2 h-1 w-1 rounded-full bg-gray-500"></div>
+                <div className="text-sm text-gray-300 font-bold whitespace-nowrap">
+                  14 Rivals
+                </div>
               </div>
             </div>
           </div>
           
           <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 mt-4 md:mt-0 w-full sm:w-auto">
+            {!isOwnProfile && (
+              <button 
+                className="w-full sm:w-auto px-4 py-2 rounded-lg border-2 border-purple-500 text-purple-400 hover:bg-purple-500/10 transition-colors flex items-center justify-center font-medium"
+              >
+                <UserPlus size={16} className="mr-2" />
+                Follow
+              </button>
+            )}
             <button 
               onClick={handleRefresh}
               disabled={refreshing}

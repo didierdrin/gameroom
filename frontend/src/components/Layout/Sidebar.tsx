@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { DicesIcon, PlusCircleIcon, BarChart3Icon, UserIcon, ChevronLeftIcon, ChevronRightIcon, WalletIcon } from 'lucide-react';
+import { DicesIcon, PlusCircleIcon, BarChart3Icon, UserIcon, ChevronLeftIcon, ChevronRightIcon, WalletIcon, MessageCircleIcon } from 'lucide-react';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -37,6 +37,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
       path: '/leaderboard',
       label: 'Leaderboards',
       icon: <BarChart3Icon size={24} />
+    },
+    {
+      path: '/discussions',
+      label: 'Discussion',
+      icon: <MessageCircleIcon size={24} />
     },
     {
       path: '/profile',
