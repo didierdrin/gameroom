@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom'; 
 import { SectionTitle } from '../components/UI/SectionTitle';
-import { TrophyIcon, BarChart3Icon, ClockIcon, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, UserPlus } from 'lucide-react';
+import { TrophyIcon, BarChart3Icon, Search, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface GameStat {
@@ -813,8 +813,21 @@ const EditProfileModal = () => (
 
   return (
     <div className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden h-screen pb-20">
+      <div className='flex'>
       <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
       
+       
+      
+        <div className="relative">
+          <Search size={18} className="absolute left-3 top-5 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search Rivals..."
+            // onChange={(e) => onSearch(e.target.value)}
+            className="pl-10 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500 transition-colors text-sm min-w-[400px]"
+          />
+        </div>
+      </div> 
       {/* Profile Header */}
       <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-4 sm:p-6 mb-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=2070')] opacity-10 bg-cover bg-center mix-blend-overlay"></div>
