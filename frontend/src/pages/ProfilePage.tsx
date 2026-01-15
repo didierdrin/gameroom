@@ -813,7 +813,7 @@ const EditProfileModal = () => (
 
   return (
     <div className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden h-screen pb-20">
-      <div className='flex'>
+      <div className='flex justify-between'>
       <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
       
        
