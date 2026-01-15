@@ -97,25 +97,497 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
+---******************************************************************************
 
+## API Documentation
 
-@Injectable()
-export class AppService implements OnApplicationBootstrap {
-  constructor(
-    private readonly triviaPopulator: TriviaPopulatorService,
-    private readonly enhancedTriviaService: EnhancedTriviaService,
-  ) {}
+### Authentication Routes
 
-  async onApplicationBootstrap() {
-    // Check if database needs population
-    const totalQuestions = await this.enhancedTriviaService.getTotalQuestionCount();
-    
-    if (totalQuestions < 100) { // Adjust threshold as needed
-      console.log('Database has few questions, starting auto-population...');
-      // Run in background without waiting
-      this.triviaPopulator.populateDatabase().catch(error => {
-        console.error('Auto-population failed:', error);
-      });
+#### POST /auth/signup
+Register a new user account.
+
+**Request Body:**
+```json
+{
+  "username": "string",
+  "email": "string",
+  "password": "string (min 6 characters)"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "string",
+  "user": {
+    "id": "string",
+    "username": "string",
+    "email": "string"
+  }
+}
+```
+
+#### POST /auth/login
+Login to existing account.
+
+**Request Body:**
+```json
+{
+  "usernameOrEmail": "string",
+  "password": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "string",
+  "user": {
+    "id": "string",
+    "username": "string",
+    "email": "string"
+  }
+}
+```
+
+---
+
+### User Routes
+
+#### POST /user/login-or-register
+Login or register a user with just a username.
+
+**Request Body:**
+```json
+{
+  "username": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "string",
+  "username": "string",
+  "createdAt": "date"
+}
+```
+
+#### GET /user/leaderboard
+Get global or game-specific leaderboard.
+
+**Query Parameters:**
+- `gameType` (optional): Filter by game type (trivia, chess, uno, etc.)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "userId": "string",
+      "username": "string",
+      "avatar": "string",
+      "score": "number",
+      "gamesPlayed": "number",
+      "gamesWon": "number",
+      "winRate": "number"
+    }
+  ]
+}
+```
+
+#### POST /user/populate-sample-data
+Populate database with sample game data for testing.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Sample data populated successfully"
+}
+```
+
+#### POST /user/sync-user-stats
+Synchronize user statistics from game sessions.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User statistics synchronized successfully",
+  "data": {}
+}
+```
+
+#### POST /user/bootstrap-test-data
+Bootstrap test data for development.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Test data bootstrapped successfully"
+}
+```
+
+#### GET /user/username/:username
+Get user by username.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "string",
+    "username": "string",
+    "avatar": "string"
+  }
+}
+```
+
+#### GET /user/:id
+Get user by ID.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "string",
+    "username": "string",
+    "email": "string",
+    "avatar": "string",
+    "totalScore": "number",
+    "gamesPlayed": "number",
+    "gamesWon": "number"
+  }
+}
+```
+
+#### GET /user/:id/profile
+Get detailed user profile.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {},
+    "stats": {},
+    "recentGames": []
+  }
+}
+```
+
+#### GET /user/:id/stats
+Get user game statistics.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "totalScore": "number",
+    "gamesPlayed": "number",
+    "gamesWon": "number",
+    "winRate": "number"
+  }
+}
+```
+
+#### PUT /user/:id/profile
+Update user profile.
+
+**Request Body:**
+```json
+{
+  "username": "string (optional)",
+  "email": "string (optional)",
+  "avatar": "string (optional)"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "string",
+    "username": "string",
+    "email": "string",
+    "avatar": "string"
+  }
+}
+```
+
+---
+
+### Game Routes
+
+#### GET /gamerooms
+Get all game rooms.
+
+**Response:**
+```json
+[
+  {
+    "_id": "string",
+    "roomId": "string",
+    "name": "string",
+    "gameType": "string",
+    "status": "string",
+    "host": "string",
+    "playerIds": ["string"],
+    "maxPlayers": "number",
+    "isPrivate": "boolean"
+  }
+]
+```
+
+#### GET /game/:roomId
+Get specific game room details.
+
+**Response:**
+```json
+{
+  "_id": "string",
+  "roomId": "string",
+  "name": "string",
+  "gameType": "string",
+  "status": "string",
+  "host": "string",
+  "playerIds": ["string"],
+  "winner": "string"
+}
+```
+
+#### GET /game/:roomId/score
+Get game scores for a room.
+
+**Response:**
+```json
+{
+  "roomId": "string",
+  "scores": [
+    {
+      "playerId": "string",
+      "score": "number"
+    }
+  ]
+}
+```
+
+---
+
+### Chess Routes
+
+#### GET /chess/:roomId
+Get chess game state.
+
+**Response:**
+```json
+{
+  "roomId": "string",
+  "board": "string (FEN notation)",
+  "currentTurn": "string",
+  "player1": "string",
+  "player2": "string",
+  "status": "string",
+  "winner": "string"
+}
+```
+
+#### POST /chess/select-players
+Select players for chess game.
+
+**Request Body:**
+```json
+{
+  "roomId": "string",
+  "player1Id": "string",
+  "player2Id": "string",
+  "hostId": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Players selected successfully"
+}
+```
+
+---
+
+### Trivia Routes
+
+#### GET /trivia/questions
+Get trivia questions.
+
+**Query Parameters:**
+- `count` (optional): Number of questions (1-50, default: 10)
+- `difficulty` (optional): easy, medium, hard (default: medium)
+- `category` (optional): general, science, history, geography, etc.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "questions": [
+      {
+        "question": "string",
+        "correctAnswer": "string",
+        "incorrectAnswers": ["string"],
+        "category": "string",
+        "difficulty": "string"
+      }
+    ],
+    "settings": {
+      "questionCount": "number",
+      "difficulty": "string",
+      "category": "string"
     }
   }
 }
+```
+
+#### POST /trivia/populate-database
+Populate trivia database with questions.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Database population started successfully"
+}
+```
+
+#### GET /trivia/stats
+Get trivia question statistics.
+
+**Query Parameters:**
+- `category` (optional): Filter by category
+- `difficulty` (optional): Filter by difficulty
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "stats": {
+      "totalQuestions": "number",
+      "byCategory": {},
+      "byDifficulty": {}
+    },
+    "filters": {
+      "category": "string",
+      "difficulty": "string"
+    }
+  }
+}
+```
+
+#### GET /trivia/database-status
+Get trivia database status.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "totalQuestions": "number",
+    "categoryStats": {},
+    "status": "POPULATED | EMPTY"
+  }
+}
+```
+
+#### GET /trivia/categories
+Get available trivia categories.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "value": "string",
+      "label": "string",
+      "icon": "string"
+    }
+  ]
+}
+```
+
+#### GET /trivia/clear-cache
+Clear trivia question cache.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Question cache cleared successfully"
+}
+```
+
+---
+
+### UNO Routes
+
+#### GET /uno/:roomId
+Get UNO game state.
+
+**Response:**
+```json
+{
+  "roomId": "string",
+  "currentCard": {},
+  "currentPlayer": "string",
+  "players": [],
+  "status": "string",
+  "winner": "string"
+}
+```
+
+#### POST /uno/:roomId/restart
+Restart UNO game.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Game restarted successfully"
+}
+```
+
+---
+
+### WebSocket Events
+
+The application uses Socket.IO for real-time communication. Connect to the WebSocket server and listen for the following events:
+
+#### Game Events
+- `createGame` - Create a new game room
+- `joinGame` - Join an existing game
+- `leaveGame` - Leave a game
+- `startGame` - Start the game
+- `gameUpdate` - Receive game state updates
+
+#### Chess Events
+- `makeMove` - Make a chess move
+- `moveMade` - Receive move updates
+- `gameOver` - Game ended
+
+#### UNO Events
+- `playCard` - Play a card
+- `drawCard` - Draw a card
+- `callUno` - Call UNO
+- `cardPlayed` - Card played update
+
+#### User Events
+- `userOnline` - User came online
+- `userOffline` - User went offline
+- `userTyping` - User is typing

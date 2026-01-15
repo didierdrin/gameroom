@@ -11,7 +11,5 @@ export const SectionTitle = ({
 <h2 className="text-2xl font-bold">{title}</h2>
       {subtitle && <p className="text-gray-400 mt-1">{subtitle}</p>}
 
-
-      
     </div>;
 };
