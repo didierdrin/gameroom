@@ -135,7 +135,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
               <h3 className="font-bold text-white truncate mr-2">{name}</h3>
               {entryFee && parseFloat(entryFee) > 0 && (
                 <div className="flex items-center text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-md backdrop-blur-sm whitespace-nowrap flex-shrink-0">
-                  <DollarSign size={10} className="mr-0.5" />
+                  <DollarSign size={10} className="mr-0.5 text-green-400" />
                   {parseFloat(entryFee).toFixed(2)}
                 </div>
               )}
