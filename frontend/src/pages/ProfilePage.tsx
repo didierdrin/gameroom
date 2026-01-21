@@ -813,18 +813,18 @@ const EditProfileModal = () => (
 
   return (
     <div className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden h-screen pb-20">
-      <div className='flex justify-between'>
+      <div className='flex flex-col md:flex-row md:justify-between md:items-center gap-4'>
       <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
       
        
       
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-5 -translate-y-1/2 text-gray-400" />
+        <div className="relative w-full md:w-auto">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search Rivals..."
             // onChange={(e) => onSearch(e.target.value)}
-            className="pl-10 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500 transition-colors text-sm min-w-[400px]"
+            className="pl-10 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500 transition-colors text-sm w-full md:w-[400px]"
           />
         </div>
       </div> 
