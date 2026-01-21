@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Users, Eye, Lock, Loader2 } from 'lucide-react';
+import { X, Users, Eye, Lock, Loader2, DollarSign } from 'lucide-react';
 import  { Link } from 'react-router-dom'; 
 import { GameRoom } from '../../types/gameroom'; 
 
@@ -115,6 +115,12 @@ export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
                   Private
                 </div>
               )}
+              {gameRoom.entryFee && gameRoom.entryFee > 0 && (
+                <div className="flex items-center text-green-400 font-semibold bg-green-500/10 px-2 py-1 rounded">
+                  <DollarSign size={16} className="mr-1" />
+                  Entry Fee: ${gameRoom.entryFee.toFixed(2)}
+                </div>
+              )}
             </div>
           </div>
 
@@ -154,7 +160,14 @@ export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
               )}
               <Users size={20} className="mr-2" />
               <div className="text-left">
-                <div className="font-medium">Join as Player</div>
+                <div className="font-medium">
+                  Join as Player
+                  {gameRoom.entryFee && gameRoom.entryFee > 0 && (
+                     <span className="ml-1 opacity-90 text-sm bg-black/20 px-2 py-0.5 rounded text-white">
+                        $ {gameRoom.entryFee.toFixed(2)}
+                     </span>
+                  )}
+                </div>
                 <div className="text-sm text-purple-200">Participate in the game</div>
               </div>
             </button>
@@ -169,7 +182,14 @@ export const GameRoomJoinModal: React.FC<GameRoomJoinModalProps> = ({
               )}
               <Eye size={20} className="mr-2" />
               <div className="text-left">
-                <div className="font-medium">Join as Spectator</div>
+                <div className="font-medium">
+                  Join as Spectator
+                  {gameRoom.entryFee && gameRoom.entryFee > 0 && (
+                     <span className="ml-1 opacity-90 text-sm bg-black/20 px-2 py-0.5 rounded text-white">
+                        $ {gameRoom.entryFee.toFixed(2)}
+                     </span>
+                  )}
+                </div>
                 <div className="text-sm text-gray-300">Watch and chat only</div>
               </div>
             </button>

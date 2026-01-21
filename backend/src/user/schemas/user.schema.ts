@@ -19,7 +19,7 @@ export class User {
 
   @Prop({ required: false })
   avatar: string;
-  
+
 
   @Prop({ type: Date, default: Date.now })
   createdAt: Date;
@@ -39,12 +39,14 @@ export class User {
   @Prop({ type: [String], default: [] })
   gameTypesPlayed: string[];
 
-  @Prop({ type: [{ 
-    gameType: String,
-    count: { type: Number, default: 0 },
-    wins: { type: Number, default: 0 },
-    score: { type: Number, default: 0 }
-  }], default: [] })
+  @Prop({
+    type: [{
+      gameType: String,
+      count: { type: Number, default: 0 },
+      wins: { type: Number, default: 0 },
+      score: { type: Number, default: 0 }
+    }], default: []
+  })
   gameStats: {
     gameType: string;
     count: number;
@@ -52,19 +54,45 @@ export class User {
     score: number;
   }[];
 
-  @Prop({ type: [{ 
-    roomId: String,
-    gameType: String,
-    score: Number,
-    won: Boolean,
-    date: Date 
-  }], default: [] })
+  @Prop({
+    type: [{
+      roomId: String,
+      gameType: String,
+      score: Number,
+      won: Boolean,
+      date: Date
+    }], default: []
+  })
   gameHistory: {
     roomId: string;
     gameType: string;
     score: number;
     won: boolean;
     date: Date;
+  }[];
+
+  @Prop({ default: 0 })
+  balance: number;
+
+  @Prop({
+    type: [{
+      transactionId: String,
+      type: { type: String, enum: ['deposit', 'join_game', 'win_prize', 'refund'] },
+      amount: Number,
+      date: { type: Date, default: Date.now },
+      status: { type: String, enum: ['pending', 'completed', 'failed'] },
+      description: String,
+      paymentMethod: String // e.g., 'paypal'
+    }], default: []
+  })
+  transactions: {
+    transactionId: string;
+    type: string;
+    amount: number;
+    date: Date;
+    status: string;
+    description: string;
+    paymentMethod?: string;
   }[];
 }
 
@@ -109,7 +137,7 @@ export const UserSchema = SchemaFactory.createForClass(User);
 //   @Prop({ type: [String], default: [] })
 //   gameTypesPlayed: string[];
 
-//   @Prop({ type: [{ 
+//   @Prop({ type: [{
 //     gameType: String,
 //     count: { type: Number, default: 0 },
 //     wins: { type: Number, default: 0 },
@@ -122,12 +150,12 @@ export const UserSchema = SchemaFactory.createForClass(User);
 //     score: number;
 //   }[];
 
-//   @Prop({ type: [{ 
+//   @Prop({ type: [{
 //     roomId: String,
 //     gameType: String,
 //     score: Number,
 //     won: Boolean,
-//     date: Date 
+//     date: Date
 //   }], default: [] })
 //   gameHistory: {
 //     roomId: string;

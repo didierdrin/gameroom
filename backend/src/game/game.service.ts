@@ -50,6 +50,7 @@ interface PublicGameRoom {
   createdAt: string;
   scheduledTimeCombined?: string;
   scores?: Record<string, number>;
+  entryFee: number;
 }
 
 interface Player {
@@ -542,6 +543,28 @@ export class GameService {
         assignedRole = 'spectator';
       }
 
+      // Check if entry fee is required
+      if (gameRoom.entryFee > 0) {
+        // Charge both players and spectators
+        try {
+          await this.userService.deductFunds(
+            joinGameDto.playerId,
+            gameRoom.entryFee,
+            `Joined game room as ${assignedRole}: ${gameRoom.name}`
+          );
+          console.log(`Deducted ${gameRoom.entryFee} from user ${joinGameDto.playerId} as ${assignedRole}`);
+        } catch (error) {
+          // Rollback: Remove user from room if payment fails
+          if (assignedRole === 'player') {
+            gameRoom.playerIds = gameRoom.playerIds.filter(id => id !== joinGameDto.playerId);
+            gameRoom.currentPlayers = gameRoom.playerIds.length;
+          } else {
+            gameRoom.spectatorIds = gameRoom.spectatorIds.filter(id => id !== joinGameDto.playerId);
+          }
+          throw new Error(`Insufficient funds: ${error.message}`);
+        }
+      }
+
       await gameRoom.save();
     } else if (isAlreadyPlayer) {
       assignedRole = 'player';
@@ -574,6 +597,20 @@ export class GameService {
 
       gameRoom.spectatorIds.push(joinGameDto.playerId);
       isNewJoin = true;
+
+      if (gameRoom.entryFee > 0) {
+        try {
+          await this.userService.deductFunds(
+            joinGameDto.playerId,
+            gameRoom.entryFee,
+            `Joined game room as spectator: ${gameRoom.name}`
+          );
+        } catch (error) {
+          gameRoom.spectatorIds = gameRoom.spectatorIds.filter(id => id !== joinGameDto.playerId);
+          throw new Error(`Insufficient funds: ${error.message}`);
+        }
+      }
+
       await gameRoom.save();
     }
 
@@ -1875,6 +1912,7 @@ export class GameService {
             createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
             scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : undefined,
             scores: room.scores ? (room.scores as Record<string, number>) : {},
+            entryFee: room.entryFee || 0,
           };
         })
       );
@@ -1943,6 +1981,7 @@ export class GameService {
               createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
               scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : undefined,
               scores: room.scores ? Object.fromEntries(Object.entries(room.scores)) : {},
+              entryFee: room.entryFee || 0,
             };
           })
       );
@@ -1977,6 +2016,7 @@ export class GameService {
               createdAt: room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString(),
               scheduledTimeCombined: room.scheduledTimeCombined ? new Date(room.scheduledTimeCombined).toISOString() : undefined,
               scores: room.scores ? Object.fromEntries(Object.entries(room.scores)) : {},
+              entryFee: room.entryFee || 0,
             };
           })
       );

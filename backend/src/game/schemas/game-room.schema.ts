@@ -33,8 +33,8 @@ export class GameRoom {
   @Prop({ default: 'waiting' })
   status: 'waiting' | 'in-progress' | 'completed';
 
-  
-  
+
+
   @Prop({ type: Object, default: {} })
   scores: Record<string, number>;
 
@@ -62,6 +62,9 @@ export class GameRoom {
 
   @Prop({ type: Object, required: false })
   triviaSettings?: TriviaSettings;
+
+  @Prop({ default: 0 })
+  entryFee: number;
 }
 
 export const GameRoomSchema = SchemaFactory.createForClass(GameRoom);

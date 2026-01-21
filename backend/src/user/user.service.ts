@@ -15,14 +15,14 @@ export class UserService {
     @InjectModel(GameRoom.name) private gameRoomModel: Model<GameRoomDocument>,
     @InjectModel(GameSessionEntity.name) private gameSessionModel: Model<GameSessionDocument>,
     @InjectModel(Counter.name) private counterModel: Model<CounterDocument>,
-  ) {}
+  ) { }
 
   async create(userData: { username: string; email?: string; password?: string }): Promise<User> {
     // Remove manual _id assignment - let MongoDB generate ObjectId automatically
     const user = new this.userModel({
       ...userData
     });
-    
+
     const savedUser = await user.save();
     console.log('Saved user:', savedUser); // Debug log
     return savedUser;
@@ -101,7 +101,7 @@ export class UserService {
   async getLeaderboard(limit = 10, gameType?: string) {
     try {
       console.log('Getting leaderboard for gameType:', gameType);
-      
+
       // Prioritize game room based leaderboard (uses gamerooms collection)
       const roomLeaderboard = await this.getRoomBasedLeaderboard(limit, gameType);
       if (roomLeaderboard && roomLeaderboard.length > 0) {
@@ -130,11 +130,11 @@ export class UserService {
     try {
       // Start with game sessions to get player stats
       const matchStage = gameType && gameType !== 'all' ? {} : {};
-      
+
       const pipeline: PipelineStage[] = [
         // Match completed game sessions
         { $match: { ...matchStage } },
-        
+
         // Lookup game rooms to get game type if not in session
         {
           $lookup: {
@@ -144,16 +144,16 @@ export class UserService {
             as: 'gameRoom'
           }
         },
-        
+
         // Unwind game room
         { $unwind: '$gameRoom' },
-        
+
         // Filter by game type if specified
         ...(gameType && gameType !== 'all' ? [{ $match: { 'gameRoom.gameType': gameType } }] : []),
-        
+
         // Unwind players array to get individual player stats
         { $unwind: '$players' },
-        
+
         // Group by individual player
         {
           $group: {
@@ -171,7 +171,7 @@ export class UserService {
             gameTypes: { $addToSet: '$gameRoom.gameType' }
           }
         },
-        
+
         // Lookup user information
         {
           $lookup: {
@@ -181,10 +181,10 @@ export class UserService {
             as: 'userInfo'
           }
         },
-        
+
         // Unwind user info
         { $unwind: '$userInfo' },
-        
+
         // Project final format - 5 points per win
         {
           $project: {
@@ -208,22 +208,22 @@ export class UserService {
             }
           }
         },
-        
+
         // Filter out users with no games
         { $match: { gamesPlayed: { $gt: 0 } } },
-        
+
         // Sort by score, then by win rate, then by games won
         { $sort: { score: -1, winRate: -1, gamesWon: -1 } },
-        
+
         // Limit results
         { $limit: limit }
       ];
 
       console.log('Session-based leaderboard pipeline:', JSON.stringify(pipeline, null, 2));
-      
+
       const result = await this.gameSessionModel.aggregate(pipeline);
       console.log('Session-based leaderboard result:', result);
-      
+
       return result;
     } catch (error) {
       console.error('Error in getSessionBasedLeaderboard:', error);
@@ -234,14 +234,14 @@ export class UserService {
   async getRoomBasedLeaderboard(limit = 10, gameType?: string) {
     try {
       const matchStage = gameType && gameType !== 'all' ? { gameType } : {};
-      
+
       const pipeline: PipelineStage[] = [
         // Match completed games only
         { $match: { ...matchStage, status: 'completed' } },
-        
+
         // Unwind player IDs to get individual player stats
         { $unwind: '$playerIds' },
-        
+
         // Group by individual player
         {
           $group: {
@@ -259,14 +259,14 @@ export class UserService {
             gameTypes: { $addToSet: '$gameType' }
           }
         },
-        
+
         // Convert string ID to ObjectId for lookup
         {
           $addFields: {
             userObjectId: { $toObjectId: '$_id' }
           }
         },
-        
+
         // Lookup user information using converted ObjectId
         {
           $lookup: {
@@ -276,10 +276,10 @@ export class UserService {
             as: 'userInfo'
           }
         },
-        
+
         // Unwind user info
         { $unwind: '$userInfo' },
-        
+
         // Project final format - 5 points per win
         {
           $project: {
@@ -303,22 +303,22 @@ export class UserService {
             }
           }
         },
-        
+
         // Filter out users with no games
         { $match: { gamesPlayed: { $gt: 0 } } },
-        
+
         // Sort by score, then by win rate, then by games won
         { $sort: { score: -1, winRate: -1, gamesWon: -1 } },
-        
+
         // Limit results
         { $limit: limit }
       ];
 
       console.log('Room-based leaderboard pipeline:', JSON.stringify(pipeline, null, 2));
-      
+
       const result = await this.gameRoomModel.aggregate(pipeline);
       console.log('Room-based leaderboard result:', result);
-      
+
       return result;
     } catch (error) {
       console.error('Error in getRoomBasedLeaderboard:', error);
@@ -337,7 +337,7 @@ export class UserService {
         matchStage = {
           'gameStats.gameType': gameType
         };
-        
+
         projectStage = {
           _id: 1,
           username: 1,
@@ -388,7 +388,7 @@ export class UserService {
             }
           }
         };
-        
+
         sortStage = {
           score: -1,
           gamesWon: -1,
@@ -417,7 +417,7 @@ export class UserService {
             ]
           }
         };
-        
+
         sortStage = {
           score: -1,
           gamesWon: -1,
@@ -434,10 +434,10 @@ export class UserService {
       ];
 
       console.log('Fallback leaderboard pipeline:', JSON.stringify(pipeline, null, 2));
-      
+
       const result = await this.userModel.aggregate(pipeline);
       console.log('Fallback leaderboard result:', result);
-      
+
       return result || [];
     } catch (error) {
       console.error('Error in getFallbackLeaderboard:', error);
@@ -450,7 +450,7 @@ export class UserService {
     if (!user) {
       throw new Error('User not found');
     }
-  
+
     return {
       _id: user._id,
       username: user.username,
@@ -473,16 +473,16 @@ export class UserService {
 
       // Get comprehensive game statistics from game sessions
       const gameStats = await this.getUserGameStats(userId);
-      
+
       // Get recent game history
       const recentGames = await this.getUserRecentGames(userId);
-      
+
       // Get favorite games
       const favoriteGames = await this.getUserFavoriteGames(userId);
-      
+
       // Get achievements and badges
       const badges = await this.getUserBadges(userId, gameStats);
-      
+
       // Get global rank
       const globalRank = await this.getUserGlobalRank(userId);
 
@@ -518,13 +518,13 @@ export class UserService {
     try {
       const pipeline: PipelineStage[] = [
         // Match completed games where user participated
-        { 
-          $match: { 
+        {
+          $match: {
             playerIds: userId,
             status: 'completed'
-          } 
+          }
         },
-        
+
         // Group by game type to get stats per game
         {
           $group: {
@@ -552,7 +552,7 @@ export class UserService {
             lastPlayed: { $max: '$updatedAt' }
           }
         },
-        
+
         // Project final format
         {
           $project: {
@@ -570,13 +570,13 @@ export class UserService {
             }
           }
         },
-        
+
         // Sort by count descending
         { $sort: { count: -1 } }
       ];
 
       const gameTypeStats = await this.gameRoomModel.aggregate(pipeline);
-      
+
       // Calculate overall totals
       const totalGames = gameTypeStats.reduce((sum, stat) => sum + stat.count, 0);
       const totalWins = gameTypeStats.reduce((sum, stat) => sum + stat.wins, 0);
@@ -610,13 +610,13 @@ export class UserService {
     try {
       const pipeline: PipelineStage[] = [
         // Match completed games where user participated
-        { 
-          $match: { 
+        {
+          $match: {
             playerIds: userId,
             status: 'completed'
-          } 
+          }
         },
-        
+
         // Project game info
         {
           $project: {
@@ -642,16 +642,16 @@ export class UserService {
             totalPlayers: { $size: '$playerIds' }
           }
         },
-        
+
         // Sort by most recent
         { $sort: { updatedAt: -1 } },
-        
+
         // Limit results
         { $limit: limit }
       ];
 
       const recentGames = await this.gameRoomModel.aggregate(pipeline);
-      
+
       return recentGames.map(game => ({
         id: game.roomId,
         name: game.gameName || `${game.gameType} Game`,
@@ -678,13 +678,13 @@ export class UserService {
     try {
       const pipeline: PipelineStage[] = [
         // Match completed games where user participated
-        { 
-          $match: { 
+        {
+          $match: {
             playerIds: userId,
             status: 'completed'
-          } 
+          }
         },
-        
+
         // Group by game type
         {
           $group: {
@@ -702,16 +702,16 @@ export class UserService {
             lastPlayed: { $max: '$updatedAt' }
           }
         },
-        
+
         // Sort by count descending
         { $sort: { count: -1 } },
-        
+
         // Limit results
         { $limit: limit }
       ];
 
       const favoriteGames = await this.gameRoomModel.aggregate(pipeline);
-      
+
       return favoriteGames.map(game => ({
         gameType: game._id,
         count: game.count,
@@ -735,7 +735,7 @@ export class UserService {
         date: string;
         category: string;
       }> = [];
-      
+
       // Game Master badge - Win 10+ games
       if (gameStats.totalWins >= 10) {
         badges.push({
@@ -751,7 +751,7 @@ export class UserService {
           category: 'achievement'
         });
       }
-      
+
       // Multi-Game Champion - Win 5+ games in multiple categories
       const gameTypesWithWins = gameStats.gameTypeStats.filter((stat: any) => stat.wins >= 5);
       if (gameTypesWithWins.length >= 2) {
@@ -768,7 +768,7 @@ export class UserService {
           category: 'achievement'
         });
       }
-      
+
       // First Win badge
       if (gameStats.totalWins >= 1) {
         badges.push({
@@ -784,7 +784,7 @@ export class UserService {
           category: 'milestone'
         });
       }
-      
+
       // Dedicated Player - Play 20+ games
       if (gameStats.totalGames >= 20) {
         badges.push({
@@ -800,7 +800,7 @@ export class UserService {
           category: 'milestone'
         });
       }
-      
+
       // High Win Rate - 80%+ win rate
       if (gameStats.totalGames >= 5) {
         const winRate = (gameStats.totalWins / gameStats.totalGames) * 100;
@@ -819,7 +819,7 @@ export class UserService {
           });
         }
       }
-      
+
       // Game Type Specialist badges
       gameStats.gameTypeStats.forEach((stat: any) => {
         if (stat.wins >= 10) {
@@ -837,7 +837,7 @@ export class UserService {
           });
         }
       });
-      
+
       return badges;
     } catch (error) {
       console.error('Error in getUserBadges:', error);
@@ -862,10 +862,10 @@ export class UserService {
     try {
       // Get global leaderboard
       const leaderboard = await this.getLeaderboard(1000); // Get all users
-      
+
       // Find user's position
       const userIndex = leaderboard.findIndex((user: any) => user._id === userId);
-      
+
       if (userIndex >= 0) {
         return `#${userIndex + 1}`;
       } else {
@@ -993,7 +993,7 @@ export class UserService {
   async syncAllUserStats() {
     try {
       console.log('Starting user stats synchronization...');
-      
+
       // Get all users
       const users = await this.userModel.find();
       const results: Array<{
@@ -1003,11 +1003,11 @@ export class UserService {
         gamesPlayed: number;
         gamesWon: number;
       }> = [];
-      
+
       for (const user of users) {
         // Calculate stats from game sessions
         const gameStats = await this.getUserGameStats(String(user._id));
-        
+
         // Update user document with calculated stats
         await this.userModel.findByIdAndUpdate(user._id, {
           totalScore: gameStats.totalScore,
@@ -1015,7 +1015,7 @@ export class UserService {
           gamesWon: gameStats.totalWins,
           gameStats: gameStats.gameTypeStats
         });
-        
+
         results.push({
           userId: String(user._id),
           username: user.username,
@@ -1024,7 +1024,7 @@ export class UserService {
           gamesWon: gameStats.totalWins
         });
       }
-      
+
       console.log(`Synchronized stats for ${results.length} users`);
       return results;
     } catch (error) {
@@ -1040,7 +1040,7 @@ export class UserService {
         return { success: false, error: 'User not found' };
       }
 
-      
+
 
       // Check if username is being updated and if it's already taken
       if (updateData.username && updateData.username !== user.username) {
@@ -1070,8 +1070,8 @@ export class UserService {
         return { success: false, error: 'User not found' };
       }
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         user: {
           _id: updatedUser._id,
           username: updatedUser.username,
@@ -1105,8 +1105,8 @@ export class UserService {
         return { success: false, error: 'User not found' };
       }
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         user: {
           _id: updatedUser._id,
           username: updatedUser.username,
@@ -1125,6 +1125,71 @@ export class UserService {
       console.error('Error updating user avatar:', error);
       return { success: false, error: 'Failed to update avatar' };
     }
+  }
+
+  async addFunds(userId: string, amount: number, transactionDetails: any) {
+    try {
+      const user = await this.userModel.findById(userId);
+      if (!user) throw new Error('User not found');
+
+      user.balance = (user.balance || 0) + Number(amount);
+      if (!user.transactions) user.transactions = [];
+
+      user.transactions.push({
+        transactionId: transactionDetails.id || new Date().getTime().toString(),
+        type: 'deposit',
+        amount: Number(amount),
+        date: new Date(),
+        status: 'completed',
+        description: `Deposit via ${transactionDetails.paymentMethod || 'PayPal'}`,
+        paymentMethod: transactionDetails.paymentMethod || 'PayPal'
+      });
+
+      await user.save();
+      return { success: true, balance: user.balance, transactions: user.transactions };
+    } catch (error) {
+      console.error('Error adding funds:', error);
+      throw error;
+    }
+  }
+
+  async deductFunds(userId: string, amount: number, description: string) {
+    try {
+      const user = await this.userModel.findById(userId);
+      if (!user) throw new Error('User not found');
+
+      if ((user.balance || 0) < amount) {
+        throw new Error('Insufficient balance');
+      }
+
+      user.balance = (user.balance || 0) - Number(amount);
+      if (!user.transactions) user.transactions = [];
+
+      user.transactions.push({
+        transactionId: `charge-${new Date().getTime()}`,
+        type: 'join_game',
+        amount: Number(amount),
+        date: new Date(),
+        status: 'completed',
+        description: description,
+        paymentMethod: 'Wallet'
+      });
+
+      await user.save();
+      return { success: true, balance: user.balance };
+    } catch (error) {
+      console.error('Error deducting funds:', error);
+      throw error;
+    }
+  }
+
+  async getTransactions(userId: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new Error('User not found');
+    return {
+      balance: user.balance || 0,
+      transactions: (user.transactions || []).reverse()
+    };
   }
 }
 

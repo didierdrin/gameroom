@@ -203,4 +203,34 @@ export class UserController {
       };
     }
   }
+
+  @Post(':id/deposit')
+  async depositFunds(@Param('id') id: string, @Body() body: { amount: number, transactionDetails?: any }) {
+    try {
+      const result = await this.userService.addFunds(id, body.amount, body.transactionDetails || {});
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  @Post(':id/charge')
+  async chargeFunds(@Param('id') id: string, @Body() body: { amount: number, description: string }) {
+    try {
+      const result = await this.userService.deductFunds(id, body.amount, body.description);
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  @Get(':id/transactions')
+  async getTransactions(@Param('id') id: string) {
+    try {
+      const result = await this.userService.getTransactions(id);
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
