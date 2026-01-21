@@ -314,6 +314,7 @@ export class GameService {
       scheduledTimeCombined,
       playerIds: [createGameDto.hostId],
       createdAt: new Date(),
+      entryFee: createGameDto.entryFee || 0,
     };
 
     // Add triviaSettings if gameType is trivia 

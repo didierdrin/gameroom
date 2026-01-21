@@ -24,7 +24,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
     isPrivate,
     isInviteOnly,
     startTime,
-    gameFee
+    entryFee
   } = gameRoom;
 
   const { username: hostDisplayName, isLoading: isLoadingHost } = useUsername(host);
@@ -119,10 +119,10 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
 
   return (
     <div className="relative bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/20 hover:border-purple-500/50">
-      {gameFee && parseFloat(gameFee) > 0 && (
+      {entryFee && parseFloat(entryFee) > 0 && (
         <div className="absolute top-2 left-2 bg-green-500/90 text-white text-xs py-1 px-2 rounded-full flex items-center z-10 font-semibold shadow-lg">
           <DollarSign size={12} className="mr-0.5" />
-          {parseFloat(gameFee).toFixed(2)}
+          {parseFloat(entryFee).toFixed(2)}
         </div>
       )}
       {isStartingSoon && (

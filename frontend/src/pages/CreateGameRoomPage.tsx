@@ -1,7 +1,7 @@
 // CreateGameRoomPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
-import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink, ChevronLeft, ChevronRight, DollarSign } from 'lucide-react';
+import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink, DollarSign } from 'lucide-react';
 import { useSocket } from '../SocketContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -36,29 +36,9 @@ export const createTriviaGame = (
 };
 
 
+
 interface CreateGameRoomPageProps {
   onGameCreated?: () => void;
-}
-
-interface GameRoomData {
-  name: string;
-  gameType: string;
-  maxPlayers: number;
-  isPrivate: boolean;
-  password?: string;
-  scheduledTimeCombined?: string;
-  description?: string;
-  enableVideoChat: boolean;
-  enableVoiceChat: boolean;
-  allowSpectators: boolean;
-  hostId: string;
-  hostName: string;
-  // Add trivia specific fields
-  triviaSettings?: {
-    questionCount: number;
-    difficulty: string;
-    category: string;
-  };
 }
 
 // Trivia categories available
@@ -327,6 +307,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     enableVideoChat,
     enableVoiceChat,
     allowSpectators,
+    entryFee: isChargedGame && gameFee ? parseFloat(gameFee) : 0,
   };
 
   if (gameType === 'trivia') {
