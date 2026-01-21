@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SendIcon, UserIcon, PlusIcon, UsersIcon } from 'lucide-react';
+import { SendIcon, UserIcon, PlusIcon, UsersIcon, ArrowLeft } from 'lucide-react';
 
 interface Conversation {
   id: string;
@@ -66,7 +66,7 @@ const mockMessages: Message[] = [
 ];
 
 export const DiscussionsPage = () => {
-  const [selectedConversation, setSelectedConversation] = useState<string>('1');
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
 
   const handleSendMessage = () => {
@@ -79,7 +79,7 @@ export const DiscussionsPage = () => {
   return (
     <div className="h-screen flex bg-gray-900 text-white">
       {/* Conversations List - Left Column */}
-      <div className="w-full md:w-1/3 bg-gray-800 border-r border-l border-gray-700 flex flex-col">
+      <div className={`w-full md:w-1/3 bg-gray-800 border-r border-l border-gray-700 flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-purple-400">Discussions</h2>
@@ -129,7 +129,13 @@ export const DiscussionsPage = () => {
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-700 bg-gray-800">
+            <div className="p-4 border-b border-gray-700 bg-gray-800 flex items-center gap-3">
+              <button 
+                onClick={() => setSelectedConversation(null)}
+                className="md:hidden p-2 -ml-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <ArrowLeft size={20} />
+              </button>
               <h3 className="font-semibold">
                 {mockConversations.find(c => c.id === selectedConversation)?.name}
               </h3>

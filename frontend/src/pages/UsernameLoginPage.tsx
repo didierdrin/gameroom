@@ -106,7 +106,7 @@ export const UsernameLoginPage: React.FC = () => {
       <Helmet>
         <title>Arena Gameroom - Authentication</title>
       </Helmet>
-      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-1100 via-blue-900 to-indigo-1100">
         {/* Background decorative elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-10 -left-10 w-72 h-72 bg-green-400 rounded-full opacity-20 blur-3xl"></div>
