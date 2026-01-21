@@ -1,5 +1,8 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { DicesIcon, PlusCircleIcon, BarChart3Icon, UserIcon, ChevronLeftIcon, ChevronRightIcon, WalletIcon, MessageCircleIcon } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useState, useEffect } from 'react';
+import apiClient from '../../utils/axiosConfig';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -7,10 +10,40 @@ interface SidebarProps {
   onLinkClick?: () => void;
 }
 
+interface UserApiResponse {
+  success: boolean;
+  data: {
+    balance: number;
+  };
+}
+
 export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const balance = 150.00; // TODO: Replace with actual balance from context/API
+  const { user } = useAuth();
+  const [balance, setBalance] = useState(0);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (user?.id) {
+        try {
+          const res = await apiClient.get<UserApiResponse>(`/user/${user.id}`);
+          if (res.data.success) {
+            setBalance(res.data.data.balance || 0);
+          }
+        } catch (error) {
+          console.error("Failed to fetch balance in sidebar", error);
+        }
+      }
+    };
+
+    fetchBalance();
+    
+    // Set up an interval to refresh balance every 30 seconds
+    const intervalId = setInterval(fetchBalance, 30000);
+    
+    return () => clearInterval(intervalId);
+  }, [user?.id]);
   
   const navItems = [
     {
@@ -60,7 +93,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
       </div>
 
       {/* Balance & Deposit Section */}
-      {!isCollapsed && (
+      {!isCollapsed && user && (
         <div className="mb-6 bg-gray-700/50 rounded-xl p-3 border border-gray-600">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
