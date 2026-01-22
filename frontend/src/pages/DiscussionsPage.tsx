@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { SendIcon, UserIcon, PlusIcon, UsersIcon, ArrowLeft } from 'lucide-react';
+import { SendIcon, UserIcon, PlusIcon, UsersIcon, ArrowLeft, XIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../utils/axiosConfig';
 
@@ -58,6 +58,7 @@ export const DiscussionsPage = () => {
   const [newConversationName, setNewConversationName] = useState('');
   const [searchedUsers, setSearchedUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -123,133 +124,77 @@ export const DiscussionsPage = () => {
       return;
     }
     try {
-      const res = await apiClient.get<ApiResponse<User[]>>(`/users/search?q=${query}`);
+      const res = await apiClient.get<ApiResponse<User[]>>(`/user/search?q=${query}`);
       if (res.data.success) {
         setSearchedUsers(res.data.data.filter(u => u._id !== user?.id));
       }
     } catch (error) {
       console.error('Failed to search users:', error);
+      setSearchedUsers([]);
     }
   };
 
-  const handleSelectUser = (selectedUser: User) => {
-    if (!selectedUsers.find(u => u._id === selectedUser._id)) {
-      setSelectedUsers([...selectedUsers, selectedUser]);
+  const handleSearchChange = (value: string) => {
+    setNewConversationName(value);
+    
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
     }
-    setNewConversationName('');
-    setSearchedUsers([]);
+    
+    const timeout = setTimeout(() => {
+      searchUsers(value);
+    }, 300);
+    
+    setSearchTimeout(timeout);
   };
 
-  const handleRemoveUser = (userId: string) => {
-    setSelectedUsers(selectedUsers.filter(u => u._id !== userId));
-  };
-
-  const handleCreateConversation = async () => {
-    if (selectedUsers.length === 0) return;
-
+  const handleSelectUser = async (selectedUser: User) => {
     try {
       const res = await apiClient.post<ApiResponse<Conversation>>('/discussions', {
-        name: selectedUsers.map(u => u.username).join(', '),
-        participants: [user?.id, ...selectedUsers.map(u => u._id)]
+        name: selectedUser.username,
+        participants: [user?.id, selectedUser._id]
       });
       if (res.data.success) {
         setShowAddDialog(false);
         setNewConversationName('');
-        setSelectedUsers([]);
         setSearchedUsers([]);
-        fetchConversations();
+        await fetchConversations();
+        setSelectedConversation(res.data.data._id);
+        fetchMessages(res.data.data._id);
       }
     } catch (error) {
       console.error('Failed to create conversation:', error);
     }
   };
 
+  const toggleAddDialog = () => {
+    if (showAddDialog) {
+      setShowAddDialog(false);
+      setNewConversationName('');
+      setSearchedUsers([]);
+    } else {
+      setShowAddDialog(true);
+    }
+  };
+
   return (
     <div className="h-screen flex bg-gray-900 text-white">
-      {/* Add Conversation Dialog */}
-      {showAddDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-96">
-            <h2 className="text-xl font-bold mb-4">Add a Conversation</h2>
-            
-            {/* Selected Users */}
-            {selectedUsers.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {selectedUsers.map(u => (
-                  <div key={u._id} className="flex items-center gap-1 bg-purple-600 px-2 py-1 rounded-full text-sm">
-                    <span>{u.username}</span>
-                    <button onClick={() => handleRemoveUser(u._id)} className="hover:text-gray-300">×</button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Search Input */}
-            <div className="relative mb-4">
-              <input
-                type="text"
-                value={newConversationName}
-                onChange={(e) => {
-                  setNewConversationName(e.target.value);
-                  searchUsers(e.target.value);
-                }}
-                placeholder="Search users..."
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500"
-              />
-              
-              {/* User Suggestions */}
-              {searchedUsers.length > 0 && (
-                <div className="absolute w-full mt-1 bg-gray-700 border border-gray-600 rounded-lg max-h-48 overflow-y-auto z-10">
-                  {searchedUsers.map(searchUser => (
-                    <div
-                      key={searchUser._id}
-                      onClick={() => handleSelectUser(searchUser)}
-                      className="px-3 py-2 hover:bg-gray-600 cursor-pointer flex items-center gap-2"
-                    >
-                      <UserIcon size={16} />
-                      <span>{searchUser.username}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => {
-                  setShowAddDialog(false);
-                  setNewConversationName('');
-                  setSelectedUsers([]);
-                  setSearchedUsers([]);
-                }}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateConversation}
-                disabled={selectedUsers.length === 0}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Conversations List - Left Column */}
       <div className={`w-full md:w-1/3 bg-gray-800 border-r border-l border-gray-700 flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Discussions</h2>
+            <h2 className="text-2xl font-bold text-white">Discussions</h2>
             <div className="flex gap-2">
               <button 
-                onClick={() => setShowAddDialog(true)}
+                onClick={toggleAddDialog}
                 className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-                title="Add new person"
+                title={showAddDialog ? "Close" : "Add new person"}
               >
-                <PlusIcon size={20} className="text-gray-400 hover:text-purple-400" />
+                {showAddDialog ? (
+                  <XIcon size={20} className="text-gray-400 hover:text-red-400" />
+                ) : (
+                  <PlusIcon size={20} className="text-gray-400 hover:text-purple-400" />
+                )}
               </button>
               <button 
                 className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
@@ -265,6 +210,40 @@ export const DiscussionsPage = () => {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="p-4 text-gray-400">Loading conversations...</div>
+          ) : showAddDialog ? (
+            <div className="p-4">
+              <input
+                type="text"
+                value={newConversationName}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Search users..."
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500 mb-4"
+                autoFocus
+              />
+              
+              <div className="space-y-2">
+                {newConversationName ? (
+                  searchedUsers.length > 0 ? (
+                    searchedUsers.map(searchUser => (
+                      <div
+                        key={searchUser._id}
+                        onClick={() => handleSelectUser(searchUser)}
+                        className="px-3 py-3 hover:bg-gray-700 cursor-pointer flex items-center gap-3 rounded-lg transition-colors"
+                      >
+                        <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                          <UserIcon size={16} />
+                        </div>
+                        <span>{searchUser.username}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-gray-400 text-center">No users found</div>
+                  )
+                ) : (
+                  <div className="px-3 py-2 text-gray-400 text-center">Start typing to search for users</div>
+                )}
+              </div>
+            </div>
           ) : conversations.length === 0 ? (
             <div className="p-4 text-gray-400">No conversations yet</div>
           ) : (

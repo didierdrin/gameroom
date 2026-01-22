@@ -122,6 +122,25 @@ export class UserController {
     }
   }
 
+  @Get('search')
+  async searchUsers(@Query('q') query: string) {
+    try {
+      if (!query || query.trim().length < 1) {
+        return { success: true, data: [] };
+      }
+      const users = await this.userService.searchUsers(query);
+      return {
+        success: true,
+        data: users.map(user => ({
+          _id: (user as any).id,
+          username: user.username
+        }))
+      };
+    } catch (error) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
   @Get('username/:username')
   async getUserByUsername(@Param('username') username: string) {
     try {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom'; 
+import { useParams, useNavigate } from 'react-router-dom'; 
 import { SectionTitle } from '../components/UI/SectionTitle';
 import { TrophyIcon, BarChart3Icon, Search, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -41,6 +41,12 @@ interface Badge {
   description: string;
   date: string;
   category: string;
+}
+
+interface SearchResultUser {
+  _id: string;
+  username: string;
+  avatar?: string;
 }
 
 interface UserProfileData {
@@ -91,6 +97,10 @@ export const ProfilePage = () => {
   const [userData, setUserData] = useState<UserProfileData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResultUser[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const navigate = useNavigate();
   
   // Edit Profile Modal State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -109,8 +119,33 @@ export const ProfilePage = () => {
   const avatarOptions = ['adventurer', 'adventurer-neutral', 'avataaars', 'avataaars-neutral', 'big-ears', 'big-ears-neutral', 'big-smile', 'bottts', 'bottts-neutral', 'croodles', 'croodles-neutral', 'fun-emoji', 'icons', 'identicon', 'initials', 'lorelei'];
 
   const { username: paramUsername } = useParams<{ username?: string }>();
-  // Add this with your other state declarations
-const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/search?q=${encodeURIComponent(query)}`);
+      const result = await response.json();
+      if (result.success && result.data) {
+        setSearchResults(result.data);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleUserClick = (username: string) => {
+    setSearchQuery('');
+    setSearchResults([]);
+    navigate(`/profile/${username}`);
+  };
 
 
 
@@ -823,11 +858,66 @@ const EditProfileModal = () => (
           <input
             type="text"
             placeholder="Search Rivals..."
-            // onChange={(e) => onSearch(e.target.value)}
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
             className="pl-10 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500 transition-colors text-sm w-full md:w-[400px]"
           />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSearchResults([]);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+            >
+              <XIcon size={16} />
+            </button>
+          )}
         </div>
       </div> 
+      {searchQuery ? (
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
+          <h2 className="text-xl font-bold mb-4">Search Results</h2>
+          {searchLoading ? (
+            <div className="text-center py-8">
+              <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-gray-400 mt-2">Searching...</p>
+            </div>
+          ) : searchResults.length > 0 ? (
+            <div className="space-y-3">
+              {searchResults.map((user) => (
+                <div
+                  key={user._id}
+                  onClick={() => handleUserClick(user.username)}
+                  className="bg-gray-700/30 rounded-lg p-4 hover:bg-gray-700/50 cursor-pointer transition-all border border-transparent hover:border-purple-500/30 flex items-center justify-between"
+                >
+                  <div className="flex items-center space-x-4">
+                    <img
+                      src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.username)}`}
+                      alt={user.username}
+                      className="w-12 h-12 rounded-full border-2 border-purple-500"
+                    />
+                    <div>
+                      <h3 className="font-bold text-lg">{user.username}</h3>
+                      <p className="text-sm text-gray-400">Click to view profile</p>
+                    </div>
+                  </div>
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Search size={48} className="mx-auto text-gray-600 mb-4" />
+              <p className="text-gray-400 text-lg mb-2">No users found</p>
+              <p className="text-gray-500">Try searching for a different username</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <> 
       {/* Profile Header */}
       <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-4 sm:p-6 mb-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=2070')] opacity-10 bg-cover bg-center mix-blend-overlay"></div>
@@ -959,6 +1049,8 @@ const EditProfileModal = () => (
 
       {/* Edit Profile Modal */}
       {showEditModal && <EditProfileModal />}
+        </>
+      )}
     </div>
   );
 };

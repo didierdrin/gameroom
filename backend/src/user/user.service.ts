@@ -44,6 +44,12 @@ export class UserService {
     return this.userModel.find().exec();
   }
 
+  async searchUsers(query: string): Promise<User[]> {
+    return this.userModel.find({
+      username: { $regex: query, $options: 'i' }
+    }).limit(10).select('_id username').exec();
+  }
+
   async updateGameStats(userId: string, gameType: string, score: number, won: boolean) {
     try {
       const user = await this.userModel.findById(userId);
