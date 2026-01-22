@@ -352,6 +352,12 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
             >
               Create Game Room
             </button>
+            <button
+              onClick={() => navigate("/instant-match")}
+              className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Instant Match
+            </button>
             {/* <button
               onClick={() => navigate("/tournaments")}
               className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
