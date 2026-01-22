@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { ChessModule } from './chess/chess.module';
 import { TriviaController } from './trivia/trivia.controller';
 import { TriviaModule } from './trivia/trivia.module';
+import { DiscussionModule } from './discussion/discussion.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { TriviaModule } from './trivia/trivia.module';
     UserModule,
     AuthModule,
     TriviaModule,
+    DiscussionModule,
   ],
   controllers: [],
   providers: [], 
