@@ -1,7 +1,7 @@
 // CreateGameRoomPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
-import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink, DollarSign } from 'lucide-react';
+import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink, DollarSign, ShuffleIcon } from 'lucide-react';
 import { useSocket } from '../SocketContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -70,6 +70,7 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   const [enableVideoChat] = useState(true);
   const [enableVoiceChat, setEnableVoiceChat] = useState(true);
   const [allowSpectators, setAllowSpectators] = useState(true);
+  const [instantGame, setInstantGame] = useState(false);
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [password, setPassword] = useState('');
@@ -307,7 +308,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     enableVideoChat,
     enableVoiceChat,
     allowSpectators,
-    entryFee: isChargedGame && gameFee ? parseFloat(gameFee) : 0,
+    entryFee: isChargedGame && gameFee && parseFloat(gameFee) > 0 ? parseFloat(gameFee) : 0,
   };
 
   if (gameType === 'trivia') {
@@ -317,6 +318,12 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       category: triviaCategory,
     };
   }
+
+  console.log('Creating game with entry fee:', {
+    isChargedGame,
+    gameFee,
+    parsedFee: gameRoomData.entryFee
+  });
 
   try {
     if (!socket) {
@@ -854,6 +861,26 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   </button>
                 </>
               )}
+            </div>
+            {/* instant game  */}
+            <div className="flex items-center bg-gray-700/30 p-3 rounded-lg">
+              <div className="mr-3">
+                <ShuffleIcon size={20} className={instantGame ? 'text-purple-400' : 'text-gray-500'} />
+              </div>
+              <div className="flex-1">
+                <label className="text-sm font-medium">Instant Game</label>
+              </div>
+              <div>
+                <label className="inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={instantGame} 
+                    onChange={() => setInstantGame(!instantGame)} 
+                  />
+                  <div className="relative w-11 h-6 bg-gray-600 peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
             </div>
           </div>
         </div>

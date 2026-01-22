@@ -85,7 +85,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
 
   return (
     <div className={`h-screen p-4 flex flex-col bg-gray-800 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
-      <div className="mb-8 mt-4">
+      <div className="mb-8 mt-4 cursor-pointer" onClick={() => navigate('/')}>
         <h1 className={`${isCollapsed ? 'text-md' : 'text-2xl'} font-bold text-center text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]`}>
           Arena
         </h1>

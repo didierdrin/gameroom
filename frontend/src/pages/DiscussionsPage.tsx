@@ -82,7 +82,7 @@ export const DiscussionsPage = () => {
       <div className={`w-full md:w-1/3 bg-gray-800 border-r border-l border-gray-700 flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-purple-400">Discussions</h2>
+            <h2 className="text-xl font-bold text-white">Discussions</h2>
             <div className="flex gap-2">
               <button 
                 className="p-2 hover:bg-gray-700 rounded-lg transition-colors"

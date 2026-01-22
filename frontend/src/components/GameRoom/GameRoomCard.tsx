@@ -27,6 +27,9 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
     entryFee
   } = gameRoom;
 
+  // Debug log to check entryFee value
+  console.log('GameRoomCard entryFee:', { name, entryFee, type: typeof entryFee });
+
   const { username: hostDisplayName, isLoading: isLoadingHost } = useUsername(host);
   const { avatarUrl: resolvedHostAvatar, isLoading: isLoadingAvatar } = useAvatar(host, hostDisplayName || host);
 
@@ -132,13 +135,14 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
           </div>
           <div className="ml-3 flex-1 w-0">
             <div className="flex justify-between items-start w-full">
-              <h3 className="font-bold text-white truncate mr-2">{name}</h3>
-              {entryFee && parseFloat(entryFee) > 0 && (
-                <div className="flex items-center text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-md backdrop-blur-sm whitespace-nowrap flex-shrink-0">
-                  <DollarSign size={10} className="mr-0.5 text-green-400" />
-                  {parseFloat(entryFee).toFixed(2)}
-                </div>
-              )}
+              <h3 className="font-bold text-white truncate mr-2" title={name}>{name}</h3>
+             
+              <div className="flex items-center text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-md backdrop-blur-sm whitespace-nowrap flex-shrink-0 ml-2">
+  <DollarSign size={10} className="mr-0.5 text-green-400 flex-shrink-0" />
+  
+  {entryFee ? parseFloat(entryFee).toFixed(2) : '0.00'}
+
+</div>
             </div>
             <p className="text-sm text-gray-400 truncate">{gameType}</p>
           </div>
@@ -219,7 +223,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
 
 // import React from 'react';
 // import { Link } from 'react-router-dom'; 
-// import { Users, Lock, Unlock, Clock } from 'lucide-react';
+// import { Users, Lock, Unlock, Clock, DollarSign } from 'lucide-react';
 // import { useUsername } from '../../hooks/useUsername';
 // import { useAvatar } from '../../hooks/useAvatar';
 

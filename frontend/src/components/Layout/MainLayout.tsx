@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
-import { MenuIcon, XIcon } from 'lucide-react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { MenuIcon, XIcon, MessageCircleIcon } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 
 export function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isGameRoom = location.pathname.startsWith('/game-room/');
 
   const handleSidebarClose = () => {
@@ -24,7 +25,7 @@ export function MainLayout() {
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="lg:hidden fixed top-4 right-4 z-50 p-2 bg-gray-800 rounded-lg"
         >
-          {isSidebarOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
+          {isSidebarOpen ? <XIcon size={24} /> : <MenuIcon size={30} />}
         </button>
       )}
       {!isGameRoom && (
@@ -51,6 +52,13 @@ export function MainLayout() {
           onClick={handleSidebarClose}
         />
       )}
+      <button
+        onClick={() => navigate('/discussions')}
+        className="lg:hidden fixed bottom-10 right-3 z-40 p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg transition-colors"
+        title="Discussions"
+      >
+        <MessageCircleIcon size={24} />
+      </button>
     </>
   );
 } 
