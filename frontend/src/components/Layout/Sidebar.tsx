@@ -73,7 +73,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
     },
     {
       path: '/discussions',
-      label: 'Discussion',
+      label: 'Discussions',
       icon: <MessageCircleIcon size={24} />
     },
     {
