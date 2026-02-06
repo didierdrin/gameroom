@@ -97,10 +97,10 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
 
   const gameTypes = [
-    { id: 'chess', name: 'Chess', icon: '♟️' },
+    //{ id: 'chess', name: 'Chess', icon: '♟️' },
     { id: 'trivia', name: 'Trivia', icon: '❓' },
-    { id: 'ludo', name: 'Ludo', icon: '🎲' },
-    { id: 'uno', name: 'UNO', icon: '🃏' },
+    //{ id: 'ludo', name: 'Ludo', icon: '🎲' },
+    //{ id: 'uno', name: 'UNO', icon: '🃏' },
   ];
 
 
