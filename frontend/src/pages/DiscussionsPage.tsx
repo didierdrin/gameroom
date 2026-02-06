@@ -150,7 +150,8 @@ export const DiscussionsPage = () => {
 
   const handleSelectUser = async (selectedUser: User) => {
     try {
-      const res = await apiClient.post<ApiResponse<Conversation>>('/discussions', {
+      const res = await apiClient.post<ApiResponse<Conversation>>('/discussions/create', {
+        userId: user?.id,
         name: selectedUser.username,
         participants: [user?.id, selectedUser._id]
       });
@@ -274,11 +275,17 @@ export const DiscussionsPage = () => {
       </div>
 
       {/* Chat Area - Right Column */}
-      <div className={`flex-1 flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`flex-1 flex-col relative ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
+        {/* Background SVG */}
+        <div 
+          className="absolute inset-0 bg-center bg-no-repeat bg-cover opacity-[0.15] pointer-events-none z-0"
+          style={{ backgroundImage: 'url(/assets/doodles.svg)' }}
+        />
+        
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-700 bg-gray-800 flex items-center gap-3">
+            <div className="p-4 border-b border-gray-700 bg-gray-800 flex items-center gap-3 relative z-10">
               <button 
                 onClick={() => setSelectedConversation(null)}
                 className="md:hidden p-2 -ml-2 hover:bg-gray-700 rounded-lg transition-colors"
@@ -291,7 +298,7 @@ export const DiscussionsPage = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 relative z-10">
               {messages.length === 0 ? (
                 <div className="text-center text-gray-400">No messages yet</div>
               ) : (
@@ -322,7 +329,7 @@ export const DiscussionsPage = () => {
             </div>
 
             {/* Message Input */}
-            <div className="p-4 border-t border-gray-700 bg-gray-800">
+            <div className="p-4 border-t border-gray-700 bg-gray-800 relative z-10">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -342,7 +349,7 @@ export const DiscussionsPage = () => {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
+          <div className="flex-1 flex items-center justify-center text-gray-500 relative z-10">
             <p>Select a conversation to start chatting</p>
           </div>
         )}

@@ -67,14 +67,14 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
     //   icon: <TrophyIcon size={24} />
     // },
     {
-      path: '/leaderboard',
-      label: 'Leaderboards',
-      icon: <BarChart3Icon size={24} />
-    },
-    {
       path: '/discussions',
       label: 'Discussions',
       icon: <MessageCircleIcon size={24} />
+    },
+    {
+      path: '/leaderboard',
+      label: 'Leaderboards',
+      icon: <BarChart3Icon size={24} />
     },
     {
       path: '/profile',
