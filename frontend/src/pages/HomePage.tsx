@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { SearchIcon, FilterIcon, ChevronDownIcon, CheckIcon } from "lucide-react";
+import { SearchIcon, FilterIcon, ChevronDownIcon, CheckIcon, MenuIcon, SunIcon, MoonIcon, XIcon, DicesIcon, PlusCircleIcon, BarChart3Icon, UserIcon, MessageCircleIcon } from "lucide-react";
 import io from "socket.io-client";
 import { GameRoomList } from "../components/GameRoom/GameRoomList";
 import { GameRoomJoinModal } from "../components/GameRoom/GameRoomJoinModal";
@@ -8,7 +8,8 @@ import { SectionTitle } from "../components/UI/SectionTitle";
 import { useSocket } from "../SocketContext";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { GameRoom, Tournament, JoinRoomResponse } from '../types/gameroom'; 
+import { GameRoom, Tournament, JoinRoomResponse } from '../types/gameroom';
+import { useUserData } from "../hooks/useUserData"; 
 
 
 
@@ -51,9 +52,14 @@ export const HomePage = () => {
   const [error, setError] = useState('');
   const socket = useSocket();
   const { user } = useAuth();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const [playerIdToUsername, setPlayerIdToUsername] = useState<Record<string, string>>({});
-  const [isJoining, setIsJoining] = useState(false); 
+  const [isJoining, setIsJoining] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  // Mock online friends - replace with real data later
+  const [onlineFriends] = useState<string[]>([
+    // Add friend IDs here when you have real data
+  ]); 
   // Fetch game rooms when socket is available
   useEffect(() => {
     if (!socket) return;
@@ -337,10 +343,189 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
 
   
 
+  // Online Friends Component
+  const OnlineFriends = () => {
+    return (
+      <div className={`rounded-lg border p-4 ${
+        theme === 'light' 
+          ? 'bg-white border-gray-300' 
+          : 'bg-gray-800/50 border-gray-700'
+      }`}>
+        <h3 className={`text-sm font-semibold mb-3 ${
+          theme === 'light' ? 'text-black' : 'text-white'
+        }`}>
+          Online Friends
+        </h3>
+        {onlineFriends.length === 0 ? (
+          <p className={`text-xs ${
+            theme === 'light' ? 'text-gray-500' : 'text-gray-400'
+          }`}>
+            No friends online
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {onlineFriends.slice(0, 5).map((friendId) => (
+              <OnlineFriendItem key={friendId} friendId={friendId} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Online Friend Item Component
+  const OnlineFriendItem = ({ friendId }: { friendId: string }) => {
+    const { username, avatar } = useUserData(friendId);
+    
+    return (
+      <div className="flex flex-col items-center">
+        <img
+          src={avatar}
+          alt={username}
+          className="w-10 h-10 rounded-full border-2 border-green-500"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${friendId}`;
+          }}
+        />
+        <span className={`text-xs mt-1 text-center max-w-[60px] truncate ${
+          theme === 'light' ? 'text-gray-700' : 'text-gray-300'
+        }`}>
+          {username}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
-      {/* Hero Banner */}
-      <div className={`relative rounded-2xl p-8 mb-8 overflow-hidden ${
+      {/* AppBar for Small Devices */}
+      <div className={`lg:hidden sticky top-0 z-50 mb-4 -mx-6 px-6 py-3 ${
+        theme === 'light' 
+          ? 'bg-white border-b border-gray-300' 
+          : 'bg-gray-800 border-b border-gray-700'
+      }`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <img
+              src={theme === 'light' ? '/assets/icon-light.png' : '/assets/icon-dark.png'}
+              alt="Arena"
+              className="w-8 h-8"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=Arena`;
+              }}
+            />
+            <span className={`text-xl font-bold ${
+              theme === 'light' ? 'text-black' : 'text-white'
+            }`}>
+              Arena
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-lg transition-colors ${
+                theme === 'light' 
+                  ? 'hover:bg-gray-100' 
+                  : 'hover:bg-gray-700'
+              }`}
+            >
+              {theme === 'light' ? (
+                <MoonIcon size={20} className="text-black" />
+              ) : (
+                <SunIcon size={20} className="text-white" />
+              )}
+            </button>
+            <button
+              onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+              className={`p-2 rounded-lg transition-colors ${
+                theme === 'light' 
+                  ? 'hover:bg-gray-100' 
+                  : 'hover:bg-gray-700'
+              }`}
+            >
+              <MenuIcon size={20} className={theme === 'light' ? 'text-black' : 'text-white'} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Drawer for Small Devices */}
+      {isDrawerOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setIsDrawerOpen(false)}
+          />
+          <div className={`fixed top-0 right-0 h-full w-64 z-50 transform transition-transform lg:hidden ${
+            isDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+          } ${
+            theme === 'light' 
+              ? 'bg-white border-l border-gray-300' 
+              : 'bg-gray-800 border-l border-gray-700'
+          }`}>
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className={`text-xl font-bold ${
+                  theme === 'light' ? 'text-black' : 'text-white'
+                }`}>
+                  Menu
+                </h2>
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    theme === 'light' 
+                      ? 'hover:bg-gray-100' 
+                      : 'hover:bg-gray-700'
+                  }`}
+                >
+                  <XIcon size={20} className={theme === 'light' ? 'text-black' : 'text-white'} />
+                </button>
+              </div>
+              <nav className="space-y-2">
+                {[
+                  { path: '/', label: 'Home', icon: <DicesIcon size={20} /> },
+                  { path: '/create-game-room', label: 'Create Game Room', icon: <PlusCircleIcon size={20} /> },
+                  { path: '/discussions', label: 'Discussions', icon: <MessageCircleIcon size={20} /> },
+                  { path: '/leaderboard', label: 'Leaderboards', icon: <BarChart3Icon size={20} /> },
+                  { path: '/profile', label: 'Game Profile', icon: <UserIcon size={20} /> },
+                ].map((item) => (
+                  <button
+                    key={item.path}
+                    onClick={() => {
+                      navigate(item.path);
+                      setIsDrawerOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                      theme === 'light' 
+                        ? 'hover:bg-gray-100' 
+                        : 'hover:bg-gray-700'
+                    }`}
+                  >
+                    <span className={theme === 'light' ? 'text-black' : 'text-white'}>
+                      {item.icon}
+                    </span>
+                    <span className={`font-medium ${
+                      theme === 'light' ? 'text-black' : 'text-white'
+                    }`}>
+                      {item.label}
+                    </span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Online Friends below AppBar on Small Devices */}
+      <div className="lg:hidden mb-6">
+        <OnlineFriends />
+      </div>
+
+      {/* Hero Banner - Hidden on Small Devices */}
+      <div className={`hidden lg:block relative rounded-2xl p-8 mb-8 overflow-hidden ${
         theme === 'light' 
           ? 'bg-gradient-to-r from-[#209db8] to-[#1a7d94]' 
           : 'bg-gradient-to-r from-purple-900 to-indigo-900'
@@ -351,7 +536,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
           <p className={`text-xl mb-6 ${theme === 'light' ? 'text-white/90' : 'text-gray-200'}`}>
             Play, compete, and connect with fellow students!
           </p>
-          <div className="flex space-x-4">
+          <div className="flex space-x-4 items-start">
             <button
               onClick={() => navigate("/create-game-room")}
               className={`px-6 py-3 font-medium rounded-lg transition-colors ${
@@ -372,6 +557,10 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
             >
               Instant Game
             </button>
+            {/* Online Friends next to Instant Game button on Large Screens */}
+            <div className="hidden lg:block ml-4">
+              <OnlineFriends />
+            </div>
             {/* <button
               onClick={() => navigate("/tournaments")}
               className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
