@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Users, Lock, Unlock, Clock, DollarSign } from 'lucide-react';
 import { useUsername } from '../../hooks/useUsername';
 import { useAvatar } from '../../hooks/useAvatar';
+import { useTheme } from '../../context/ThemeContext';
 
 interface GameRoomCardProps {
   gameRoom: any;
@@ -30,6 +31,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
   // Debug log to check entryFee value
   console.log('GameRoomCard entryFee:', { name, entryFee, type: typeof entryFee });
 
+  const { theme } = useTheme();
   const { username: hostDisplayName, isLoading: isLoadingHost } = useUsername(host);
   const { avatarUrl: resolvedHostAvatar, isLoading: isLoadingAvatar } = useAvatar(host, hostDisplayName || host);
 
@@ -121,30 +123,42 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
   const isClickable = hostName !== 'Loading...' && hostName !== 'Unknown Host';
 
   return (
-    <div className="relative bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/20 hover:border-purple-500/50">
+    <div className={`relative backdrop-blur-sm rounded-xl border overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
+      theme === 'light' 
+        ? 'bg-white border-[#b4b4b4] hover:shadow-[#209db8]/20 hover:border-[#209db8]/50' 
+        : 'bg-gray-800/50 border-gray-700/50 hover:shadow-purple-500/20 hover:border-purple-500/50'
+    }`}>
       {isStartingSoon && (
-        <div className="absolute top-2 right-2 bg-orange-500 text-xs py-1 px-2 rounded-full animate-pulse flex items-center z-10">
+        <div className={`absolute top-2 right-2 text-xs py-1 px-2 rounded-full animate-pulse flex items-center z-10 ${
+          theme === 'light' ? 'bg-orange-400 text-white' : 'bg-orange-500 text-white'
+        }`}>
           <Clock size={12} className="mr-1" /> Starting Soon
         </div>
       )}
       <div className="p-4">
         {/* Header with Title and Fee */}
         <div className="flex items-center mb-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-700/30 flex items-center justify-center text-2xl flex-shrink-0">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 ${
+            theme === 'light' ? 'bg-[#209db8]/30' : 'bg-purple-700/30'
+          }`}>
             {getGameIcon()}
           </div>
           <div className="ml-3 flex-1 w-0">
             <div className="flex justify-between items-start w-full">
-              <h3 className="font-bold text-white truncate mr-2" title={name}>{name}</h3>
+              <h3 className={`font-bold truncate mr-2 ${theme === 'light' ? 'text-black' : 'text-white'}`} title={name}>{name}</h3>
              
-              <div className="flex items-center text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-md backdrop-blur-sm whitespace-nowrap flex-shrink-0 ml-2">
-  <DollarSign size={10} className="mr-0.5 text-green-400 flex-shrink-0" />
-  
-  {entryFee ? parseFloat(entryFee).toFixed(2) : '0.00'}
-
-</div>
+              <div className={`flex items-center text-xs font-semibold border px-2 py-1 rounded-md backdrop-blur-sm whitespace-nowrap flex-shrink-0 ml-2 ${
+                theme === 'light' 
+                  ? 'bg-green-500/20 text-green-600 border-green-500/30' 
+                  : 'bg-green-500/20 text-green-400 border-green-500/30'
+              }`}>
+                <DollarSign size={10} className={`mr-0.5 flex-shrink-0 ${
+                  theme === 'light' ? 'text-green-600' : 'text-green-400'
+                }`} />
+                {entryFee ? parseFloat(entryFee).toFixed(2) : '0.00'}
+              </div>
             </div>
-            <p className="text-sm text-gray-400 truncate">{gameType}</p>
+            <p className={`text-sm truncate ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>{gameType}</p>
           </div>
         </div>
 
@@ -156,7 +170,11 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
                 <img
                   src={getAvatarUrl()}
                   alt={hostDisplayName}
-                  className="w-6 h-6 rounded-full border border-gray-700 hover:border-purple-400 transition-colors cursor-pointer"
+                  className={`w-6 h-6 rounded-full border transition-colors cursor-pointer ${
+                    theme === 'light' 
+                      ? 'border-[#b4b4b4] hover:border-[#209db8]' 
+                      : 'border-gray-700 hover:border-purple-400'
+                  }`}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${host || "default"}`;
@@ -167,7 +185,9 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
               <img
                 src={getAvatarUrl()}
                 alt={hostDisplayName}
-                className="w-6 h-6 rounded-full border border-gray-700"
+                className={`w-6 h-6 rounded-full border ${
+                  theme === 'light' ? 'border-[#b4b4b4]' : 'border-gray-700'
+                }`}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${host || "default"}`;
@@ -175,15 +195,19 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
               />
             )}
             {isLoadingAvatar && (
-              <div className="absolute inset-0 bg-gray-600 rounded-full animate-pulse"></div>
+              <div className={`absolute inset-0 rounded-full animate-pulse ${
+                theme === 'light' ? 'bg-gray-300' : 'bg-gray-600'
+              }`}></div>
             )}
           </div>
-          <p className="text-sm text-gray-300 ml-2">
+          <p className={`text-sm ml-2 ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-300'}`}>
             Hosted by{" "}
             {isClickable ? (
               <Link
                 to={`/profile/${hostName}`}
-                className="text-purple-400 hover:underline"
+                className={`hover:underline ${
+                  theme === 'light' ? 'text-[#209db8]' : 'text-purple-400'
+                }`}
               >
                 {hostName}
               </Link>
@@ -195,7 +219,9 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
 
         {/* Stats and Badge */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center text-sm text-gray-400">
+          <div className={`flex items-center text-sm ${
+            theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'
+          }`}>
             <Users size={16} className="mr-1" />
             <span>{safeCurrentPlayers} players</span>
           </div>
@@ -210,12 +236,20 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
         {/* Join Button */}
         <button
           onClick={() => onJoinRoom(gameRoom)}
-          className="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium transition-all hover:opacity-90 hover:shadow-lg hover:shadow-purple-500/20"
+          className={`w-full py-2 rounded-lg text-white font-medium transition-all hover:opacity-90 hover:shadow-lg ${
+            theme === 'light' 
+              ? 'bg-gradient-to-r from-[#209db8] to-[#1a7d94] hover:shadow-[#209db8]/20' 
+              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-purple-500/20'
+          }`}
         >
           Join Room
         </button>
       </div>
-      <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ${
+        theme === 'light' 
+          ? 'bg-gradient-to-tr from-[#209db8]/10 to-[#1a7d94]/5' 
+          : 'bg-gradient-to-tr from-purple-500/10 to-pink-500/5'
+      }`}></div>
     </div>
   );
 };

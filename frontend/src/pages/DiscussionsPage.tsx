@@ -9,6 +9,7 @@ interface Conversation {
   lastMessage: string;
   timestamp: string;
   unread: number;
+  avatar?: string;
 }
 
 interface Message {
@@ -256,18 +257,29 @@ export const DiscussionsPage = () => {
                   selectedConversation === conversation._id ? 'bg-gray-700' : ''
                 }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="font-semibold">{conversation.name}</h3>
-                  {conversation.unread > 0 && (
-                    <span className="bg-purple-600 text-xs px-2 py-1 rounded-full">
-                      {conversation.unread}
-                    </span>
+                <div className="flex items-center gap-3">
+                  {conversation.avatar ? (
+                    <img src={conversation.avatar} alt={conversation.name} className="w-10 h-10 rounded-full" />
+                  ) : (
+                    <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <UserIcon size={20} />
+                    </div>
                   )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="font-semibold">{conversation.name}</h3>
+                      {conversation.unread > 0 && (
+                        <span className="bg-purple-600 text-xs px-2 py-1 rounded-full">
+                          {conversation.unread}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400 truncate">{conversation.lastMessage}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(conversation.timestamp).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-400 truncate">{conversation.lastMessage}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {new Date(conversation.timestamp).toLocaleString()}
-                </p>
               </div>
             ))
           )}
@@ -292,9 +304,21 @@ export const DiscussionsPage = () => {
               >
                 <ArrowLeft size={20} />
               </button>
-              <h3 className="font-semibold">
-                {conversations.find(c => c._id === selectedConversation)?.name}
-              </h3>
+              {(() => {
+                const currentConv = conversations.find(c => c._id === selectedConversation);
+                return (
+                  <>
+                    {currentConv?.avatar ? (
+                      <img src={currentConv.avatar} alt={currentConv.name} className="w-10 h-10 rounded-full" />
+                    ) : (
+                      <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                        <UserIcon size={20} />
+                      </div>
+                    )}
+                    <h3 className="font-semibold">{currentConv?.name}</h3>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Messages */}

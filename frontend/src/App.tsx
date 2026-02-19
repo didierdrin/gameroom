@@ -6,17 +6,19 @@ import { router } from './routes';
 import { ErrorBoundary } from './components/UI/ErrorBoundary';
 import 'react-toastify/dist/ReactToastify.css';
 import { SocketProvider } from './SocketContext';
-import { AuthProvider } from './context/AuthContext'; 
+import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext'; 
 
-export function App() {
+const AppContent = () => {
+  const { theme } = useTheme();
+  
   return (
-    <SocketProvider>
-      <AuthProvider>
+    <>
       <Helmet>
         <title>Arena Gameroom</title>
       </Helmet>
       <ErrorBoundary>
-        <div className="flex w-full min-h-screen bg-gray-900 text-white">
+        <div className={`flex w-full min-h-screen ${theme === 'light' ? 'bg-[#e0ebef] text-black' : 'bg-gray-900 text-white'}`}>
           <RouterProvider router={router} />
           <ToastContainer
             position="top-right"
@@ -28,11 +30,22 @@ export function App() {
             pauseOnFocusLoss
             draggable
             pauseOnHover
-            theme="dark"
+            theme={theme}
           />
         </div>
       </ErrorBoundary>
-      </AuthProvider>
-    </SocketProvider>
+    </>
+  );
+};
+
+export function App() {
+  return (
+    <ThemeProvider>
+      <SocketProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </SocketProvider>
+    </ThemeProvider>
   );
 }

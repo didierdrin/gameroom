@@ -7,6 +7,7 @@ import { GameRoomJoinModal } from "../components/GameRoom/GameRoomJoinModal";
 import { SectionTitle } from "../components/UI/SectionTitle";
 import { useSocket } from "../SocketContext";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { GameRoom, Tournament, JoinRoomResponse } from '../types/gameroom'; 
 
 
@@ -50,6 +51,7 @@ export const HomePage = () => {
   const [error, setError] = useState('');
   const socket = useSocket();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [playerIdToUsername, setPlayerIdToUsername] = useState<Record<string, string>>({});
   const [isJoining, setIsJoining] = useState(false); 
   // Fetch game rooms when socket is available
@@ -336,25 +338,37 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
   
 
   return (
-    <div className="p-6 overflow-y-auto h-screen pb-20">
+    <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
       {/* Hero Banner */}
-      <div className="relative bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-8 mb-8 overflow-hidden">
+      <div className={`relative rounded-2xl p-8 mb-8 overflow-hidden ${
+        theme === 'light' 
+          ? 'bg-gradient-to-r from-[#209db8] to-[#1a7d94]' 
+          : 'bg-gradient-to-r from-purple-900 to-indigo-900'
+      }`}>
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=2071')] opacity-20 bg-cover bg-center mix-blend-overlay"></div>
         <div className="relative z-10">
-          <h1 className="text-4xl font-bold mb-2">Arena Game Room</h1>
-          <p className="text-xl text-gray-200 mb-6">
+          <h1 className={`text-4xl font-bold mb-2 ${theme === 'light' ? 'text-white' : 'text-white'}`}>Arena Game Room</h1>
+          <p className={`text-xl mb-6 ${theme === 'light' ? 'text-white/90' : 'text-gray-200'}`}>
             Play, compete, and connect with fellow students!
           </p>
           <div className="flex space-x-4">
             <button
               onClick={() => navigate("/create-game-room")}
-              className="px-6 py-3 bg-white text-purple-900 font-medium rounded-lg hover:bg-gray-100 transition-colors"
+              className={`px-6 py-3 font-medium rounded-lg transition-colors ${
+                theme === 'light' 
+                  ? 'bg-white text-[#209db8] hover:bg-gray-100' 
+                  : 'bg-white text-purple-900 hover:bg-gray-100'
+              }`}
             >
               Create Game Room
             </button>
             <button
               onClick={() => navigate("/instant-game")}
-              className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
+              className={`px-6 py-3 text-white font-medium rounded-lg transition-colors ${
+                theme === 'light' 
+                  ? 'bg-white/20 hover:bg-white/30 border border-white/30' 
+                  : 'bg-purple-600 hover:bg-purple-700'
+              }`}
             >
               Instant Game
             </button>
@@ -368,13 +382,19 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         </div>
         {/* Floating game icons */}
         <div className="absolute right-10 top-1/2 -translate-y-1/2 hidden lg:flex flex-col space-y-4">
-          <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-3xl animate-float">
+          <div className={`w-16 h-16 backdrop-blur-sm rounded-xl flex items-center justify-center text-3xl animate-float ${
+            theme === 'light' ? 'bg-white/30' : 'bg-white/20'
+          }`}>
             ♟️
           </div>
-          <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-3xl animate-float-delay-1">
+          <div className={`w-16 h-16 backdrop-blur-sm rounded-xl flex items-center justify-center text-3xl animate-float-delay-1 ${
+            theme === 'light' ? 'bg-white/30' : 'bg-white/20'
+          }`}>
             🎯
           </div>
-          <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-3xl animate-float-delay-2">
+          <div className={`w-16 h-16 backdrop-blur-sm rounded-xl flex items-center justify-center text-3xl animate-float-delay-2 ${
+            theme === 'light' ? 'bg-white/30' : 'bg-white/20'
+          }`}>
             🎮
           </div>
         </div>
@@ -386,19 +406,27 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         <div className="relative flex-1 min-w-[300px]">
           <SearchIcon
             size={20}
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
+              theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'
+            }`}
           />
           <input
             type="text"
             placeholder="Search by room name, game type, or host..."
-            className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+            className={`w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none transition-colors ${
+              theme === 'light' 
+                ? 'bg-white border border-[#b4b4b4] focus:ring-2 focus:ring-[#209db8] text-black' 
+                : 'bg-gray-800/50 border border-gray-700 focus:ring-2 focus:ring-purple-500 text-white'
+            }`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors ${
+                theme === 'light' ? 'text-[#b4b4b4] hover:text-black' : 'text-gray-400 hover:text-white'
+              }`}
             >
               ✕
             </button>
@@ -409,13 +437,19 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         <div className="relative" ref={filterDropdownRef}>
           <button 
             onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-            className="px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg hover:bg-gray-700/50 transition-colors flex items-center min-w-[120px] justify-between"
+            className={`px-4 py-3 border rounded-lg transition-colors flex items-center min-w-[120px] justify-between ${
+              theme === 'light' 
+                ? 'bg-white border-[#b4b4b4] hover:bg-gray-50 text-black' 
+                : 'bg-gray-800/50 border-gray-700 hover:bg-gray-700/50 text-white'
+            }`}
           >
             <div className="flex items-center">
               <FilterIcon size={20} className="mr-2" />
               <span>Filter</span>
               {activeFilters.length > 0 && (
-                <span className="ml-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
+                <span className={`ml-2 text-white text-xs px-2 py-1 rounded-full ${
+                  theme === 'light' ? 'bg-[#209db8]' : 'bg-purple-600'
+                }`}>
                   {activeFilters.length}
                 </span>
               )}
@@ -428,14 +462,22 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
 
           {/* Dropdown Menu */}
           {isFilterDropdownOpen && (
-            <div className="absolute top-full left-0 md:left-[-130px] mt-2 w-60 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-50 py-2">
+            <div className={`absolute top-full left-0 md:left-[-130px] mt-2 w-60 border rounded-lg shadow-2xl z-50 py-2 ${
+              theme === 'light' 
+                ? 'bg-white border-[#b4b4b4]' 
+                : 'bg-gray-800 border-gray-700'
+            }`}>
               {/* Header */}
-              <div className="px-4 py-2 border-b border-gray-700 flex justify-between items-center">
-                <h3 className="text-white font-medium">Filter Game Rooms</h3>
+              <div className={`px-4 py-2 border-b flex justify-between items-center ${
+                theme === 'light' ? 'border-[#b4b4b4]' : 'border-gray-700'
+              }`}>
+                <h3 className={`font-medium ${theme === 'light' ? 'text-black' : 'text-white'}`}>Filter Game Rooms</h3>
                 {activeFilters.length > 0 && (
                   <button
                     onClick={clearAllFilters}
-                    className="text-purple-400 hover:text-purple-300 text-sm transition-colors"
+                    className={`text-sm transition-colors ${
+                      theme === 'light' ? 'text-[#209db8] hover:text-[#1a7d94]' : 'text-purple-400 hover:text-purple-300'
+                    }`}
                   >
                     Clear All
                   </button>
@@ -448,16 +490,22 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
                   <button
                     key={option.id}
                     onClick={() => toggleFilter(option.id)}
-                    className="w-full px-4 py-3 hover:bg-gray-700/50 transition-colors flex items-center justify-between group"
+                    className={`w-full px-4 py-3 transition-colors flex items-center justify-between group ${
+                      theme === 'light' ? 'hover:bg-gray-50' : 'hover:bg-gray-700/50'
+                    }`}
                   >
                     <div className="flex-1 text-left">
-                      <div className="text-white font-medium">{option.label}</div>
-                      <div className="text-gray-400 text-sm">{option.description}</div>
+                      <div className={`font-medium ${theme === 'light' ? 'text-black' : 'text-white'}`}>{option.label}</div>
+                      <div className={`text-sm ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>{option.description}</div>
                     </div>
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                       activeFilters.includes(option.id)
-                        ? 'bg-purple-600 border-purple-600'
-                        : 'border-gray-600 group-hover:border-gray-500'
+                        ? theme === 'light' 
+                          ? 'bg-[#209db8] border-[#209db8]' 
+                          : 'bg-purple-600 border-purple-600'
+                        : theme === 'light'
+                          ? 'border-[#b4b4b4] group-hover:border-[#209db8]'
+                          : 'border-gray-600 group-hover:border-gray-500'
                     }`}>
                       {activeFilters.includes(option.id) && (
                         <CheckIcon size={12} className="text-white" />
@@ -474,13 +522,19 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
       {/* Active Filters Display */}
       {(activeFilters.length > 0 || searchQuery) && (
         <div className="mb-6 flex flex-wrap gap-2 items-center">
-          <span className="text-gray-400 text-sm">Active filters:</span>
+          <span className={`text-sm ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Active filters:</span>
           {searchQuery && (
-            <div className="bg-purple-600/20 border border-purple-600/50 text-purple-300 px-3 py-1 rounded-full text-sm flex items-center">
+            <div className={`border px-3 py-1 rounded-full text-sm flex items-center ${
+              theme === 'light' 
+                ? 'bg-[#209db8]/20 border-[#209db8]/50 text-[#209db8]' 
+                : 'bg-purple-600/20 border-purple-600/50 text-purple-300'
+            }`}>
               Search: "{searchQuery}"
               <button
                 onClick={() => setSearchQuery("")}
-                className="ml-2 hover:text-white transition-colors"
+                className={`ml-2 transition-colors ${
+                  theme === 'light' ? 'hover:text-black' : 'hover:text-white'
+                }`}
               >
                 ✕
               </button>
@@ -489,11 +543,17 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
           {activeFilters.map(filterId => {
             const option = filterOptions.find(opt => opt.id === filterId);
             return (
-              <div key={filterId} className="bg-purple-600/20 border border-purple-600/50 text-purple-300 px-3 py-1 rounded-full text-sm flex items-center">
+              <div key={filterId} className={`border px-3 py-1 rounded-full text-sm flex items-center ${
+                theme === 'light' 
+                  ? 'bg-[#209db8]/20 border-[#209db8]/50 text-[#209db8]' 
+                  : 'bg-purple-600/20 border-purple-600/50 text-purple-300'
+              }`}>
                 {option?.label}
                 <button
                   onClick={() => toggleFilter(filterId)}
-                  className="ml-2 hover:text-white transition-colors"
+                  className={`ml-2 transition-colors ${
+                    theme === 'light' ? 'hover:text-black' : 'hover:text-white'
+                  }`}
                 >
                   ✕
                 </button>
@@ -502,7 +562,9 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
           })}
           <button
             onClick={clearAllFilters}
-            className="text-gray-400 hover:text-white text-sm underline transition-colors"
+            className={`text-sm underline transition-colors ${
+              theme === 'light' ? 'text-[#b4b4b4] hover:text-black' : 'text-gray-400 hover:text-white'
+            }`}
           >
             Clear all
           </button>
@@ -517,24 +579,28 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         />
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
+              theme === 'light' ? 'border-[#209db8]' : 'border-purple-500'
+            }`}></div>
           </div>
         ) : error ? (
-          <div className="text-center text-red-500 py-8">{error}</div>
+          <div className={`text-center py-8 ${theme === 'light' ? 'text-[#ff0000]' : 'text-red-500'}`}>{error}</div>
         ) : filteredLiveRooms.length > 0 ? (
           <GameRoomList gameRooms={filteredLiveRooms} onJoinRoom={handleJoinRoom} playerIdToUsername={playerIdToUsername} />
         ) : liveRooms.length > 0 ? (
-          <div className="text-center py-8 text-gray-400">
+          <div className={`text-center py-8 ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>
             No rooms match your current filters. 
             <button 
               onClick={clearAllFilters} 
-              className="text-purple-400 hover:text-purple-300 underline ml-1 transition-colors"
+              className={`underline ml-1 transition-colors ${
+                theme === 'light' ? 'text-[#209db8] hover:text-[#1a7d94]' : 'text-purple-400 hover:text-purple-300'
+              }`}
             >
               Clear filters
             </button>
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-400">No live game rooms available</div>
+          <div className={`text-center py-8 ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>No live game rooms available</div>
         )}
       </section>
 
@@ -546,24 +612,28 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         />
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
+              theme === 'light' ? 'border-[#209db8]' : 'border-yellow-500'
+            }`}></div>
           </div>
         ) : error ? (
-          <div className="text-center text-red-500 py-8">{error}</div>
+          <div className={`text-center py-8 ${theme === 'light' ? 'text-[#ff0000]' : 'text-red-500'}`}>{error}</div>
         ) : filteredUpcomingRooms.length > 0 ? (
           <GameRoomList gameRooms={filteredUpcomingRooms} onJoinRoom={handleJoinRoom} playerIdToUsername={playerIdToUsername} />
         ) : upcomingRooms.length > 0 ? (
-          <div className="text-center py-8 text-gray-400">
+          <div className={`text-center py-8 ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>
             No rooms match your current filters. 
             <button 
               onClick={clearAllFilters} 
-              className="text-purple-400 hover:text-purple-300 underline ml-1 transition-colors"
+              className={`underline ml-1 transition-colors ${
+                theme === 'light' ? 'text-[#209db8] hover:text-[#1a7d94]' : 'text-purple-400 hover:text-purple-300'
+              }`}
             >
               Clear filters
             </button>
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-400">No upcoming game rooms scheduled</div>
+          <div className={`text-center py-8 ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>No upcoming game rooms scheduled</div>
         )}
       </section>
 
