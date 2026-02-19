@@ -169,11 +169,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
         </ul>
       </nav>
       <div className={`border-t my-4 ${theme === 'light' ? 'border-[#b4b4b4]' : 'border-gray-700'}`}></div>
-      {/* Chevron and Theme Toggle - Row layout on large screens */}
-      <div className="hidden lg:flex items-center gap-2 mt-auto">
+      {/* Chevron and Theme Toggle - Column when collapsed, Row when expanded */}
+      <div className={`hidden lg:flex mt-auto gap-2 ${isCollapsed ? 'flex-col' : 'flex-row items-center'}`}>
         <button
           onClick={onToggleCollapse}
-          className={`flex-1 flex items-center justify-center p-3 rounded-lg transition-colors ${
+          className={`${isCollapsed ? 'w-full' : 'flex-1'} flex items-center justify-center p-3 rounded-lg transition-colors ${
             theme === 'light' 
               ? 'hover:bg-white/50' 
               : 'hover:bg-gray-700'
@@ -184,7 +184,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
         </button>
         <button
           onClick={toggleTheme}
-          className={`flex-1 flex items-center justify-center p-3 rounded-lg transition-colors ${
+          className={`${isCollapsed ? 'w-full' : 'flex-1'} flex items-center justify-center p-3 rounded-lg transition-colors ${
             theme === 'light' 
               ? 'hover:bg-white/50' 
               : 'hover:bg-gray-700'

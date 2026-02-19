@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrophyIcon, MedalIcon, AwardIcon, UsersIcon, RefreshCwIcon } from 'lucide-react';
 import { SectionTitle } from '../components/UI/SectionTitle';
+import { useTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom'; 
 interface LeaderboardPlayer {
   _id: string;
@@ -14,6 +15,7 @@ interface LeaderboardPlayer {
 }
 
 export const LeaderboardPage = () => {
+  const { theme } = useTheme();
   const [leaderboardType, setLeaderboardType] = useState('global');
   const [gameFilter, setGameFilter] = useState('all');
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardPlayer[]>([]);
@@ -212,10 +214,12 @@ export const LeaderboardPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 overflow-y-auto h-screen pb-20">
+      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
         <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
         <div className="flex items-center justify-center h-64">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
+            theme === 'light' ? 'border-[#209db8]' : 'border-purple-500'
+          }`}></div>
         </div>
       </div>
     );
@@ -223,18 +227,22 @@ export const LeaderboardPage = () => {
 
   if (error) {
     return (
-      <div className="p-6 overflow-y-auto h-screen pb-20">
+      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
         <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
         <div className="flex items-center justify-center h-64">
-          <div className="text-red-400">
+          <div className={theme === 'light' ? 'text-[#ff0000]' : 'text-red-400'}>
             <div className="flex flex-col items-center justify-center min-h-[50vh] px-4">
   <div className="text-center space-y-4">
-    <h1 className="text-4xl font-bold text-red-500">Oops!</h1>
-    <p className="text-xl text-gray-400">Something went wrong while loading the leaderboard</p>
-    <div className="text-gray-500">{error}</div>
+    <h1 className={`text-4xl font-bold ${theme === 'light' ? 'text-[#ff0000]' : 'text-red-500'}`}>Oops!</h1>
+    <p className={`text-xl ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Something went wrong while loading the leaderboard</p>
+    <div className={theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-500'}>{error}</div>
     <button
       onClick={handleRefresh}
-      className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-white font-medium"
+      className={`px-6 py-3 rounded-lg transition-colors text-white font-medium ${
+        theme === 'light' 
+          ? 'bg-[#209db8] hover:bg-[#1a7d94]' 
+          : 'bg-purple-600 hover:bg-purple-700'
+      }`}
     >
       Try Again
     </button>
@@ -246,7 +254,7 @@ export const LeaderboardPage = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 overflow-y-auto h-screen pb-20">
+    <div className={`p-4 sm:p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
   <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
   
   {/* Header with refresh button - MOBILE RESPONSIVE */}
@@ -256,8 +264,12 @@ export const LeaderboardPage = () => {
         onClick={() => setLeaderboardType('global')} 
         className={`px-4 sm:px-6 py-3 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto ${
           leaderboardType === 'global' 
-            ? 'bg-purple-700/50 border-2 border-purple-500 text-white' 
-            : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'
+            ? theme === 'light'
+              ? 'bg-[#209db8]/30 border-2 border-[#209db8] text-black'
+              : 'bg-purple-700/50 border-2 border-purple-500 text-white'
+            : theme === 'light'
+              ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50 text-black'
+              : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'
         }`}
       >
         Global Leaderboard
@@ -266,8 +278,12 @@ export const LeaderboardPage = () => {
         onClick={() => setLeaderboardType('friends')} 
         className={`px-4 sm:px-6 py-3 rounded-lg transition-colors flex items-center justify-center text-sm sm:text-base w-full sm:w-auto ${
           leaderboardType === 'friends' 
-            ? 'bg-purple-700/50 border-2 border-purple-500 text-white' 
-            : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'
+            ? theme === 'light'
+              ? 'bg-[#209db8]/30 border-2 border-[#209db8] text-black'
+              : 'bg-purple-700/50 border-2 border-purple-500 text-white'
+            : theme === 'light'
+              ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50 text-black'
+              : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'
         }`}
       >
         <UsersIcon size={16} className="mr-2 sm:mr-2 hidden sm:block" />
@@ -279,11 +295,15 @@ export const LeaderboardPage = () => {
     <button 
       onClick={handleRefresh}
       disabled={refreshing}
-      className={`px-4 py-3 rounded-lg transition-colors flex items-center justify-center w-full sm:w-auto ${
+      className={`px-4 py-3 rounded-lg transition-colors flex items-center justify-center w-full sm:w-auto text-white text-sm sm:text-base ${
         refreshing 
-          ? 'bg-gray-600 cursor-not-allowed' 
-          : 'bg-purple-600 hover:bg-purple-700'
-      } text-white text-sm sm:text-base`}
+          ? theme === 'light'
+            ? 'bg-gray-300 cursor-not-allowed'
+            : 'bg-gray-600 cursor-not-allowed'
+          : theme === 'light'
+            ? 'bg-[#209db8] hover:bg-[#1a7d94]'
+            : 'bg-purple-600 hover:bg-purple-700'
+      }`}
     >
       <RefreshCwIcon size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
       {refreshing ? 'Refreshing...' : 'Refresh'}

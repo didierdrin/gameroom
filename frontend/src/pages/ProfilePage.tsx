@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { SectionTitle } from '../components/UI/SectionTitle';
 import { TrophyIcon, BarChart3Icon, Search, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 interface GameStat {
   gameType: string;
@@ -90,6 +91,7 @@ interface GameRoom {
 }
 
 export const ProfilePage = () => {
+  const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState('stats');
   const { user: authUser, updateUser, logout } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -252,48 +254,72 @@ useEffect(() => {
   };
 
   const renderStats = () => {
-    if (loading) return <div className="text-center py-8">Loading stats...</div>;
-    if (!userData) return <div className="text-center py-8 text-red-400">No data available</div>;
+    if (loading) return <div className={`text-center py-8 ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Loading stats...</div>;
+    if (!userData) return <div className={`text-center py-8 ${theme === 'light' ? 'text-[#ff0000]' : 'text-red-400'}`}>No data available</div>;
     
     return (
       <div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 flex items-center">
-            <div className="w-12 h-12 rounded-full bg-purple-900/30 flex items-center justify-center mr-4">
-              <BarChart3Icon size={24} className="text-purple-400" />
+          <div className={`backdrop-blur-sm rounded-xl border p-4 flex items-center ${
+            theme === 'light' 
+              ? 'bg-white border-[#b4b4b4]' 
+              : 'bg-gray-800/50 border-gray-700/50'
+          }`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
+              theme === 'light' ? 'bg-[#209db8]/30' : 'bg-purple-900/30'
+            }`}>
+              <BarChart3Icon size={24} className={theme === 'light' ? 'text-[#209db8]' : 'text-purple-400'} />
             </div>
             <div>
-              <div className="text-sm text-gray-400">Total Score</div>
-              <div className="text-2xl font-bold">{userData.totalScore}</div>
+              <div className={`text-sm ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Total Score</div>
+              <div className={`text-2xl font-bold ${theme === 'light' ? 'text-black' : 'text-white'}`}>{userData.totalScore}</div>
             </div>
           </div>
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 flex items-center">
-            <div className="w-12 h-12 rounded-full bg-blue-900/30 flex items-center justify-center mr-4">
-              <TrophyIcon size={24} className="text-blue-400" />
+          <div className={`backdrop-blur-sm rounded-xl border p-4 flex items-center ${
+            theme === 'light' 
+              ? 'bg-white border-[#b4b4b4]' 
+              : 'bg-gray-800/50 border-gray-700/50'
+          }`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
+              theme === 'light' ? 'bg-blue-200' : 'bg-blue-900/30'
+            }`}>
+              <TrophyIcon size={24} className={theme === 'light' ? 'text-blue-600' : 'text-blue-400'} />
             </div>
             <div>
-              <div className="text-sm text-gray-400">Games Won</div>
-              <div className="text-2xl font-bold">
+              <div className={`text-sm ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Games Won</div>
+              <div className={`text-2xl font-bold ${theme === 'light' ? 'text-black' : 'text-white'}`}>
                 {userData.gamesWon}/{userData.gamesPlayed}
               </div>
             </div>
           </div>
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 flex items-center">
-            <div className="w-12 h-12 rounded-full bg-green-900/30 flex items-center justify-center mr-4">
-              <StarIcon size={24} className="text-green-400" />
+          <div className={`backdrop-blur-sm rounded-xl border p-4 flex items-center ${
+            theme === 'light' 
+              ? 'bg-white border-[#b4b4b4]' 
+              : 'bg-gray-800/50 border-gray-700/50'
+          }`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
+              theme === 'light' ? 'bg-green-200' : 'bg-green-900/30'
+            }`}>
+              <StarIcon size={24} className={theme === 'light' ? 'text-green-600' : 'text-green-400'} />
             </div>
             <div>
-              <div className="text-sm text-gray-400">Win Rate</div>
-              <div className="text-2xl font-bold">{Math.round(userData.winRate)}%</div>
+              <div className={`text-sm ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Win Rate</div>
+              <div className={`text-2xl font-bold ${theme === 'light' ? 'text-black' : 'text-white'}`}>{Math.round(userData.winRate)}%</div>
             </div>
           </div>
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 flex items-center">
-            <div className="w-12 h-12 rounded-full bg-red-900/30 flex items-center justify-center mr-4">
-              <TrendingUpIcon size={24} className="text-red-400" />
+          <div className={`backdrop-blur-sm rounded-xl border p-4 flex items-center ${
+            theme === 'light' 
+              ? 'bg-white border-[#b4b4b4]' 
+              : 'bg-gray-800/50 border-gray-700/50'
+          }`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
+              theme === 'light' ? 'bg-red-200' : 'bg-red-900/30'
+            }`}>
+              <TrendingUpIcon size={24} className={theme === 'light' ? 'text-red-600' : 'text-red-400'} />
             </div>
             <div>
-              <div className="text-sm text-gray-400">Global Rank</div>
-              <div className="text-2xl font-bold">{userData.globalRank}</div>
+              <div className={`text-sm ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Global Rank</div>
+              <div className={`text-2xl font-bold ${theme === 'light' ? 'text-black' : 'text-white'}`}>{userData.globalRank}</div>
             </div>
           </div>
         </div>
@@ -531,10 +557,12 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <div className="p-6 overflow-y-auto h-screen pb-20">
+      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
         <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
+            theme === 'light' ? 'border-[#209db8]' : 'border-purple-500'
+          }`}></div>
         </div>
       </div>
     );
@@ -542,7 +570,7 @@ useEffect(() => {
 
   if (error || !userData) {
     return (
-      <div className="p-6 overflow-y-auto h-screen pb-20">
+      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
         <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
           <div className="text-red-400">
@@ -847,7 +875,7 @@ const EditProfileModal = () => (
 );
 
   return (
-    <div className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden h-screen pb-20">
+    <div className={`p-4 sm:p-6 overflow-y-auto overflow-x-hidden h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
       <div className='flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4'>
       <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
       

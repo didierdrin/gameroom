@@ -5,6 +5,7 @@ import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, External
 import { useSocket } from '../SocketContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 
 export const createTriviaGame = (
@@ -92,7 +93,8 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   
   const navigate = useNavigate();
   const socket = useSocket();
-  const { user } = useAuth(); 
+  const { user } = useAuth();
+  const { theme } = useTheme();
   const isMountedRef = useRef(true);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
 
@@ -415,19 +417,25 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
  
 
   return (
-    <div className="p-6 overflow-y-auto h-screen pb-20">
+    <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
       <SectionTitle 
         title="Create Game Room" 
         subtitle="Set up a new game room for you and your friends to play in" 
       />
       
-      <form onSubmit={handleSubmit} className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
+      <form onSubmit={handleSubmit} className={`backdrop-blur-sm rounded-xl border p-6 ${
+        theme === 'light' 
+          ? 'bg-white border-[#b4b4b4]' 
+          : 'bg-gray-800/50 border-gray-700/50'
+      }`}>
        {/* Add pointer-events-none when loading */}
   <div className={isLoading || isJoiningRoom ? 'pointer-events-none opacity-60' : ''}>
     
         {/* Game Type Selection */}
         <div className="mb-8">
-          <label className="block text-white mb-3 font-medium">
+          <label className={`block mb-3 font-medium ${
+            theme === 'light' ? 'text-black' : 'text-white'
+          }`}>
             Select Game Type
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
@@ -438,12 +446,18 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 onClick={() => setGameType(game.id)}
                 className={`aspect-square flex flex-col items-center justify-center p-4 rounded-xl transition-all ${
                   gameType === game.id 
-                    ? 'bg-purple-700/50 border-2 border-purple-500' 
-                    : 'bg-gray-700/30 border border-gray-600/50 hover:bg-gray-700/50'
+                    ? theme === 'light'
+                      ? 'bg-[#209db8]/30 border-2 border-[#209db8]'
+                      : 'bg-purple-700/50 border-2 border-purple-500'
+                    : theme === 'light'
+                      ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50'
+                      : 'bg-gray-700/30 border border-gray-600/50 hover:bg-gray-700/50'
                 }`}
               >
                 <span className="text-4xl mb-2">{game.icon}</span>
-                <span className="text-sm font-medium">{game.name}</span>
+                <span className={`text-sm font-medium ${
+                  theme === 'light' ? 'text-black' : 'text-white'
+                }`}>{game.name}</span>
               </button>
             ))}
           </div>
@@ -451,14 +465,24 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
         {/* Trivia Specific Settings */}
         {gameType === 'trivia' && (
-          <div className="mb-8 p-4 bg-purple-700/10 rounded-xl border border-purple-600/30">
-            <h3 className="text-white font-medium mb-4">Trivia Settings</h3>
+          <div className={`mb-8 p-4 rounded-xl border ${
+            theme === 'light' 
+              ? 'bg-[#209db8]/10 border-[#209db8]/30' 
+              : 'bg-purple-700/10 border-purple-600/30'
+          }`}>
+            <h3 className={`font-medium mb-4 ${
+              theme === 'light' ? 'text-black' : 'text-white'
+            }`}>Trivia Settings</h3>
             
             {/* Question Count Selector */}
             <div className="mb-6">
-              <label className="flex items-center justify-between text-gray-300 mb-2 text-sm">
+              <label className={`flex items-center justify-between mb-2 text-sm ${
+                theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-300'
+              }`}>
                 <span>Number of Questions</span>
-                <span className="bg-gray-700 px-2 py-1 rounded text-xs">
+                <span className={`px-2 py-1 rounded text-xs ${
+                  theme === 'light' ? 'bg-gray-200 text-black' : 'bg-gray-700 text-white'
+                }`}>
                   {triviaQuestionCount} questions
                 </span>
               </label>
@@ -468,7 +492,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   min="5" 
                   max="30" 
                   step="5"
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
+                    theme === 'light' 
+                      ? 'bg-gray-200 accent-[#209db8]' 
+                      : 'bg-gray-700 accent-purple-500'
+                  }`}
                   value={triviaQuestionCount} 
                   onChange={e => setTriviaQuestionCount(parseInt(e.target.value))}
                 />
@@ -477,7 +505,9 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
             {/* Difficulty Level */}
             <div className="mb-6">
-              <label className="block text-gray-300 mb-3 text-sm">Difficulty Level</label>
+              <label className={`block mb-3 text-sm ${
+                theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-300'
+              }`}>Difficulty Level</label>
               <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
@@ -485,7 +515,9 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   className={`p-3 rounded-lg font-medium transition-all ${
                     triviaDifficulty === 'easy'
                       ? 'bg-green-600 text-white'
-                      : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      : theme === 'light'
+                        ? 'bg-gray-200 hover:bg-gray-300 text-black'
+                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                   }`}
                 >
                   Easy
@@ -496,7 +528,9 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   className={`p-3 rounded-lg font-medium transition-all ${
                     triviaDifficulty === 'medium'
                       ? 'bg-yellow-600 text-white'
-                      : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      : theme === 'light'
+                        ? 'bg-gray-200 hover:bg-gray-300 text-black'
+                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                   }`}
                 >
                   Medium
@@ -507,7 +541,9 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   className={`p-3 rounded-lg font-medium transition-all ${
                     triviaDifficulty === 'hard'
                       ? 'bg-red-600 text-white'
-                      : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      : theme === 'light'
+                        ? 'bg-gray-200 hover:bg-gray-300 text-black'
+                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                   }`}
                 >
                   Hard
@@ -517,11 +553,17 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
             {/* Category Dropdown */}
             <div>
-              <label className="block text-gray-300 mb-3 text-sm">Category</label>
+              <label className={`block mb-3 text-sm ${
+                theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-300'
+              }`}>Category</label>
               <select
                 value={triviaCategory}
                 onChange={(e) => setTriviaCategory(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                  theme === 'light' 
+                    ? 'bg-white border-[#b4b4b4] focus:ring-[#209db8] text-black' 
+                    : 'bg-gray-700 border-gray-600 focus:ring-purple-500 text-white'
+                }`}
               >
                 {TRIVIA_CATEGORIES.map(cat => (
                   <option key={cat.value} value={cat.value}>
@@ -535,23 +577,35 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
         {/* Game Mode */}
         <div className="mb-8">
-          <label className="block text-white mb-3 font-medium">Game Mode</label>
+          <label className={`block mb-3 font-medium ${
+            theme === 'light' ? 'text-black' : 'text-white'
+          }`}>Game Mode</label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button 
               type="button" 
               onClick={() => setGameMode('playNow')}
               className={`flex items-center p-4 rounded-xl transition-all ${
                 gameMode === 'playNow' 
-                  ? 'bg-purple-700/50 border-2 border-purple-500' 
-                  : 'bg-gray-700/30 border border-gray-600/50 hover:bg-gray-700/50'
+                  ? theme === 'light'
+                    ? 'bg-[#209db8]/30 border-2 border-[#209db8]'
+                    : 'bg-purple-700/50 border-2 border-purple-500'
+                  : theme === 'light'
+                    ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50'
+                    : 'bg-gray-700/30 border border-gray-600/50 hover:bg-gray-700/50'
               }`}
             >
-              <div className="w-12 h-12 rounded-full bg-purple-600/30 flex items-center justify-center mr-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
+                theme === 'light' ? 'bg-[#209db8]/30' : 'bg-purple-600/30'
+              }`}>
                 🎮
               </div>
               <div>
-                <h3 className="font-medium">Play Now</h3>
-                <p className="text-sm text-gray-400">
+                <h3 className={`font-medium ${
+                  theme === 'light' ? 'text-black' : 'text-white'
+                }`}>Play Now</h3>
+                <p className={`text-sm ${
+                  theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'
+                }`}>
                   Create a game room that starts immediately
                 </p>
               </div>
@@ -561,16 +615,26 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               onClick={() => setGameMode('schedule')}
               className={`flex items-center p-4 rounded-xl transition-all ${
                 gameMode === 'schedule' 
-                  ? 'bg-purple-700/50 border-2 border-purple-500' 
-                  : 'bg-gray-700/30 border border-gray-600/50 hover:bg-gray-700/50'
+                  ? theme === 'light'
+                    ? 'bg-[#209db8]/30 border-2 border-[#209db8]'
+                    : 'bg-purple-700/50 border-2 border-purple-500'
+                  : theme === 'light'
+                    ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50'
+                    : 'bg-gray-700/30 border border-gray-600/50 hover:bg-gray-700/50'
               }`}
             >
-              <div className="w-12 h-12 rounded-full bg-purple-600/30 flex items-center justify-center mr-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
+                theme === 'light' ? 'bg-[#209db8]/30' : 'bg-purple-600/30'
+              }`}>
                 📅
               </div>
               <div>
-                <h3 className="font-medium">Schedule for Later</h3>
-                <p className="text-sm text-gray-400">
+                <h3 className={`font-medium ${
+                  theme === 'light' ? 'text-black' : 'text-white'
+                }`}>Schedule for Later</h3>
+                <p className={`text-sm ${
+                  theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'
+                }`}>
                   Set a future time for your game
                 </p>
               </div>
@@ -580,15 +644,27 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
         {/* Schedule Details */}
         {gameMode === 'schedule' && (
-          <div className="mb-8 p-4 bg-gray-700/30 rounded-xl border border-gray-600/50">
+          <div className={`mb-8 p-4 rounded-xl border ${
+            theme === 'light' 
+              ? 'bg-gray-50 border-[#b4b4b4]' 
+              : 'bg-gray-700/30 border-gray-600/50'
+          }`}>
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <label className="block text-white mb-2 text-sm">Date</label>
+                <label className={`block mb-2 text-sm ${
+                  theme === 'light' ? 'text-black' : 'text-white'
+                }`}>Date</label>
                 <div className="relative">
-                  <CalendarIcon size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <CalendarIcon size={18} className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
+                    theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'
+                  }`} />
                   <input 
                     type="date" 
-                    className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                      theme === 'light' 
+                        ? 'bg-white border-[#b4b4b4] focus:ring-[#209db8] text-black' 
+                        : 'bg-gray-800 border-gray-700 focus:ring-purple-500 text-white'
+                    }`}
                     value={scheduledDate} 
                     onChange={e => setScheduledDate(e.target.value)} 
                     required
@@ -596,12 +672,20 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 </div>
               </div>
               <div className="flex-1">
-                <label className="block text-white mb-2 text-sm">Time</label>
+                <label className={`block mb-2 text-sm ${
+                  theme === 'light' ? 'text-black' : 'text-white'
+                }`}>Time</label>
                 <div className="relative">
-                  <ClockIcon size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <ClockIcon size={18} className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
+                    theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'
+                  }`} />
                   <input 
                     type="time" 
-                    className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                      theme === 'light' 
+                        ? 'bg-white border-[#b4b4b4] focus:ring-[#209db8] text-black' 
+                        : 'bg-gray-800 border-gray-700 focus:ring-purple-500 text-white'
+                    }`}
                     value={scheduledTime} 
                     onChange={e => setScheduledTime(e.target.value)} 
                     required
@@ -614,24 +698,38 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
         {/* Room Details */}
         <div className="mb-8">
-          <label className="block text-white mb-3 font-medium">Room Details</label>
+          <label className={`block mb-3 font-medium ${
+            theme === 'light' ? 'text-black' : 'text-white'
+          }`}>Room Details</label>
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-gray-300 mb-2 text-sm">Room Name</label>
+              <label className={`block mb-2 text-sm ${
+                theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-300'
+              }`}>Room Name</label>
               <input 
                 type="text" 
                 placeholder="Enter a name for your game room" 
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                  theme === 'light' 
+                    ? 'bg-white border-[#b4b4b4] focus:ring-[#209db8] text-black' 
+                    : 'bg-gray-800 border-gray-700 focus:ring-purple-500 text-white'
+                }`}
                 value={roomName} 
                 onChange={e => setRoomName(e.target.value)} 
                 required
               />
             </div>
             <div>
-              <label className="block text-gray-300 mb-2 text-sm">Description (Optional)</label>
+              <label className={`block mb-2 text-sm ${
+                theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-300'
+              }`}>Description (Optional)</label>
               <textarea 
                 placeholder="Describe your game room..." 
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none h-24" 
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 resize-none h-24 ${
+                  theme === 'light' 
+                    ? 'bg-white border-[#b4b4b4] focus:ring-[#209db8] text-black' 
+                    : 'bg-gray-800 border-gray-700 focus:ring-purple-500 text-white'
+                }`}
                 value={description} 
                 onChange={e => setDescription(e.target.value)}
               ></textarea>
@@ -887,10 +985,14 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
 
 
-            {/* Submit Button bg-gradient-to-r from-purple-600 to-pink-600 */}
+            {/* Submit Button */}
         <button 
   type="submit" 
-  className={`px-8 py-4 bg-purple-800 text-white font-medium rounded-lg hover:bg-purple-900 transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center ${
+  className={`px-8 py-4 text-white font-medium rounded-lg transition-all shadow-lg flex items-center justify-center ${
+    theme === 'light' 
+      ? 'bg-[#209db8] hover:bg-[#1a7d94] hover:shadow-[#209db8]/25' 
+      : 'bg-purple-800 hover:bg-purple-900 hover:shadow-purple-500/25'
+  } ${
     (isLoading || isJoiningRoom) ? 'opacity-75 cursor-not-allowed' : ''
   }`}
   disabled={isLoading || isJoiningRoom}
@@ -918,7 +1020,9 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
     <div className="text-center">
       <svg 
-        className="animate-spin h-12 w-12 text-purple-500 mx-auto mb-4" 
+        className={`animate-spin h-12 w-12 mx-auto mb-4 ${
+          theme === 'light' ? 'text-[#209db8]' : 'text-purple-500'
+        }`} 
         xmlns="http://www.w3.org/2000/svg" 
         fill="none" 
         viewBox="0 0 24 24"
