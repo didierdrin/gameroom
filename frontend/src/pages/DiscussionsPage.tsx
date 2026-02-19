@@ -188,7 +188,7 @@ export const DiscussionsPage = () => {
       {/* Conversations List - Left Column */}
       <div className={`w-full md:w-1/3 flex-col ${
         theme === 'light' 
-          ? 'bg-white border-r border-l border-[#b4b4b4]' 
+          ? 'bg-[#e0ebef] border-r border-l border-[#b4b4b4]' 
           : 'bg-gray-800 border-r border-l border-gray-700'
       } ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <div className={`p-4 border-b ${
