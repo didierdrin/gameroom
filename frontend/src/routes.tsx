@@ -3,6 +3,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { HomePage } from './pages/HomePage';
 import { CreateGameRoomPage } from './pages/CreateGameRoomPage';
+import { PlayPage } from './pages/PlayPage';
 import { MyGameRoomsPage } from './pages/MyGameRoomsPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -37,6 +38,10 @@ export const router = createBrowserRouter([
       {
         path: '/create-game-room',
         element: <CreateGameRoomPage onGameCreated={() => {}} />,
+      },
+      {
+        path: '/play',
+        element: <PlayPage />,
       },
       {
         path: '/my-game-rooms',

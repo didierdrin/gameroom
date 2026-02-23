@@ -11,11 +11,12 @@ interface Conversation {
   timestamp: string;
   unread: number;
   avatar?: string;
+  participants?: string[];
 }
 
 interface Message {
   _id?: string;
-  sender: { _id: string; username: string } | string;
+  sender: { _id: string; username: string; avatar?: string } | string;
   content: string;
   timestamp: string;
   isOwn: boolean;
@@ -36,7 +37,7 @@ interface MessagesResponse {
   data: {
     messages: Array<{
       _id: string;
-      sender: { _id: string; username: string } | string;
+      sender: { _id: string; username: string; avatar?: string } | string;
       content: string;
       timestamp: string;
     }>;
@@ -46,6 +47,7 @@ interface MessagesResponse {
 interface User {
   _id: string;
   username: string;
+  avatar?: string;
 }
 
 
@@ -74,7 +76,27 @@ export const DiscussionsPage = () => {
       setLoading(true);
       const res = await apiClient.get<ConversationsResponse>(`/discussions/user/${user?.id}`);
       if (res.data.success) {
-        setConversations(res.data.data);
+        // Fetch participant details for each conversation to get avatars
+        const conversationsWithAvatars = await Promise.all(
+          res.data.data.map(async (conv) => {
+            try {
+              // Get the other participant's ID (not the current user)
+              const participants = conv.participants || [];
+              const otherParticipantId = participants.find(p => p !== user?.id);
+              
+              if (otherParticipantId) {
+                const userRes = await apiClient.get(`/user/${otherParticipantId}/profile`);
+                if (userRes.data.success && userRes.data.data) {
+                  return { ...conv, avatar: userRes.data.data.avatar };
+                }
+              }
+            } catch (error) {
+              console.error('Failed to fetch participant avatar:', error);
+            }
+            return conv;
+          })
+        );
+        setConversations(conversationsWithAvatars);
       }
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
@@ -183,12 +205,12 @@ export const DiscussionsPage = () => {
 
   return (
     <div className={`h-screen flex text-white ${
-      theme === 'light' ? 'bg-[#e0ebef] text-black' : 'bg-gray-900'
+      theme === 'light' ? 'bg-[#ffffff] text-black' : 'bg-gray-900'
     }`}>
       {/* Conversations List - Left Column */}
       <div className={`w-full md:w-1/3 flex-col ${
         theme === 'light' 
-          ? 'bg-[#e0ebef] border-r border-l border-[#b4b4b4]' 
+          ? 'bg-[#ffffff] border-r border-l border-[#b4b4b4]' 
           : 'bg-gray-800 border-r border-l border-gray-700'
       } ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <div className={`p-4 border-b ${
@@ -301,7 +323,7 @@ export const DiscussionsPage = () => {
               >
                 <div className="flex items-center gap-3">
                   {conversation.avatar ? (
-                    <img src={conversation.avatar} alt={conversation.name} className="w-10 h-10 rounded-full" />
+                    <img src={conversation.avatar} alt={conversation.name} className="w-10 h-10 rounded-full flex-shrink-0" />
                   ) : (
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                       theme === 'light' ? 'bg-gray-200' : 'bg-gray-600'
@@ -395,25 +417,35 @@ export const DiscussionsPage = () => {
                     key={message._id}
                     className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.isOwn 
-                        ? theme === 'light'
-                          ? 'bg-[#209db8] text-white'
-                          : 'bg-purple-600 text-white'
-                        : theme === 'light'
-                          ? 'bg-gray-200 text-black'
-                          : 'bg-gray-700 text-gray-100'
-                    }`}>
-                      {!message.isOwn && (
-                        <div className="flex items-center gap-2 mb-1">
-                          <UserIcon size={16} />
-                          <span className="text-sm font-semibold">
-                            {typeof message.sender === 'object' ? message.sender.username : message.sender}
-                          </span>
-                        </div>
+                    <div className="flex items-start gap-2">
+                      {!message.isOwn && typeof message.sender === 'object' && (
+                        message.sender.avatar ? (
+                          <img src={message.sender.avatar} alt={message.sender.username} className="w-8 h-8 rounded-full flex-shrink-0" />
+                        ) : (
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            theme === 'light' ? 'bg-gray-200' : 'bg-gray-600'
+                          }`}>
+                            <UserIcon size={16} />
+                          </div>
+                        )
                       )}
-                      <p className="text-sm">{message.content}</p>
-                      <p className="text-xs opacity-70 mt-1">{message.timestamp}</p>
+                      <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                        message.isOwn 
+                          ? theme === 'light'
+                            ? 'bg-[#209db8] text-white'
+                            : 'bg-purple-600 text-white'
+                          : theme === 'light'
+                            ? 'bg-gray-200 text-black'
+                            : 'bg-gray-700 text-gray-100'
+                      }`}>
+                        {!message.isOwn && (
+                          <div className="text-sm font-semibold mb-1">
+                            {typeof message.sender === 'object' ? message.sender.username : message.sender}
+                          </div>
+                        )}
+                        <p className="text-sm">{message.content}</p>
+                        <p className="text-xs opacity-70 mt-1">{message.timestamp}</p>
+                      </div>
                     </div>
                   </div>
                 ))

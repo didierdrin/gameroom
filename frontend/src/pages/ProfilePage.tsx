@@ -326,7 +326,11 @@ useEffect(() => {
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Game Specific Stats - NOW POPULATED WITH REAL DATA */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
+          <div className={`backdrop-blur-sm rounded-xl border p-6 ${
+            theme === 'light' 
+              ? 'bg-white border-[#b4b4b4]' 
+              : 'bg-gray-800/50 border-gray-700/50'
+          }`}>
             <h3 className="text-lg font-medium mb-4">Game Performance</h3>
             {userData.gameStats.length > 0 ? (
               <div className="space-y-4">
@@ -374,7 +378,11 @@ useEffect(() => {
           
           
           {/* Recent Games - NOW POPULATED WITH REAL DATA WITH PAGINATION */}
-<div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
+<div className={`backdrop-blur-sm rounded-xl border p-6 ${
+  theme === 'light' 
+    ? 'bg-white border-[#b4b4b4]' 
+    : 'bg-gray-800/50 border-gray-700/50'
+}`}>
   <h3 className="text-lg font-medium mb-4">Recent Games</h3>
   {userData.recentGames.length > 0 ? (
     <>
@@ -455,11 +463,17 @@ useEffect(() => {
         
         {/* Favorite Games */}
         {userData.favoriteGames.length > 0 && (
-          <div className="mt-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
+          <div className={`mt-6 backdrop-blur-sm rounded-xl border p-6 ${
+            theme === 'light' 
+              ? 'bg-white border-[#b4b4b4]' 
+              : 'bg-gray-800/50 border-gray-700/50'
+          }`}>
             <h3 className="text-lg font-medium mb-4">Favorite Games</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {userData.favoriteGames.map((game) => (
-                <div key={game.gameType} className="bg-gray-700/30 rounded-lg p-4">
+                <div key={game.gameType} className={`rounded-lg p-4 ${
+                  theme === 'light' ? 'bg-white border border-[#e0e0e0]' : 'bg-gray-700/30'
+                }`}>
                   <div className="flex items-center mb-2">
                     <div className="w-8 h-8 rounded-lg bg-gray-600/50 flex items-center justify-center text-lg mr-2">
                       {game.gameType === 'trivia' ? '🎯' : 
@@ -497,15 +511,21 @@ useEffect(() => {
         <div className="mb-6">
           <h3 className="text-lg font-medium mb-2">Achievement Summary</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+            <div className={`rounded-lg p-4 text-center ${
+              theme === 'light' ? 'bg-white border border-[#b4b4b4]' : 'bg-gray-800/50'
+            }`}>
               <div className="text-2xl font-bold text-purple-400">{userData.badges.length}</div>
               <div className="text-sm text-gray-400">Total Badges</div>
             </div>
-            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+            <div className={`rounded-lg p-4 text-center ${
+              theme === 'light' ? 'bg-white border border-[#b4b4b4]' : 'bg-gray-800/50'
+            }`}>
               <div className="text-2xl font-bold text-green-400">{userData.gamesWon}</div>
               <div className="text-sm text-gray-400">Games Won</div>
             </div>
-            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+            <div className={`rounded-lg p-4 text-center ${
+              theme === 'light' ? 'bg-white border border-[#b4b4b4]' : 'bg-gray-800/50'
+            }`}>
               <div className="text-2xl font-bold text-blue-400">{Math.round(userData.winRate)}%</div>
               <div className="text-sm text-gray-400">Win Rate</div>
             </div>
@@ -515,7 +535,9 @@ useEffect(() => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {userData.badges.length > 0 ? (
             userData.badges.map((badge) => (
-              <div key={badge.id} className={`bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 flex items-start ${
+              <div key={badge.id} className={`backdrop-blur-sm rounded-xl border p-4 flex items-start ${
+                theme === 'light' ? 'bg-white border-[#b4b4b4]' : 'bg-gray-800/50 border-gray-700/50'
+              } ${
                 badge.category === 'achievement' ? 'border-yellow-500/50' :
                 badge.category === 'milestone' ? 'border-blue-500/50' :
                 badge.category === 'specialist' ? 'border-purple-500/50' : ''
@@ -557,7 +579,7 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
+      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
         <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
           <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
@@ -570,7 +592,7 @@ useEffect(() => {
 
   if (error || !userData) {
     return (
-      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
+      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
         <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
           <div className="text-red-400">
@@ -875,7 +897,7 @@ const EditProfileModal = () => (
 );
 
   return (
-    <div className={`p-4 sm:p-6 overflow-y-auto overflow-x-hidden h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
+    <div className={`p-4 sm:p-6 overflow-y-auto overflow-x-hidden h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
       <div className='flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4'>
       <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
       
@@ -888,7 +910,11 @@ const EditProfileModal = () => (
             placeholder="Search Rivals..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
-            className="pl-10 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500 transition-colors text-sm w-full md:w-[400px]"
+            className={`pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:border-purple-500 transition-colors text-sm w-full md:w-[400px] ${
+              theme === 'light' 
+                ? 'bg-white border-[#b4b4b4] text-black' 
+                : 'bg-gray-800/50 border-gray-700 text-white'
+            }`}
           />
           {searchQuery && (
             <button
@@ -904,7 +930,11 @@ const EditProfileModal = () => (
         </div>
       </div> 
       {searchQuery ? (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6">
+        <div className={`backdrop-blur-sm rounded-xl border p-6 ${
+          theme === 'light' 
+            ? 'bg-white border-[#b4b4b4]' 
+            : 'bg-gray-800/50 border-gray-700/50'
+        }`}>
           <h2 className="text-xl font-bold mb-4">Search Results</h2>
           {searchLoading ? (
             <div className="text-center py-8">

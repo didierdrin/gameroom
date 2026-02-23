@@ -56,10 +56,19 @@ export const HomePage = () => {
   const [playerIdToUsername, setPlayerIdToUsername] = useState<Record<string, string>>({});
   const [isJoining, setIsJoining] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  // Mock online friends - replace with real data later
-  const [onlineFriends] = useState<string[]>([
-    // Add friend IDs here when you have real data
-  ]); 
+
+  // Derive "online" users from live game rooms (host + players), frontend-only
+  const onlineUserIds = useMemo(() => {
+    const ids = new Set<string>();
+    const currentId = user?.id ? String(user.id) : null;
+    liveRooms.forEach((room) => {
+      if (room.host) ids.add(room.host);
+      (room.playerIds || []).forEach((id) => ids.add(id));
+    });
+    if (currentId) ids.delete(currentId);
+    return Array.from(ids);
+  }, [liveRooms, user?.id]);
+
   // Fetch game rooms when socket is available
   useEffect(() => {
     if (!socket) return;
@@ -356,16 +365,16 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         }`}>
           Online Friends
         </h3>
-        {onlineFriends.length === 0 ? (
+        {onlineUserIds.length === 0 ? (
           <p className={`text-xs ${
             theme === 'light' ? 'text-gray-500' : 'text-gray-400'
           }`}>
-            No friends online
+            No one online in game rooms
           </p>
         ) : (
           <div className="flex flex-wrap gap-3">
-            {onlineFriends.slice(0, 5).map((friendId) => (
-              <OnlineFriendItem key={friendId} friendId={friendId} />
+            {onlineUserIds.slice(0, 8).map((userId) => (
+              <OnlineFriendItem key={userId} friendId={userId} />
             ))}
           </div>
         )}
@@ -398,9 +407,9 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
   };
 
   return (
-    <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
-      {/* AppBar for Small Devices */}
-      <div className={`lg:hidden sticky top-0 z-50 mb-4 -mx-6 px-6 py-3 ${
+    <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
+      {/* AppBar: on lg+ only (small screens use MainLayout navbar + bottom nav) */}
+      <div className={`hidden lg:flex sticky top-0 z-50 mb-4 -mx-6 px-6 py-3 ${
         theme === 'light' 
           ? 'bg-white border-b border-gray-300' 
           : 'bg-gray-800 border-b border-gray-700'
@@ -451,14 +460,14 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         </div>
       </div>
 
-      {/* Drawer for Small Devices */}
+      {/* Drawer: on lg+ when menu is opened (small screens use bottom nav) */}
       {isDrawerOpen && (
         <>
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 hidden lg:block"
             onClick={() => setIsDrawerOpen(false)}
           />
-          <div className={`fixed top-0 right-0 h-full w-64 z-50 transform transition-transform lg:hidden ${
+          <div className={`fixed top-0 right-0 h-full w-64 z-50 transform transition-transform hidden lg:block ${
             isDrawerOpen ? 'translate-x-0' : 'translate-x-full'
           } ${
             theme === 'light' 

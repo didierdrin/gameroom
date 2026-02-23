@@ -1,78 +1,102 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { MenuIcon, XIcon, MessageCircleIcon } from 'lucide-react';
+import { SunIcon, MoonIcon, MessageCircleIcon } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import { BottomNavBar } from './BottomNavBar';
 import { useTheme } from '../../context/ThemeContext';
 
 export function MainLayout() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const isGameRoom = location.pathname.startsWith('/game-room/');
-
-  const handleSidebarClose = () => {
-    setIsSidebarOpen(false);
-  };
 
   const handleToggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
   };
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen w-full">
+      {/* Top navbar: full width at top on small screens */}
       {!isGameRoom && (
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className={`lg:hidden fixed top-4 right-4 z-50 p-2 rounded-lg ${
-            theme === 'light' 
-              ? 'bg-white border border-[#b4b4b4] text-black' 
-              : 'bg-gray-800 text-white'
+        <header
+          className={`sticky top-0 left-0 right-0 z-40 w-full flex items-center justify-between px-4 py-3 border-b shrink-0 lg:hidden ${
+            theme === 'light'
+              ? 'bg-white border-[#b4b4b4]'
+              : 'bg-gray-800 border-gray-700'
           }`}
         >
-          {isSidebarOpen ? <XIcon size={24} /> : <MenuIcon size={30} />}
-        </button>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className={`text-xl font-bold ${
+              theme === 'light'
+                ? 'text-[#209db8]'
+                : 'text-purple-400'
+            }`}
+          >
+            Arena
+          </button>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`p-2 rounded-lg transition-colors ${
+              theme === 'light' ? 'hover:bg-gray-100' : 'hover:bg-gray-700'
+            }`}
+            title={theme === 'light' ? 'Dark mode' : 'Light mode'}
+          >
+            {theme === 'light' ? (
+              <MoonIcon size={22} className="text-black" />
+            ) : (
+              <SunIcon size={22} className="text-white" />
+            )}
+          </button>
+        </header>
       )}
+
+      {/* Sidebar: only on lg and up; hidden on small screens */}
       {!isGameRoom && (
-        <div
-          className={`
-            fixed inset-y-0 right-0 z-40 transform lg:transform-none lg:opacity-100 lg:inset-y-0 lg:left-0 lg:right-auto
-            transition duration-200 ease-in-out
-            ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 lg:translate-x-0'}
-          `}
-        >
-          <Sidebar 
-            isCollapsed={isCollapsed} 
+        <div className="hidden lg:block fixed inset-y-0 left-0 z-40">
+          <Sidebar
+            isCollapsed={isCollapsed}
             onToggleCollapse={handleToggleCollapse}
-            onLinkClick={handleSidebarClose}
           />
         </div>
       )}
-      <div className={`flex-1 ${!isGameRoom ? (isCollapsed ? 'lg:ml-20' : 'lg:ml-64') : ''}`}>
+
+      {/* Main content: offset for sidebar on lg+; padding for bottom nav on small */}
+      <div
+        className={`flex-1 flex flex-col min-h-0 ${
+          !isGameRoom ? (isCollapsed ? 'lg:ml-20' : 'lg:ml-64') : ''
+        } pb-20 lg:pb-0`}
+      >
         <Outlet />
       </div>
-      {isSidebarOpen && (
-        <div
-          className={`fixed inset-0 z-30 lg:hidden ${
-            theme === 'light' 
-              ? 'bg-black bg-opacity-30' 
-              : 'bg-black bg-opacity-50'
-          }`}
-          onClick={handleSidebarClose}
-        />
+
+      {/* Bottom nav: only on small screens (replaces sidebar/drawer) */}
+      {!isGameRoom && (
+        <div className="lg:hidden shrink-0">
+          <BottomNavBar />
+        </div>
       )}
-      <button
-        onClick={() => navigate('/discussions')}
-        className={`lg:hidden fixed bottom-10 right-3 z-40 p-4 text-white rounded-full shadow-lg transition-colors ${
-          theme === 'light' 
-            ? 'bg-[#209db8] hover:bg-[#1a7d94]' 
-            : 'bg-purple-600 hover:bg-purple-700'
-        }`}
-        title="Discussions"
-      >
-        <MessageCircleIcon size={24} />
-      </button>
-    </>
+
+      {/* FAB: Discussions (chat) - small screens only, above bottom nav */}
+      {!isGameRoom && (
+        <button
+          type="button"
+          onClick={() => navigate('/discussions')}
+          className={`lg:hidden fixed bottom-24 right-4 z-40 p-4 rounded-full shadow-lg transition-colors ${
+            theme === 'light'
+              ? 'bg-[#209db8] hover:bg-[#1a7d94] text-white'
+              : 'bg-purple-600 hover:bg-purple-700 text-white'
+          }`}
+          title="Discussions"
+          aria-label="Discussions"
+        >
+          <MessageCircleIcon size={24} />
+        </button>
+      )}
+    </div>
   );
 } 

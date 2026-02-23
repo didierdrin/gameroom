@@ -1579,6 +1579,8 @@ const handleStartGame = () => {
                 roomId={roomId!}
                 currentPlayer={String(user!.id)}
                 gameState={gameState}
+                onPlayAgain={handleRestartGame}
+                onReturnHome={() => navigate('/')}
               />
               
               {/* Show spectator message for host */}

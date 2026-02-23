@@ -214,7 +214,7 @@ export const LeaderboardPage = () => {
 
   if (loading) {
     return (
-      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
+      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
         <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
         <div className="flex items-center justify-center h-64">
           <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
@@ -227,7 +227,7 @@ export const LeaderboardPage = () => {
 
   if (error) {
     return (
-      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
+      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
         <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
         <div className="flex items-center justify-center h-64">
           <div className={theme === 'light' ? 'text-[#ff0000]' : 'text-red-400'}>
@@ -254,7 +254,7 @@ export const LeaderboardPage = () => {
   }
 
   return (
-    <div className={`p-4 sm:p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#e0ebef]' : ''}`}>
+    <div className={`p-4 sm:p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
   <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
   
   {/* Header with refresh button - MOBILE RESPONSIVE */}
@@ -320,8 +320,12 @@ export const LeaderboardPage = () => {
           onClick={() => setGameFilter(game.id)} 
           className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors flex-1 sm:flex-none min-w-[80px] ${
             gameFilter === game.id 
-              ? 'bg-purple-700/50 border border-purple-500 text-white' 
-              : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'
+              ? theme === 'light'
+                ? 'bg-[#209db8]/30 border-2 border-[#209db8] text-black'
+                : 'bg-purple-700/50 border border-purple-500 text-white'
+              : theme === 'light'
+                ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50 text-black'
+                : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'
           }`}
         >
           {game.name}
@@ -349,35 +353,50 @@ export const LeaderboardPage = () => {
       
       {/* Full Leaderboard */}
       {leaderboardData.length > 0 && (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 overflow-hidden">
+        <div className={`backdrop-blur-sm rounded-xl border overflow-hidden ${
+          theme === 'light' 
+            ? 'bg-white border-[#b4b4b4]' 
+            : 'bg-gray-800/50 border-gray-700/50'
+        }`}>
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-800">
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+              <tr className={theme === 'light' ? 'bg-gray-100' : 'bg-gray-800'}>
+                <th className={`px-6 py-4 text-left text-sm font-medium uppercase tracking-wider ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-300'
+                }`}>
                   Rank
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                <th className={`px-6 py-4 text-left text-sm font-medium uppercase tracking-wider ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-300'
+                }`}>
                   Player
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                <th className={`px-6 py-4 text-left text-sm font-medium uppercase tracking-wider ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-300'
+                }`}>
                   Score
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider hidden md:table-cell">
+                <th className={`px-6 py-4 text-left text-sm font-medium uppercase tracking-wider hidden md:table-cell ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-300'
+                }`}>
                   Games Played
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider hidden md:table-cell">
+                <th className={`px-6 py-4 text-left text-sm font-medium uppercase tracking-wider hidden md:table-cell ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-300'
+                }`}>
                   Win Rate
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700">
+            <tbody className={theme === 'light' ? 'divide-y divide-gray-200' : 'divide-y divide-gray-700'}>
               {leaderboardData.map((player, index) => (
-                <tr key={player._id} className={index < 3 ? 'bg-gray-800/30' : ''}>
+                <tr key={player._id} className={index < 3 ? (theme === 'light' ? 'bg-gray-50' : 'bg-gray-800/30') : ''}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
                       index === 0 ? 'bg-yellow-500/20 text-yellow-300' : 
                       index === 1 ? 'bg-gray-400/20 text-gray-300' : 
-                      index === 2 ? 'bg-amber-700/20 text-amber-500' : 'bg-gray-700/50 text-gray-400'
+                      index === 2 ? 'bg-amber-700/20 text-amber-500' : 
+                      theme === 'light' ? 'bg-gray-200 text-gray-700' : 'bg-gray-700/50 text-gray-400'
                     }`}>
                       {index + 1}
                     </div>

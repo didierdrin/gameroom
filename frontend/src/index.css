@@ -49,7 +49,7 @@ body {
 
 /* Light mode */
 [data-theme="light"] body {
-  background-color: #e0ebef;
+  background-color: #ffffff;
   color: black;
 }
 

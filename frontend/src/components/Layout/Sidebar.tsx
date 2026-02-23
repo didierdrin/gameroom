@@ -88,7 +88,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
   return (
     <div className={`h-screen p-4 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'} ${
       theme === 'light' 
-        ? 'bg-[#e0ebef] border-r border-[#b4b4b4]' 
+        ? 'bg-[#ffffff] border-r border-[#b4b4b4]' 
         : 'bg-gray-800'
     }`}>
       <div className="mb-8 mt-4 cursor-pointer" onClick={() => navigate('/')}>

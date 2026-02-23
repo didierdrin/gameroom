@@ -18,7 +18,7 @@ const AppContent = () => {
         <title>Arena Gameroom</title>
       </Helmet>
       <ErrorBoundary>
-        <div className={`flex w-full min-h-screen ${theme === 'light' ? 'bg-[#e0ebef] text-black' : 'bg-gray-900 text-white'}`}>
+        <div className={`flex w-full min-h-screen ${theme === 'light' ? 'bg-[#ffffff] text-black' : 'bg-gray-900 text-white'}`}>
           <RouterProvider router={router} />
           <ToastContainer
             position="top-right"
