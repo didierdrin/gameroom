@@ -134,7 +134,7 @@ export const PlayPage = () => {
     'px-4 py-2 rounded-t-lg font-medium text-sm transition-colors';
   const tabActive =
     theme === 'light'
-      ? 'bg-[#209db8]/20 text-[#209db8] border-b-2 border-[#209db8]'
+      ? 'bg-[#8b5cf6]/20 text-[#8b5cf6] border-b-2 border-[#8b5cf6]'
       : 'bg-purple-900/40 text-purple-400 border-b-2 border-purple-400';
   const tabInactive =
     theme === 'light'

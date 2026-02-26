@@ -13,15 +13,23 @@ export const GameRoomList: React.FC<GameRoomListProps> = ({
   playerIdToUsername = {}
 }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {gameRooms.map((gameRoom: any) => (
-        <GameRoomCard 
-          key={gameRoom.id} 
-          gameRoom={gameRoom} 
-          onJoinRoom={onJoinRoom}
-          // playerIdToUsername={playerIdToUsername}
-        />
-      ))}
+    <div className="overflow-x-auto overflow-y-hidden -mx-2 px-2 pb-2">
+      <div
+        className="inline-grid gap-4"
+        style={{
+          gridAutoFlow: 'column',
+          gridTemplateRows: 'repeat(2, 1fr)',
+          gridAutoColumns: 'minmax(260px, 320px)',
+        }}
+      >
+        {gameRooms.map((gameRoom: any) => (
+          <GameRoomCard
+            key={gameRoom.id}
+            gameRoom={gameRoom}
+            onJoinRoom={onJoinRoom}
+          />
+        ))}
+      </div>
     </div>
   );
 };

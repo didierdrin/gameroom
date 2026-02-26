@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { HomeIcon, Gamepad2Icon, BarChart3Icon } from 'lucide-react';
+import { HomeIcon, MessageCircleIcon, BarChart3Icon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -9,7 +9,7 @@ export function BottomNavBar() {
 
   const baseClasses = 'flex flex-col items-center justify-center flex-1 py-2 px-1 min-w-0 rounded-lg transition-colors';
   const activeClasses = theme === 'light'
-    ? 'bg-[#209db8]/20 text-[#209db8]'
+    ? 'bg-[#8b5cf6]/20 text-[#8b5cf6]'
     : 'bg-purple-900/40 text-purple-400';
   const inactiveClasses = theme === 'light'
     ? 'text-[#6b7280]'
@@ -33,9 +33,9 @@ export function BottomNavBar() {
         <span className="text-xs font-medium mt-0.5">Home</span>
       </NavLink>
 
-      <NavLink to="/play" className={linkClass}>
-        <Gamepad2Icon size={24} className="flex-shrink-0" />
-        <span className="text-xs font-medium mt-0.5">Play</span>
+      <NavLink to="/discussions" className={linkClass}>
+        <MessageCircleIcon size={24} className="flex-shrink-0" />
+        <span className="text-xs font-medium mt-0.5">Chat</span>
       </NavLink>
 
       <NavLink to="/leaderboard" className={linkClass}>
@@ -53,7 +53,7 @@ export function BottomNavBar() {
         ) : (
           <div
             className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
-              theme === 'light' ? 'bg-[#209db8]/30 text-[#209db8]' : 'bg-purple-600/50 text-purple-300'
+              theme === 'light' ? 'bg-[#8b5cf6]/30 text-[#8b5cf6]' : 'bg-purple-600/50 text-purple-300'
             }`}
           >
             {user?.username?.charAt(0)?.toUpperCase() || '?'}

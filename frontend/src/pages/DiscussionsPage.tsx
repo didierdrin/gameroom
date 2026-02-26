@@ -218,7 +218,7 @@ export const DiscussionsPage = () => {
         }`}>
           <div className="flex items-center justify-between">
             <h2 className={`text-2xl font-bold ${
-              theme === 'light' ? 'text-black' : 'text-white'
+              theme === 'light' ? 'text-slate-800' : 'text-white'
             }`}>Discussions</h2>
             <div className="flex gap-2">
               <button 
@@ -234,7 +234,7 @@ export const DiscussionsPage = () => {
                   }`} />
                 ) : (
                   <PlusIcon size={20} className={`${
-                    theme === 'light' ? 'text-[#b4b4b4] hover:text-[#209db8]' : 'text-gray-400 hover:text-purple-400'
+                    theme === 'light' ? 'text-[#b4b4b4] hover:text-[#8b5cf6]' : 'text-gray-400 hover:text-purple-400'
                   }`} />
                 )}
               </button>
@@ -245,10 +245,10 @@ export const DiscussionsPage = () => {
                 title="Create group discussion"
               >
                 <UsersIcon size={20} className={`${
-                  theme === 'light' ? 'text-[#b4b4b4] hover:text-[#209db8]' : 'text-gray-400 hover:text-purple-400'
+                  theme === 'light' ? 'text-[#b4b4b4] hover:text-[#8b5cf6]' : 'text-gray-400 hover:text-purple-400'
                 }`} />
               </button>
-              <div className='w-14 sm:hidden'></div>
+              
             </div>
           </div>
         </div>
@@ -265,7 +265,7 @@ export const DiscussionsPage = () => {
                 placeholder="Search users..."
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none mb-4 ${
                   theme === 'light' 
-                    ? 'bg-white border-[#b4b4b4] focus:border-[#209db8] text-black' 
+                    ? 'bg-white border-[#b4b4b4] focus:border-[#8b5cf6] text-black' 
                     : 'bg-gray-700 border-gray-600 focus:border-purple-500 text-white'
                 }`}
                 autoFocus
@@ -338,7 +338,7 @@ export const DiscussionsPage = () => {
                       }`}>{conversation.name}</h3>
                       {conversation.unread > 0 && (
                         <span className={`text-xs px-2 py-1 rounded-full ${
-                          theme === 'light' ? 'bg-[#209db8] text-white' : 'bg-purple-600 text-white'
+                          theme === 'light' ? 'bg-[#8b5cf6] text-white' : 'bg-purple-600 text-white'
                         }`}>
                           {conversation.unread}
                         </span>
@@ -432,7 +432,7 @@ export const DiscussionsPage = () => {
                       <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                         message.isOwn 
                           ? theme === 'light'
-                            ? 'bg-[#209db8] text-white'
+                            ? 'bg-[#8b5cf6] text-white'
                             : 'bg-purple-600 text-white'
                           : theme === 'light'
                             ? 'bg-gray-200 text-black'
@@ -467,7 +467,7 @@ export const DiscussionsPage = () => {
                   placeholder="Type a message..."
                   className={`flex-1 px-3 py-2 border rounded-lg focus:outline-none ${
                     theme === 'light' 
-                      ? 'bg-white border-[#b4b4b4] focus:border-[#209db8] text-black' 
+                      ? 'bg-white border-[#b4b4b4] focus:border-[#8b5cf6] text-black' 
                       : 'bg-gray-700 border-gray-600 focus:border-purple-500 text-white'
                   }`}
                 />
@@ -475,7 +475,7 @@ export const DiscussionsPage = () => {
                   onClick={handleSendMessage}
                   className={`px-4 py-2 rounded-lg transition-colors ${
                     theme === 'light' 
-                      ? 'bg-[#209db8] hover:bg-[#1a7d94]' 
+                      ? 'bg-[#8b5cf6] hover:bg-[#7c3aed]' 
                       : 'bg-purple-600 hover:bg-purple-700'
                   }`}
                 >

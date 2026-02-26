@@ -125,7 +125,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
   return (
     <div className={`relative backdrop-blur-sm rounded-xl border overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
       theme === 'light' 
-        ? 'bg-white border-[#b4b4b4] hover:shadow-[#209db8]/20 hover:border-[#209db8]/50' 
+        ? 'bg-white border-[#b4b4b4] hover:shadow-[#8b5cf6]/20 hover:border-[#8b5cf6]/50' 
         : 'bg-gray-800/50 border-gray-700/50 hover:shadow-purple-500/20 hover:border-purple-500/50'
     }`}>
       {isStartingSoon && (
@@ -139,7 +139,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
         {/* Header with Title and Fee */}
         <div className="flex items-center mb-3">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 ${
-            theme === 'light' ? 'bg-[#209db8]/30' : 'bg-purple-700/30'
+            theme === 'light' ? 'bg-[#8b5cf6]/30' : 'bg-purple-700/30'
           }`}>
             {getGameIcon()}
           </div>
@@ -172,7 +172,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
                   alt={hostDisplayName}
                   className={`w-6 h-6 rounded-full border transition-colors cursor-pointer ${
                     theme === 'light' 
-                      ? 'border-[#b4b4b4] hover:border-[#209db8]' 
+                      ? 'border-[#b4b4b4] hover:border-[#8b5cf6]' 
                       : 'border-gray-700 hover:border-purple-400'
                   }`}
                   onError={(e) => {
@@ -206,7 +206,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
               <Link
                 to={`/profile/${hostName}`}
                 className={`hover:underline ${
-                  theme === 'light' ? 'text-[#209db8]' : 'text-purple-400'
+                  theme === 'light' ? 'text-[#8b5cf6]' : 'text-purple-400'
                 }`}
               >
                 {hostName}
@@ -238,7 +238,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
           onClick={() => onJoinRoom(gameRoom)}
           className={`w-full py-2 rounded-lg text-white font-medium transition-all hover:opacity-90 hover:shadow-lg ${
             theme === 'light' 
-              ? 'bg-gradient-to-r from-[#209db8] to-[#1a7d94] hover:shadow-[#209db8]/20' 
+              ? 'bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] hover:shadow-[#8b5cf6]/20' 
               : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-purple-500/20'
           }`}
         >
@@ -247,7 +247,7 @@ export const GameRoomCard: React.FC<GameRoomCardProps> = ({
       </div>
       <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ${
         theme === 'light' 
-          ? 'bg-gradient-to-tr from-[#209db8]/10 to-[#1a7d94]/5' 
+          ? 'bg-gradient-to-tr from-[#8b5cf6]/10 to-[#7c3aed]/5' 
           : 'bg-gradient-to-tr from-purple-500/10 to-pink-500/5'
       }`}></div>
     </div>

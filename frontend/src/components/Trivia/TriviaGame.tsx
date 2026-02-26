@@ -96,9 +96,9 @@ const LeaderboardRow: React.FC<{
         {isCurrentUser && (
           <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-400/80 text-gray-900">YOU</span>
         )}
-        {index === 0 && <span className="text-xs font-semibold text-emerald-600">WINNER</span>}
+        {index === 0 && <span className={`text-xs font-semibold ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>WINNER</span>}
       </div>
-      <span className="font-bold">{player.score.toLocaleString()}</span>
+      <span className={`font-bold ${textPrimary}`}>{player.score.toLocaleString()}</span>
     </div>
   );
 };
@@ -107,7 +107,8 @@ const LiveStandingRow: React.FC<{
   player: { _id: string; score: number; name: string };
   isCurrentUser: boolean;
   isLight: boolean;
-}> = ({ player, isCurrentUser, isLight }) => {
+  textPrimary: string;
+}> = ({ player, isCurrentUser, isLight, textPrimary }) => {
   const { username, avatar } = useUserData(player._id);
   return (
     <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${isLight ? 'bg-gray-50' : 'bg-gray-700/30'}`}>
@@ -120,12 +121,12 @@ const LiveStandingRow: React.FC<{
             (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${player._id}`;
           }}
         />
-        <span className="font-medium truncate">{username || player.name}</span>
+        <span className={`font-medium truncate ${textPrimary}`}>{username || player.name}</span>
         {isCurrentUser && (
           <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-400/80 text-gray-900">YOU</span>
         )}
       </div>
-      <span className="font-bold">{player.score.toLocaleString()} pts</span>
+      <span className={`font-bold ${textPrimary}`}>{player.score.toLocaleString()} pts</span>
     </div>
   );
 };
@@ -325,8 +326,10 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       }, 2000);
       return () => clearTimeout(t);
     }
-  }, [phase]);
+  }, [phase, nextQuestionCountdown]);
 
+  // Only reset question index and phase when the game actually starts or restarts (e.g. Play Again).
+  // Do NOT depend on gameState.triviaState?.questions â€” server updates during the round would reset currentQ to 0.
   useEffect(() => {
     if (gameState.gameStarted && !gameState.gameOver) {
       setCurrentQ(0);
@@ -341,7 +344,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       answerTimeRef.current = 10;
       if (gameState.triviaState?.questions) setQuestions(gameState.triviaState.questions);
     }
-  }, [gameState.gameStarted, gameState.gameOver, gameState.triviaState?.questions]);
+  }, [gameState.gameStarted, gameState.gameOver]);
 
   const getLeaderboardData = () => {
     const scores = gameState.triviaState?.scores || {};
@@ -389,7 +392,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   if (loading) {
     return (
       <div className={`flex flex-col items-center justify-center min-h-[280px] ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>
-        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isLight ? 'border-[#209db8]' : 'border-purple-500'} mb-4`} />
+        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isLight ? 'border-[#8b5cf6]' : 'border-purple-500'} mb-4`} />
         <p>Loading trivia questions...</p>
       </div>
     );
@@ -491,13 +494,13 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                     <Check className="w-8 h-8 text-white" strokeWidth={3} />
                   </div>
                 </div>
-                <p className="text-center text-2xl font-bold text-emerald-600 uppercase">Correct!</p>
-                <p className="text-center text-lg text-emerald-600 mt-1">+{lastPointsEarned} points</p>
+                <p className={`text-center text-2xl font-bold uppercase ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>Correct!</p>
+                <p className={`text-center text-lg mt-1 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>+{lastPointsEarned} points</p>
                 <hr className={`my-4 ${isLight ? 'border-gray-200' : 'border-gray-600'}`} />
                 <p className={`text-xs uppercase ${textSecondary} mb-1`}>Answer</p>
                 <p className={`font-semibold ${textPrimary}`}>{currentQuestion.correctAnswer}</p>
                 <p className={`text-xs uppercase ${textSecondary} mt-4 mb-1`}>Next question</p>
-                <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                <div className={`h-2 rounded-full overflow-hidden ${isLight ? 'bg-gray-200' : 'bg-gray-600'}`}>
                   <div className="h-full bg-orange-500 rounded-full" style={{ width: '66%' }} />
                 </div>
               </>
@@ -508,8 +511,8 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                     <X className="w-8 h-8 text-white" strokeWidth={3} />
                   </div>
                 </div>
-                <p className="text-center text-2xl font-bold text-red-600 uppercase">Incorrect!</p>
-                <p className="text-center text-lg text-red-600 mt-1">{INCORRECT_PENALTY > 0 ? `-${INCORRECT_PENALTY} points` : '0 points'}</p>
+                <p className={`text-center text-2xl font-bold uppercase ${isLight ? 'text-red-600' : 'text-red-400'}`}>Incorrect!</p>
+                <p className={`text-center text-lg mt-1 ${isLight ? 'text-red-600' : 'text-red-400'}`}>{INCORRECT_PENALTY > 0 ? `-${INCORRECT_PENALTY} points` : '0 points'}</p>
                 <div className={`mt-4 p-4 rounded-xl border ${isLight ? 'bg-emerald-50 border-emerald-200' : 'bg-emerald-900/20 border-emerald-700'}`}>
                   <p className={`text-xs uppercase ${isLight ? 'text-emerald-700' : 'text-emerald-300'}`}>The correct answer was</p>
                   <p className={`font-bold ${textPrimary}`}>{currentQuestion.correctAnswer}</p>
@@ -525,19 +528,19 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
           </div>
         </div>
       ) : phase === 'question_results' ? (
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className={`flex-1 overflow-y-auto p-4 ${surface} ${textPrimary}`}>
           <div className={`max-w-lg mx-auto rounded-2xl ${cardBg} ${cardBorder} border shadow-lg overflow-hidden`}>
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2">
+            <div className={`p-4 border-b flex items-center justify-center gap-2 ${isLight ? 'border-gray-200' : 'border-gray-700'}`}>
               <Trophy className="w-5 h-5 text-amber-500" />
-              <span className="font-semibold">Round {currentQ + 1} of {questions.length}</span>
+              <span className={`font-semibold ${textPrimary}`}>Round {currentQ + 1} of {questions.length}</span>
             </div>
             <div className="p-4">
-              <h3 className="text-lg font-bold mb-2">Question Results</h3>
+              <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}>Question Results</h3>
               <p className={`text-sm ${textSecondary} mb-4`}>{currentQuestion?.text}</p>
               <div className={`rounded-xl p-4 mb-4 flex items-center justify-between ${isLight ? 'bg-emerald-50 border border-emerald-200' : 'bg-emerald-900/20 border border-emerald-700/50'}`}>
                 <div>
-                  <p className="text-xs uppercase text-emerald-700 dark:text-emerald-300 mb-1">Correct answer</p>
-                  <p className="font-bold text-lg">{currentQuestion?.correctAnswer}</p>
+                  <p className={`text-xs uppercase mb-1 ${isLight ? 'text-emerald-700' : 'text-emerald-300'}`}>Correct answer</p>
+                  <p className={`font-bold text-lg ${textPrimary}`}>{currentQuestion?.correctAnswer}</p>
                 </div>
                 <Check className="w-10 h-10 text-emerald-500 flex-shrink-0" />
               </div>
@@ -545,19 +548,19 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                 <div className={`rounded-xl p-3 flex items-center gap-2 ${isLight ? 'bg-emerald-50' : 'bg-emerald-900/20'}`}>
                   <Check className="w-6 h-6 text-emerald-500 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-emerald-700 dark:text-emerald-300 uppercase">Players correct</p>
-                    <p className="font-bold text-lg">{playersCorrect}</p>
+                    <p className={`text-xs uppercase ${isLight ? 'text-emerald-700' : 'text-emerald-300'}`}>Players correct</p>
+                    <p className={`font-bold text-lg ${textPrimary}`}>{playersCorrect}</p>
                   </div>
                 </div>
                 <div className={`rounded-xl p-3 flex items-center gap-2 ${isLight ? 'bg-red-50' : 'bg-red-900/20'}`}>
                   <X className="w-6 h-6 text-red-500 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-red-700 dark:text-red-300 uppercase">Players incorrect</p>
-                    <p className="font-bold text-lg">{playersIncorrect}</p>
+                    <p className={`text-xs uppercase ${isLight ? 'text-red-700' : 'text-red-300'}`}>Players incorrect</p>
+                    <p className={`font-bold text-lg ${textPrimary}`}>{playersIncorrect}</p>
                   </div>
                 </div>
               </div>
-              <h3 className="font-bold mb-3">Live Standings</h3>
+              <h3 className={`font-bold mb-3 ${textPrimary}`}>Live Standings</h3>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {liveStandings.map((player: any) => (
                   <LiveStandingRow
@@ -565,20 +568,21 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                     player={player}
                     isCurrentUser={player._id === currentPlayer}
                     isLight={isLight}
+                    textPrimary={textPrimary}
                   />
                 ))}
               </div>
             </div>
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-sm font-medium mb-2">Next question</p>
+            <div className={`p-4 border-t ${isLight ? 'border-gray-200' : 'border-gray-700'}`}>
+              <p className={`text-sm font-medium mb-2 ${textSecondary}`}>Next question</p>
               <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden">
+                <div className={`flex-1 h-2 rounded-full overflow-hidden ${isLight ? 'bg-gray-200' : 'bg-gray-600'}`}>
                   <div
                     className={`h-full rounded-full ${isLight ? 'bg-amber-400' : 'bg-red-500'}`}
                     style={{ width: `${((3 - (nextQuestionCountdown || 0)) / 3) * 100}%` }}
                   />
                 </div>
-                <span className="text-sm font-mono font-bold">0:{(nextQuestionCountdown || 0).toString().padStart(2, '0')}</span>
+                <span className={`text-sm font-mono font-bold ${textPrimary}`}>0:{(nextQuestionCountdown || 0).toString().padStart(2, '0')}</span>
               </div>
             </div>
           </div>
@@ -595,19 +599,19 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
               <div className="flex items-center gap-3">
                 <div className="text-center">
                   <PlayerDisplay playerId={currentPlayer} showScore score={currentPlayerScore} compact />
-                  <p className="text-xs font-semibold uppercase opacity-80">You</p>
+                  <p className={`text-xs font-semibold uppercase ${textSecondary}`}>You</p>
                 </div>
-                <span className="font-bold text-lg opacity-70">VS</span>
+                <span className={`font-bold text-lg ${textSecondary}`}>VS</span>
                 <div className="text-center">
                   {rivalPlayer ? (
                     <>
                       <PlayerDisplay playerId={rivalPlayer.id} showScore score={rivalScore} compact />
-                      <p className="text-xs font-semibold uppercase opacity-80">Rival</p>
+                      <p className={`text-xs font-semibold uppercase ${textSecondary}`}>Rival</p>
                     </>
                   ) : (
                     <div className="text-center">
-                      <div className="w-8 h-8 rounded-full bg-gray-500" />
-                      <p className="text-xs">—</p>
+                      <div className={`w-8 h-8 rounded-full ${isLight ? 'bg-gray-400' : 'bg-gray-600'}`} />
+                      <p className={`text-xs ${textSecondary}`}>â€”</p>
                     </div>
                   )}
                 </div>
@@ -640,7 +644,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                     disabled={hasAnswered}
                     onClick={() => handleOptionClick(option)}
                     className={`relative rounded-xl p-4 text-left transition-all border-2 ${colors.bg} text-white border ${colors.border} ${
-                      showCorrect ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-gray-900' : ''
+                      showCorrect ? `ring-2 ring-emerald-400 ring-offset-2 ${isLight ? 'ring-offset-gray-100' : 'ring-offset-gray-900'}` : ''
                     } ${showWrong ? 'opacity-80' : ''} disabled:pointer-events-none`}
                   >
                     <span className={`absolute top-2 left-2 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${isLight ? 'bg-white/90 text-gray-800' : 'bg-white/20'} ${colors.letter}`}>

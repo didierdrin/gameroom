@@ -32,6 +32,7 @@ import { MediaControls } from "../components/GameRoom/MediaControls";
 import { VideoGrid } from "../components/GameRoom/VideoGrid";
 import { useSocket, useSocketConnection } from "../SocketContext";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { SocketType } from "../SocketContext";
 import { useUserData } from "../hooks/useUserData"; 
 import { Link } from 'react-router-dom'; 
@@ -82,6 +83,9 @@ const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
 }) => {
   if (!isOpen || !player) return null;
 
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
   // Player Avatar Component
   const PlayerAvatar = ({ playerId }: { playerId: string }) => {
     const { avatar } = useUserData(playerId);
@@ -90,7 +94,7 @@ const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
       <img 
         src={avatar}
         alt="Player avatar"
-        className="w-10 h-10 rounded-full border border-gray-600"
+        className={`w-10 h-10 rounded-full border ${isLight ? 'border-gray-300' : 'border-gray-600'}`}
         onError={(e) => {
           const target = e.target as HTMLImageElement;
           target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(playerId)}`;
@@ -124,27 +128,29 @@ const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-xl border border-gray-700 max-w-sm w-full p-6 shadow-2xl">
+      <div className={`rounded-xl border max-w-sm w-full p-6 shadow-2xl ${
+        isLight ? 'bg-white border-[#b4b4b4]' : 'bg-gray-800 border-gray-700'
+      }`}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <PlayerAvatar playerId={player.id} />
             <div>
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className={`text-lg font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>
               <Link 
                 to={`/profile/${player.name}`} 
-                className="text-purple-400 hover:underline"
+                className={isLight ? 'text-[#8b5cf6] hover:underline' : 'text-purple-400 hover:underline'}
               >
                 {player.name}
-                </Link>
-                </h3>
-              <p className="text-sm text-gray-400">
+              </Link>
+              </h3>
+              <p className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
                 {isHostSelf ? 'Host Management' : 'Player Management'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className={isLight ? 'text-gray-500 hover:text-gray-900 transition-colors' : 'text-gray-400 hover:text-white transition-colors'}
           >
             <XIcon size={20} />
           </button>
@@ -152,16 +158,18 @@ const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
 
         <div className="space-y-3">
           {isHostSelf ? (
-            // Host self-management options
             <button
               onClick={handleRestartGame}
-              className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-lg hover:bg-purple-600/30 transition-colors"
+              className={`w-full flex items-center justify-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                isLight
+                  ? 'bg-[#8b5cf6]/20 border border-[#8b5cf6]/50 text-[#8b5cf6] hover:bg-[#8b5cf6]/30'
+                  : 'bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-lg hover:bg-purple-600/30'
+              }`}
             >
               <RotateCcw size={18} />
               <span>Restart Game</span>
             </button>
           ) : (
-            // Regular player management options
             <>
               <button
                 onClick={handleMuteToggle}
@@ -186,10 +194,12 @@ const PlayerManagementModal: React.FC<PlayerManagementModalProps> = ({
           )}
         </div>
 
-        <div className="mt-6 p-3 bg-gray-700/30 rounded-lg border border-gray-600/50">
+        <div className={`mt-6 p-3 rounded-lg border ${
+          isLight ? 'bg-gray-100 border-gray-200' : 'bg-gray-700/30 border-gray-600/50'
+        }`}>
           <div className="flex items-start space-x-2">
-            <AlertTriangle size={16} className="text-yellow-400 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-gray-400">
+            <AlertTriangle size={16} className="text-yellow-500 mt-0.5 flex-shrink-0" />
+            <p className={`text-xs ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
               {isHostSelf 
                 ? "Restarting the game will start a new round with the same players and spectators."
                 : "These actions are permanent. Removed players will need to rejoin the room."
@@ -207,6 +217,8 @@ export const LiveGameRoomPage = () => {
   const { id: roomId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const socket = useSocket();
   const isSocketConnected = useSocketConnection();
   const [startAfterSelect, setStartAfterSelect] = useState(false);
@@ -1482,11 +1494,13 @@ const handleStartGame = () => {
     if (gameEnded) {
       return (
         <div className="flex flex-col items-center justify-center h-full">
-          <div className="text-center max-w-md mx-auto p-6 bg-gray-800 rounded-xl border border-gray-700">
+          <div className={`text-center max-w-md mx-auto p-6 rounded-xl border ${
+            isLight ? 'bg-white border-[#b4b4b4]' : 'bg-gray-800 border-gray-700'
+          }`}>
             <div className="mb-4">
-              <AlertTriangle size={48} className="text-red-400 mx-auto mb-3" />
-              <h2 className="text-2xl font-bold text-white mb-2">Game Ended</h2>
-              <p className="text-gray-300 mb-4">{gameEndedMessage}</p>
+              <AlertTriangle size={48} className="text-red-500 mx-auto mb-3" />
+              <h2 className={`text-2xl font-bold mb-2 ${isLight ? 'text-gray-900' : 'text-white'}`}>Game Ended</h2>
+              <p className={`mb-4 ${isLight ? 'text-gray-600' : 'text-gray-300'}`}>{gameEndedMessage}</p>
             </div>
             
           </div>
@@ -1497,36 +1511,38 @@ const handleStartGame = () => {
     if (!gameState?.gameStarted) {
       return (
         <div className="flex flex-col items-center justify-center h-full">
-          <h2 className="text-2xl mb-4">Waiting for players...</h2>
-          <p className="text-gray-400 mb-4">
+          <h2 className={`text-2xl mb-4 ${isLight ? 'text-gray-900' : 'text-white'}`}>Waiting for players...</h2>
+          <p className={`mb-4 ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
             Active players in room: {roomInfo?.currentPlayers || gameState.players.length}
             {isHost && !isActivePlayer() && (
-              <span className="block text-sm text-purple-400 mt-1">
+              <span className={`block text-sm mt-1 ${isLight ? 'text-[#8b5cf6]' : 'text-purple-400'}`}>
                 (You are spectating as host)
               </span>
             )}
           </p>
           {isSocketConnected && (
-            <div className="text-green-400 mb-4">✅ Connected</div>
+            <div className={`mb-4 ${isLight ? 'text-green-600' : 'text-green-400'}`}>✅ Connected</div>
           )}
           
           {isHost ? (
             <div className="flex flex-col items-center space-y-3">
               <button
                 onClick={handleStartGame}
-                className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors"
+                className={`px-6 py-3 rounded-lg transition-colors text-white ${
+                  isLight ? 'bg-[#8b5cf6] hover:bg-[#7c3aed]' : 'bg-purple-600 hover:bg-purple-700'
+                }`}
               >
                 Start Game
               </button>
               <button
                 onClick={handleEndGame}
-                className="px-6 py-3 bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                className="px-6 py-3 bg-red-600 rounded-lg hover:bg-red-700 transition-colors text-white"
               >
                 End Game
               </button>
             </div>
           ) : (
-            <p className="text-gray-400">Waiting for host to start the game...</p>
+            <p className={isLight ? 'text-gray-600' : 'text-gray-400'}>Waiting for host to start the game...</p>
           )}
         </div>
       );
@@ -1561,10 +1577,12 @@ const handleStartGame = () => {
               
               {/* Show spectator message for host */}
               {isHost && !isActivePlayer() && (
-                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                <div className={`absolute top-4 left-4 rounded-lg p-3 ${
+                  isLight ? 'bg-[#8b5cf6]/20 border border-[#8b5cf6]/50' : 'bg-purple-900/50 border border-purple-500/30'
+                }`}>
                   <div className="flex items-center space-x-2">
-                    <SettingsIcon size={16} className="text-purple-400" />
-                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                    <SettingsIcon size={16} className={isLight ? 'text-[#8b5cf6]' : 'text-purple-400'} />
+                    <span className={`text-sm ${isLight ? 'text-[#8b5cf6]' : 'text-purple-400'}`}>Spectating as Host</span>
                   </div>
                 </div>
               )}
@@ -1585,10 +1603,12 @@ const handleStartGame = () => {
               
               {/* Show spectator message for host */}
               {isHost && !isActivePlayer() && (
-                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                <div className={`absolute top-4 left-4 rounded-lg p-3 ${
+                  isLight ? 'bg-[#8b5cf6]/20 border border-[#8b5cf6]/50' : 'bg-purple-900/50 border border-purple-500/30'
+                }`}>
                   <div className="flex items-center space-x-2">
-                    <SettingsIcon size={16} className="text-purple-400" />
-                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                    <SettingsIcon size={16} className={isLight ? 'text-[#8b5cf6]' : 'text-purple-400'} />
+                    <span className={`text-sm ${isLight ? 'text-[#8b5cf6]' : 'text-purple-400'}`}>Spectating as Host</span>
                   </div>
                 </div>
               )}
@@ -1608,10 +1628,12 @@ const handleStartGame = () => {
               
               {/* Show spectator message for host */}
               {isHost && !isActivePlayer() && (
-                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                <div className={`absolute top-4 left-4 rounded-lg p-3 ${
+                  isLight ? 'bg-[#8b5cf6]/20 border border-[#8b5cf6]/50' : 'bg-purple-900/50 border border-purple-500/30'
+                }`}>
                   <div className="flex items-center space-x-2">
-                    <SettingsIcon size={16} className="text-purple-400" />
-                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                    <SettingsIcon size={16} className={isLight ? 'text-[#8b5cf6]' : 'text-purple-400'} />
+                    <span className={`text-sm ${isLight ? 'text-[#8b5cf6]' : 'text-purple-400'}`}>Spectating as Host</span>
                   </div>
                 </div>
               )}
@@ -1629,10 +1651,12 @@ const handleStartGame = () => {
               
               {/* Show spectator message for host */}
               {isHost && !isActivePlayer() && (
-                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                <div className={`absolute top-4 left-4 rounded-lg p-3 ${
+                  isLight ? 'bg-[#8b5cf6]/20 border border-[#8b5cf6]/50' : 'bg-purple-900/50 border border-purple-500/30'
+                }`}>
                   <div className="flex items-center space-x-2">
-                    <SettingsIcon size={16} className="text-purple-400" />
-                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                    <SettingsIcon size={16} className={isLight ? 'text-[#8b5cf6]' : 'text-purple-400'} />
+                    <span className={`text-sm ${isLight ? 'text-[#8b5cf6]' : 'text-purple-400'}`}>Spectating as Host</span>
                   </div>
                 </div>
               )}
@@ -1650,10 +1674,12 @@ const handleStartGame = () => {
               
               {/* Show spectator message for host */}
               {isHost && !isActivePlayer() && (
-                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                <div className={`absolute top-4 left-4 rounded-lg p-3 ${
+                  isLight ? 'bg-[#8b5cf6]/20 border border-[#8b5cf6]/50' : 'bg-purple-900/50 border border-purple-500/30'
+                }`}>
                   <div className="flex items-center space-x-2">
-                    <SettingsIcon size={16} className="text-purple-400" />
-                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                    <SettingsIcon size={16} className={isLight ? 'text-[#8b5cf6]' : 'text-purple-400'} />
+                    <span className={`text-sm ${isLight ? 'text-[#8b5cf6]' : 'text-purple-400'}`}>Spectating as Host</span>
                   </div>
                 </div>
               )}
@@ -1671,10 +1697,12 @@ const handleStartGame = () => {
               
               {/* Show spectator message for host */}
               {isHost && !isActivePlayer() && (
-                <div className="absolute top-4 left-4 bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+                <div className={`absolute top-4 left-4 rounded-lg p-3 ${
+                  isLight ? 'bg-[#8b5cf6]/20 border border-[#8b5cf6]/50' : 'bg-purple-900/50 border border-purple-500/30'
+                }`}>
                   <div className="flex items-center space-x-2">
-                    <SettingsIcon size={16} className="text-purple-400" />
-                    <span className="text-sm text-purple-400">Spectating as Host</span>
+                    <SettingsIcon size={16} className={isLight ? 'text-[#8b5cf6]' : 'text-purple-400'} />
+                    <span className={`text-sm ${isLight ? 'text-[#8b5cf6]' : 'text-purple-400'}`}>Spectating as Host</span>
                   </div>
                 </div>
               )}
@@ -1682,7 +1710,7 @@ const handleStartGame = () => {
           );
         default:
           return (
-            <div className="text-center text-gray-400">
+            <div className={`text-center ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
               Game "{gameType}" not implemented yet
             </div>
           );
@@ -1694,10 +1722,10 @@ const handleStartGame = () => {
         {gameContent}
         
         {isHost && gameState?.gameStarted && !gameState?.gameOver && (
-          <div className="absolute top-4 right-4 flex space-x-2">
+          <div className="fixed bottom-4 right-4 z-50">
             <button
               onClick={handleEndGame}
-              className="px-4 py-2 bg-red-600 rounded-lg hover:bg-red-700 transition-colors text-sm"
+              className="px-4 py-2 bg-red-600 rounded-lg hover:bg-red-700 transition-colors text-sm text-white shadow-lg"
             >
               End Game
             </button>
@@ -1745,10 +1773,10 @@ const handleStartGame = () => {
 
   if (!socket || !isSocketConnected) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
+      <div className={`flex items-center justify-center h-screen ${isLight ? 'bg-gray-100' : 'bg-gray-900'}`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-400">Connecting to game room...</p>
+          <div className={`animate-spin rounded-full h-8 w-8 border-b-2 border-t-transparent mx-auto mb-4 ${isLight ? 'border-[#8b5cf6]' : 'border-purple-500'}`}></div>
+          <p className={isLight ? 'text-gray-600' : 'text-gray-400'}>Connecting to game room...</p>
         </div>
       </div>
     );
@@ -1756,58 +1784,58 @@ const handleStartGame = () => {
 
   return (
     <div
-      className={`flex flex-col h-screen bg-gray-900 ${
+      className={`flex flex-col h-screen ${isLight ? 'bg-gray-100' : 'bg-gray-900'} ${
         fullscreen ? "fixed inset-0 z-50" : ""
       }`}
     >
-      <div className="bg-gray-800 border-b border-gray-700 p-2 sm:p-3 flex items-center justify-between">
+      <div className={`border-b p-2 sm:p-3 flex items-center justify-between ${
+        isLight ? 'bg-white border-[#b4b4b4]' : 'bg-gray-800 border-gray-700'
+      }`}>
         <div className="flex items-center">
           <button
             onClick={handleExit}
-            className="mr-4 p-2 rounded-lg hover:bg-gray-700 transition-colors"
+            className={`mr-4 p-2 rounded-lg transition-colors ${isLight ? 'hover:bg-gray-100' : 'hover:bg-gray-700'}`}
           >
-            <XIcon size={20} />
+            <XIcon size={20} className={isLight ? 'text-gray-700' : 'text-white'} />
           </button>
-          <h1 className="font-bold text-base sm:text-xl truncate">
+          <h1 className={`font-bold text-base sm:text-xl truncate ${isLight ? 'text-gray-900' : 'text-white'}`}>
             {gameState?.roomName || roomInfo?.name || "Game Room"}
           </h1>
-          <div className="ml-3 px-2 py-1 bg-purple-900/50 border border-purple-500/30 rounded text-xs text-purple-400">
+          <div className={`ml-3 px-2 py-1 rounded text-xs ${
+            isLight ? 'bg-[#8b5cf6]/20 border border-[#8b5cf6]/50 text-[#8b5cf6]' : 'bg-purple-900/50 border border-purple-500/30 text-purple-400'
+          }`}>
             {gameType}
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          {/* <button
-            onClick={() => setShowVideoGrid(!showVideoGrid)}
-            className={`p-2 rounded-lg ${
-              showVideoGrid ? "bg-purple-600" : "hover:bg-gray-700"
-            }`}
-          >
-            <VideoIcon size={20} />
-          </button> */}
           <button
             onClick={() => toggleSidebar("players")}
             className={`p-2 rounded-lg ${
-              showPlayers ? "bg-gray-700 text-purple-400" : "hover:bg-gray-700"
+              showPlayers
+                ? isLight ? 'bg-gray-100 text-[#8b5cf6]' : 'bg-gray-700 text-purple-400'
+                : isLight ? 'hover:bg-gray-100' : 'hover:bg-gray-700'
             }`}
           >
-            <UsersIcon size={20} />
+            <UsersIcon size={20} className={isLight ? 'text-gray-700' : 'text-white'} />
           </button>
           <button
             onClick={() => toggleSidebar("chat")}
             className={`p-2 rounded-lg ${
-              showChat ? "bg-gray-700 text-purple-400" : "hover:bg-gray-700"
+              showChat
+                ? isLight ? 'bg-gray-100 text-[#8b5cf6]' : 'bg-gray-700 text-purple-400'
+                : isLight ? 'hover:bg-gray-100' : 'hover:bg-gray-700'
             }`}
           >
-            <MessageCircleIcon size={20} />
+            <MessageCircleIcon size={20} className={isLight ? 'text-gray-700' : 'text-white'} />
           </button>
           <button
             onClick={() => setFullscreen(!fullscreen)}
-            className="hidden sm:block p-2 rounded-lg hover:bg-gray-700"
+            className={`hidden sm:block p-2 rounded-lg ${isLight ? 'hover:bg-gray-100' : 'hover:bg-gray-700'}`}
           >
             {fullscreen ? (
-              <MinimizeIcon size={20} />
+              <MinimizeIcon size={20} className={isLight ? 'text-gray-700' : 'text-white'} />
             ) : (
-              <MaximizeIcon size={20} />
+              <MaximizeIcon size={20} className={isLight ? 'text-gray-700' : 'text-white'} />
             )}
           </button>
         </div>
@@ -1827,13 +1855,13 @@ const handleStartGame = () => {
           />
           <button
         onClick={() => setShowPlayers(false)}
-        className="sm:hidden absolute top-2 left-2 p-1 bg-gray-800 rounded-full z-50"
+        className={`sm:hidden absolute top-2 left-2 p-1 rounded-full z-50 ${isLight ? 'bg-white border border-gray-200' : 'bg-gray-800'}`}
       >
-        <XIcon size={16} />
+        <XIcon size={16} className={isLight ? 'text-gray-700' : 'text-white'} />
       </button>
          </div>
         )}
-        <div className="flex-1 bg-gray-850">
+        <div className={`flex-1 ${isLight ? 'bg-gray-100' : 'bg-gray-850'}`}>
           <div className="h-full p-2 sm:p-4">{renderGameContent()}</div>
         </div>
         {showChat && (
@@ -1846,18 +1874,18 @@ const handleStartGame = () => {
             />
             <button
               onClick={() => setShowChat(false)}
-              className="sm:hidden absolute top-2 right-2 p-1 bg-gray-800 rounded-full"
+              className={`sm:hidden absolute top-2 right-2 p-1 rounded-full ${isLight ? 'bg-white border border-gray-200' : 'bg-gray-800'}`}
             >
-              <XIcon size={16} />
+              <XIcon size={16} className={isLight ? 'text-gray-700' : 'text-white'} />
             </button>
           </div>
         )}
       </div>
 
       {showVideoGrid && !inAudioCall && (
-        <div className="fixed inset-0 bg-gray-900 z-40 p-4 overflow-auto">
+        <div className={`fixed inset-0 z-40 p-4 overflow-auto ${isLight ? 'bg-gray-200' : 'bg-gray-900'}`}>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-white">Participants</h2>
+            <h2 className={`text-xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>Participants</h2>
             <button
               onClick={() => setShowVideoGrid(false)}
               className="text-white bg-red-600 p-2 rounded-full"

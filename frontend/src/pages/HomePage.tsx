@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { SearchIcon, FilterIcon, ChevronDownIcon, CheckIcon, MenuIcon, SunIcon, MoonIcon, XIcon, DicesIcon, PlusCircleIcon, BarChart3Icon, UserIcon, MessageCircleIcon } from "lucide-react";
+import { SearchIcon, FilterIcon, ChevronDownIcon, CheckIcon, SunIcon, MoonIcon, XIcon, DicesIcon, PlusCircleIcon, BarChart3Icon, UserIcon, MessageCircleIcon } from "lucide-react";
 import io from "socket.io-client";
 import { GameRoomList } from "../components/GameRoom/GameRoomList";
 import { GameRoomJoinModal } from "../components/GameRoom/GameRoomJoinModal";
@@ -12,6 +12,61 @@ import { GameRoom, Tournament, JoinRoomResponse } from '../types/gameroom';
 import { useUserData } from "../hooks/useUserData"; 
 
 
+
+// Trivia categories for Start Game Room section (matches CreateGameRoomPage)
+const TRIVIA_CATEGORIES = [
+  { value: 'general', label: 'General Knowledge' },
+  { value: 'science', label: 'Science' },
+  { value: 'history', label: 'History' },
+  { value: 'geography', label: 'Geography' },
+  { value: 'entertainment', label: 'Entertainment' },
+  { value: 'sports', label: 'Sports' },
+  { value: 'technology', label: 'Technology' },
+  { value: 'literature', label: 'Literature' },
+  { value: 'music', label: 'Music' },
+  { value: 'art', label: 'Art & Design' },
+  { value: 'politics', label: 'Politics' },
+  { value: 'nature', label: 'Nature & Animals' },
+  { value: 'movies', label: 'Movies & TV' },
+  { value: 'food', label: 'Food & Cooking' },
+  { value: 'mythology', label: 'Mythology' },
+];
+
+// Sleek per-card colors: light mode (soft, muted) and dark mode (rich, deep)
+const CARD_COLORS_LIGHT: { bg: string; border: string; text: string; hover: string }[] = [
+  { bg: '#f1f5f9', border: '#cbd5e1', text: '#0f172a', hover: '#e2e8f0' },
+  { bg: '#eff6ff', border: '#bfdbfe', text: '#1e3a8a', hover: '#dbeafe' },
+  { bg: '#fffbeb', border: '#fde68a', text: '#78350f', hover: '#fef3c7' },
+  { bg: '#f0fdfa', border: '#99f6e4', text: '#134e4a', hover: '#ccfbf1' },
+  { bg: '#fdf2f8', border: '#f9a8d4', text: '#831843', hover: '#fce7f3' },
+  { bg: '#f0fdf4', border: '#86efac', text: '#14532d', hover: '#dcfce7' },
+  { bg: '#eef2ff', border: '#a5b4fc', text: '#312e81', hover: '#e0e7ff' },
+  { bg: '#fff1f2', border: '#fda4af', text: '#881337', hover: '#ffe4e6' },
+  { bg: '#f5f3ff', border: '#c4b5fd', text: '#4c1d95', hover: '#ede9fe' },
+  { bg: '#fff7ed', border: '#fdba74', text: '#7c2d12', hover: '#ffedd5' },
+  { bg: '#f1f5f9', border: '#94a3b8', text: '#1e293b', hover: '#e2e8f0' },
+  { bg: '#ecfdf5', border: '#6ee7b7', text: '#064e3b', hover: '#d1fae5' },
+  { bg: '#fdf4ff', border: '#e9d5ff', text: '#701a75', hover: '#fae8ff' },
+  { bg: '#f7fee7', border: '#bef264', text: '#422006', hover: '#ecfccb' },
+  { bg: '#fefce8', border: '#fde047', text: '#713f12', hover: '#fef9c3' },
+];
+const CARD_COLORS_DARK: { bg: string; border: string; text: string; hover: string }[] = [
+  { bg: '#1e293b', border: '#334155', text: '#e2e8f0', hover: '#334155' },
+  { bg: '#1e3a8a', border: '#2563eb', text: '#bfdbfe', hover: '#1d4ed8' },
+  { bg: '#78350f', border: '#b45309', text: '#fef3c7', hover: '#92400e' },
+  { bg: '#134e4a', border: '#0d9488', text: '#99f6e4', hover: '#0f766e' },
+  { bg: '#831843', border: '#be185d', text: '#fbcfe8', hover: '#9d174d' },
+  { bg: '#14532d', border: '#15803d', text: '#86efac', hover: '#166534' },
+  { bg: '#312e81', border: '#4f46e5', text: '#a5b4fc', hover: '#3730a3' },
+  { bg: '#881337', border: '#be123c', text: '#fda4af', hover: '#9f1239' },
+  { bg: '#4c1d95', border: '#6d28d9', text: '#c4b5fd', hover: '#5b21b6' },
+  { bg: '#7c2d12', border: '#c2410c', text: '#fdba74', hover: '#9a3412' },
+  { bg: '#334155', border: '#475569', text: '#cbd5e1', hover: '#475569' },
+  { bg: '#064e3b', border: '#059669', text: '#6ee7b7', hover: '#047857' },
+  { bg: '#701a75', border: '#a21caf', text: '#e9d5ff', hover: '#86198f' },
+  { bg: '#422006', border: '#ca8a04', text: '#fef08a', hover: '#a16207' },
+  { bg: '#713f12', border: '#d97706', text: '#fde047', hover: '#b45309' },
+];
 
 const MOCK_TOURNAMENTS: Tournament[] = [
   {
@@ -55,7 +110,6 @@ export const HomePage = () => {
   const { theme, toggleTheme } = useTheme();
   const [playerIdToUsername, setPlayerIdToUsername] = useState<Record<string, string>>({});
   const [isJoining, setIsJoining] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Derive "online" users from live game rooms (host + players), frontend-only
   const onlineUserIds = useMemo(() => {
@@ -408,135 +462,15 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
 
   return (
     <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
-      {/* AppBar: on lg+ only (small screens use MainLayout navbar + bottom nav) */}
-      <div className={`hidden lg:flex sticky top-0 z-50 mb-4 -mx-6 px-6 py-3 ${
-        theme === 'light' 
-          ? 'bg-white border-b border-gray-300' 
-          : 'bg-gray-800 border-b border-gray-700'
-      }`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <img
-              src={theme === 'light' ? '/assets/icon-light.png' : '/assets/icon-dark.png'}
-              alt="Arena"
-              className="w-8 h-8"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=Arena`;
-              }}
-            />
-            <span className={`text-xl font-bold ${
-              theme === 'light' ? 'text-black' : 'text-white'
-            }`}>
-              Arena
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-lg transition-colors ${
-                theme === 'light' 
-                  ? 'hover:bg-gray-100' 
-                  : 'hover:bg-gray-700'
-              }`}
-            >
-              {theme === 'light' ? (
-                <MoonIcon size={20} className="text-black" />
-              ) : (
-                <SunIcon size={20} className="text-white" />
-              )}
-            </button>
-            <button
-              onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-              className={`p-2 rounded-lg transition-colors ${
-                theme === 'light' 
-                  ? 'hover:bg-gray-100' 
-                  : 'hover:bg-gray-700'
-              }`}
-            >
-              <MenuIcon size={20} className={theme === 'light' ? 'text-black' : 'text-white'} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Drawer: on lg+ when menu is opened (small screens use bottom nav) */}
-      {isDrawerOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 hidden lg:block"
-            onClick={() => setIsDrawerOpen(false)}
-          />
-          <div className={`fixed top-0 right-0 h-full w-64 z-50 transform transition-transform hidden lg:block ${
-            isDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-          } ${
-            theme === 'light' 
-              ? 'bg-white border-l border-gray-300' 
-              : 'bg-gray-800 border-l border-gray-700'
-          }`}>
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className={`text-xl font-bold ${
-                  theme === 'light' ? 'text-black' : 'text-white'
-                }`}>
-                  Menu
-                </h2>
-                <button
-                  onClick={() => setIsDrawerOpen(false)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    theme === 'light' 
-                      ? 'hover:bg-gray-100' 
-                      : 'hover:bg-gray-700'
-                  }`}
-                >
-                  <XIcon size={20} className={theme === 'light' ? 'text-black' : 'text-white'} />
-                </button>
-              </div>
-              <nav className="space-y-2">
-                {[
-                  { path: '/', label: 'Home', icon: <DicesIcon size={20} /> },
-                  { path: '/create-game-room', label: 'Create Game Room', icon: <PlusCircleIcon size={20} /> },
-                  { path: '/discussions', label: 'Discussions', icon: <MessageCircleIcon size={20} /> },
-                  { path: '/leaderboard', label: 'Leaderboards', icon: <BarChart3Icon size={20} /> },
-                  { path: '/profile', label: 'Game Profile', icon: <UserIcon size={20} /> },
-                ].map((item) => (
-                  <button
-                    key={item.path}
-                    onClick={() => {
-                      navigate(item.path);
-                      setIsDrawerOpen(false);
-                    }}
-                    className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                      theme === 'light' 
-                        ? 'hover:bg-gray-100' 
-                        : 'hover:bg-gray-700'
-                    }`}
-                  >
-                    <span className={theme === 'light' ? 'text-black' : 'text-white'}>
-                      {item.icon}
-                    </span>
-                    <span className={`font-medium ${
-                      theme === 'light' ? 'text-black' : 'text-white'
-                    }`}>
-                      {item.label}
-                    </span>
-                  </button>
-                ))}
-              </nav>
-            </div>
-          </div>
-        </>
-      )}
-
       {/* Online Friends below AppBar on Small Devices */}
-      <div className="lg:hidden mb-6">
+      <div className="lg:hidden -mt-2 mb-3 md:mb-6">
         <OnlineFriends />
       </div>
 
       {/* Hero Banner - Hidden on Small Devices */}
       <div className={`hidden lg:block relative rounded-2xl p-8 mb-8 overflow-hidden ${
         theme === 'light' 
-          ? 'bg-gradient-to-r from-[#209db8] to-[#1a7d94]' 
+          ? 'bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed]' 
           : 'bg-gradient-to-r from-purple-900 to-indigo-900'
       }`}>
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=2071')] opacity-20 bg-cover bg-center mix-blend-overlay"></div>
@@ -550,7 +484,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
               onClick={() => navigate("/create-game-room")}
               className={`px-6 py-3 font-medium rounded-lg transition-colors ${
                 theme === 'light' 
-                  ? 'bg-white text-[#209db8] hover:bg-gray-100' 
+                  ? 'bg-white text-[#8b5cf6] hover:bg-gray-100' 
                   : 'bg-white text-purple-900 hover:bg-gray-100'
               }`}
             >
@@ -599,9 +533,9 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-wrap gap-4 mb-8">
+      <div className="flex flex-nowrap sm:flex-wrap gap-2 sm:gap-4 mb-3 md:mb-8">
         {/* Search Input */}
-        <div className="relative flex-1 min-w-[300px]">
+        <div className="relative flex-1 min-w-0 sm:min-w-[300px]">
           <SearchIcon
             size={20}
             className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
@@ -613,7 +547,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
             placeholder="Search by room name, game type, or host..."
             className={`w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none transition-colors ${
               theme === 'light' 
-                ? 'bg-white border border-[#b4b4b4] focus:ring-2 focus:ring-[#209db8] text-black' 
+                ? 'bg-white border border-[#b4b4b4] focus:ring-2 focus:ring-[#8b5cf6] text-black' 
                 : 'bg-gray-800/50 border border-gray-700 focus:ring-2 focus:ring-purple-500 text-white'
             }`}
             value={searchQuery}
@@ -632,29 +566,29 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         </div>
 
         {/* Filter Dropdown */}
-        <div className="relative" ref={filterDropdownRef}>
+        <div className="relative shrink-0" ref={filterDropdownRef}>
           <button 
             onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-            className={`px-4 py-3 border rounded-lg transition-colors flex items-center min-w-[120px] justify-between ${
+            className={`border rounded-lg transition-colors flex items-center justify-center sm:justify-between w-10 h-10 sm:w-auto sm:min-w-[120px] sm:px-4 sm:py-3 ${
               theme === 'light' 
                 ? 'bg-white border-[#b4b4b4] hover:bg-gray-50 text-black' 
                 : 'bg-gray-800/50 border-gray-700 hover:bg-gray-700/50 text-white'
             }`}
           >
-            <div className="flex items-center">
-              <FilterIcon size={20} className="mr-2" />
-              <span>Filter</span>
+            <div className="flex items-center relative">
+              <FilterIcon size={20} className="sm:mr-2" />
               {activeFilters.length > 0 && (
-                <span className={`ml-2 text-white text-xs px-2 py-1 rounded-full ${
-                  theme === 'light' ? 'bg-[#209db8]' : 'bg-purple-600'
+                <span className={`absolute -top-1 -right-1 sm:static sm:ml-2 text-white text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full min-w-[18px] text-center ${
+                  theme === 'light' ? 'bg-[#8b5cf6]' : 'bg-purple-600'
                 }`}>
                   {activeFilters.length}
                 </span>
               )}
+              <span className="hidden sm:inline">Filter</span>
             </div>
             <ChevronDownIcon 
               size={16} 
-              className={`ml-2 transition-transform ${isFilterDropdownOpen ? 'rotate-180' : ''}`} 
+              className={`hidden sm:block ml-2 transition-transform ${isFilterDropdownOpen ? 'rotate-180' : ''}`} 
             />
           </button>
 
@@ -674,7 +608,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
                   <button
                     onClick={clearAllFilters}
                     className={`text-sm transition-colors ${
-                      theme === 'light' ? 'text-[#209db8] hover:text-[#1a7d94]' : 'text-purple-400 hover:text-purple-300'
+                      theme === 'light' ? 'text-[#8b5cf6] hover:text-[#7c3aed]' : 'text-purple-400 hover:text-purple-300'
                     }`}
                   >
                     Clear All
@@ -699,10 +633,10 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                       activeFilters.includes(option.id)
                         ? theme === 'light' 
-                          ? 'bg-[#209db8] border-[#209db8]' 
+                          ? 'bg-[#8b5cf6] border-[#8b5cf6]' 
                           : 'bg-purple-600 border-purple-600'
                         : theme === 'light'
-                          ? 'border-[#b4b4b4] group-hover:border-[#209db8]'
+                          ? 'border-[#b4b4b4] group-hover:border-[#8b5cf6]'
                           : 'border-gray-600 group-hover:border-gray-500'
                     }`}>
                       {activeFilters.includes(option.id) && (
@@ -719,12 +653,12 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
 
       {/* Active Filters Display */}
       {(activeFilters.length > 0 || searchQuery) && (
-        <div className="mb-6 flex flex-wrap gap-2 items-center">
+        <div className="mb-3 md:mb-6 flex flex-wrap gap-2 items-center">
           <span className={`text-sm ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Active filters:</span>
           {searchQuery && (
             <div className={`border px-3 py-1 rounded-full text-sm flex items-center ${
               theme === 'light' 
-                ? 'bg-[#209db8]/20 border-[#209db8]/50 text-[#209db8]' 
+                ? 'bg-[#8b5cf6]/20 border-[#8b5cf6]/50 text-[#8b5cf6]' 
                 : 'bg-purple-600/20 border-purple-600/50 text-purple-300'
             }`}>
               Search: "{searchQuery}"
@@ -743,7 +677,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
             return (
               <div key={filterId} className={`border px-3 py-1 rounded-full text-sm flex items-center ${
                 theme === 'light' 
-                  ? 'bg-[#209db8]/20 border-[#209db8]/50 text-[#209db8]' 
+                  ? 'bg-[#8b5cf6]/20 border-[#8b5cf6]/50 text-[#8b5cf6]' 
                   : 'bg-purple-600/20 border-purple-600/50 text-purple-300'
               }`}>
                 {option?.label}
@@ -769,8 +703,45 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         </div>
       )}
 
+      {/* Start Game Room - Trivia categories */}
+      <section className="mb-4 md:mb-12">
+        <SectionTitle
+          title="Start Game Room"
+          subtitle="Create a new trivia game room"
+        />
+        <div className="overflow-x-auto overflow-y-hidden -mx-2 px-2 pb-2">
+          <div
+            className="inline-grid gap-3 pr-2"
+            style={{
+              gridAutoFlow: 'column',
+              gridTemplateRows: 'repeat(2, 1fr)',
+              gridAutoColumns: 'minmax(140px, 180px)',
+            }}
+          >
+            {TRIVIA_CATEGORIES.map((cat, idx) => {
+              const colors = theme === 'light' ? CARD_COLORS_LIGHT[idx % CARD_COLORS_LIGHT.length]! : CARD_COLORS_DARK[idx % CARD_COLORS_DARK.length]!;
+              return (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => navigate('/create-game-room', { state: { category: cat.value } })}
+                  className="h-14 rounded-xl border text-left px-4 py-2 transition-all duration-200 flex items-center shrink-0 hover:brightness-110 hover:shadow-md active:scale-[0.98]"
+                  style={{
+                    backgroundColor: colors.bg,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  }}
+                >
+                  <span className="text-sm font-medium truncate">{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* Live Game Rooms */}
-      <section className="mb-12">
+      <section className="mb-4 md:mb-12">
         <SectionTitle 
           title={`Live Game Rooms${filteredLiveRooms.length !== liveRooms.length ? ` (${filteredLiveRooms.length} of ${liveRooms.length})` : ''}`}
           subtitle="Join an active game room and start playing right away!" 
@@ -778,7 +749,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         {loading ? (
           <div className="flex justify-center py-8">
             <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
-              theme === 'light' ? 'border-[#209db8]' : 'border-purple-500'
+              theme === 'light' ? 'border-[#8b5cf6]' : 'border-purple-500'
             }`}></div>
           </div>
         ) : error ? (
@@ -791,7 +762,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
             <button 
               onClick={clearAllFilters} 
               className={`underline ml-1 transition-colors ${
-                theme === 'light' ? 'text-[#209db8] hover:text-[#1a7d94]' : 'text-purple-400 hover:text-purple-300'
+                theme === 'light' ? 'text-[#8b5cf6] hover:text-[#7c3aed]' : 'text-purple-400 hover:text-purple-300'
               }`}
             >
               Clear filters
@@ -803,7 +774,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
       </section>
 
       {/* Upcoming Game Rooms */}
-      <section className="mb-12">
+      <section className="mb-4 md:mb-12">
         <SectionTitle
           title={`Upcoming Game Rooms${filteredUpcomingRooms.length !== upcomingRooms.length ? ` (${filteredUpcomingRooms.length} of ${upcomingRooms.length})` : ''}`}
           subtitle="Game rooms scheduled to start soon. Register now to get notified!"
@@ -811,7 +782,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
         {loading ? (
           <div className="flex justify-center py-8">
             <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
-              theme === 'light' ? 'border-[#209db8]' : 'border-yellow-500'
+              theme === 'light' ? 'border-[#8b5cf6]' : 'border-yellow-500'
             }`}></div>
           </div>
         ) : error ? (
@@ -824,7 +795,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
             <button 
               onClick={clearAllFilters} 
               className={`underline ml-1 transition-colors ${
-                theme === 'light' ? 'text-[#209db8] hover:text-[#1a7d94]' : 'text-purple-400 hover:text-purple-300'
+                theme === 'light' ? 'text-[#8b5cf6] hover:text-[#7c3aed]' : 'text-purple-400 hover:text-purple-300'
               }`}
             >
               Clear filters

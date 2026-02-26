@@ -94,7 +94,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
       <div className="mb-8 mt-4 cursor-pointer" onClick={() => navigate('/')}>
         <h1 className={`${isCollapsed ? 'text-md' : 'text-2xl'} font-bold text-center ${
           theme === 'light' 
-            ? 'text-[#209db8] drop-shadow-[0_0_10px_rgba(32,157,184,0.5)]' 
+            ? 'text-[#8b5cf6] drop-shadow-[0_0_10px_rgba(139,92,246,0.5)]' 
             : 'text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]'
         }`}>
           Arena
@@ -112,7 +112,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <WalletIcon size={18} className={`flex-shrink-0 ${
-                theme === 'light' ? 'text-[#209db8]' : 'text-purple-400'
+                theme === 'light' ? 'text-[#8b5cf6]' : 'text-purple-400'
               }`} />
               <div className="min-w-0">
                 <p className={`text-xs ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Balance</p>
@@ -126,7 +126,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
               }}
               className={`px-3 py-2 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${
                 theme === 'light' 
-                  ? 'bg-[#209db8] hover:bg-[#1a7d94]' 
+                  ? 'bg-[#8b5cf6] hover:bg-[#7c3aed]' 
                   : 'bg-purple-600 hover:bg-purple-700'
               }`}
             >
@@ -146,7 +146,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
                   const baseClasses = `w-full flex items-center ${isCollapsed ? 'justify-center' : ''} p-3 rounded-lg transition-all duration-200`;
                   if (isActive) {
                     return theme === 'light'
-                      ? `${baseClasses} bg-[#209db8]/20 text-[#209db8]`
+                      ? `${baseClasses} bg-[#8b5cf6]/20 text-[#8b5cf6]`
                       : `${baseClasses} bg-purple-900/40 text-purple-400`;
                   }
                   return theme === 'light'
@@ -157,7 +157,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
               >
                 <span className={
                   location.pathname === item.path 
-                    ? (theme === 'light' ? 'text-[#209db8]' : 'text-purple-500')
+                    ? (theme === 'light' ? 'text-[#8b5cf6]' : 'text-purple-500')
                     : (theme === 'light' ? 'text-black' : 'text-gray-300')
                 }>
                   {item.icon}

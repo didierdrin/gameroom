@@ -218,7 +218,7 @@ export const LeaderboardPage = () => {
         <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
         <div className="flex items-center justify-center h-64">
           <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
-            theme === 'light' ? 'border-[#209db8]' : 'border-purple-500'
+            theme === 'light' ? 'border-[#8b5cf6]' : 'border-purple-500'
           }`}></div>
         </div>
       </div>
@@ -240,7 +240,7 @@ export const LeaderboardPage = () => {
       onClick={handleRefresh}
       className={`px-6 py-3 rounded-lg transition-colors text-white font-medium ${
         theme === 'light' 
-          ? 'bg-[#209db8] hover:bg-[#1a7d94]' 
+          ? 'bg-[#8b5cf6] hover:bg-[#7c3aed]' 
           : 'bg-purple-600 hover:bg-purple-700'
       }`}
     >
@@ -265,7 +265,7 @@ export const LeaderboardPage = () => {
         className={`px-4 sm:px-6 py-3 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto ${
           leaderboardType === 'global' 
             ? theme === 'light'
-              ? 'bg-[#209db8]/30 border-2 border-[#209db8] text-black'
+              ? 'bg-[#8b5cf6]/30 border-2 border-[#8b5cf6] text-black'
               : 'bg-purple-700/50 border-2 border-purple-500 text-white'
             : theme === 'light'
               ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50 text-black'
@@ -279,7 +279,7 @@ export const LeaderboardPage = () => {
         className={`px-4 sm:px-6 py-3 rounded-lg transition-colors flex items-center justify-center text-sm sm:text-base w-full sm:w-auto ${
           leaderboardType === 'friends' 
             ? theme === 'light'
-              ? 'bg-[#209db8]/30 border-2 border-[#209db8] text-black'
+              ? 'bg-[#8b5cf6]/30 border-2 border-[#8b5cf6] text-black'
               : 'bg-purple-700/50 border-2 border-purple-500 text-white'
             : theme === 'light'
               ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50 text-black'
@@ -301,7 +301,7 @@ export const LeaderboardPage = () => {
             ? 'bg-gray-300 cursor-not-allowed'
             : 'bg-gray-600 cursor-not-allowed'
           : theme === 'light'
-            ? 'bg-[#209db8] hover:bg-[#1a7d94]'
+            ? 'bg-[#8b5cf6] hover:bg-[#7c3aed]'
             : 'bg-purple-600 hover:bg-purple-700'
       }`}
     >
@@ -321,7 +321,7 @@ export const LeaderboardPage = () => {
           className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors flex-1 sm:flex-none min-w-[80px] ${
             gameFilter === game.id 
               ? theme === 'light'
-                ? 'bg-[#209db8]/30 border-2 border-[#209db8] text-black'
+                ? 'bg-[#8b5cf6]/30 border-2 border-[#8b5cf6] text-black'
                 : 'bg-purple-700/50 border border-purple-500 text-white'
               : theme === 'light'
                 ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50 text-black'

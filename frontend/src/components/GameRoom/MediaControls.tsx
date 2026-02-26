@@ -10,6 +10,7 @@ import {
   VolumeX,
   Users
 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 interface MediaAvailability {
   audio: boolean;
@@ -49,9 +50,14 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
   mediaAvailable,
   isInitializingMedia
 }) => {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
   return (
-    // <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-1 sm:gap-2 bg-gray-800 p-1 sm:p-2 rounded-lg border border-gray-700 shadow-lg z-50">
-    <div className="flex items-center gap-1 sm:gap-2 bg-gray-800 p-1 sm:p-2 rounded-lg border border-gray-700 shadow-lg">
+    // <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-1 sm:gap-2 ... z-50">
+    <div className={`flex items-center gap-1 sm:gap-2 p-1 sm:p-2 rounded-lg border shadow-lg ${
+      isLight ? 'bg-white border-gray-200' : 'bg-gray-800 border-gray-700'
+    }`}>
       
      
 
@@ -61,10 +67,10 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
   disabled={isInitializingMedia || !mediaAvailable.audio}
   className={`p-2 sm:p-3 rounded-lg transition-colors font-medium ${
     isInitializingMedia || !mediaAvailable.audio
-      ? 'bg-gray-600 cursor-not-allowed'
+      ? isLight ? 'bg-gray-200 cursor-not-allowed text-gray-500' : 'bg-gray-600 cursor-not-allowed text-gray-300'
       : inAudioCall
       ? 'bg-green-600 hover:bg-green-700 text-white'
-      : 'bg-purple-600 hover:bg-purple-700 text-white'
+      : isLight ? 'bg-[#8b5cf6] hover:bg-[#7c3aed] text-white' : 'bg-purple-600 hover:bg-purple-700 text-white'
   }`}
   title={
     !mediaAvailable.audio
@@ -96,10 +102,10 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
             disabled={!mediaAvailable.audio || isInitializingMedia}
             className={`p-2 sm:p-3 rounded-lg transition-colors ${
               !mediaAvailable.audio || isInitializingMedia
-                ? 'bg-gray-600 cursor-not-allowed'
+                ? isLight ? 'bg-gray-200 cursor-not-allowed text-gray-500' : 'bg-gray-600 cursor-not-allowed text-gray-300'
                 : audioEnabled
-                ? 'bg-gray-700 hover:bg-gray-600'
-                : 'bg-red-600 hover:bg-red-700'
+                ? isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-800' : 'bg-gray-700 hover:bg-gray-600 text-white'
+                : 'bg-red-600 hover:bg-red-700 text-white'
             }`}
             title={
               !mediaAvailable.audio
@@ -130,10 +136,10 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
             disabled={!mediaAvailable.video || isInitializingMedia}
             className={`p-2 sm:p-3 rounded-lg transition-colors ${
               !mediaAvailable.video || isInitializingMedia
-                ? 'bg-gray-600 cursor-not-allowed'
+                ? isLight ? 'bg-gray-200 cursor-not-allowed text-gray-500' : 'bg-gray-600 cursor-not-allowed text-gray-300'
                 : videoEnabled
-                ? 'bg-gray-700 hover:bg-gray-600'
-                : 'bg-red-600 hover:bg-red-700'
+                ? isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-800' : 'bg-gray-700 hover:bg-gray-600 text-white'
+                : 'bg-red-600 hover:bg-red-700 text-white'
             }`}
             title={
               !mediaAvailable.video
@@ -187,7 +193,9 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
           <button
             onClick={onToggleDeafen}
             className={`p-2 sm:p-3 rounded-lg transition-colors ${
-              isDeafened ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
+              isDeafened
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : isLight ? 'bg-gray-100 hover:bg-gray-200 text-gray-800' : 'bg-gray-700 hover:bg-gray-600 text-white'
             }`}
             title={isDeafened ? 'Undeafen' : 'Deafen'}
           >
@@ -209,7 +217,7 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
       {/* Leave Room Button */}
       <button
         onClick={onLeaveCall}
-        className="p-2 sm:p-3 rounded-lg bg-red-600 hover:bg-red-700 transition-colors"
+        className="p-2 sm:p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
         title="Leave room"
       >
         <PhoneIcon size={18} className="rotate-135 sm:hidden" />
@@ -218,9 +226,11 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
 
       {/* Participant Count */}
       {inAudioCall && remoteParticipants.length > 0 && (
-        <div className="hidden sm:flex items-center space-x-2 ml-2 px-2 py-1 bg-gray-700 rounded-lg">
-          <Users size={16} className="text-gray-400" />
-          <span className="text-sm text-gray-300">
+        <div className={`hidden sm:flex items-center space-x-2 ml-2 px-2 py-1 rounded-lg ${
+          isLight ? 'bg-gray-100 text-gray-600' : 'bg-gray-700'
+        }`}>
+          <Users size={16} className={isLight ? 'text-gray-600' : 'text-gray-400'} />
+          <span className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-300'}`}>
             {remoteParticipants.length + 1}
           </span>
         </div>
@@ -229,8 +239,8 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
       {/* Loading indicator */}
       {isInitializingMedia && (
         <div className="flex items-center ml-2">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-500 border-t-transparent"></div>
-          <span className="ml-2 text-xs text-gray-400 hidden sm:inline">
+          <div className={`animate-spin rounded-full h-4 w-4 border-2 border-t-transparent ${isLight ? 'border-[#8b5cf6]' : 'border-purple-500'}`}></div>
+          <span className={`ml-2 text-xs hidden sm:inline ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
             Loading...
           </span>
         </div>

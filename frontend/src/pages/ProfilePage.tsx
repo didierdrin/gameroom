@@ -266,9 +266,9 @@ useEffect(() => {
               : 'bg-gray-800/50 border-gray-700/50'
           }`}>
             <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
-              theme === 'light' ? 'bg-[#209db8]/30' : 'bg-purple-900/30'
+              theme === 'light' ? 'bg-[#8b5cf6]/30' : 'bg-purple-900/30'
             }`}>
-              <BarChart3Icon size={24} className={theme === 'light' ? 'text-[#209db8]' : 'text-purple-400'} />
+              <BarChart3Icon size={24} className={theme === 'light' ? 'text-[#8b5cf6]' : 'text-purple-400'} />
             </div>
             <div>
               <div className={`text-sm ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Total Score</div>
@@ -583,7 +583,7 @@ useEffect(() => {
         <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
           <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
-            theme === 'light' ? 'border-[#209db8]' : 'border-purple-500'
+            theme === 'light' ? 'border-[#8b5cf6]' : 'border-purple-500'
           }`}></div>
         </div>
       </div>

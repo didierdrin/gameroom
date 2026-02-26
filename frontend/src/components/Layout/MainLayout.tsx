@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { SunIcon, MoonIcon, MessageCircleIcon } from 'lucide-react';
+import { SunIcon, MoonIcon } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { BottomNavBar } from './BottomNavBar';
 import { useTheme } from '../../context/ThemeContext';
@@ -18,7 +18,7 @@ export function MainLayout() {
 
   return (
     <div className="flex flex-col min-h-screen w-full">
-      {/* Top navbar: full width at top on small screens */}
+      {/* Top navbar: visible on small and md; hidden on lg and up (sidebar shown) */}
       {!isGameRoom && (
         <header
           className={`sticky top-0 left-0 right-0 z-40 w-full flex items-center justify-between px-4 py-3 border-b shrink-0 lg:hidden ${
@@ -32,7 +32,7 @@ export function MainLayout() {
             onClick={() => navigate('/')}
             className={`text-xl font-bold ${
               theme === 'light'
-                ? 'text-[#209db8]'
+                ? 'text-[#8b5cf6]'
                 : 'text-purple-400'
             }`}
           >
@@ -81,22 +81,6 @@ export function MainLayout() {
         </div>
       )}
 
-      {/* FAB: Discussions (chat) - small screens only, above bottom nav */}
-      {!isGameRoom && (
-        <button
-          type="button"
-          onClick={() => navigate('/discussions')}
-          className={`lg:hidden fixed bottom-24 right-4 z-40 p-4 rounded-full shadow-lg transition-colors ${
-            theme === 'light'
-              ? 'bg-[#209db8] hover:bg-[#1a7d94] text-white'
-              : 'bg-purple-600 hover:bg-purple-700 text-white'
-          }`}
-          title="Discussions"
-          aria-label="Discussions"
-        >
-          <MessageCircleIcon size={24} />
-        </button>
-      )}
     </div>
   );
 } 

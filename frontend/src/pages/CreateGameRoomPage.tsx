@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SectionTitle } from '../components/UI/SectionTitle';
 import { CalendarIcon, ClockIcon, UsersIcon, EyeIcon, MicIcon, Copy, X, ExternalLink, DollarSign, ShuffleIcon } from 'lucide-react';
 import { useSocket } from '../SocketContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -92,11 +92,21 @@ export const CreateGameRoomPage = ({ onGameCreated }: CreateGameRoomPageProps) =
   const [createdGameData, setCreatedGameData] = useState<any>(null);
   
   const navigate = useNavigate();
+  const location = useLocation();
   const socket = useSocket();
   const { user } = useAuth();
   const { theme } = useTheme();
   const isMountedRef = useRef(true);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+
+  // Pre-fill trivia category when navigating from HomePage category cards
+  useEffect(() => {
+    const state = location.state as { category?: string } | null;
+    if (state?.category && TRIVIA_CATEGORIES.some((c) => c.value === state.category)) {
+      setGameType('trivia');
+      setTriviaCategory(state.category);
+    }
+  }, [location.state]);
 
   const gameTypes = [
     //{ id: 'chess', name: 'Chess', icon: '♟️' },
@@ -447,7 +457,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 className={`aspect-square flex flex-col items-center justify-center p-4 rounded-xl transition-all ${
                   gameType === game.id 
                     ? theme === 'light'
-                      ? 'bg-[#209db8]/30 border-2 border-[#209db8]'
+                      ? 'bg-[#8b5cf6]/30 border-2 border-[#8b5cf6]'
                       : 'bg-purple-700/50 border-2 border-purple-500'
                     : theme === 'light'
                       ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50'
@@ -467,7 +477,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         {gameType === 'trivia' && (
           <div className={`mb-8 p-4 rounded-xl border ${
             theme === 'light' 
-              ? 'bg-[#209db8]/10 border-[#209db8]/30' 
+              ? 'bg-[#8b5cf6]/10 border-[#8b5cf6]/30' 
               : 'bg-purple-700/10 border-purple-600/30'
           }`}>
             <h3 className={`font-medium mb-4 ${
@@ -494,7 +504,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   step="5"
                   className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
                     theme === 'light' 
-                      ? 'bg-gray-200 accent-[#209db8]' 
+                      ? 'bg-gray-200 accent-[#8b5cf6]' 
                       : 'bg-gray-700 accent-purple-500'
                   }`}
                   value={triviaQuestionCount} 
@@ -561,7 +571,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 onChange={(e) => setTriviaCategory(e.target.value)}
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
                   theme === 'light' 
-                    ? 'bg-white border-[#b4b4b4] focus:ring-[#209db8] text-black' 
+                    ? 'bg-white border-[#b4b4b4] focus:ring-[#8b5cf6] text-black' 
                     : 'bg-gray-700 border-gray-600 focus:ring-purple-500 text-white'
                 }`}
               >
@@ -587,7 +597,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               className={`flex items-center p-4 rounded-xl transition-all ${
                 gameMode === 'playNow' 
                   ? theme === 'light'
-                    ? 'bg-[#209db8]/30 border-2 border-[#209db8]'
+                    ? 'bg-[#8b5cf6]/30 border-2 border-[#8b5cf6]'
                     : 'bg-purple-700/50 border-2 border-purple-500'
                   : theme === 'light'
                     ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50'
@@ -595,7 +605,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               }`}
             >
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
-                theme === 'light' ? 'bg-[#209db8]/30' : 'bg-purple-600/30'
+                theme === 'light' ? 'bg-[#8b5cf6]/30' : 'bg-purple-600/30'
               }`}>
                 🎮
               </div>
@@ -616,7 +626,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               className={`flex items-center p-4 rounded-xl transition-all ${
                 gameMode === 'schedule' 
                   ? theme === 'light'
-                    ? 'bg-[#209db8]/30 border-2 border-[#209db8]'
+                    ? 'bg-[#8b5cf6]/30 border-2 border-[#8b5cf6]'
                     : 'bg-purple-700/50 border-2 border-purple-500'
                   : theme === 'light'
                     ? 'bg-white border border-[#b4b4b4] hover:bg-gray-50'
@@ -624,7 +634,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               }`}
             >
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
-                theme === 'light' ? 'bg-[#209db8]/30' : 'bg-purple-600/30'
+                theme === 'light' ? 'bg-[#8b5cf6]/30' : 'bg-purple-600/30'
               }`}>
                 📅
               </div>
@@ -662,7 +672,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     type="date" 
                     className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
                       theme === 'light' 
-                        ? 'bg-white border-[#b4b4b4] focus:ring-[#209db8] text-black' 
+                        ? 'bg-white border-[#b4b4b4] focus:ring-[#8b5cf6] text-black' 
                         : 'bg-gray-800 border-gray-700 focus:ring-purple-500 text-white'
                     }`}
                     value={scheduledDate} 
@@ -683,7 +693,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     type="time" 
                     className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
                       theme === 'light' 
-                        ? 'bg-white border-[#b4b4b4] focus:ring-[#209db8] text-black' 
+                        ? 'bg-white border-[#b4b4b4] focus:ring-[#8b5cf6] text-black' 
                         : 'bg-gray-800 border-gray-700 focus:ring-purple-500 text-white'
                     }`}
                     value={scheduledTime} 
@@ -711,7 +721,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 placeholder="Enter a name for your game room" 
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
                   theme === 'light' 
-                    ? 'bg-white border-[#b4b4b4] focus:ring-[#209db8] text-black' 
+                    ? 'bg-white border-[#b4b4b4] focus:ring-[#8b5cf6] text-black' 
                     : 'bg-gray-800 border-gray-700 focus:ring-purple-500 text-white'
                 }`}
                 value={roomName} 
@@ -727,7 +737,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 placeholder="Describe your game room..." 
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 resize-none h-24 ${
                   theme === 'light' 
-                    ? 'bg-white border-[#b4b4b4] focus:ring-[#209db8] text-black' 
+                    ? 'bg-white border-[#b4b4b4] focus:ring-[#8b5cf6] text-black' 
                     : 'bg-gray-800 border-gray-700 focus:ring-purple-500 text-white'
                 }`}
                 value={description} 
@@ -990,7 +1000,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   type="submit" 
   className={`px-8 py-4 text-white font-medium rounded-lg transition-all shadow-lg flex items-center justify-center ${
     theme === 'light' 
-      ? 'bg-[#209db8] hover:bg-[#1a7d94] hover:shadow-[#209db8]/25' 
+      ? 'bg-[#8b5cf6] hover:bg-[#7c3aed] hover:shadow-[#8b5cf6]/25' 
       : 'bg-purple-800 hover:bg-purple-900 hover:shadow-purple-500/25'
   } ${
     (isLoading || isJoiningRoom) ? 'opacity-75 cursor-not-allowed' : ''
@@ -1021,7 +1031,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     <div className="text-center">
       <svg 
         className={`animate-spin h-12 w-12 mx-auto mb-4 ${
-          theme === 'light' ? 'text-[#209db8]' : 'text-purple-500'
+          theme === 'light' ? 'text-[#8b5cf6]' : 'text-purple-500'
         }`} 
         xmlns="http://www.w3.org/2000/svg" 
         fill="none" 
