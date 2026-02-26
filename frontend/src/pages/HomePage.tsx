@@ -410,12 +410,12 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
   // Online Friends Component
   const OnlineFriends = () => {
     return (
-      <div className={`rounded-lg border p-4 ${
+      <div className={`rounded-xl border py-2 px-3 ${
         theme === 'light' 
-          ? 'bg-white border-gray-300' 
+          ? 'bg-transparent border-purple-500' 
           : 'bg-gray-800/50 border-gray-700'
       }`}>
-        <h3 className={`text-sm font-semibold mb-3 ${
+        <h3 className={`text-sm font-semibold mb-2 ${
           theme === 'light' ? 'text-black' : 'text-white'
         }`}>
           Online Friends
