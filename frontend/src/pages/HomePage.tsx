@@ -416,7 +416,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
           : 'bg-gray-800/50 border-gray-700'
       }`}>
         <h3 className={`text-sm font-semibold mb-2 ${
-          theme === 'light' ? 'text-black' : 'text-white'
+          theme === 'light' ? 'text-white' : 'text-white'
         }`}>
           Online Friends
         </h3>
