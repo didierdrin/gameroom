@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrophyIcon, MedalIcon, AwardIcon, UsersIcon, RefreshCwIcon } from 'lucide-react';
 import { SectionTitle } from '../components/UI/SectionTitle';
+import { LeaderboardPageSkeleton } from '../components/UI/LeaderboardPageSkeleton';
 import { useTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom'; 
 interface LeaderboardPlayer {
@@ -213,16 +214,7 @@ export const LeaderboardPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
-        <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
-        <div className="flex items-center justify-center h-64">
-          <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
-            theme === 'light' ? 'border-[#8b5cf6]' : 'border-purple-500'
-          }`}></div>
-        </div>
-      </div>
-    );
+    return <LeaderboardPageSkeleton />;
   }
 
   if (error) {

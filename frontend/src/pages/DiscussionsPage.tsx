@@ -3,6 +3,7 @@ import { SendIcon, UserIcon, PlusIcon, UsersIcon, ArrowLeft, XIcon } from 'lucid
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import apiClient from '../utils/axiosConfig';
+import { DiscussionListSkeleton } from '../components/UI/DiscussionListSkeleton';
 
 interface Conversation {
   _id: string;
@@ -255,7 +256,7 @@ export const DiscussionsPage = () => {
         
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className={`p-4 ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Loading conversations...</div>
+            <DiscussionListSkeleton />
           ) : showAddDialog ? (
             <div className="p-4">
               <input

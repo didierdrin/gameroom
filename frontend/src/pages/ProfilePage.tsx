@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom'; 
 import { SectionTitle } from '../components/UI/SectionTitle';
+import { ProfilePageSkeleton } from '../components/UI/ProfilePageSkeleton';
 import { TrophyIcon, BarChart3Icon, Search, StarIcon, EditIcon, RefreshCwIcon, TrendingUpIcon, CalendarIcon, LogOutIcon, XIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -578,16 +579,7 @@ useEffect(() => {
   };
 
   if (loading) {
-    return (
-      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
-        <SectionTitle title="Game Profile" subtitle="View your gaming stats, achievements, and history" />
-        <div className="flex items-center justify-center h-64">
-          <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
-            theme === 'light' ? 'border-[#8b5cf6]' : 'border-purple-500'
-          }`}></div>
-        </div>
-      </div>
-    );
+    return <ProfilePageSkeleton />;
   }
 
   if (error || !userData) {

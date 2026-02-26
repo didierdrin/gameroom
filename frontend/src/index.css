@@ -130,6 +130,28 @@ body {
   animation: roll 0.5s linear infinite;
 }
 
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base, #e2e8f0) 25%,
+    var(--skeleton-highlight, #f1f5f9) 50%,
+    var(--skeleton-base, #e2e8f0) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+[data-theme="dark"] .skeleton-shimmer {
+  --skeleton-base: #334155;
+  --skeleton-highlight: #475569;
+}
+
 .shadow-glow {
   box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1), 0 0 5px 5px rgba(0, 255, 0, 0.5); /* Adjust colors and opacity as needed */
   transition: box-shadow 0.3s ease;

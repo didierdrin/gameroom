@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { DicesIcon, PlusCircleIcon, BarChart3Icon, UserIcon, ChevronLeftIcon, ChevronRightIcon, WalletIcon, MessageCircleIcon, SunIcon, MoonIcon } from 'lucide-react';
+import { DicesIcon, PlusCircleIcon, BarChart3Icon, UserIcon, ChevronLeftIcon, ChevronRightIcon, MessageCircleIcon, SunIcon, MoonIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useState, useEffect } from 'react';
@@ -23,7 +23,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
   const navigate = useNavigate();
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [balance, setBalance] = useState(0);
+  const [tickets, setTickets] = useState(0);
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -31,10 +31,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
         try {
           const res = await apiClient.get<UserApiResponse>(`/user/${user.id}`);
           if (res.data.success) {
-            setBalance(res.data.data.balance || 0);
+            setTickets(res.data.data.balance ?? 0);
           }
         } catch (error) {
-          console.error("Failed to fetch balance in sidebar", error);
+          console.error("Failed to fetch tickets in sidebar", error);
         }
       }
     };
@@ -102,7 +102,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
         {!isCollapsed && <p className={`text-center text-sm ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Game Room</p>}
       </div>
 
-      {/* Balance & Deposit Section */}
+      {/* Tickets & Deposit Section */}
       {!isCollapsed && user && (
         <div className={`mb-6 rounded-xl p-3 border ${
           theme === 'light' 
@@ -111,12 +111,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, onLinkClick }: SidebarP
         }`}>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <WalletIcon size={18} className={`flex-shrink-0 ${
-                theme === 'light' ? 'text-[#8b5cf6]' : 'text-purple-400'
-              }`} />
+              <img src="/assets/ticket-icon.png" alt="Tickets" className="w-[18px] h-[18px] flex-shrink-0 object-contain" />
               <div className="min-w-0">
-                <p className={`text-xs ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Balance</p>
-                <p className={`text-lg font-bold ${theme === 'light' ? 'text-black' : 'text-white'}`}>${balance.toFixed(2)}</p>
+                <p className={`text-xs ${theme === 'light' ? 'text-[#b4b4b4]' : 'text-gray-400'}`}>Tickets</p>
+                <p className={`text-lg font-bold ${theme === 'light' ? 'text-black' : 'text-white'}`}>{tickets.toLocaleString()}</p>
               </div>
             </div>
             <button

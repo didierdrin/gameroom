@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SearchIcon, FilterIcon, ChevronDownIcon, CheckIcon, SunIcon, MoonIcon, XIcon, DicesIcon, PlusCircleIcon, BarChart3Icon, UserIcon, MessageCircleIcon } from "lucide-react";
 import io from "socket.io-client";
 import { GameRoomList } from "../components/GameRoom/GameRoomList";
+import { GameRoomListSkeleton } from "../components/GameRoom/GameRoomListSkeleton";
 import { GameRoomJoinModal } from "../components/GameRoom/GameRoomJoinModal";
 import { SectionTitle } from "../components/UI/SectionTitle";
 import { useSocket } from "../SocketContext";
@@ -747,11 +748,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
           subtitle="Join an active game room and start playing right away!" 
         />
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
-              theme === 'light' ? 'border-[#8b5cf6]' : 'border-purple-500'
-            }`}></div>
-          </div>
+          <GameRoomListSkeleton />
         ) : error ? (
           <div className={`text-center py-8 ${theme === 'light' ? 'text-[#ff0000]' : 'text-red-500'}`}>{error}</div>
         ) : filteredLiveRooms.length > 0 ? (
@@ -780,11 +777,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
           subtitle="Game rooms scheduled to start soon. Register now to get notified!"
         />
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className={`w-12 h-12 border-4 border-t-transparent rounded-full animate-spin ${
-              theme === 'light' ? 'border-[#8b5cf6]' : 'border-yellow-500'
-            }`}></div>
-          </div>
+          <GameRoomListSkeleton />
         ) : error ? (
           <div className={`text-center py-8 ${theme === 'light' ? 'text-[#ff0000]' : 'text-red-500'}`}>{error}</div>
         ) : filteredUpcomingRooms.length > 0 ? (
