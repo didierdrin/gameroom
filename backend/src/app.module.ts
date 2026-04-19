@@ -8,10 +8,12 @@ import { ChessModule } from './chess/chess.module';
 import { TriviaController } from './trivia/trivia.controller';
 import { TriviaModule } from './trivia/trivia.module';
 import { DiscussionModule } from './discussion/discussion.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
     MongooseModule.forRoot("mongodb+srv://nsedidier:zxqWjmMu7RYg7u0B@cluster0.eopcqfs.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"),
+    NotificationsModule,
     GameModule,
     UserModule,
     AuthModule,

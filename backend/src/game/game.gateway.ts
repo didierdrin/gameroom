@@ -6,6 +6,7 @@ import { CreateGameDto, JoinGameDto, MoveCoinDto, RollDiceDto } from './dto/game
 import { UserService } from '../user/user.service';
 import { ChessService } from 'src/chess/chess.service';
 import { TriviaService } from '../trivia/trivia.service';
+import { NotificationService } from '../notifications/notification.service';
 
 @WebSocketGateway({
   cors: {
@@ -30,6 +31,7 @@ export class GameGateway {
     private readonly userService: UserService,
     private readonly chessService: ChessService,
     private readonly triviaService: TriviaService, // Inject TriviaService
+    private readonly notificationService: NotificationService,
   ) { }
 
   afterInit() {
@@ -50,6 +52,15 @@ export class GameGateway {
     const rooms = await this.gameService.getActiveGameRooms();
     this.server.emit('gameRoomsList', { rooms });
 
+  }
+
+  @SubscribeMessage('registerFCMToken')
+  async handleRegisterFCMToken(@MessageBody() data: { playerId: string; token: string }) {
+    try {
+      await this.notificationService.saveToken(data.playerId, data.token);
+    } catch (e) {
+      console.error('registerFCMToken error:', (e as Error).message);
+    }
   }
 
   @SubscribeMessage('createGame')
@@ -94,14 +105,44 @@ export class GameGateway {
           roomId: data.roomId,
           currentPlayers: result.game.currentPlayers
         });
+
+        const roomDoc = await this.gameService.getGameRoomById(data.roomId);
+        if (roomDoc) {
+          const recipientIds = new Set<string>([
+            ...(roomDoc.playerIds || []).map(String),
+            ...(roomDoc.spectatorIds || []).map(String),
+          ]);
+          recipientIds.delete(String(data.playerId));
+          for (const pid of recipientIds) {
+            await this.notificationService.notifyPlayer(pid, 'PLAYER_JOINED_ROOM', {
+              roomId: data.roomId,
+              joinerName: data.playerName || data.playerId,
+              roomName: result.game.name,
+            });
+          }
+        }
       }
 
       const gameState = await this.gameService.getGameState(data.roomId);
+      const outbound =
+        gameState.gameType === 'trivia'
+          ? this.gameService.sanitizeGameStateForClient(gameState)
+          : gameState;
       this.server.to(data.roomId).emit('gameState', {
-        ...gameState,
+        ...outbound,
         gameType: result.game.gameType,
         roomName: result.game.name,
       });
+
+      if (
+        gameState.gameType === 'trivia' &&
+        gameState.gameStarted &&
+        !gameState.gameOver &&
+        gameState.triviaState?.questions?.length
+      ) {
+        const payload = this.gameService.getTriviaQuestionPayloadFromState(gameState);
+        if (payload) client.emit('triviaQuestion', payload);
+      }
 
       const rooms = await this.gameService.getActiveGameRooms();
       this.server.emit('gameRoomsList', { rooms });
@@ -133,14 +174,46 @@ export class GameGateway {
         roomId: data.roomId
       });
 
+      if (result.isNewJoin) {
+        const roomDoc = await this.gameService.getGameRoomById(data.roomId);
+        if (roomDoc) {
+          const recipientIds = new Set<string>([
+            ...(roomDoc.playerIds || []).map(String),
+            ...(roomDoc.spectatorIds || []).map(String),
+          ]);
+          recipientIds.delete(String(data.playerId));
+          for (const pid of recipientIds) {
+            await this.notificationService.notifyPlayer(pid, 'SPECTATOR_JOINED_ROOM', {
+              roomId: data.roomId,
+              joinerName: data.playerName || data.playerId,
+              roomName: result.game.name,
+            });
+          }
+        }
+      }
+
       // Send current game state to spectator
       const gameState = await this.gameService.getGameState(data.roomId);
+      const outbound =
+        gameState.gameType === 'trivia'
+          ? this.gameService.sanitizeGameStateForClient(gameState)
+          : gameState;
       client.emit('gameState', {
-        ...gameState,
+        ...outbound,
         gameType: result.game.gameType,
         roomName: result.game.name,
         isSpectator: true
       });
+
+      if (
+        gameState.gameType === 'trivia' &&
+        gameState.gameStarted &&
+        !gameState.gameOver &&
+        gameState.triviaState?.questions?.length
+      ) {
+        const payload = this.gameService.getTriviaQuestionPayloadFromState(gameState);
+        if (payload) client.emit('triviaQuestion', payload);
+      }
 
     } catch (error) {
       console.error('Join as spectator error:', error.message);
@@ -225,10 +298,12 @@ export class GameGateway {
         currentTurn: gameState.currentTurn,
         gameStarted: gameState.gameStarted
       });
-      this.server.to(data.roomId).emit('gameState', {
-        ...gameState,
-        gameStarted: true,
-      });
+      if (gameState.gameType !== 'trivia') {
+        this.server.to(data.roomId).emit('gameState', {
+          ...gameState,
+          gameStarted: true,
+        });
+      }
       const rooms = await this.gameService.getActiveGameRooms();
       this.server.emit('gameRoomsList', { rooms });
     } catch (error) {
@@ -260,7 +335,20 @@ export class GameGateway {
         gameStarted: gameState.gameStarted,
         gameOver: gameState.gameOver
       });
-      client.emit('gameState', gameState);
+      const outbound =
+        gameState.gameType === 'trivia'
+          ? this.gameService.sanitizeGameStateForClient(gameState)
+          : gameState;
+      client.emit('gameState', outbound);
+      if (
+        gameState.gameType === 'trivia' &&
+        gameState.gameStarted &&
+        !gameState.gameOver &&
+        gameState.triviaState?.questions?.length
+      ) {
+        const payload = this.gameService.getTriviaQuestionPayloadFromState(gameState);
+        if (payload) client.emit('triviaQuestion', payload);
+      }
     } catch (error) {
       console.error('Get game state error:', error.message);
       client.emit('error', { message: 'Failed to fetch game state' });
@@ -306,7 +394,11 @@ export class GameGateway {
 
       // Get and emit updated game state
       const gameState = await this.gameService.getGameState(data.roomId);
-      this.server.to(data.roomId).emit('gameState', gameState);
+      const outbound =
+        gameState.gameType === 'trivia'
+          ? this.gameService.sanitizeGameStateForClient(gameState)
+          : gameState;
+      this.server.to(data.roomId).emit('gameState', outbound);
 
       console.log('Trivia answer processed with time-based scoring:', {
         playerId: data.playerId,
@@ -377,7 +469,11 @@ export class GameGateway {
 
       // Get and emit updated game state
       const gameState = await this.gameService.getGameState(data.roomId);
-      this.server.to(data.roomId).emit('gameState', gameState);
+      const outbound =
+        gameState.gameType === 'trivia'
+          ? this.gameService.sanitizeGameStateForClient(gameState)
+          : gameState;
+      this.server.to(data.roomId).emit('gameState', outbound);
 
       // If game is over, emit game over event
       if (gameState.gameOver) {
@@ -710,8 +806,12 @@ export class GameGateway {
         questionCount: gameState.triviaState?.questions.length || 0
       });
 
-      // Send the fresh game state
-      this.server.to(data.roomId).emit('gameState', gameState);
+      const outbound = this.gameService.sanitizeGameStateForClient(gameState);
+      this.server.to(data.roomId).emit('gameState', outbound);
+
+      if (gameState.gameStarted && !gameState.gameOver) {
+        await this.gameService.beginTriviaQuestionPhase(data.roomId);
+      }
 
       console.log(`Trivia questions regenerated for room ${data.roomId}`);
 
@@ -721,41 +821,6 @@ export class GameGateway {
         message: error.message || 'Failed to regenerate questions',
         type: 'regenerateQuestionsError'
       });
-    }
-  }
-
-
-
-  @SubscribeMessage('triviaAutoSubmit')
-  async handleTriviaAutoSubmit(
-    @MessageBody() data: {
-      roomId: string;
-      playerId: string;
-      questionId: string;
-    },
-    @ConnectedSocket() client: Socket
-  ) {
-    try {
-      console.log('🎯 Auto-submit notification received:', {
-        playerId: data.playerId,
-        roomId: data.roomId,
-        questionId: data.questionId,
-        timestamp: new Date().toISOString()
-      });
-
-      // Log the auto-submission for tracking
-      console.log(`⏰ Player ${data.playerId} auto-submitted due to timeout for question ${data.questionId}`);
-
-      // You can also emit a notification to all players if needed
-      this.server.to(data.roomId).emit('playerAutoSubmitted', {
-        playerId: data.playerId,
-        questionId: data.questionId,
-        message: 'Time expired - answer auto-submitted'
-      });
-
-    } catch (error) {
-      console.error('Error handling trivia auto-submit:', error.message);
-      // Don't emit error to client as this is just a notification
     }
   }
 

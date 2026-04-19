@@ -79,4 +79,16 @@ export class RedisService implements OnModuleInit {
   async lrange(key: string, start: number, stop: number): Promise<string[]> {
     return await this.client.lRange(key, start, stop);
   }
+
+  async sAdd(key: string, member: string): Promise<number> {
+    return await this.client.sAdd(key, member);
+  }
+
+  async sMembers(key: string): Promise<string[]> {
+    return await this.client.sMembers(key);
+  }
+
+  async sRem(key: string, member: string): Promise<number> {
+    return await this.client.sRem(key, member);
+  }
 }
