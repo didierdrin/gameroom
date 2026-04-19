@@ -53,10 +53,13 @@ interface User {
   avatar?: string;
 }
 
+type UserProfileApiResponse = ApiResponse<{ avatar?: string }>;
 
 export const DiscussionsPage = () => {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const socket = useSocket();
+  const socketConnected = useSocketConnection();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -93,7 +96,9 @@ export const DiscussionsPage = () => {
               const otherParticipantId = participants.find(p => p !== user?.id);
               
               if (otherParticipantId) {
-                const userRes = await apiClient.get(`/user/${otherParticipantId}/profile`);
+                const userRes = await apiClient.get<UserProfileApiResponse>(
+                  `/user/${otherParticipantId}/profile`
+                );
                 if (userRes.data.success && userRes.data.data) {
                   return { ...conv, avatar: userRes.data.data.avatar };
                 }
