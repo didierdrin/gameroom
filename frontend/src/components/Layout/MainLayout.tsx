@@ -42,7 +42,7 @@ export function MainLayout() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen w-full">
+    <div className="relative flex min-h-screen w-full min-w-0 flex-col bg-transparent">
       {/* Top navbar: visible on small and md; hidden on lg and up (sidebar shown) */}
       {!isGameRoom && (
         <header

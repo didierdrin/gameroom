@@ -491,7 +491,7 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
   };
 
   return (
-    <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
+    <div className="h-screen overflow-y-auto bg-transparent p-6 pb-20">
       {/* Online Friends below AppBar on Small Devices */}
       <div className="lg:hidden -mt-2 mb-3 md:mb-6">
         <OnlineFriends />

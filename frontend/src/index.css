@@ -61,6 +61,76 @@ body {
 .bg-gray-850 {
   background-color: #151c2c;
 }
+
+/* App shell ambient layers (plain CSS — reliable vs long Tailwind arbitrary bg) */
+/* Bottom-right corner only (not a full-height right stripe) */
+.ambient-light {
+  background: radial-gradient(
+    ellipse 100% 78% at 100% 100%,
+    rgba(109, 40, 217, 0.28),
+    rgba(167, 139, 250, 0.09) 48%,
+    transparent 72%
+  );
+}
+
+/* Same geometry as .ambient-light; slightly stronger violets for gray-900 */
+.ambient-dark {
+  background: radial-gradient(
+    ellipse 95% 125% at 100% 40%,
+    rgba(139, 92, 246, 0.34),
+    rgba(109, 40, 217, 0.12) 45%,
+    transparent 62%
+  );
+}
+
+/* Light: corner wash only — radial mask + diagonal tint (no full-height right edge) */
+.ambient-fog-light {
+  mask-image: radial-gradient(
+    ellipse 92% 72% at 100% 100%,
+    black 0%,
+    black 28%,
+    transparent 70%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 92% 72% at 100% 100%,
+    black 0%,
+    black 28%,
+    transparent 70%
+  );
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: 0 0;
+  -webkit-mask-position: 0 0;
+  background: linear-gradient(
+    to top left,
+    rgba(124, 58, 210, 0.26) 0%,
+    rgba(167, 139, 250, 0.1) 42%,
+    transparent 68%
+  );
+}
+
+/* Dark: blur + violet wash (gradient gives blur something to read on gray-900) */
+.ambient-fog-dark {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  mask-image: linear-gradient(to right, transparent 0%, transparent 22%, black 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 22%, black 100%);
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: 0 0;
+  -webkit-mask-position: 0 0;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(167, 139, 250, 0.08),
+    rgba(124, 58, 210, 0.22)
+  );
+}
+
 /* Mobile-first responsive styles */
 @media (max-width: 640px) {
   .container {

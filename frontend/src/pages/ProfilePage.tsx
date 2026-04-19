@@ -51,6 +51,123 @@ interface SearchResultUser {
   avatar?: string;
 }
 
+/** Static multi-avatar art from `/public/multi-avatars` (pages 1–2 in edit profile). */
+const MULTI_AVATAR_FILES: string[] = [
+  'Multiavatar-Broomhilda.png',
+  'Multiavatar-Bugz Bunuel.png',
+  'Multiavatar-Dogecoin.png',
+  'Multiavatar-ETH.png',
+  'Multiavatar-Ebenezer Dimmsdale.png',
+  'Multiavatar-Emma.png',
+  'Multiavatar-Guadalajara.png',
+  'Multiavatar-Heep Starr.png',
+  'Multiavatar-Hiro.png',
+  'Multiavatar-Hitpagadee.png',
+  'Multiavatar-Huxley.png',
+  'Multiavatar-Indoqueen.png',
+  'Multiavatar-Jekaterina.png',
+  'Multiavatar-Lorelei.png',
+  'Multiavatar-Maggo.png',
+  'Multiavatar-Marsellus Coolidge.png',
+  'Multiavatar-Moby Dick.png',
+  'Multiavatar-Mor.png',
+  'Multiavatar-Music Razor.png',
+  'Multiavatar-Oracle.png',
+  'Multiavatar-Orbital.png',
+  'Multiavatar-Pablo Shimada.png',
+  'Multiavatar-Protagonist.png',
+  'Multiavatar-Rhett James.png',
+  'Multiavatar-Shack.png',
+  'Multiavatar-Squarepusher.png',
+  'Multiavatar-Sugar Crash.png',
+  'Multiavatar-Weeberblitz.png',
+  'Multiavatar-Wunderlick.png',
+  'Multiavatar-Zen Flash.png',
+];
+
+const DICEBEAR_AVATAR_STYLES = [
+  'adventurer',
+  'adventurer-neutral',
+  'avataaars',
+  'avataaars-neutral',
+  'big-ears',
+  'big-ears-neutral',
+  'big-smile',
+  'bottts',
+  'bottts-neutral',
+  'croodles',
+  'croodles-neutral',
+  'fun-emoji',
+  'icons',
+  'identicon',
+  'initials',
+  'lorelei',
+] as const;
+
+const MULTI_AVATAR_PAGE_SIZE = 16;
+const DICEBEAR_PAGE_SIZE = 8;
+const AVATAR_PICKER_TOTAL_PAGES = 4;
+
+const multiAvatarPublicSrc = (filename: string) =>
+  `/multi-avatars/${encodeURIComponent(filename)}`;
+
+const multiAvatarFileSet = new Set(MULTI_AVATAR_FILES);
+
+function parseStoredAvatar(avatarUrl?: string): {
+  avatarKind: 'multi' | 'dicebear';
+  multiAvatarFile: string | null;
+  selectedAvatarStyle: string;
+  selectedAvatarSeed: string;
+} {
+  const defaults = {
+    avatarKind: 'dicebear' as const,
+    multiAvatarFile: null as string | null,
+    selectedAvatarStyle: 'avataaars',
+    selectedAvatarSeed: '',
+  };
+  if (!avatarUrl) return defaults;
+
+  if (avatarUrl.includes('multi-avatars')) {
+    try {
+      const u = new URL(avatarUrl, 'http://local.invalid');
+      const seg = u.pathname.split('/').filter(Boolean).pop();
+      if (seg) {
+        const decoded = decodeURIComponent(seg);
+        if (multiAvatarFileSet.has(decoded)) {
+          return {
+            avatarKind: 'multi',
+            multiAvatarFile: decoded,
+            selectedAvatarStyle: defaults.selectedAvatarStyle,
+            selectedAvatarSeed: defaults.selectedAvatarSeed,
+          };
+        }
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+
+  let selectedAvatarStyle = 'avataaars';
+  let selectedAvatarSeed = '';
+  try {
+    const url = new URL(avatarUrl);
+    const pathParts = url.pathname.split('/');
+    if (pathParts.length >= 3) {
+      selectedAvatarStyle = pathParts[2] || selectedAvatarStyle;
+    }
+    const seedParam = url.searchParams.get('seed');
+    if (seedParam) selectedAvatarSeed = seedParam;
+  } catch {
+    /* keep defaults */
+  }
+  return {
+    avatarKind: 'dicebear',
+    multiAvatarFile: null,
+    selectedAvatarStyle,
+    selectedAvatarSeed,
+  };
+}
+
 interface UserProfileData {
   _id: string;
   username: string;
@@ -111,15 +228,13 @@ export const ProfilePage = () => {
     username: '',
     email: '',
     selectedAvatarStyle: 'avataaars',
-    selectedAvatarSeed: ''
+    selectedAvatarSeed: '',
+    avatarKind: 'dicebear' as 'dicebear' | 'multi',
+    multiAvatarFile: null as string | null,
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  // New state for stable avatar browsing
-  const [avatarSeed, setAvatarSeed] = useState(0);
-
-  // Avatar options for selection
-  const avatarOptions = ['adventurer', 'adventurer-neutral', 'avataaars', 'avataaars-neutral', 'big-ears', 'big-ears-neutral', 'big-smile', 'bottts', 'bottts-neutral', 'croodles', 'croodles-neutral', 'fun-emoji', 'icons', 'identicon', 'initials', 'lorelei'];
+  const [editAvatarPage, setEditAvatarPage] = useState(1);
 
   const { username: paramUsername } = useParams<{ username?: string }>();
   const [currentPage, setCurrentPage] = useState(1);
@@ -584,7 +699,7 @@ useEffect(() => {
 
   if (error || !userData) {
     return (
-      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
+      <div className="h-screen overflow-y-auto bg-transparent p-6 pb-20">
         <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
         <div className="flex items-center justify-center h-64">
           <div className="text-red-400">
@@ -628,30 +743,18 @@ useEffect(() => {
 
   const openEditModal = () => {
     if (!isOwnProfile || !userData) return;
-    
-    // Try to parse style and seed from existing avatar URL
-    let parsedStyle = 'avataaars';
-    let parsedSeed = '';
-    if (userData.avatar) {
-      try {
-        const url = new URL(userData.avatar);
-        const pathParts = url.pathname.split('/');
-        if (pathParts.length >= 3) {
-          parsedStyle = pathParts[2] || parsedStyle;
-        }
-        const seedParam = url.searchParams.get('seed');
-        if (seedParam) parsedSeed = seedParam;
-      } catch {}
-    }
+
+    const parsed = parseStoredAvatar(userData.avatar);
 
     setEditForm({
       username: userData.username,
       email: authUser?.email || '',
-      selectedAvatarStyle: parsedStyle,
-      selectedAvatarSeed: parsedSeed
+      selectedAvatarStyle: parsed.selectedAvatarStyle,
+      selectedAvatarSeed: parsed.selectedAvatarSeed,
+      avatarKind: parsed.avatarKind,
+      multiAvatarFile: parsed.multiAvatarFile,
     });
-    // Reset avatar seed when opening modal
-    setAvatarSeed(0);
+    setEditAvatarPage(1);
     setEditError(null);
     setShowEditModal(true);
   };
@@ -669,9 +772,12 @@ useEffect(() => {
     setEditError(null);
   
     try {
-      // Build a persistent avatar URL using the exact selected style and seed
-      const effectiveSeed = editForm.selectedAvatarSeed || (editForm.username || '');
-      const avatarUrl = `https://api.dicebear.com/7.x/${editForm.selectedAvatarStyle}/svg?seed=${encodeURIComponent(effectiveSeed)}`;
+      const avatarUrl =
+        editForm.avatarKind === 'multi' && editForm.multiAvatarFile
+          ? new URL(multiAvatarPublicSrc(editForm.multiAvatarFile), window.location.origin).href
+          : `https://api.dicebear.com/7.x/${editForm.selectedAvatarStyle}/svg?seed=${encodeURIComponent(
+              editForm.selectedAvatarSeed || editForm.username || ''
+            )}`;
 
       const response = await fetch(`https://alu-globe-gameroom.onrender.com/user/${userData._id}/profile`, {
         method: 'PUT',
@@ -717,10 +823,40 @@ useEffect(() => {
   };
 
   
-  // Edit Profile Modal Component - FIXED AVATAR VERSION
-const EditProfileModal = () => (
+  // Edit Profile Modal — pages 1–2: multi-avatars from /public/multi-avatars; pages 3–4: Dicebear styles
+  const EditProfileModal = () => {
+    const pickerItems =
+      editAvatarPage <= 2
+        ? {
+            type: 'multi' as const,
+            files: MULTI_AVATAR_FILES.slice(
+              (editAvatarPage - 1) * MULTI_AVATAR_PAGE_SIZE,
+              editAvatarPage * MULTI_AVATAR_PAGE_SIZE
+            ),
+          }
+        : {
+            type: 'dicebear' as const,
+            styles: DICEBEAR_AVATAR_STYLES.slice(
+              (editAvatarPage - 3) * DICEBEAR_PAGE_SIZE,
+              (editAvatarPage - 3) * DICEBEAR_PAGE_SIZE + DICEBEAR_PAGE_SIZE
+            ),
+          };
+
+    const previewSrc =
+      editForm.avatarKind === 'multi' && editForm.multiAvatarFile
+        ? multiAvatarPublicSrc(editForm.multiAvatarFile)
+        : `https://api.dicebear.com/7.x/${editForm.selectedAvatarStyle}/svg?seed=${encodeURIComponent(
+            editForm.selectedAvatarSeed || editForm.username || userData?.username || 'default'
+          )}`;
+
+    const pickerHint =
+      editAvatarPage <= 2
+        ? `Multi avatars · page ${editAvatarPage} of 2`
+        : `Generated styles · page ${editAvatarPage - 2} of 2`;
+
+    return (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-gray-900 rounded-2xl border border-gray-700 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div className="bg-gray-900 rounded-2xl border border-gray-700 p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Edit Profile</h2>
         <button onClick={closeEditModal} className="text-gray-400 hover:text-white transition-colors">
@@ -732,9 +868,9 @@ const EditProfileModal = () => (
         {/* Avatar Selection Row */}
         <div>
           <label className="block text-sm font-medium mb-3">Avatar</label>
-          <div className="flex items-start space-x-6">
+          <div className="flex flex-col sm:flex-row items-start gap-6">
             {/* Current Avatar */}
-            <div className="text-center flex-shrink-0">
+            <div className="text-center flex-shrink-0 mx-auto sm:mx-0">
               <img
                 src={userData?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userData?.username || '')}`}
                 alt="Current"
@@ -744,51 +880,135 @@ const EditProfileModal = () => (
             </div>
             
             {/* Avatar Options */}
-            <div className="flex-1 min-w-0">
-              <div className="text-sm text-gray-400 mb-3">Choose Avatar Style</div>
-              
-              {/* 16 Avatar Options in 4x4 Grid */}
+            <div className="flex-1 min-w-0 w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <div className="text-sm text-gray-400">Choose an avatar</div>
+                <div className="text-xs text-gray-500">{pickerHint}</div>
+              </div>
+
               <div className="grid grid-cols-4 gap-3">
-                {avatarOptions.map((style) => {
-                  // Use the current username or seed for consistent avatars
-                  const seedToUse = editForm.selectedAvatarSeed || editForm.username || userData?.username || 'default';
-                  
-                  return (
-                    <div key={style} className="text-center">
-                      <button
-                        type="button"
-                        onClick={() => setEditForm(prev => ({ ...prev, selectedAvatarStyle: style }))}
-                        className={`w-16 h-16 rounded-full border-2 transition-all relative overflow-hidden ${
-                          editForm.selectedAvatarStyle === style
-                            ? 'border-purple-500 ring-2 ring-purple-300'
-                            : 'border-gray-600 hover:border-gray-500'
-                        }`}
-                      >
-                        <img
-                          src={`https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seedToUse)}`}
-                          alt={`Style ${style}`}
-                          className="w-full h-full rounded-full object-cover"
-                          loading="lazy"
-                        />
-                        {editForm.selectedAvatarStyle === style && (
-                          <div className="absolute -top-1 -right-1 bg-purple-500 rounded-full p-1">
-                            <CheckIcon size={12} className="text-white" />
-                          </div>
-                        )}
-                      </button>
-                      <p className="text-xs text-gray-400 mt-1 capitalize truncate">{style.replace('-', ' ')}</p>
-                    </div>
-                  );
-                })}
+                {pickerItems.type === 'multi'
+                  ? pickerItems.files.map((file) => {
+                      const label = file.replace(/^Multiavatar-/, '').replace(/\.png$/i, '');
+                      const selected =
+                        editForm.avatarKind === 'multi' && editForm.multiAvatarFile === file;
+                      return (
+                        <div key={file} className="text-center">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                avatarKind: 'multi',
+                                multiAvatarFile: file,
+                              }))
+                            }
+                            className={`w-16 h-16 rounded-full border-2 transition-all relative overflow-hidden bg-gray-800 ${
+                              selected
+                                ? 'border-purple-500 ring-2 ring-purple-300'
+                                : 'border-gray-600 hover:border-gray-500'
+                            }`}
+                          >
+                            <img
+                              src={multiAvatarPublicSrc(file)}
+                              alt={label}
+                              className="w-full h-full rounded-full object-cover"
+                              loading="lazy"
+                            />
+                            {selected && (
+                              <div className="absolute -top-1 -right-1 bg-purple-500 rounded-full p-1">
+                                <CheckIcon size={12} className="text-white" />
+                              </div>
+                            )}
+                          </button>
+                          <p className="text-[10px] text-gray-400 mt-1 leading-tight line-clamp-2">{label}</p>
+                        </div>
+                      );
+                    })
+                  : pickerItems.styles.map((style) => {
+                      const seedToUse =
+                        editForm.selectedAvatarSeed || editForm.username || userData?.username || 'default';
+                      const selected =
+                        editForm.avatarKind === 'dicebear' && editForm.selectedAvatarStyle === style;
+                      return (
+                        <div key={style} className="text-center">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                avatarKind: 'dicebear',
+                                selectedAvatarStyle: style,
+                              }))
+                            }
+                            className={`w-16 h-16 rounded-full border-2 transition-all relative overflow-hidden ${
+                              selected
+                                ? 'border-purple-500 ring-2 ring-purple-300'
+                                : 'border-gray-600 hover:border-gray-500'
+                            }`}
+                          >
+                            <img
+                              src={`https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seedToUse)}`}
+                              alt={`Style ${style}`}
+                              className="w-full h-full rounded-full object-cover"
+                              loading="lazy"
+                            />
+                            {selected && (
+                              <div className="absolute -top-1 -right-1 bg-purple-500 rounded-full p-1">
+                                <CheckIcon size={12} className="text-white" />
+                              </div>
+                            )}
+                          </button>
+                          <p className="text-xs text-gray-400 mt-1 capitalize truncate">{style.replace('-', ' ')}</p>
+                        </div>
+                      );
+                    })}
+              </div>
+
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditAvatarPage((p) => Math.max(1, p - 1))}
+                  disabled={editAvatarPage <= 1}
+                  className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Previous avatar page"
+                >
+                  <ChevronLeftIcon size={18} />
+                </button>
+                <div className="flex gap-1">
+                  {Array.from({ length: AVATAR_PICKER_TOTAL_PAGES }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setEditAvatarPage(p)}
+                      className={`min-w-[2rem] h-8 px-2 rounded-lg text-sm font-medium transition-colors ${
+                        editAvatarPage === p
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditAvatarPage((p) => Math.min(AVATAR_PICKER_TOTAL_PAGES, p + 1))}
+                  disabled={editAvatarPage >= AVATAR_PICKER_TOTAL_PAGES}
+                  className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next avatar page"
+                >
+                  <ChevronRightIcon size={18} />
+                </button>
               </div>
               
               {/* Preview of selected avatar */}
               <div className="mt-4 text-center">
                 <div className="text-xs text-gray-500 mb-2">Preview:</div>
                 <img
-                  src={`https://api.dicebear.com/7.x/${editForm.selectedAvatarStyle}/svg?seed=${encodeURIComponent(editForm.selectedAvatarSeed || editForm.username || userData?.username || 'default')}`}
+                  src={previewSrc}
                   alt="Preview"
-                  className="w-12 h-12 rounded-full border border-gray-600 mx-auto"
+                  className="w-12 h-12 rounded-full border border-gray-600 mx-auto object-cover"
                   loading="lazy"
                 />
               </div>
@@ -816,7 +1036,8 @@ const EditProfileModal = () => (
           <p className="text-xs text-gray-500 mt-1">2-30 characters, letters, numbers, underscore, dash only</p>
         </div>
 
-        {/* Avatar Seed Field */}
+        {/* Avatar Seed — only applies to generated (Dicebear) avatars */}
+        {editForm.avatarKind === 'dicebear' && (
         <div>
           <label htmlFor="edit-avatar-seed" className="block text-sm font-medium mb-2">
             Avatar Seed (Optional)
@@ -834,6 +1055,7 @@ const EditProfileModal = () => (
             Custom seed for avatar generation. Leave blank to use your username as the seed.
           </p>
         </div>
+        )}
 
         {/* Email Field */}
         <div>
@@ -886,10 +1108,11 @@ const EditProfileModal = () => (
       </form>
     </div>
   </div>
-);
+    );
+  };
 
   return (
-    <div className={`p-4 sm:p-6 overflow-y-auto overflow-x-hidden h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
+    <div className="h-screen overflow-y-auto overflow-x-hidden bg-transparent p-4 pb-20 sm:p-6">
       <div className='flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4'>
       <SectionTitle title="Game Profile" subtitle="View gaming stats, achievements, and history" />
       

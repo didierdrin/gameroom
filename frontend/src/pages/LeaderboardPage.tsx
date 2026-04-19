@@ -219,7 +219,7 @@ export const LeaderboardPage = () => {
 
   if (error) {
     return (
-      <div className={`p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
+      <div className="h-screen overflow-y-auto bg-transparent p-6 pb-20">
         <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
         <div className="flex items-center justify-center h-64">
           <div className={theme === 'light' ? 'text-[#ff0000]' : 'text-red-400'}>
@@ -246,7 +246,7 @@ export const LeaderboardPage = () => {
   }
 
   return (
-    <div className={`p-4 sm:p-6 overflow-y-auto h-screen pb-20 ${theme === 'light' ? 'bg-[#ffffff]' : ''}`}>
+    <div className="h-screen overflow-y-auto bg-transparent p-4 pb-20 sm:p-6">
   <SectionTitle title="Leaderboards" subtitle="See who's on top of the Arena gaming world" />
   
   {/* Header with refresh button - MOBILE RESPONSIVE */}

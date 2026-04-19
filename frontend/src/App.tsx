@@ -34,20 +34,39 @@ const AppContent = () => {
         <title>Arena Gameroom</title>
       </Helmet>
       <ErrorBoundary>
-        <div className={`flex w-full min-h-screen ${theme === 'light' ? 'bg-[#ffffff] text-black' : 'bg-gray-900 text-white'}`}>
-          <RouterProvider router={router} />
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme={theme}
+        <div
+          className={`relative isolate flex w-full min-h-screen ${
+            theme === 'light' ? 'bg-[#ffffff] text-black' : 'bg-gray-900 text-white'
+          }`}
+        >
+          {/* Ambient violet: plain CSS in index.css (.ambient-*) */}
+          <div
+            aria-hidden
+            className={`pointer-events-none fixed inset-0 z-0 ${
+              theme === 'light' ? 'ambient-light' : 'ambient-dark'
+            }`}
           />
+          <div
+            aria-hidden
+            className={`pointer-events-none fixed inset-0 z-0 ${
+              theme === 'light' ? 'ambient-fog-light' : 'ambient-fog-dark'
+            }`}
+          />
+          <div className="relative z-[1] flex min-h-screen w-full min-w-0 flex-1 flex-col bg-transparent">
+            <RouterProvider router={router} />
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme={theme}
+            />
+          </div>
         </div>
       </ErrorBoundary>
     </>
