@@ -989,7 +989,7 @@ const EditProfileModal = () => (
               )}
             </div>
             <div className="md:ml-6 mt-4 md:mt-0 text-center md:text-left">
-              <h2 className="text-2xl font-bold">{formattedName}</h2>
+              <h2 className="text-2xl font-bold text-white">{formattedName}</h2>
               <p className="text-gray-300">
                 Member since {joinDate}
               </p>
@@ -1044,7 +1044,9 @@ const EditProfileModal = () => (
       </div>
       
       {/* Tabs */}
-      <div className="flex mb-6 border-b border-gray-700 overflow-x-auto">
+      <div className={`flex mb-6 border-b overflow-x-auto ${
+        theme === 'light' ? 'border-slate-300' : 'border-slate-600'
+      }`}>
         <button 
           onClick={() => setActiveTab('stats')} 
           className={`px-4 sm:px-6 py-3 font-medium transition-colors whitespace-nowrap ${

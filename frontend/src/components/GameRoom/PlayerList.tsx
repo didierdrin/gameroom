@@ -4,6 +4,7 @@ import { UsersIcon, EyeIcon } from 'lucide-react';
 import { Player as LudoPlayer } from '../Ludo/types/game';
 import { useUserData } from '../../hooks/useUserData';
 import { Link } from 'react-router-dom';
+import { useTheme } from '../../context/ThemeContext';
 interface Player extends LudoPlayer {
   isOnline?: boolean;
 }
@@ -16,6 +17,7 @@ interface PlayerItemProps {
   onPlayerClick?: (player: Player) => void;
   mutedPlayers?: string[];
   isSpectator?: boolean;
+  isLight?: boolean;
 }
 
 // Separate component for each player to use the useUserData hook
@@ -26,7 +28,8 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
   isHost = false,
   onPlayerClick,
   mutedPlayers = [],
-  isSpectator = false
+  isSpectator = false,
+  isLight = false
 }) => {
   const { username, avatar, isLoading } = useUserData(player.id);
   
@@ -55,18 +58,32 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
   const { name, displayName, isYou } = getPlayerDisplay();
   const isClickable = name !== 'Loading...' && name !== 'Unknown Host';
 
+  const rowBg = isLight
+    ? isSpectator
+      ? 'bg-gray-100/80'
+      : 'bg-gray-50 border border-gray-200/80'
+    : isSpectator
+      ? 'bg-gray-800/30'
+      : 'bg-gray-700/50';
+  const rowHover = isHost
+    ? isLight
+      ? 'hover:bg-gray-200/80 cursor-pointer'
+      : 'hover:bg-gray-600/50 cursor-pointer'
+    : '';
+  const linkClass = isLight ? 'text-[#8b5cf6] hover:underline' : 'text-purple-400 hover:underline';
+  const avatarBorder = isLight
+    ? 'border-gray-300 hover:border-[#8b5cf6]'
+    : 'border-gray-700 hover:border-purple-400';
+  const spectatorIconClass = isLight ? 'text-gray-500' : 'text-gray-400';
+
   return (
     <div 
       key={player.id}
-      className={`flex items-center space-x-3 p-3 rounded-lg ${
-        isSpectator ? 'bg-gray-800/30' : 'bg-gray-700/50'
-      } ${
+      className={`flex items-center space-x-3 p-3 rounded-lg ${rowBg} ${
         isYou ? 'ring-2 ring-purple-500' : ''
       } ${
         currentTurn === player.id && !isSpectator ? 'border-l-4 border-purple-500' : ''
-      } ${
-        isHost ? 'hover:bg-gray-600/50 cursor-pointer' : ''
-      }`}
+      } ${rowHover}`}
       onClick={() => isHost && onPlayerClick?.(player)}
     >
  
@@ -80,7 +97,7 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
       <img
         src={avatar}
         alt={name}
-        className="w-8 h-8 rounded-full border border-gray-700 hover:border-purple-400 transition-colors cursor-pointer"
+        className={`w-8 h-8 rounded-full border transition-colors cursor-pointer ${avatarBorder}`}
         onError={(e) => {
           const target = e.target as HTMLImageElement;
                     target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`;
@@ -92,7 +109,7 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
       <img
         src={avatar}
         alt={name}
-        className="w-6 h-6 rounded-full border border-gray-700"
+        className={`w-6 h-6 rounded-full border ${isLight ? 'border-gray-300' : 'border-gray-700'}`}
         onError={(e) => {
           const target = e.target as HTMLImageElement;
                     target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`;
@@ -106,14 +123,14 @@ const PlayerItem: React.FC<PlayerItemProps> = ({
          
             <Link 
             to={`/profile/${displayName}`} 
-            className="text-purple-400 hover:underline"
+            className={linkClass}
           >
         {name}
         </Link>
        
             </p>
           {isSpectator && (
-            <EyeIcon size={14} className="text-gray-400 flex-shrink-0" />
+            <EyeIcon size={14} className={`${spectatorIconClass} flex-shrink-0`} />
           )}
         </div>
         {mutedPlayers.includes(player.id) && <p className="text-xs text-red-400">Muted</p>}
@@ -146,6 +163,9 @@ export const PlayerList: React.FC<PlayerListProps> = ({
   playerIdToUsername,
   spectatorIds = [] // Default to empty array
 }) => {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
   // Separate players and spectators based on spectatorIds
   const gamePlayers = players.filter(player => !spectatorIds.includes(player.id));
   const spectators = players.filter(player => spectatorIds.includes(player.id));
@@ -163,9 +183,21 @@ export const PlayerList: React.FC<PlayerListProps> = ({
   }, [players, gamePlayers, spectators, spectatorIds, playerIdToUsername]);
 
   return (
-    <div className="w-full sm:w-64 border-r border-gray-700 bg-gray-800 overflow-y-auto fixed sm:relative inset-y-0 left-0 z-30">
-      <div className="p-3 border-b border-gray-700 flex justify-between items-center">
-        <h3 className="font-medium">Players ({gamePlayers.length})</h3>
+    <div
+      className={`w-full sm:w-64 overflow-y-auto fixed sm:relative inset-y-0 left-0 z-30 ${
+        isLight
+          ? 'border-r border-[#b4b4b4] bg-white'
+          : 'border-r border-gray-700 bg-gray-800'
+      }`}
+    >
+      <div
+        className={`p-3 flex justify-between items-center border-b ${
+          isLight ? 'border-[#b4b4b4]' : 'border-gray-700'
+        }`}
+      >
+        <h3 className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>
+          Players ({gamePlayers.length})
+        </h3>
       </div>
       
       <div className="p-3 space-y-2">
@@ -180,6 +212,7 @@ export const PlayerList: React.FC<PlayerListProps> = ({
             onPlayerClick={onPlayerClick}
             mutedPlayers={mutedPlayers}
             isSpectator={false}
+            isLight={isLight}
           />
         ))}
 
@@ -187,9 +220,17 @@ export const PlayerList: React.FC<PlayerListProps> = ({
         {spectators.length > 0 && (
           <>
             <div className="flex items-center space-x-2 my-4">
-              <div className="flex-1 border-t border-gray-600"></div>
-              <span className="text-xs text-gray-400 font-medium px-2">SPECTATORS</span>
-              <div className="flex-1 border-t border-gray-600"></div>
+              <div
+                className={`flex-1 border-t ${isLight ? 'border-gray-200' : 'border-gray-600'}`}
+              />
+              <span
+                className={`text-xs font-medium px-2 ${isLight ? 'text-gray-500' : 'text-gray-400'}`}
+              >
+                SPECTATORS
+              </span>
+              <div
+                className={`flex-1 border-t ${isLight ? 'border-gray-200' : 'border-gray-600'}`}
+              />
             </div>
             
             {spectators.map((spectator) => (
@@ -202,6 +243,7 @@ export const PlayerList: React.FC<PlayerListProps> = ({
                 onPlayerClick={onPlayerClick}
                 mutedPlayers={mutedPlayers}
                 isSpectator={true}
+                isLight={isLight}
               />
             ))}
           </>
