@@ -6,6 +6,7 @@ import { useSocket } from '../SocketContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { registerFcmTokenOnSocket } from '../lib/fcm';
 
 
 export const createTriviaGame = (
@@ -368,6 +369,10 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           game.roomId,
           privacy === 'private' ? password : undefined
         );
+
+        if (joinSuccess && socket && user?.id) {
+          void registerFcmTokenOnSocket(socket, String(user.id));
+        }
         
         console.log('Join result:', joinSuccess);
         

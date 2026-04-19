@@ -37,6 +37,7 @@ import { SocketType } from "../SocketContext";
 import { useUserData } from "../hooks/useUserData"; 
 import { Link } from 'react-router-dom'; 
 import { TriviaCategorySelectionModal } from '../components/Trivia/TriviaCategorySelectionModal';
+import { registerFcmTokenOnSocket } from '../lib/fcm';
 
 interface Participant {
   id: string;
@@ -775,6 +776,10 @@ useEffect(() => {
           [data.playerId]: data.playerName || data.playerId,
         }));
 
+        if (user && String(data.playerId) === String(user.id)) {
+          void registerFcmTokenOnSocket(socket, String(user.id));
+        }
+
         if (gameType === 'uno' && socket && roomId) {
           socket.emit('unoJoinGame', { 
             roomId, 
@@ -1110,18 +1115,7 @@ const handleTriviaAllPlayersAnswered = (data: any) => {
   // The frontend will handle the 3-second wait and next question transition
 };
 
-
-const handlePlayerAutoSubmitted = (data: any) => {
-  console.log('Player auto-submitted due to timeout:', data);
-  // You can show a notification or update UI if needed
-  // For example: show a toast notification
-  setGameStatus(`${data.playerId} ran out of time - answer auto-submitted`);
-  setTimeout(() => setGameStatus(''), 3000);
-};
-
-
-socket.on('playerAutoSubmitted', handlePlayerAutoSubmitted);
-  socket.on('triviaAllPlayersAnswered', handleTriviaAllPlayersAnswered);
+    socket.on('triviaAllPlayersAnswered', handleTriviaAllPlayersAnswered);
     socket.on("chatHistory", handleChatHistory);
     socket.emit("getChatHistory", { roomId });
     socket.on("gameState", handleGameState);
@@ -1176,7 +1170,6 @@ socket.on('triviaSettingsUpdated', handleTriviaSettingsUpdated);
       socket.off("unoError", handleUnoError);
       socket.off('triviaSettingsUpdated', handleTriviaSettingsUpdated);      
       socket.off('triviaAllPlayersAnswered', handleTriviaAllPlayersAnswered);
-      socket.off('playerAutoSubmitted', handlePlayerAutoSubmitted);
     };
   }, [socket, roomId, user, navigate, isSocketConnected]);
 

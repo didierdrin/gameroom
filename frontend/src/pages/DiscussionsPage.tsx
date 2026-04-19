@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useSocket, useSocketConnection } from '../SocketContext';
+import { registerFcmTokenOnSocket } from '../lib/fcm';
 import { SendIcon, UserIcon, PlusIcon, UsersIcon, ArrowLeft, XIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -71,6 +73,11 @@ export const DiscussionsPage = () => {
       fetchConversations();
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !socket || !socketConnected) return;
+    void registerFcmTokenOnSocket(socket, String(user.id));
+  }, [user?.id, socket, socketConnected]);
 
   const fetchConversations = async () => {
     try {

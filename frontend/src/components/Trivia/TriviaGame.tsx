@@ -7,13 +7,21 @@ import { useUserData } from '../../hooks/useUserData';
 import { useTheme } from '../../context/ThemeContext';
 import { Check, X, Trophy, RotateCcw } from 'lucide-react';
 
-interface Question {
+interface ClientTriviaQuestion {
   id: string;
   text: string;
   options: string[];
-  correctAnswer: string;
   difficulty?: string;
   category?: string;
+}
+
+interface TriviaQuestionEvent {
+  roomId: string;
+  questionIndex: number;
+  totalQuestions: number;
+  question: ClientTriviaQuestion;
+  endsAt: number;
+  limitSec: number;
 }
 
 interface TriviaGameProps {
@@ -25,9 +33,8 @@ interface TriviaGameProps {
   onReturnHome?: () => void;
 }
 
-const INCORRECT_PENALTY = 0; // Set to 20 to show -20 like reference; backend may not support penalty
+const INCORRECT_PENALTY = 0;
 
-// Answer option colors (A=green, B=orange, C=blue, D=pink) - match reference images
 const OPTION_COLORS = [
   { bg: 'bg-emerald-500', border: 'border-emerald-500', letter: 'text-emerald-600' },
   { bg: 'bg-orange-500', border: 'border-orange-500', letter: 'text-orange-600' },
@@ -74,7 +81,7 @@ const LeaderboardRow: React.FC<{
   cardBorder: string;
   textPrimary: string;
 }> = ({ player, index, isCurrentUser, isLight, cardBorder, textPrimary }) => {
-  const { username, avatar } = useUserData(player._id);
+  useUserData(player._id);
   const rowBg =
     index === 0 ? (isLight ? 'bg-emerald-50' : 'bg-emerald-900/30') :
     index === 1 ? (isLight ? 'bg-amber-50' : 'bg-amber-900/20') :
@@ -173,9 +180,10 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQ, setCurrentQ] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [activeQuestion, setActiveQuestion] = useState<ClientTriviaQuestion | null>(null);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [endsAt, setEndsAt] = useState<number | null>(null);
   const [timer, setTimer] = useState(10);
   const [loading, setLoading] = useState(true);
   const [showFireworks, setShowFireworks] = useState(false);
@@ -187,162 +195,133 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   const [nextQuestionCountdown, setNextQuestionCountdown] = useState(0);
 
   const isProcessingRef = useRef(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [localScore, setLocalScore] = useState(0);
   const [lastPointsEarned, setLastPointsEarned] = useState(0);
-  const answerTimeRef = useRef(10);
+  const [feedbackCorrect, setFeedbackCorrect] = useState<string | null>(null);
+  const [lastAnswerCorrect, setLastAnswerCorrect] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
     const backendScore = gameState.triviaState?.scores?.[currentPlayer] || 0;
     setLocalScore(backendScore);
-  }, [gameState.triviaState?.scores?.[currentPlayer]]);
+  }, [gameState.triviaState?.scores, currentPlayer]);
 
   useEffect(() => {
-    if (gameState.triviaState?.questions) {
-      setQuestions(gameState.triviaState.questions);
-      setLoading(false);
+    if (gameState.gameOver) {
+      setShowFireworks(true);
     }
-  }, [gameState.triviaState?.questions]);
+  }, [gameState.gameOver]);
 
   useEffect(() => {
     if (gameState.triviaState?.answers) {
       const answeredCount = Object.values(gameState.triviaState.answers).filter(
-        (a: any) => a?.answer !== null
+        (a: any) => typeof a?.isCorrect === 'boolean',
       ).length;
       setPlayersAnswered(answeredCount);
       setTotalPlayers(gameState.players?.length || 0);
     }
   }, [gameState.triviaState?.answers, gameState.players]);
 
+  const applyTriviaQuestionPayload = useCallback((payload: TriviaQuestionEvent) => {
+    setActiveQuestion(payload.question);
+    setQuestionIndex(payload.questionIndex);
+    setTotalQuestions(payload.totalQuestions);
+    setEndsAt(payload.endsAt);
+    setHasAnswered(false);
+    setSelected(null);
+    setWaitingForOthers(false);
+    setPhase('question');
+    setNextQuestionCountdown(0);
+    setFeedbackCorrect(null);
+    isProcessingRef.current = false;
+    const sec = Math.max(0, Math.ceil((payload.endsAt - Date.now()) / 1000));
+    setTimer(sec > 0 ? sec : payload.limitSec);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onTriviaQuestion = (payload: TriviaQuestionEvent) => {
+      if (payload.roomId !== roomId) return;
+      applyTriviaQuestionPayload(payload);
+    };
+
+    const onTriviaAnswer = (result: any) => {
+      if (result.playerId !== currentPlayer) return;
+      setLastPointsEarned(result.pointsEarned ?? 0);
+      setLastAnswerCorrect(!!result.isCorrect);
+      setFeedbackCorrect(result.correct ?? null);
+      setPhase('answer_feedback');
+      setWaitingForOthers(false);
+    };
+
+    const onAllAnswered = () => {
+      setPhase('question_results');
+    };
+
+    socket.on('triviaQuestion', onTriviaQuestion);
+    socket.on('triviaAnswer', onTriviaAnswer);
+    socket.on('triviaAllPlayersAnswered', onAllAnswered);
+    return () => {
+      socket.off('triviaQuestion', onTriviaQuestion);
+      socket.off('triviaAnswer', onTriviaAnswer);
+      socket.off('triviaAllPlayersAnswered', onAllAnswered);
+    };
+  }, [socket, roomId, currentPlayer, applyTriviaQuestionPayload]);
+
+  useEffect(() => {
+    if (!endsAt || gameState.gameOver || !gameState.gameStarted) return;
+    const tick = () => {
+      const sec = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      setTimer(sec);
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [endsAt, gameState.gameOver, gameState.gameStarted]);
+
   const handleOptionClick = useCallback(
     (option: string | null) => {
-      if (isProcessingRef.current || hasAnswered || !questions[currentQ]) return;
+      if (isProcessingRef.current || hasAnswered || !activeQuestion) return;
 
       isProcessingRef.current = true;
       setHasAnswered(true);
       setSelected(option);
       setWaitingForOthers(true);
 
-      const timeWhenAnswered = timer > 0 ? timer : 0;
-      answerTimeRef.current = timeWhenAnswered;
-      const currentQuestion = questions[currentQ];
-      const isCorrect = option === currentQuestion.correctAnswer;
-      const totalTime = 10;
-      const timePercentage = timeWhenAnswered / totalTime;
-
-      let pointsEarned = 0;
-      if (isCorrect) {
-        pointsEarned = timeWhenAnswered > 0 ? Math.max(1, Math.round(5 * timePercentage * 100) / 100) : 1;
-      }
-      setLastPointsEarned(pointsEarned);
-      if (isCorrect) setLocalScore((s) => s + pointsEarned);
-
       socket.emit('triviaAnswer', {
         roomId,
         playerId: currentPlayer,
-        qId: currentQuestion.id,
+        qId: activeQuestion.id,
         answer: option,
-        correct: currentQuestion.correctAnswer,
-        isCorrect,
-        pointsEarned,
-        timeRemaining: timeWhenAnswered,
       });
-
-      setPhase('answer_feedback');
     },
-    [currentQ, hasAnswered, questions, timer, roomId, currentPlayer, socket]
+    [hasAnswered, activeQuestion, roomId, currentPlayer, socket],
   );
 
   useEffect(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
-    if (timer > 0 && !loading && questions.length > 0 && !hasAnswered && !isProcessingRef.current) {
-      timeoutRef.current = setTimeout(() => setTimer((t) => t - 1), 1000);
-    } else if (timer === 0 && !hasAnswered && !isProcessingRef.current && questions[currentQ]) {
-      handleOptionClick(null);
-      socket.emit('triviaAutoSubmit', { roomId, playerId: currentPlayer, questionId: questions[currentQ].id });
-    }
-
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [timer, loading, questions, hasAnswered, currentQ, currentPlayer, roomId, socket, handleOptionClick]);
+    if (timer !== 0 || hasAnswered || !activeQuestion || !gameState.gameStarted || gameState.gameOver) return;
+    if (isProcessingRef.current) return;
+    handleOptionClick(null);
+  }, [timer, hasAnswered, activeQuestion, gameState.gameStarted, gameState.gameOver, handleOptionClick]);
 
   useEffect(() => {
-    if (!socket) return;
-
-    const handleAllPlayersAnswered = () => {
-      setNextQuestionCountdown(3);
-    };
-
-    socket.on('triviaAllPlayersAnswered', handleAllPlayersAnswered);
-    return () => socket.off('triviaAllPlayersAnswered', handleAllPlayersAnswered);
-  }, [socket]);
-
-  useEffect(() => {
-    if (phase !== 'question_results' && nextQuestionCountdown > 0) {
-      setPhase('question_results');
-    }
-  }, [nextQuestionCountdown, phase]);
-
-  useEffect(() => {
-    if (nextQuestionCountdown <= 0) return;
-    const t = setInterval(() => {
-      setNextQuestionCountdown((n) => {
-        if (n <= 1) {
-          clearInterval(t);
-          setPhase('question');
-          setNextQuestionCountdown(0);
-          setWaitingForOthers(false);
-          if (currentQ + 1 >= questions.length) {
-            const finalScore = localScore;
-            socket.emit('triviaComplete', { roomId, playerId: currentPlayer, score: finalScore, total: questions.length });
-            setShowFireworks(true);
-            isProcessingRef.current = false;
-          } else {
-            setCurrentQ((q) => q + 1);
-            setTimer(10);
-            setSelected(null);
-            setHasAnswered(false);
-            isProcessingRef.current = false;
-            answerTimeRef.current = 10;
-          }
-          return 0;
-        }
-        return n - 1;
-      });
+    if (phase !== 'question_results') return;
+    setNextQuestionCountdown(5);
+    const id = setInterval(() => {
+      setNextQuestionCountdown((n) => (n <= 1 ? 0 : n - 1));
     }, 1000);
-    return () => clearInterval(t);
-  }, [nextQuestionCountdown, currentQ, questions.length, localScore, roomId, currentPlayer, socket]);
+    return () => clearInterval(id);
+  }, [phase, questionIndex]);
 
-  useEffect(() => {
-    if (phase === 'answer_feedback') {
-      const t = setTimeout(() => {
-        setPhase('question_results');
-        if (nextQuestionCountdown === 0) setNextQuestionCountdown(3);
-      }, 2000);
-      return () => clearTimeout(t);
-    }
-  }, [phase, nextQuestionCountdown]);
-
-  // Only reset question index and phase when the game actually starts or restarts (e.g. Play Again).
-  // Do NOT depend on gameState.triviaState?.questions â€” server updates during the round would reset currentQ to 0.
   useEffect(() => {
     if (gameState.gameStarted && !gameState.gameOver) {
-      setCurrentQ(0);
-      setSelected(null);
-      setTimer(10);
-      setHasAnswered(false);
-      setPhase('question');
       setShowFireworks(false);
-      setWaitingForOthers(false);
+      setPhase('question');
       setNextQuestionCountdown(0);
+      setFeedbackCorrect(null);
       isProcessingRef.current = false;
-      answerTimeRef.current = 10;
-      if (gameState.triviaState?.questions) setQuestions(gameState.triviaState.questions);
     }
   }, [gameState.gameStarted, gameState.gameOver]);
 
@@ -372,8 +351,8 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     let correct = 0;
     let incorrect = 0;
     Object.values(answers).forEach((a: any) => {
-      if (a?.answer === null) return;
-      if (a?.isCorrect) correct++;
+      if (typeof a?.isCorrect !== 'boolean') return;
+      if (a.isCorrect) correct++;
       else incorrect++;
     });
     return { playersCorrect: correct, playersIncorrect: incorrect };
@@ -382,14 +361,13 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   const leaderboardData = gameState.gameOver ? getLeaderboardData() : [];
   const liveStandings = getLeaderboardData();
   const { playersCorrect, playersIncorrect } = getQuestionResultsStats();
-  const currentQuestion = questions[currentQ];
   const currentPlayerScore = localScore;
-  const isCorrect = selected === currentQuestion?.correctAnswer;
   const rivalPlayer = gameState.players?.find((p: any) => p.id !== currentPlayer);
   const rivalScore = rivalPlayer ? (gameState.triviaState?.scores?.[rivalPlayer.id] ?? 0) : 0;
   const isWinner = leaderboardData.length > 0 && leaderboardData[0]._id === currentPlayer;
 
-  if (loading) {
+  const inPlay = gameState.gameStarted && !gameState.gameOver;
+  if (inPlay && loading) {
     return (
       <div className={`flex flex-col items-center justify-center min-h-[280px] ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>
         <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isLight ? 'border-[#8b5cf6]' : 'border-purple-500'} mb-4`} />
@@ -398,10 +376,10 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
     );
   }
 
-  if (questions.length === 0) {
+  if (inPlay && !activeQuestion) {
     return (
-      <div className={`p-4 rounded-lg ${isLight ? 'bg-red-50 border-red-200 text-red-700' : 'bg-red-900/20 border-red-500/50 text-red-400'} border`}>
-        <p>No questions available. Please try again later.</p>
+      <div className={`p-4 rounded-lg ${isLight ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-amber-900/20 border-amber-500/50 text-amber-200'} border`}>
+        <p>Waiting for the next question from the server…</p>
       </div>
     );
   }
@@ -411,6 +389,9 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
   const textPrimary = isLight ? 'text-gray-900' : 'text-white';
   const textSecondary = isLight ? 'text-gray-600' : 'text-gray-300';
   const surface = isLight ? 'bg-gray-100' : 'bg-gray-900';
+
+  const displayQuestion = activeQuestion;
+  const countdownTotal = 5;
 
   return (
     <div className={`flex flex-col min-h-full ${surface} ${textPrimary}`}>
@@ -487,7 +468,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
       ) : phase === 'answer_feedback' ? (
         <div className="flex-1 flex items-center justify-center p-4">
           <div className={`w-full max-w-sm rounded-2xl ${cardBg} ${cardBorder} border shadow-xl p-6`}>
-            {isCorrect ? (
+            {lastAnswerCorrect ? (
               <>
                 <div className="flex justify-center mb-4">
                   <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center">
@@ -498,8 +479,8 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                 <p className={`text-center text-lg mt-1 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>+{lastPointsEarned} points</p>
                 <hr className={`my-4 ${isLight ? 'border-gray-200' : 'border-gray-600'}`} />
                 <p className={`text-xs uppercase ${textSecondary} mb-1`}>Answer</p>
-                <p className={`font-semibold ${textPrimary}`}>{currentQuestion.correctAnswer}</p>
-                <p className={`text-xs uppercase ${textSecondary} mt-4 mb-1`}>Next question</p>
+                <p className={`font-semibold ${textPrimary}`}>{feedbackCorrect ?? '—'}</p>
+                <p className={`text-xs uppercase ${textSecondary} mt-4 mb-1`}>Round results</p>
                 <div className={`h-2 rounded-full overflow-hidden ${isLight ? 'bg-gray-200' : 'bg-gray-600'}`}>
                   <div className="h-full bg-orange-500 rounded-full" style={{ width: '66%' }} />
                 </div>
@@ -515,12 +496,12 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                 <p className={`text-center text-lg mt-1 ${isLight ? 'text-red-600' : 'text-red-400'}`}>{INCORRECT_PENALTY > 0 ? `-${INCORRECT_PENALTY} points` : '0 points'}</p>
                 <div className={`mt-4 p-4 rounded-xl border ${isLight ? 'bg-emerald-50 border-emerald-200' : 'bg-emerald-900/20 border-emerald-700'}`}>
                   <p className={`text-xs uppercase ${isLight ? 'text-emerald-700' : 'text-emerald-300'}`}>The correct answer was</p>
-                  <p className={`font-bold ${textPrimary}`}>{currentQuestion.correctAnswer}</p>
+                  <p className={`font-bold ${textPrimary}`}>{feedbackCorrect ?? '—'}</p>
                 </div>
-                <p className={`text-xs uppercase ${textSecondary} mt-4 mb-1`}>Next question</p>
+                <p className={`text-xs uppercase ${textSecondary} mt-4 mb-1`}>Round results</p>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full border-2 border-orange-500 flex items-center justify-center text-sm font-bold text-orange-500">
-                    {nextQuestionCountdown || 3}
+                    {nextQuestionCountdown || countdownTotal}
                   </div>
                 </div>
               </>
@@ -532,15 +513,15 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
           <div className={`max-w-lg mx-auto rounded-2xl ${cardBg} ${cardBorder} border shadow-lg overflow-hidden`}>
             <div className={`p-4 border-b flex items-center justify-center gap-2 ${isLight ? 'border-gray-200' : 'border-gray-700'}`}>
               <Trophy className="w-5 h-5 text-amber-500" />
-              <span className={`font-semibold ${textPrimary}`}>Round {currentQ + 1} of {questions.length}</span>
+              <span className={`font-semibold ${textPrimary}`}>Round {questionIndex + 1} of {totalQuestions || '?'}</span>
             </div>
             <div className="p-4">
               <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}>Question Results</h3>
-              <p className={`text-sm ${textSecondary} mb-4`}>{currentQuestion?.text}</p>
+              <p className={`text-sm ${textSecondary} mb-4`}>{displayQuestion?.text}</p>
               <div className={`rounded-xl p-4 mb-4 flex items-center justify-between ${isLight ? 'bg-emerald-50 border border-emerald-200' : 'bg-emerald-900/20 border border-emerald-700/50'}`}>
                 <div>
                   <p className={`text-xs uppercase mb-1 ${isLight ? 'text-emerald-700' : 'text-emerald-300'}`}>Correct answer</p>
-                  <p className={`font-bold text-lg ${textPrimary}`}>{currentQuestion?.correctAnswer}</p>
+                  <p className={`font-bold text-lg ${textPrimary}`}>{feedbackCorrect ?? '—'}</p>
                 </div>
                 <Check className="w-10 h-10 text-emerald-500 flex-shrink-0" />
               </div>
@@ -579,7 +560,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                 <div className={`flex-1 h-2 rounded-full overflow-hidden ${isLight ? 'bg-gray-200' : 'bg-gray-600'}`}>
                   <div
                     className={`h-full rounded-full ${isLight ? 'bg-amber-400' : 'bg-red-500'}`}
-                    style={{ width: `${((3 - (nextQuestionCountdown || 0)) / 3) * 100}%` }}
+                    style={{ width: `${((countdownTotal - (nextQuestionCountdown || 0)) / countdownTotal) * 100}%` }}
                   />
                 </div>
                 <span className={`text-sm font-mono font-bold ${textPrimary}`}>0:{(nextQuestionCountdown || 0).toString().padStart(2, '0')}</span>
@@ -593,7 +574,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
             <div className={`flex items-center justify-between rounded-xl ${isLight ? 'bg-white border border-gray-200' : 'bg-gray-800/50 border border-gray-700'} p-3 mb-4`}>
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-bold px-2 py-1 rounded flex items-center gap-1 ${isLight ? 'bg-red-100 text-red-700' : 'bg-red-900/40 text-red-300'}`}>
-                  <Trophy size={12} /> Round {currentQ + 1}/{questions.length}
+                  <Trophy size={12} /> Round {questionIndex + 1}/{totalQuestions || '?'}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -611,7 +592,7 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
                   ) : (
                     <div className="text-center">
                       <div className={`w-8 h-8 rounded-full ${isLight ? 'bg-gray-400' : 'bg-gray-600'}`} />
-                      <p className={`text-xs ${textSecondary}`}>â€”</p>
+                      <p className={`text-xs ${textSecondary}`}>—</p>
                     </div>
                   )}
                 </div>
@@ -622,25 +603,27 @@ export const TriviaGame: React.FC<TriviaGameProps> = ({
               <div className="absolute top-4 right-4 w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white font-bold text-sm">
                 {timer}
               </div>
-              {currentQuestion.category && (
+              {displayQuestion?.category && (
                 <div className={`inline-block text-xs font-semibold px-2 py-1 rounded mb-3 ${isLight ? 'bg-emerald-500/90' : 'bg-emerald-600'} text-white uppercase`}>
-                  {currentQuestion.category}
+                  {displayQuestion.category}
                 </div>
               )}
-              <p className="text-white text-lg sm:text-xl font-medium pr-12">{currentQuestion.text}</p>
+              <p className="text-white text-lg sm:text-xl font-medium pr-12">{displayQuestion?.text}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {currentQuestion.options.map((option, index) => {
+              {(displayQuestion?.options || []).map((option, index) => {
                 const letter = String.fromCharCode(65 + index);
                 const colors = OPTION_COLORS[index % 4];
                 const isSelected = selected === option;
-                const isCorrectOption = option === currentQuestion.correctAnswer;
+                const correctStr = feedbackCorrect;
+                const isCorrectOption = correctStr != null && option === correctStr;
                 const showCorrect = hasAnswered && isCorrectOption;
-                const showWrong = hasAnswered && isSelected && !isCorrectOption;
+                const showWrong = hasAnswered && isSelected && correctStr != null && !isCorrectOption;
                 return (
                   <button
                     key={index}
+                    type="button"
                     disabled={hasAnswered}
                     onClick={() => handleOptionClick(option)}
                     className={`relative rounded-xl p-4 text-left transition-all border-2 ${colors.bg} text-white border ${colors.border} ${

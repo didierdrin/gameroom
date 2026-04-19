@@ -1,6 +1,35 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { SearchIcon, FilterIcon, ChevronDownIcon, CheckIcon, SunIcon, MoonIcon, XIcon, DicesIcon, PlusCircleIcon, BarChart3Icon, UserIcon, MessageCircleIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  SearchIcon,
+  FilterIcon,
+  ChevronDownIcon,
+  CheckIcon,
+  SunIcon,
+  MoonIcon,
+  XIcon,
+  DicesIcon,
+  PlusCircleIcon,
+  BarChart3Icon,
+  UserIcon,
+  MessageCircleIcon,
+  BrainIcon,
+  FlaskConicalIcon,
+  ScrollTextIcon,
+  Globe2Icon,
+  ClapperboardIcon,
+  TrophyIcon,
+  CpuIcon,
+  BookOpenTextIcon,
+  MusicIcon,
+  PaletteIcon,
+  GavelIcon,
+  LeafIcon,
+  TvIcon,
+  ChefHatIcon,
+  CastleIcon,
+} from "lucide-react";
 import io from "socket.io-client";
 import { GameRoomList } from "../components/GameRoom/GameRoomList";
 import { GameRoomListSkeleton } from "../components/GameRoom/GameRoomListSkeleton";
@@ -15,22 +44,22 @@ import { useUserData } from "../hooks/useUserData";
 
 
 // Trivia categories for Start Game Room section (matches CreateGameRoomPage)
-const TRIVIA_CATEGORIES = [
-  { value: 'general', label: 'General Knowledge' },
-  { value: 'science', label: 'Science' },
-  { value: 'history', label: 'History' },
-  { value: 'geography', label: 'Geography' },
-  { value: 'entertainment', label: 'Entertainment' },
-  { value: 'sports', label: 'Sports' },
-  { value: 'technology', label: 'Technology' },
-  { value: 'literature', label: 'Literature' },
-  { value: 'music', label: 'Music' },
-  { value: 'art', label: 'Art & Design' },
-  { value: 'politics', label: 'Politics' },
-  { value: 'nature', label: 'Nature & Animals' },
-  { value: 'movies', label: 'Movies & TV' },
-  { value: 'food', label: 'Food & Cooking' },
-  { value: 'mythology', label: 'Mythology' },
+const TRIVIA_CATEGORIES: { value: string; label: string; icon: LucideIcon }[] = [
+  { value: 'general', label: 'General Knowledge', icon: BrainIcon },
+  { value: 'science', label: 'Science', icon: FlaskConicalIcon },
+  { value: 'history', label: 'History', icon: ScrollTextIcon },
+  { value: 'geography', label: 'Geography', icon: Globe2Icon },
+  { value: 'entertainment', label: 'Entertainment', icon: ClapperboardIcon },
+  { value: 'sports', label: 'Sports', icon: TrophyIcon },
+  { value: 'technology', label: 'Technology', icon: CpuIcon },
+  { value: 'literature', label: 'Literature', icon: BookOpenTextIcon },
+  { value: 'music', label: 'Music', icon: MusicIcon },
+  { value: 'art', label: 'Art & Design', icon: PaletteIcon },
+  { value: 'politics', label: 'Politics', icon: GavelIcon },
+  { value: 'nature', label: 'Nature & Animals', icon: LeafIcon },
+  { value: 'movies', label: 'Movies & TV', icon: TvIcon },
+  { value: 'food', label: 'Food & Cooking', icon: ChefHatIcon },
+  { value: 'mythology', label: 'Mythology', icon: CastleIcon },
 ];
 
 // Sleek per-card colors: light mode (soft, muted) and dark mode (rich, deep)
@@ -721,19 +750,28 @@ const handleModalJoin = async (gameRoom: GameRoom, joinAsPlayer: boolean, passwo
           >
             {TRIVIA_CATEGORIES.map((cat, idx) => {
               const colors = theme === 'light' ? CARD_COLORS_LIGHT[idx % CARD_COLORS_LIGHT.length]! : CARD_COLORS_DARK[idx % CARD_COLORS_DARK.length]!;
+              const Icon = cat.icon;
               return (
                 <button
                   key={cat.value}
                   type="button"
                   onClick={() => navigate('/create-game-room', { state: { category: cat.value } })}
-                  className="h-14 rounded-xl border text-left px-4 py-2 transition-all duration-200 flex items-center shrink-0 hover:brightness-110 hover:shadow-md active:scale-[0.98]"
+                  className="h-14 rounded-xl border text-left pl-2.5 pr-3 py-2 gap-2.5 transition-all duration-200 flex items-center shrink-0 hover:brightness-110 hover:shadow-md active:scale-[0.98]"
                   style={{
                     backgroundColor: colors.bg,
                     borderColor: colors.border,
                     color: colors.text,
                   }}
                 >
-                  <span className="text-sm font-medium truncate">{cat.label}</span>
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
+                      theme === 'light' ? 'border-black/[0.06] bg-black/[0.05]' : 'border-white/[0.08] bg-white/[0.08]'
+                    }`}
+                    aria-hidden
+                  >
+                    <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} />
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm font-medium leading-snug text-left line-clamp-2">{cat.label}</span>
                 </button>
               );
             })}
